@@ -590,3 +590,12 @@ describe('BatchProcessor item timeout with a plain-value processor', () => {
     expect(batch.results[0]?.result).toBe(1);
   });
 });
+
+describe('chunkArray with a readonly input', () => {
+  it('chunks a readonly array and leaves the input unchanged', () => {
+    const input: readonly number[] = [1, 2, 3, 4, 5];
+
+    expect(chunkArray(input, 2)).toEqual([[1, 2], [3, 4], [5]]);
+    expect(input).toEqual([1, 2, 3, 4, 5]);
+  });
+});

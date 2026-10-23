@@ -420,6 +420,30 @@ describe('ParallelSearchExecutor', () => {
       expect(semanticTiming?.success).toBe(false);
       expect(semanticTiming?.error).toContain('timeout');
     }, 10000);
+
+    it('reports the exact semantic timeout message', async () => {
+      mockSemanticSearch.search.mockImplementation(() => new Promise(() => {}));
+
+      const result = await executor.execute(testGraph, 'test', {
+        timeoutMs: 20,
+      });
+
+      const semanticTiming = result.timings.find(t => t.layer === 'semantic');
+      expect(semanticTiming?.success).toBe(false);
+      expect(semanticTiming?.error).toBe('Semantic search timeout');
+    });
+
+    it('reports the exact lexical timeout message', async () => {
+      mockRankedSearch.searchNodesRanked.mockImplementation(() => new Promise(() => {}));
+
+      const result = await executor.execute(testGraph, 'test', {
+        timeoutMs: 20,
+      });
+
+      const lexicalTiming = result.timings.find(t => t.layer === 'lexical');
+      expect(lexicalTiming?.success).toBe(false);
+      expect(lexicalTiming?.error).toBe('Lexical search timeout');
+    });
   });
 
   describe('options passing', () => {

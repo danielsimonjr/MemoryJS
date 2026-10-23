@@ -1,11 +1,21 @@
 /**
  * Timing Helpers
  *
- * Timeout helpers shared by the utilities and the search layer.
+ * Sleep, timeout and coalescing helpers shared by the utilities and the search layer.
  * This module imports nothing. It is not re-exported from the package barrel.
  *
  * @module utils/timing
  */
+
+/**
+ * Resolves after the given number of milliseconds.
+ *
+ * @param ms - Delay in milliseconds.
+ * @returns A promise that resolves after the delay.
+ */
+export function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 /**
  * Creates a promise that rejects with an Error after a delay.

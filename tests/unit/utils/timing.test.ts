@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { createTimeout, withTimeout } from '../../../src/utils/timing.js';
+import { createTimeout, sleep, withTimeout } from '../../../src/utils/timing.js';
 import { microtaskTicks } from '../../test-utils/microtask-ticks.js';
 
 describe('timing', () => {
@@ -75,5 +75,22 @@ describe('timing', () => {
 
       await expect(timeout.promise).rejects.toThrow('Late');
     });
+  });
+});
+
+describe('sleep', () => {
+  it('resolves after the delay and leaves no timer behind', async () => {
+    vi.useFakeTimers();
+    let done = false;
+
+    const pending = sleep(100).then(() => {
+      done = true;
+    });
+    expect(vi.getTimerCount()).toBe(1);
+    vi.advanceTimersByTime(100);
+    await pending;
+
+    expect(done).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

@@ -7,7 +7,7 @@
  * @module utils/BatchProcessor
  */
 
-import { withTimeout } from './timing.js';
+import { sleep, withTimeout } from './timing.js';
 
 /**
  * Progress information for batch processing.
@@ -298,7 +298,7 @@ export class BatchProcessor<TInput, TOutput> {
         // Don't retry on last attempt
         if (attempt < this.options.maxRetries) {
           const delay = this.calculateRetryDelay(attempt);
-          await this.sleep(delay);
+          await sleep(delay);
         }
       }
     }
@@ -318,13 +318,6 @@ export class BatchProcessor<TInput, TOutput> {
   private calculateRetryDelay(attempt: number): number {
     const delay = this.options.retryDelayMs * Math.pow(this.options.retryBackoffMultiplier, attempt);
     return Math.min(delay, this.options.maxRetryDelayMs);
-  }
-
-  /**
-   * Sleep for the specified duration.
-   */
-  private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   /**
@@ -407,7 +400,7 @@ export async function processWithRetry<TInput, TOutput>(
  * // [[1, 2], [3, 4], [5]]
  * ```
  */
-export function chunkArray<T>(array: T[], size: number): T[][] {
+export function chunkArray<T>(array: readonly T[], size: number): T[][] {
   if (size <= 0) {
     throw new Error('Chunk size must be greater than 0');
   }
