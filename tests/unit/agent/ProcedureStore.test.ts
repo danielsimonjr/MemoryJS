@@ -238,6 +238,33 @@ describe('3B.4 ProcedureStore (decomposed graph shape)', () => {
       expect(loaded?.steps[0].parameters).toEqual(parameters);
     });
 
+    it('omits a parameter whose value is undefined', async () => {
+      const proc = makeProcedure({
+        steps: [{ order: 1, action: 'undefined-param', parameters: { m: undefined, k: 'v' } }],
+      });
+      await store.save(proc);
+
+      const loaded = await store.load(proc.id);
+      expect(loaded?.steps[0].parameters).toStrictEqual({ k: 'v' });
+    });
+
+    it('ignores a stored parameter line whose value is a number', async () => {
+      const proc = makeProcedure({
+        steps: [{ order: 1, action: 'numeric-param', parameters: { k: 'v' } }],
+      });
+      await store.save(proc);
+
+      const graph = await storage.loadGraph();
+      const stepEntity = graph.entities.find((e) => e.observations.includes('[action]: numeric-param'));
+      if (!stepEntity) throw new Error('step entity not found');
+      await storage.updateEntity(stepEntity.name, {
+        observations: [...stepEntity.observations, '[param]: "n"=1'],
+      });
+
+      const loaded = await store.load(proc.id);
+      expect(loaded?.steps[0].parameters).toStrictEqual({ k: 'v' });
+    });
+
     it('preserves step order across a fresh storage reload', async () => {
       const proc = makeProcedure();
       await store.save(proc);

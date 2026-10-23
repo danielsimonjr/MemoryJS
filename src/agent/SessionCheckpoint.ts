@@ -45,6 +45,7 @@ import type { EntityManager } from '../core/EntityManager.js';
 import type { RelationManager } from '../core/RelationManager.js';
 import type { WorkingMemoryManager } from './WorkingMemoryManager.js';
 import type { DecayEngine } from './DecayEngine.js';
+import { decodeKeyValueBody, encodeKeyValueBody } from './keyValueLine.js';
 
 // ==================== Interfaces ====================
 
@@ -595,12 +596,12 @@ function encodeCheckpointObservations(cp: SessionCheckpointData): string[] {
     observations.push(`${WORKING_MEMORY_PREFIX}${JSON.stringify(memoryName)}`);
   }
   for (const [key, value] of Object.entries(cp.state.decaySnapshot)) {
-    observations.push(`${DECAY_PREFIX}${JSON.stringify(key)}=${JSON.stringify(value)}`);
+    observations.push(`${DECAY_PREFIX}${encodeKeyValueBody(key, value, 'literal')}`);
   }
   for (const [key, value] of Object.entries(cp.state.metadata)) {
-    const json = JSON.stringify(value);
-    if (json !== undefined) {
-      observations.push(`${META_PREFIX}${JSON.stringify(key)}=${json}`);
+    const body = encodeKeyValueBody(key, value, 'skip');
+    if (body !== null) {
+      observations.push(`${META_PREFIX}${body}`);
     }
   }
   return observations;
@@ -630,38 +631,15 @@ function decodeCheckpointEntity(entity: Entity): SessionCheckpointData {
         // Skip malformed lines
       }
     } else if (obs.startsWith(DECAY_PREFIX)) {
-      const kv = decodeKeyValueLine(obs.slice(DECAY_PREFIX.length));
+      const kv = decodeKeyValueBody(obs.slice(DECAY_PREFIX.length));
       if (kv && typeof kv[1] === 'number') data.state.decaySnapshot[kv[0]] = kv[1];
     } else if (obs.startsWith(META_PREFIX)) {
-      const kv = decodeKeyValueLine(obs.slice(META_PREFIX.length));
+      const kv = decodeKeyValueBody(obs.slice(META_PREFIX.length));
       if (kv) data.state.metadata[kv[0]] = kv[1];
     }
   }
 
   return data;
-}
-
-/**
- * Split `<JSON-string>=<JSON-value>` at the `=` separating the key from
- * the value (never inside the key — `"` inside a JSON string is escaped,
- * so a simple escape-aware scan finds the key's closing quote). Returns
- * null on malformed input.
- */
-function decodeKeyValueLine(body: string): [string, unknown] | null {
-  if (!body.startsWith('"')) return null;
-  let i = 1;
-  while (i < body.length && body[i] !== '"') {
-    i += body[i] === '\\' ? 2 : 1;
-  }
-  if (i >= body.length || body[i + 1] !== '=') return null;
-  try {
-    const key: unknown = JSON.parse(body.slice(0, i + 1));
-    const value: unknown = JSON.parse(body.slice(i + 2));
-    if (typeof key !== 'string') return null;
-    return [key, value];
-  } catch {
-    return null;
-  }
 }
 
 /** Newest-first ordering: `[created-at]` desc, numeric id suffix desc. */
