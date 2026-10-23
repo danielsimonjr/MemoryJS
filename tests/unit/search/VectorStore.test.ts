@@ -460,3 +460,45 @@ describe('SQLiteVectorStore with SQLiteStorage', () => {
     expect('getContentHash' in new InMemoryVectorStore()).toBe(false);
   });
 });
+
+describe('InMemoryVectorStore top-k selection (R21 pins)', () => {
+  const buildStore = (): InMemoryVectorStore => {
+    const store = new InMemoryVectorStore();
+    store.add('a', [1, 0]);
+    store.add('b', [0, 1]);
+    store.add('c', [1, 0]);
+    store.add('d', [-1, 0]);
+    store.add('e', [0.5, 0.5]);
+    store.add('f', [0, 1]);
+    return store;
+  };
+  const namesFor = (k: number): string[] =>
+    buildStore()
+      .search([1, 0], k)
+      .map(r => r.name);
+
+  it.each([
+    [1, ['a']],
+    [2, ['a', 'c']],
+    [3, ['a', 'c', 'e']],
+    [4, ['a', 'c', 'e', 'b']],
+    [5, ['a', 'c', 'e', 'b', 'f']],
+    [6, ['a', 'c', 'e', 'b', 'f', 'd']],
+  ])('returns the top %i, with insertion order on score ties', (k, expected) => {
+    expect(namesFor(k)).toEqual(expected);
+  });
+
+  it('returns nothing for k of 0, -1 or NaN', () => {
+    expect(namesFor(0)).toEqual([]);
+    expect(namesFor(-1)).toEqual([]);
+    expect(namesFor(Number.NaN)).toEqual([]);
+  });
+
+  it('returns every vector for an infinite k', () => {
+    expect(namesFor(Number.POSITIVE_INFINITY)).toEqual(['a', 'c', 'e', 'b', 'f', 'd']);
+  });
+
+  it('floors a fractional k', () => {
+    expect(namesFor(2.5)).toEqual(['a', 'c']);
+  });
+});

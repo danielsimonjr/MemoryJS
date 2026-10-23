@@ -4,12 +4,12 @@
  * Tests for context-aware memory relevance scoring.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SalienceEngine } from '../../../src/agent/SalienceEngine.js';
 import { AccessTracker } from '../../../src/agent/AccessTracker.js';
 import { DecayEngine } from '../../../src/agent/DecayEngine.js';
 import type { IGraphStorage, Entity, Relation } from '../../../src/types/types.js';
-import type { AgentEntity, SalienceContext } from '../../../src/types/agent-memory.js';
+import type { AgentEntity, SalienceContext, ScoredEntity } from '../../../src/types/agent-memory.js';
 
 /**
  * Create a mock storage with entities.
@@ -698,5 +698,51 @@ describe('SalienceEngine', () => {
 
       expect(similarity).toBeLessThan(0.5);
     });
+  });
+});
+
+describe('getMostSalient heap selection (R21 pins)', () => {
+  const importances = [9, 9, 7, 7, 5, 4, 3, 2, 1, 6];
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-20T12:00:00.000Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const selectScored = async (entities: AgentEntity[], limit: number): Promise<ScoredEntity[]> => {
+    const storage = createMockStorage(entities);
+    const accessTracker = new AccessTracker(storage);
+    const decayEngine = new DecayEngine(storage, accessTracker);
+    const engine = new SalienceEngine(storage, accessTracker, decayEngine);
+    return engine.getMostSalient({}, limit);
+  };
+
+  it('keeps tied scores in heap order when the limit is 2', async () => {
+    const entities = importances.map((importance, i) =>
+      createTestEntity({ name: `e${i}`, importance })
+    );
+    const result = await selectScored(entities, 2);
+    expect(result.map(s => s.entity.name)).toEqual(['e1', 'e0']);
+  });
+
+  it('keeps tied scores in heap order when the limit is 3', async () => {
+    const entities = importances.map((importance, i) =>
+      createTestEntity({ name: `e${i}`, importance })
+    );
+    const result = await selectScored(entities, 3);
+    expect(result.map(s => s.entity.name)).toEqual(['e1', 'e0', 'e2']);
+  });
+
+  it('places a NaN score first when the NaN entity enters the heap', async () => {
+    const entities = importances.map((importance, i) =>
+      createTestEntity({ name: `e${i}`, importance: i === 0 ? Number.NaN : importance })
+    );
+    const result = await selectScored(entities, 2);
+    expect(result.map(s => s.entity.name)).toEqual(['e0', 'e1']);
+    expect(Number.isNaN(result[0].salienceScore)).toBe(true);
   });
 });
