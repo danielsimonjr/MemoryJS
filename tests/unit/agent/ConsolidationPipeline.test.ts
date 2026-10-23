@@ -107,6 +107,26 @@ function createWorkingMemory(
   };
 }
 
+describe('ConsolidationPipeline.hashPattern (R16 pins)', () => {
+  // hashPattern reads no instance state, so the prototype is enough.
+  const probe = Object.create(ConsolidationPipeline.prototype) as unknown as { hashPattern(pattern: string): string };
+
+  it('returns the recorded hex prefix for each pattern', () => {
+    const golden: Array<[string, string]> = [
+      ['', '0'],
+      ['a', '61'],
+      ['hello world', '6aefe2c4'],
+      ['ü€😀', '1084093'],
+      ['x'.repeat(1000), '663f3400'],
+      ['Entity_42', '4b4df83a'],
+      ['hello', '5e918d2'],
+    ];
+    for (const [input, expected] of golden) {
+      expect(probe.hashPattern(input)).toBe(expected);
+    }
+  });
+});
+
 describe('ConsolidationPipeline', () => {
   let storage: IGraphStorage;
   let workingMemory: WorkingMemoryManager;

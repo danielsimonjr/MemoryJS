@@ -28,6 +28,7 @@ import {
   isReflectionMemory,
 } from '../types/agent-memory.js';
 import { tokenizeStripped } from '../utils/textSimilarity.js';
+import { hash31 } from '../utils/entityUtils.js';
 import type { WorkingMemoryManager } from './WorkingMemoryManager.js';
 import type { DecayEngine } from './DecayEngine.js';
 import { SummarizationService } from './SummarizationService.js';
@@ -763,12 +764,7 @@ export class ConsolidationPipeline {
    * @internal
    */
   private hashPattern(pattern: string): string {
-    let hash = 0;
-    for (let i = 0; i < pattern.length; i++) {
-      hash = ((hash << 5) - hash) + pattern.charCodeAt(i);
-      hash = hash & hash;
-    }
-    return Math.abs(hash).toString(16).slice(0, 8);
+    return Math.abs(hash31(pattern)).toString(16).slice(0, 8);
   }
 
   // ==================== Memory Merging ====================

@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The FNV-1a hash has one body, `fnv1aHash` in `src/utils/entityUtils.ts`. `fnv1a32`, which routes segments, re-exports it. The signed string hash has one body, `hash31`, used by the pattern, content and mock embedding hashes. Behaviour does not change. The `fnv1a32` comment no longer says that `BloomFilter` uses the same function. `BloomFilter.doubleHash` uses a two-seed variant.
 - CSV cell escaping has one function, `escapeCsvCell`, in `src/utils/entityUtils.ts`. The CLI CSV output, the `IOManager` CSV export and the streaming CSV export call it. `escapeRegExp` in the same file is shared by `AutoLinker` and the GraphML import. The XML escape exists once, in `src/features/IOManager.ts`. Behaviour does not change.
 - `GovernanceTransaction.recordMerge` and `recordArchive` share one private recorder, and the audit snapshot redaction is one function. The audit entries do not change.
 - `OpenAIEmbeddingService.embedBatch` and `LocalEmbeddingService.embedBatch` call `embedBatchWithProgress` with no callback. Each service has one batch code path. Behaviour does not change.

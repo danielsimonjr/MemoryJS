@@ -937,3 +937,32 @@ describe('embedBatch and embedBatchWithProgress (R22 pins)', () => {
     expect(await service.embedBatch(texts, 'query')).toEqual(await service.embedBatchWithProgress(texts, 'query'));
   });
 });
+
+describe('MockEmbeddingService hash (R16 pins)', () => {
+  it('hashString returns the recorded signed 32-bit value for each input', () => {
+    const probe = new MockEmbeddingService() as unknown as { hashString(str: string): number };
+    const golden: Array<[string, number]> = [
+      ['', 0],
+      ['a', 97],
+      ['hello world', 1794106052],
+      ['ü€😀', 17318035],
+      ['x'.repeat(1000), -1715418112],
+      ['Entity_42', 1263401018],
+      ['hello', 99162322],
+    ];
+    for (const [input, expected] of golden) {
+      expect(probe.hashString(input)).toBe(expected);
+    }
+  });
+
+  it('embed("hello") returns the recorded first four components', async () => {
+    const vector = await new MockEmbeddingService().embed('hello');
+
+    expect(vector.slice(0, 4)).toEqual([
+      0.045492781193655615,
+      0.05082837528188116,
+      0.0556561091064084,
+      0.05992774673824215,
+    ]);
+  });
+});

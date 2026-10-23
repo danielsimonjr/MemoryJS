@@ -15,6 +15,7 @@ import type {
 import { isAgentEntity } from '../types/agent-memory.js';
 import { passesEntropyFilter, type EntropyFilterConfig } from './EntropyFilter.js';
 import { LowEntropyContentError, MemoryWriteBlockedError } from '../utils/errors.js';
+import { hash31 } from '../utils/entityUtils.js';
 import type { ExclusionManager } from './ExclusionManager.js';
 
 /**
@@ -190,13 +191,7 @@ export class WorkingMemoryManager {
    * @internal
    */
   private hashContent(content: string): string {
-    let hash = 0;
-    for (let i = 0; i < content.length; i++) {
-      const char = content.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32-bit integer
-    }
-    return Math.abs(hash).toString(16);
+    return Math.abs(hash31(content)).toString(16);
   }
 
   /**

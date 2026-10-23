@@ -40,7 +40,7 @@ import {
   EntityNotFoundError,
   FileOperationError,
 } from '../../../src/utils/index.js';
-import { escapeCsvCell, escapeRegExp } from '../../../src/utils/entityUtils.js';
+import { escapeCsvCell, escapeRegExp, hash31 } from '../../../src/utils/entityUtils.js';
 import type { KnowledgeGraph, Entity } from '../../../src/types/index.js';
 
 describe('entityUtils', () => {
@@ -1042,6 +1042,15 @@ describe('entityUtils', () => {
       expect(escapeCsvCell('a,b', { alwaysQuote: true })).toBe('"a,b"');
       expect(escapeCsvCell('=SUM(A1)', { alwaysQuote: true })).toBe(`"'=SUM(A1)"`);
       expect(escapeCsvCell(null, { alwaysQuote: true })).toBe('""');
+    });
+  });
+
+  describe('hash31 (R16)', () => {
+    it('returns the signed 32-bit value recorded from the old hashString', () => {
+      expect(hash31('')).toBe(0);
+      expect(hash31('a')).toBe(97);
+      expect(hash31('hello world')).toBe(1794106052);
+      expect(hash31('x'.repeat(1000))).toBe(-1715418112);
     });
   });
 

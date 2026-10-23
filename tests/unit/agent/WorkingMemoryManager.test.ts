@@ -1099,3 +1099,23 @@ describe('WorkingMemoryManager Helpers', () => {
     expect(wmm.getSessionMemoryCount('unknown')).toBe(0);
   });
 });
+
+describe('WorkingMemoryManager.hashContent (R16 pins)', () => {
+  // hashContent reads no instance state, so the prototype is enough.
+  const probe = Object.create(WorkingMemoryManager.prototype) as unknown as { hashContent(content: string): string };
+
+  it('returns the recorded hex value for each content string', () => {
+    const golden: Array<[string, string]> = [
+      ['', '0'],
+      ['a', '61'],
+      ['hello world', '6aefe2c4'],
+      ['ü€😀', '1084093'],
+      ['x'.repeat(1000), '663f3400'],
+      ['Entity_42', '4b4df83a'],
+      ['hello', '5e918d2'],
+    ];
+    for (const [input, expected] of golden) {
+      expect(probe.hashContent(input)).toBe(expected);
+    }
+  });
+});

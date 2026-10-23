@@ -52,6 +52,25 @@ export function fnv1aHash(text: string): number {
   return hash >>> 0; // Convert to unsigned 32-bit integer
 }
 
+/**
+ * Compute a 32-bit hash from a string.
+ *
+ * The function folds each UTF-16 code unit into a running value.
+ * The result is a signed 32-bit integer. It can be negative.
+ *
+ * @param text - The input string to hash.
+ * @returns A signed 32-bit integer hash value.
+ */
+export function hash31(text: string): number {
+  let hash = 0;
+  for (let i = 0; i < text.length; i++) {
+    const char = text.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return hash;
+}
+
 // ==================== Entity Lookup Functions ====================
 
 /**

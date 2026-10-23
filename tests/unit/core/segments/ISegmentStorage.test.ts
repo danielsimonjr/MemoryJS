@@ -14,10 +14,61 @@ import {
   mergeSegmentsIntoGraph,
 } from '../../../../src/core/segments/ISegmentStorage.js';
 import type { Entity, KnowledgeGraph, Relation } from '../../../../src/types/types.js';
+import { fnv1aHash } from '../../../../src/utils/entityUtils.js';
 
 function ent(name: string): Entity {
   return { name, entityType: 'thing', observations: [] };
 }
+
+describe('FNV-1a values and segment routing (R16 pins)', () => {
+  it('fnv1a32 and fnv1aHash return the recorded value for each input', () => {
+    const golden: Array<[string, number]> = [
+      ['', 2166136261],
+      ['a', 3826002220],
+      ['hello', 1335831723],
+      ['Entity_42', 3248387161],
+      ['naïve', 921279308],
+      ['x'.repeat(1000), 131170661],
+    ];
+    for (const [input, expected] of golden) {
+      expect(fnv1a32(input)).toBe(expected);
+      expect(fnv1aHash(input)).toBe(expected);
+    }
+  });
+
+  it('fnv1a32 equals fnv1aHash for 1,000 generated strings', () => {
+    let seed = 1;
+    const next = (): number => {
+      seed = (Math.imul(seed, 1103515245) + 12345) & 0x7fffffff;
+      return seed;
+    };
+    for (let i = 0; i < 1000; i++) {
+      const length = next() % 40;
+      let text = '';
+      for (let j = 0; j < length; j++) text += String.fromCharCode(32 + (next() % 95));
+      expect(fnv1a32(text)).toBe(fnv1aHash(text));
+    }
+  });
+
+  it('FnvSegmentRouter(16) routes ten fixed names to their recorded segments', () => {
+    const router = new FnvSegmentRouter(16);
+    const golden: Array<[string, number]> = [
+      ['Alice', 7],
+      ['Bob', 4],
+      ['Carol', 2],
+      ['Dave', 15],
+      ['Entity_1', 10],
+      ['Entity_2', 7],
+      ['Entity_42', 9],
+      ['project-apollo', 14],
+      ['TechCorp', 1],
+      ['zeta', 15],
+    ];
+    for (const [name, segment] of golden) {
+      expect(router.route(name)).toBe(segment);
+    }
+  });
+});
 
 describe('fnv1a32', () => {
   it('is deterministic — same input → same hash', () => {

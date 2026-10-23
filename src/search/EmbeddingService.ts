@@ -15,6 +15,7 @@ import {
   OPENAI_API_CONFIG,
   getEmbeddingConfig,
 } from '../utils/constants.js';
+import { hash31 } from '../utils/entityUtils.js';
 
 /**
  * Phase 12 Sprint 5: Prefixes for query-optimized embedding encoding.
@@ -854,13 +855,7 @@ export class MockEmbeddingService implements EmbeddingService {
    * Simple string hash function.
    */
   private hashString(str: string): number {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32bit integer
-    }
-    return hash;
+    return hash31(str);
   }
 
   /**
