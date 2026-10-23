@@ -21,6 +21,7 @@ import {
   CHILD_OF_RELATION,
   BLOCKED_BY_RELATION,
 } from '../../../src/agent/WorkThreadManager.js';
+import { microtaskTicks } from '../../test-utils/microtask-ticks.js';
 import { GraphStorage } from '../../../src/core/GraphStorage.js';
 import { EntityManager } from '../../../src/core/EntityManager.js';
 import { RelationManager } from '../../../src/core/RelationManager.js';
@@ -1069,6 +1070,127 @@ describe('WorkThreadManager (decomposed graph shape)', () => {
     it('complete and cancel report a missing thread', async () => {
       expect(await rejectionMessage(manager.complete('thread_missing'))).toBe('Thread not found: thread_missing');
       expect(await rejectionMessage(manager.cancel('thread_missing'))).toBe('Thread not found: thread_missing');
+    });
+  });
+});
+
+/**
+ * Microtask turns until each result settles, counted by microtaskTicks on V8.
+ * A different count changes the order in which waiting callers resume.
+ */
+const THREAD_TICKS = {
+  complete: 3,
+  cancel: 3,
+  illegal: 1,
+  notFound: 1,
+  persistRejected: 3,
+};
+
+describe('WorkThreadManager complete and cancel', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const methods = ['complete', 'cancel'] as const;
+
+  it.each(methods)('%s stamps updatedAt and writes it with the observations', async (method) => {
+    const storage = createMockStorage();
+    const manager = new WorkThreadManager(storage);
+    const thread = await manager.create('Task');
+    await manager.claim(thread.id, 'agent_1');
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-02-03T04:05:06.000Z'));
+    const result = await manager[method](thread.id);
+    expect(result.updatedAt).toBe('2026-02-03T04:05:06.000Z');
+    expect(manager.get(thread.id)!.updatedAt).toBe('2026-02-03T04:05:06.000Z');
+    const update = storage.updateEntity as ReturnType<typeof vi.fn>;
+    const [name, patch] = update.mock.calls[update.mock.calls.length - 1];
+    expect(name).toBe(thread.id);
+    expect(Object.keys(patch)).toEqual(['observations', 'lastModified']);
+    expect(patch.lastModified).toBe('2026-02-03T04:05:06.000Z');
+  });
+
+  it.each(methods)('%s returns a copy of the thread', async (method) => {
+    const manager = new WorkThreadManager(createMockStorage());
+    const thread = await manager.create('Task');
+    await manager.claim(thread.id, 'agent_1');
+    const result = await manager[method](thread.id);
+    result.title = 'changed';
+    expect(manager.get(thread.id)!.title).toBe('Task');
+  });
+
+  it.each(methods)('%s writes nothing when the transition is refused', async (method) => {
+    const storage = createMockStorage();
+    const manager = new WorkThreadManager(storage);
+    const thread = await manager.create('Task');
+    await manager.cancel(thread.id);
+    (storage.updateEntity as ReturnType<typeof vi.fn>).mockClear();
+    await expect(manager[method](thread.id)).rejects.toThrow(/^Cannot (complete|cancel) thread /);
+    await expect(manager[method]('thread_missing')).rejects.toThrow('Thread not found: thread_missing');
+    expect(storage.updateEntity).not.toHaveBeenCalled();
+  });
+
+  it.each(methods)('%s rethrows the error of a storage write after it changed the thread in memory', async (method) => {
+    const storage = createMockStorage();
+    const manager = new WorkThreadManager(storage);
+    const thread = await manager.create('Task');
+    await manager.claim(thread.id, 'agent_1');
+    const boom = new Error('storage down');
+    (storage.updateEntity as ReturnType<typeof vi.fn>).mockRejectedValueOnce(boom);
+    await expect(manager[method](thread.id)).rejects.toBe(boom);
+    expect(manager.get(thread.id)!.status).toBe(method === 'complete' ? 'done' : 'cancelled');
+  });
+
+  it.each(methods)('%s asks canTransition for the target status', async (method) => {
+    const manager = new WorkThreadManager(createMockStorage());
+    const thread = await manager.create('Task');
+    await manager.claim(thread.id, 'agent_1');
+    const spy = vi.spyOn(manager, 'canTransition');
+    await manager[method](thread.id);
+    expect(spy.mock.calls).toStrictEqual([[thread.id, method === 'complete' ? 'done' : 'cancelled']]);
+  });
+
+  describe('settle timing', () => {
+    it('complete settles after the expected number of microtask turns', async () => {
+      const manager = new WorkThreadManager(createMockStorage());
+      const thread = await manager.create('Task');
+      await manager.claim(thread.id, 'agent_1');
+      const pending = manager.complete(thread.id);
+      expect(await microtaskTicks(pending)).toBe(THREAD_TICKS.complete);
+      expect((await pending).status).toBe('done');
+    });
+
+    it('cancel settles after the expected number of microtask turns', async () => {
+      const manager = new WorkThreadManager(createMockStorage());
+      const thread = await manager.create('Task');
+      const pending = manager.cancel(thread.id);
+      expect(await microtaskTicks(pending)).toBe(THREAD_TICKS.cancel);
+      expect((await pending).status).toBe('cancelled');
+    });
+
+    it('a refused transition rejects after the expected number of turns', async () => {
+      const manager = new WorkThreadManager(createMockStorage());
+      const thread = await manager.create('Task');
+      const pending = manager.complete(thread.id);
+      expect(await microtaskTicks(pending)).toBe(THREAD_TICKS.illegal);
+      await expect(pending).rejects.toThrow(`Cannot complete thread ${thread.id} from 'open' status`);
+    });
+
+    it('a missing thread rejects after the expected number of turns', async () => {
+      const manager = new WorkThreadManager(createMockStorage());
+      const pending = manager.cancel('thread_missing');
+      expect(await microtaskTicks(pending)).toBe(THREAD_TICKS.notFound);
+      await expect(pending).rejects.toThrow('Thread not found: thread_missing');
+    });
+
+    it('a rejected write rejects after the expected number of turns', async () => {
+      const storage = createMockStorage();
+      const manager = new WorkThreadManager(storage);
+      const thread = await manager.create('Task');
+      (storage.updateEntity as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('storage down'));
+      const pending = manager.cancel(thread.id);
+      expect(await microtaskTicks(pending)).toBe(THREAD_TICKS.persistRejected);
+      await expect(pending).rejects.toThrow('storage down');
     });
   });
 });

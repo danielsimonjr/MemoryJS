@@ -360,7 +360,7 @@ export class WorkThreadManager {
    * @returns Updated work thread
    * @throws Error if thread not found or invalid transition
    */
-  async complete(threadId: string): Promise<WorkThread> {
+  complete(threadId: string): Promise<WorkThread> {
     return this.finish(threadId, 'done', 'complete');
   }
 
@@ -371,7 +371,7 @@ export class WorkThreadManager {
    * @returns Updated work thread
    * @throws Error if thread not found or invalid transition
    */
-  async cancel(threadId: string): Promise<WorkThread> {
+  cancel(threadId: string): Promise<WorkThread> {
     return this.finish(threadId, 'cancelled', 'cancel');
   }
 
@@ -549,6 +549,9 @@ export class WorkThreadManager {
 
   /**
    * Moves a thread to a terminal status. The verb names the operation in the error text.
+   * complete and cancel return the promise of this method and are not async
+   * themselves, so they settle in the same number of microtask turns as a
+   * method that holds the whole body.
    *
    * @param threadId - Thread to move
    * @param target - Terminal status to set

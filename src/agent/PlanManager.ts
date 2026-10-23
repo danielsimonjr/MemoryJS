@@ -290,14 +290,14 @@ export class PlanManager {
 
   // ==================== Plan-level lifecycle ====================
 
-  async markPlanComplete(
+  markPlanComplete(
     planId: PlanId | string,
     note?: string
   ): Promise<MarkResolvedResult> {
     return this.finishPlan(planId, 'complete', note);
   }
 
-  async abandonPlan(
+  abandonPlan(
     planId: PlanId | string,
     reason?: string
   ): Promise<MarkResolvedResult> {
@@ -307,6 +307,9 @@ export class PlanManager {
   /**
    * Moves a plan to a terminal status. The note or reason is stored only
    * when it is a non-empty string, under the field name of the status.
+   * markPlanComplete and abandonPlan return the promise of this method and
+   * are not async themselves, so they settle in the same number of
+   * microtask turns as a method that holds the whole body.
    */
   private async finishPlan(
     planId: PlanId | string,

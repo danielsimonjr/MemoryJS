@@ -33,7 +33,7 @@ import type {
 } from '../types/agent-memory.js';
 import { isFailureMemory, toIsoDateTime } from '../types/agent-memory.js';
 import type { EntityManager } from '../core/EntityManager.js';
-import { updateRecordVersioned } from './versionedRecordUpdate.js';
+import { versionedWriteFailure } from './versionedWriteFailure.js';
 import { validateNonEmpty } from '../utils/index.js';
 
 /** Configuration for `FailureManager`. */
@@ -253,13 +253,19 @@ export class FailureManager {
       ...entity.failureRecord,
       lifecycle: newLifecycle,
     };
-    return updateRecordVersioned(
-      this.entityManager,
-      id,
-      { failureRecord: updatedRecord, lastModified: now },
-      entity.version ?? 1,
-      'resolved',
-    );
+    try {
+      await this.entityManager.updateEntity(
+        id,
+        {
+          failureRecord: updatedRecord,
+          lastModified: now,
+        } as unknown as Partial<Entity>,
+        { expectedVersion: entity.version ?? 1 },
+      );
+      return 'resolved';
+    } catch (err) {
+      return versionedWriteFailure(err);
+    }
   }
 
   // ==================== Get-all ====================
