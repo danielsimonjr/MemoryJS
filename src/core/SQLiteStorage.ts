@@ -548,15 +548,15 @@ export class SQLiteStorage implements IGraphStorage {
 
   /**
    * Add each column that `table` lacks, in the order given. Reads the
-   * table's columns once, before the first `ALTER`.
+   * table's columns once, before the first `ALTER`. A caller that has read
+   * them already passes them as `present`, so the table is not read twice.
    */
   private ensureColumns(
     table: 'relations' | 'entities' | 'embeddings',
     columns: ReadonlyArray<readonly [name: string, ddl: string]>,
+    present: ReadonlyArray<{ name: string }> = this.db!.pragma(`table_info(${table})`) as Array<{ name: string }>,
   ): void {
-    const existing = new Set(
-      (this.db!.pragma(`table_info(${table})`) as Array<{ name: string }>).map(c => c.name),
-    );
+    const existing = new Set(present.map(c => c.name));
     for (const [name, ddl] of columns) {
       if (!existing.has(name)) {
         this.db!.exec(`ALTER TABLE ${table} ADD COLUMN ${name} ${ddl}`);
@@ -638,7 +638,7 @@ export class SQLiteStorage implements IGraphStorage {
     const columns = this.db.pragma('table_info(embeddings)') as Array<{ name: string }>;
     if (columns.length === 0) return;
 
-    this.ensureColumns('embeddings', [['contentHash', 'TEXT']]);
+    this.ensureColumns('embeddings', [['contentHash', 'TEXT']], columns);
   }
 
   /**
