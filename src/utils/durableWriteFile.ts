@@ -171,7 +171,7 @@ export async function restrictSensitiveFilePermissions(target: string): Promise<
 }
 
 /** Mode for a replacement: preserve tighter existing permissions. */
-async function restrictedModeForReplacement(target: string): Promise<number> {
+export async function restrictedModeForReplacement(target: string): Promise<number> {
   try {
     const stat = await fs.stat(target);
     return (stat.mode & 0o777) & 0o600;

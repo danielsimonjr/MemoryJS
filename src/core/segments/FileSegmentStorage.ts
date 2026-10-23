@@ -46,7 +46,12 @@ import {
 import type { Entity, KnowledgeGraph, Relation } from '../../types/types.js';
 import { logger } from '../../utils/logger.js';
 import { sanitizeObject } from '../../utils/entityUtils.js';
-import { durableWriteFile, renameOver, syncParentDirectory } from '../../utils/durableWriteFile.js';
+import {
+  durableWriteFile,
+  renameOver,
+  restrictedModeForReplacement,
+  syncParentDirectory,
+} from '../../utils/durableWriteFile.js';
 import {
   type ISegmentStorage,
   type Segment,
@@ -642,7 +647,7 @@ function isENOENT(err: unknown): boolean {
 
 async function writeTmpFile(target: string, content: string): Promise<string> {
   const tmpPath = `${target}.tmp.${process.pid}.${randomBytes(6).toString('hex')}`;
-  const fd = await fs.open(tmpPath, 'w');
+  const fd = await fs.open(tmpPath, 'w', await restrictedModeForReplacement(target));
   try {
     await fd.writeFile(content);
     await fd.sync();

@@ -55,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `FileSegmentStorage.saveAll` writes each staged segment file and the recovery manifest with the mode of `durableWriteFile`: `0o600`, or the tighter mode of the existing file. Before, these files got the default mode from the umask, usually `0o644`. `saveSegment` already wrote `0o600`.
 - `SearchFilterChain` excludes an entity whose `createdAt` or `lastModified` cannot be parsed, when a created or modified bound is set. Before, such an entity passed every date bound.
 - `HierarchyManager.getDescendants` and `getSubtree` return when stored `parentId` fields form a cycle. Before, the walk never ended and the process ran out of memory. Each entity is listed once, and the root is never listed as its own descendant.
 - `QueryCostEstimator.recommendMethod(query, entityCount, preferredMethods)` marks the best method of `preferredMethods` as recommended. Before, it marked the best method of the default list, so the flag could be `false` for the method that the call returned.
