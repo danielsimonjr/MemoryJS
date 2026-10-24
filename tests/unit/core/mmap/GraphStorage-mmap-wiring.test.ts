@@ -456,5 +456,21 @@ describe('GraphStorage mmap wiring (task 84)', () => {
         expect(order).toEqual(['graph:loaded', 'warn']);
       }
     });
+
+    it('ignores JSON scalars, arrays and empty objects on both paths without a warning', async () => {
+      // The string "malformed" is a valid JSON value, not a malformed line.
+      const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+      const content = [ALICE_LINE, '42', '"malformed"', 'true', '[1,2]', '{}', '""', '0', BOB_LINE].join('\n') + '\n';
+      try {
+        for (const useMmap of [false, true]) {
+          const result = await loadWith(useMmap, content);
+          expect(result.graph.entities.map((e) => e.name)).toEqual(['alice', 'bob']);
+          expect(result.graph.relations).toEqual([]);
+        }
+        expect(warnSpy).not.toHaveBeenCalled();
+      } finally {
+        warnSpy.mockRestore();
+      }
+    });
   });
 });
