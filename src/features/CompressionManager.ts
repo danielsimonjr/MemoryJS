@@ -27,6 +27,48 @@ import {
 } from '../core/EntityManager.js';
 
 /**
+ * Combine the four factor results of an entity comparison into one weighted score.
+ *
+ * Uses the weights in SIMILARITY_WEIGHTS. Each caller computes the factors
+ * in its own read order, so this function only does the arithmetic.
+ *
+ * @param nameSimilarity - One minus the normalized Levenshtein distance of the lowercased names
+ * @param typesMatch - True when the lowercased entity types are equal
+ * @param observationSimilarity - Jaccard similarity of the lowercased observation sets
+ * @param hasTags - True when the tag factor applies
+ * @param tagSimilarity - Jaccard similarity of the lowercased tag sets, used only when hasTags is true
+ * @returns Similarity score from 0 (completely different) to 1 (identical)
+ */
+function weightedEntitySimilarity(
+  nameSimilarity: number,
+  typesMatch: boolean,
+  observationSimilarity: number,
+  hasTags: boolean,
+  tagSimilarity: number,
+): number {
+  let score = 0;
+  let factors = 0;
+
+  score += nameSimilarity * SIMILARITY_WEIGHTS.NAME;
+  factors += SIMILARITY_WEIGHTS.NAME;
+
+  if (typesMatch) {
+    score += SIMILARITY_WEIGHTS.TYPE;
+  }
+  factors += SIMILARITY_WEIGHTS.TYPE;
+
+  score += observationSimilarity * SIMILARITY_WEIGHTS.OBSERVATIONS;
+  factors += SIMILARITY_WEIGHTS.OBSERVATIONS;
+
+  if (hasTags) {
+    score += tagSimilarity * SIMILARITY_WEIGHTS.TAGS;
+    factors += SIMILARITY_WEIGHTS.TAGS;
+  }
+
+  return factors > 0 ? score / factors : 0;
+}
+
+/**
  * Manages compression operations for the knowledge graph.
  */
 export class CompressionManager {
@@ -84,39 +126,29 @@ export class CompressionManager {
    * @returns Similarity score from 0 (completely different) to 1 (identical)
    */
   calculateEntitySimilarity(e1: Entity, e2: Entity): number {
-    let score = 0;
-    let factors = 0;
-
     // Name similarity (Levenshtein-based)
     const nameDistance = levenshteinDistance(e1.name.toLowerCase(), e2.name.toLowerCase());
     const maxNameLength = Math.max(e1.name.toLowerCase().length, e2.name.toLowerCase().length);
     const nameSimilarity = 1 - nameDistance / maxNameLength;
-    score += nameSimilarity * SIMILARITY_WEIGHTS.NAME;
-    factors += SIMILARITY_WEIGHTS.NAME;
 
     // Type similarity (exact match)
-    if (e1.entityType.toLowerCase() === e2.entityType.toLowerCase()) {
-      score += SIMILARITY_WEIGHTS.TYPE;
-    }
-    factors += SIMILARITY_WEIGHTS.TYPE;
+    const typesMatch = e1.entityType.toLowerCase() === e2.entityType.toLowerCase();
 
     // Observation overlap (Jaccard similarity)
     const obs1Set = new Set(e1.observations.map(o => o.toLowerCase()));
     const obs2Set = new Set(e2.observations.map(o => o.toLowerCase()));
     const observationSimilarity = jaccard(obs1Set, obs2Set);
-    score += observationSimilarity * SIMILARITY_WEIGHTS.OBSERVATIONS;
-    factors += SIMILARITY_WEIGHTS.OBSERVATIONS;
 
     // Tag overlap (Jaccard similarity) - match prepared version's logic
-    if ((e1.tags?.length ?? 0) > 0 || (e2.tags?.length ?? 0) > 0) {
+    const hasTags = (e1.tags?.length ?? 0) > 0 || (e2.tags?.length ?? 0) > 0;
+    let tagSimilarity = 0;
+    if (hasTags) {
       const tags1Set = new Set((e1.tags ?? []).map(t => t.toLowerCase()));
       const tags2Set = new Set((e2.tags ?? []).map(t => t.toLowerCase()));
-      const tagSimilarity = jaccard(tags1Set, tags2Set);
-      score += tagSimilarity * SIMILARITY_WEIGHTS.TAGS;
-      factors += SIMILARITY_WEIGHTS.TAGS;
+      tagSimilarity = jaccard(tags1Set, tags2Set);
     }
 
-    return factors > 0 ? score / factors : 0;
+    return weightedEntitySimilarity(nameSimilarity, typesMatch, observationSimilarity, hasTags, tagSimilarity);
   }
 
   /**
@@ -142,39 +174,29 @@ export class CompressionManager {
    * @returns Similarity score from 0 (completely different) to 1 (identical)
    */
   private calculatePreparedSimilarity(p1: PreparedEntity, p2: PreparedEntity): number {
-    let score = 0;
-    let factors = 0;
-
     // Name similarity (Levenshtein-based) - use pre-computed lowercase
     const nameDistance = levenshteinDistance(p1.nameLower, p2.nameLower);
     const maxNameLength = Math.max(p1.nameLower.length, p2.nameLower.length);
     const nameSimilarity = 1 - nameDistance / maxNameLength;
-    score += nameSimilarity * SIMILARITY_WEIGHTS.NAME;
-    factors += SIMILARITY_WEIGHTS.NAME;
 
     // Type similarity (exact match) - use pre-computed lowercase
-    if (p1.typeLower === p2.typeLower) {
-      score += SIMILARITY_WEIGHTS.TYPE;
-    }
-    factors += SIMILARITY_WEIGHTS.TYPE;
+    const typesMatch = p1.typeLower === p2.typeLower;
 
     // Observation overlap (Jaccard similarity) - use pre-computed Sets
     const obsIntersectionSize = this.setIntersectionSize(p1.observationSet, p2.observationSet);
     const obsUnionSize = p1.observationSet.size + p2.observationSet.size - obsIntersectionSize;
     const observationSimilarity = obsUnionSize > 0 ? obsIntersectionSize / obsUnionSize : 0;
-    score += observationSimilarity * SIMILARITY_WEIGHTS.OBSERVATIONS;
-    factors += SIMILARITY_WEIGHTS.OBSERVATIONS;
 
     // Tag overlap (Jaccard similarity) - use pre-computed Sets
-    if (p1.tagSet.size > 0 || p2.tagSet.size > 0) {
+    const hasTags = p1.tagSet.size > 0 || p2.tagSet.size > 0;
+    let tagSimilarity = 0;
+    if (hasTags) {
       const tagIntersectionSize = this.setIntersectionSize(p1.tagSet, p2.tagSet);
       const tagUnionSize = p1.tagSet.size + p2.tagSet.size - tagIntersectionSize;
-      const tagSimilarity = tagUnionSize > 0 ? tagIntersectionSize / tagUnionSize : 0;
-      score += tagSimilarity * SIMILARITY_WEIGHTS.TAGS;
-      factors += SIMILARITY_WEIGHTS.TAGS;
+      tagSimilarity = tagUnionSize > 0 ? tagIntersectionSize / tagUnionSize : 0;
     }
 
-    return factors > 0 ? score / factors : 0;
+    return weightedEntitySimilarity(nameSimilarity, typesMatch, observationSimilarity, hasTags, tagSimilarity);
   }
 
   /**
