@@ -176,6 +176,21 @@ describe('SavedSearchManager loader (pins)', () => {
     expect(JSON.stringify(await manager.listSavedSearches())).toBe('[{"name":"urgent","query":"bug"}]');
   });
 
+  it('keeps duplicate lines and every line of a long file', async () => {
+    const rows: string[] = [];
+    for (let i = 0; i < 3000; i++) {
+      rows.push(`{"name":"k${i % 1500}","n":${i}}`);
+    }
+    await fs.writeFile(filePath, `${rows.join('\n')}\n`);
+
+    const records = (await manager.listSavedSearches()) as unknown as { n: number }[];
+
+    expect(records.length).toBe(3000);
+    expect(records[0].n).toBe(0);
+    expect(records[1500].n).toBe(1500);
+    expect(records[2999].n).toBe(2999);
+  });
+
   // The read is mocked to resolve at once, so each turn count is a microtask count.
   it('settles a cache miss in a fixed number of microtask turns', async () => {
     readFileSpy.mockResolvedValueOnce(`${SEARCH_URGENT}\n`);
