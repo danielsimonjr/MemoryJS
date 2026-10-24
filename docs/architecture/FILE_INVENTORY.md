@@ -261,7 +261,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/search/OptimizedInvertedIndex.ts` | src | reachable | 489 |
 | `src/search/ParallelSearchExecutor.ts` | src | reachable | 581 |
 | `src/search/PartialIndexAdvisor.ts` | src | reachable | 209 |
-| `src/search/ProximitySearch.ts` | src | reachable | 232 |
+| `src/search/ProximitySearch.ts` | src | reachable | 234 |
 | `src/search/QuantizedVectorStore.ts` | src | reachable | 403 |
 | `src/search/QueryAnalyzer.ts` | src | reachable | 258 |
 | `src/search/QueryCostEstimator.ts` | src | reachable | 795 |
@@ -680,7 +680,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/search/searchTwinsFts.test.ts` | tests | test | 361 |
 | `tests/unit/search/searchTwinsLayers.test.ts` | tests | test | 339 |
 | `tests/unit/search/searchTwinsPaths.test.ts` | tests | test | 136 |
-| `tests/unit/search/searchTwinsProximity.test.ts` | tests | test | 113 |
+| `tests/unit/search/searchTwinsProximity.test.ts` | tests | test | 125 |
 | `tests/unit/search/searchTwinsSemantic.test.ts` | tests | test | 248 |
 | `tests/unit/search/searchTwinsTfidf.test.ts` | tests | test | 178 |
 | `tests/unit/search/SemanticSearch.test.ts` | tests | test | 557 |
