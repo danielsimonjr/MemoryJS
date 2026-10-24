@@ -10,7 +10,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 723
+**Total files**: 726
 
 ## Disposition counts
 
@@ -20,12 +20,12 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 404 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 407 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 4 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 0 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **723** | |
+| **Total** | **726** | |
 
 ## Per-area counts
 
@@ -34,7 +34,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `benchmarks` | 4 |
 | `config` | 2 |
 | `src` | 303 |
-| `tests` | 404 |
+| `tests` | 407 |
 | `tools` | 10 |
 
 ## All files
@@ -143,7 +143,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/retrieval/QueryRewriter.ts` | src | reachable | 83 |
 | `src/agent/RoleProfiles.ts` | src | reachable | 237 |
 | `src/agent/RuleEvaluator.ts` | src | reachable | 149 |
-| `src/agent/SalienceEngine.ts` | src | reachable | 734 |
+| `src/agent/SalienceEngine.ts` | src | reachable | 747 |
 | `src/agent/SessionCheckpoint.ts` | src | reachable | 692 |
 | `src/agent/SessionManager.ts` | src | reachable | 678 |
 | `src/agent/SessionQueryBuilder.ts` | src | reachable | 558 |
@@ -491,7 +491,8 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/RelationConsolidator.test.ts` | tests | test | 670 |
 | `tests/unit/agent/RoleProfiles.test.ts` | tests | test | 255 |
 | `tests/unit/agent/RuleEvaluator.test.ts` | tests | test | 310 |
-| `tests/unit/agent/SalienceEngine.test.ts` | tests | test | 749 |
+| `tests/unit/agent/SalienceEngine-heap-pins.test.ts` | tests | test | 179 |
+| `tests/unit/agent/SalienceEngine.test.ts` | tests | test | 812 |
 | `tests/unit/agent/SessionCheckpoint.test.ts` | tests | test | 698 |
 | `tests/unit/agent/SessionManager.test.ts` | tests | test | 827 |
 | `tests/unit/agent/SessionQueryBuilder.test.ts` | tests | test | 526 |
@@ -658,6 +659,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/search/ParallelSearchExecutor.test.ts` | tests | test | 551 |
 | `tests/unit/search/PartialIndexAdvisor.test.ts` | tests | test | 111 |
 | `tests/unit/search/ProximitySearch.test.ts` | tests | test | 530 |
+| `tests/unit/search/QuantizedVectorStore-topk-pins.test.ts` | tests | test | 91 |
 | `tests/unit/search/QuantizedVectorStore.test.ts` | tests | test | 358 |
 | `tests/unit/search/QueryAnalyzer.test.ts` | tests | test | 252 |
 | `tests/unit/search/QueryCostEstimator.test.ts` | tests | test | 668 |
@@ -700,6 +702,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/search/tiered/tiered-review-fixes.test.ts` | tests | test | 275 |
 | `tests/unit/search/tiered/TieredIndex-wiring.test.ts` | tests | test | 142 |
 | `tests/unit/search/tiered/TieredIndex.test.ts` | tests | test | 270 |
+| `tests/unit/search/VectorStore-topk-pins.test.ts` | tests | test | 212 |
 | `tests/unit/search/VectorStore.test.ts` | tests | test | 505 |
 | `tests/unit/security/ABACPolicy.test.ts` | tests | test | 339 |
 | `tests/unit/security/APIKeyStore.test.ts` | tests | test | 209 |

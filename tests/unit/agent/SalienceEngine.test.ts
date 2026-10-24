@@ -746,3 +746,66 @@ describe('getMostSalient heap selection (R21 pins)', () => {
     expect(Number.isNaN(result[0].salienceScore)).toBe(true);
   });
 });
+
+// The limit rule of InMemoryVectorStore.search: NaN, zero and a negative limit
+// give no entities, a finite limit is floored, and Infinity gives all entities.
+describe('getMostSalient and getTopSalient limit bounds', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-20T12:00:00.000Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const engineFor = (count: number): SalienceEngine => {
+    const entities = Array.from({ length: count }, (_, i) =>
+      createTestEntity({ name: `e${i}`, importance: i / 2 })
+    );
+    const storage = createMockStorage(entities);
+    const accessTracker = new AccessTracker(storage);
+    return new SalienceEngine(storage, accessTracker, new DecayEngine(storage, accessTracker));
+  };
+
+  const names = (scored: ScoredEntity[]): string[] => scored.map(s => s.entity.name);
+
+  it.each([[0], [-0], [-1], [-2.5], [Number.NaN], [Number.NEGATIVE_INFINITY], [0.5]])(
+    'getMostSalient with limit %d returns no entities',
+    async limit => {
+      await expect(engineFor(1).getMostSalient({}, limit)).resolves.toEqual([]);
+      await expect(engineFor(10).getMostSalient({}, limit)).resolves.toEqual([]);
+    }
+  );
+
+  it.each([[-1], [-3], [Number.NEGATIVE_INFINITY]])(
+    'getTopSalient with limit %d returns no entities',
+    async limit => {
+      await expect(engineFor(5).getTopSalient({}, limit)).resolves.toEqual([]);
+    }
+  );
+
+  it.each([
+    [1.5, ['e9']],
+    [2.5, ['e9', 'e8']],
+    [3, ['e9', 'e8', 'e7']],
+  ])('getMostSalient floors limit %d on the heap path', async (limit, expected) => {
+    expect(names(await engineFor(10).getMostSalient({}, limit))).toEqual(expected);
+  });
+
+  it('getMostSalient returns every entity for an Infinity limit', async () => {
+    expect(await engineFor(4).getMostSalient({}, Number.POSITIVE_INFINITY)).toHaveLength(4);
+  });
+
+  it('getMostSalient and getTopSalient return the same entities for every limit', async () => {
+    const limits = [0, -1, Number.NaN, 0.5, 1, 1.5, 2.5, 3, 3.9, 4, 11, Number.POSITIVE_INFINITY];
+    for (const count of [4, 10]) {
+      const engine = engineFor(count);
+      for (const limit of limits) {
+        const heap = names(await engine.getMostSalient({}, limit));
+        const sorted = names(await engine.getTopSalient({}, limit));
+        expect({ count, limit, heap }).toEqual({ count, limit, heap: sorted });
+      }
+    }
+  });
+});
