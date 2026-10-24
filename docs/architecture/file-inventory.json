@@ -1,12 +1,12 @@
 {
   "generated": "2026-10-24",
-  "totalFiles": 723,
+  "totalFiles": 726,
   "byDisposition": {
     "reachable": 299,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 404,
+    "test": 407,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -15,7 +15,7 @@
   "byArea": {
     "benchmarks": 4,
     "src": 303,
-    "tests": 404,
+    "tests": 407,
     "tools": 10,
     "config": 2
   },
@@ -3171,6 +3171,13 @@
       "loc": 310
     },
     {
+      "file": "tests/unit/agent/SalienceEngine-heap-pins.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 179
+    },
+    {
       "file": "tests/unit/agent/SalienceEngine.test.ts",
       "package": "(root)",
       "area": "tests",
@@ -4340,6 +4347,13 @@
       "loc": 530
     },
     {
+      "file": "tests/unit/search/QuantizedVectorStore-topk-pins.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 91
+    },
+    {
       "file": "tests/unit/search/QuantizedVectorStore.test.ts",
       "package": "(root)",
       "area": "tests",
@@ -4632,6 +4646,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 270
+    },
+    {
+      "file": "tests/unit/search/VectorStore-topk-pins.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 212
     },
     {
       "file": "tests/unit/search/VectorStore.test.ts",
