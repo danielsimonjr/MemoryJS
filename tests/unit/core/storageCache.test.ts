@@ -129,16 +129,25 @@ describe('upsertEntityInCache', () => {
       'observationIndex.add',
     ]);
 
+    // A replace always gives the live object to the type index. The index
+    // holds the indexed type, so it moves the name only when the type changed.
     upsertEntityInCache(state, { name: 'e1', entityType: 'B', observations: ['beta'] });
     expect(steps.splice(0)).toEqual([
-      'typeIndex.updateType',
+      'typeIndex.add',
       'setLowercase',
       'observationIndex.remove',
       'observationIndex.add',
     ]);
+    expect([...state.typeIndex.getNames('A')]).toEqual([]);
+    expect([...state.typeIndex.getNames('B')]).toEqual(['e1']);
 
     upsertEntityInCache(state, { name: 'e1', entityType: 'B', observations: ['gamma'] });
-    expect(steps.splice(0)).toEqual(['setLowercase', 'observationIndex.remove', 'observationIndex.add']);
+    expect(steps.splice(0)).toEqual([
+      'typeIndex.add',
+      'setLowercase',
+      'observationIndex.remove',
+      'observationIndex.add',
+    ]);
 
     upsertEntityInCache(state, live);
     expect(steps.splice(0)).toEqual([

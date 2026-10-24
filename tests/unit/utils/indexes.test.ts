@@ -183,6 +183,44 @@ describe('TypeIndex', () => {
       expect(index.getNames('oldType').has('Test')).toBe(false);
       expect(index.getNames('newType').has('Test')).toBe(true);
     });
+
+    it('removes the name from the type that the index holds, not from the given old type', () => {
+      index.add(createEntity('Test', 'held'));
+      index.updateType('Test', 'stale', 'newType');
+
+      expect(index.getNames('held').has('Test')).toBe(false);
+      expect(index.getNames('newType').has('Test')).toBe(true);
+    });
+  });
+
+  describe('type held per name', () => {
+    it('add of an indexed name moves it to its new type', () => {
+      index.add(createEntity('Test', 'oldType'));
+      index.add(createEntity('Test', 'NewType'));
+
+      expect(index.getNames('oldType').has('Test')).toBe(false);
+      expect(index.getNames('newtype').has('Test')).toBe(true);
+      expect(index.getTypes()).toEqual(['newtype']);
+    });
+
+    it('remove takes the type that the index holds for the name', () => {
+      index.add(createEntity('Test', 'held'));
+      index.remove('Test', 'stale');
+
+      expect(index.getNames('held').has('Test')).toBe(false);
+      expect(index.getTypes()).toEqual([]);
+    });
+
+    it('build and clear forget the held types', () => {
+      index.add(createEntity('Test', 'first'));
+      index.build([createEntity('Other', 'second')]);
+      index.add(createEntity('Test', 'third'));
+      expect(index.getTypes().sort()).toEqual(['second', 'third']);
+
+      index.clear();
+      index.add(createEntity('Other', 'fourth'));
+      expect(index.getTypes()).toEqual(['fourth']);
+    });
   });
 
   describe('getTypes', () => {

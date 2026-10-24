@@ -289,6 +289,31 @@ describe('PostgreSQLStorage', () => {
       expect(statementLog).toEqual(['BEGIN', 'TRUNCATE', 'INSERT', 'ROLLBACK', 'RELEASE']);
       expect(storage.getEntityByName('old')).toBeDefined();
     });
+
+    it('saveGraph keeps no reference to the caller graph', async () => {
+      const graph = {
+        entities: [{ name: 'A', entityType: 't', observations: ['one'], tags: ['x'] }],
+        relations: [] as Relation[],
+      };
+      await storage.saveGraph(graph);
+      graph.entities[0].observations.push('changed');
+      graph.entities[0].tags.push('changed');
+      expect(storage.getEntityByName('A')?.observations).toEqual(['one']);
+      expect(storage.getEntityByName('A')?.tags).toEqual(['x']);
+    });
+
+    it('appendEntity and appendRelation keep no reference to the caller objects', async () => {
+      const a: Entity = { name: 'A', entityType: 't', observations: ['one'] };
+      await storage.appendEntity(a);
+      await storage.appendEntity({ name: 'B', entityType: 't', observations: [] });
+      const r: Relation = { from: 'A', to: 'B', relationType: 'r', weight: 0.5 };
+      await storage.appendRelation(r);
+      a.observations.push('changed');
+      a.entityType = 'changed';
+      r.weight = 0.9;
+      expect(storage.getEntityByName('A')).toMatchObject({ entityType: 't', observations: ['one'] });
+      expect(storage.getRelationsFrom('A')[0].weight).toBe(0.5);
+    });
   });
 
   describe('IGraphStorage contract — sync getters', () => {

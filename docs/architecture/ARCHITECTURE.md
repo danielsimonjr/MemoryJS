@@ -419,6 +419,8 @@ interface IGraphStorage {
 }
 ```
 
+**Object ownership.** `saveGraph` and the append methods store a copy of the objects that they get. A later change to a caller object does not reach the cache or the disk. The created events send the stored copy. `loadGraph` and `getEntityByName` return cached objects, which the caller must not change. `getGraphForMutation` returns an independent copy. The type index holds the type of each name, so an append always moves a name to its current type.
+
 Both first-party backends (`GraphStorage`, `SQLiteStorage`) implement `renameEntity` and expose `events` — `EntityManager.renameEntity` requires the former; event-driven derived views (TF-IDF sync, `GraphRankPrior`, columnar observation mirroring) rely on the latter and now work identically on both backends.
 
 #### GraphStorage (JSONL)
@@ -888,7 +890,7 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 
 | Claim | Value | Source |
 |---|---|---|
-| totalSourceFiles | 737 | repo-tools map |
+| totalSourceFiles | 738 | repo-tools map |
 | totalModules | 6 | repo-tools map |
 | entryRoots | 12 | repo-tools map |
 | runtimeCircularDeps | 0 | repo-tools map |

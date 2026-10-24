@@ -41,11 +41,21 @@ export class NameIndex {
   }
 }
 
-/** O(1) lookup of entities by type (case-insensitive). */
+/**
+ * O(1) lookup of entities by type (case-insensitive).
+ *
+ * The index holds the type of each name that it contains. A change of type
+ * and a removal use this held type, not a type that the caller reads from an
+ * entity object. Thus a caller that changes a cached entity in place cannot
+ * leave the name in its old type.
+ */
 export class TypeIndex {
   private index: Map<string, Set<string>> = new Map();
+  /** Name to the lowercase type under which the name is indexed. */
+  private typeOfName: Map<string, string> = new Map();
+
   build(entities: Entity[]): void {
-    this.index.clear();
+    this.clear();
     for (const entity of entities) {
       this.addToIndex(entity.name, entity.entityType);
     }
@@ -57,21 +67,26 @@ export class TypeIndex {
     return this.index.get(typeLower) ?? new Set();
   }
 
+  /** Index an entity. A name that is already indexed moves to the entity's type. */
   add(entity: Entity): void {
     this.addToIndex(entity.name, entity.entityType);
   }
+
+  /**
+   * Remove a name. The name leaves the type that the index holds for it.
+   * `entityType` applies only to a name that the index does not hold.
+   */
   remove(entityName: string, entityType: string): void {
-    const typeLower = entityType.toLowerCase();
-    const names = this.index.get(typeLower);
-    if (names) {
-      names.delete(entityName);
-      if (names.size === 0) {
-        this.index.delete(typeLower);
-      }
-    }
+    const typeLower = this.typeOfName.get(entityName) ?? entityType.toLowerCase();
+    this.typeOfName.delete(entityName);
+    this.removeFromBucket(entityName, typeLower);
   }
 
-  /** Update an entity's type (removes from old, adds to new). */
+  /**
+   * Update an entity's type. The name leaves the type that the index holds
+   * for it and goes to `newType`. `oldType` applies only to a name that the
+   * index does not hold.
+   */
   updateType(entityName: string, oldType: string, newType: string): void {
     this.remove(entityName, oldType);
     this.addToIndex(entityName, newType);
@@ -84,16 +99,32 @@ export class TypeIndex {
 
   clear(): void {
     this.index.clear();
+    this.typeOfName.clear();
   }
 
   private addToIndex(entityName: string, entityType: string): void {
     const typeLower = entityType.toLowerCase();
+    const heldType = this.typeOfName.get(entityName);
+    if (heldType !== undefined && heldType !== typeLower) {
+      this.removeFromBucket(entityName, heldType);
+    }
+    this.typeOfName.set(entityName, typeLower);
     let names = this.index.get(typeLower);
     if (!names) {
       names = new Set();
       this.index.set(typeLower, names);
     }
     names.add(entityName);
+  }
+
+  private removeFromBucket(entityName: string, typeLower: string): void {
+    const names = this.index.get(typeLower);
+    if (names) {
+      names.delete(entityName);
+      if (names.size === 0) {
+        this.index.delete(typeLower);
+      }
+    }
   }
 }
 

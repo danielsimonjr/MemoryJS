@@ -842,14 +842,17 @@ export class GraphStorage implements IGraphStorage {
    * THREAD-SAFE: Uses mutex to prevent concurrent write operations.
    *
    * Writes the graph to JSONL format, with one JSON object per line.
+   * The storage saves and caches a copy of the graph, so a later change to
+   * the caller's graph does not reach the cache.
    *
    * @param graph - The knowledge graph to save
    * @returns Promise resolving when save is complete
    * @throws Error if file cannot be written
    */
   async saveGraph(graph: KnowledgeGraph): Promise<void> {
+    const owned = deepCopyPlain(graph);
     return this.mutex.runExclusive(async () => {
-      await this.saveGraphInternal(graph);
+      await this.saveGraphInternal(owned);
     });
   }
 
@@ -859,14 +862,16 @@ export class GraphStorage implements IGraphStorage {
    * OPTIMIZED: Uses file append instead of full rewrite.
    * THREAD-SAFE: Uses mutex to prevent concurrent write operations.
    * Updates cache in-place and triggers compaction when threshold is reached.
+   * The cache keeps a copy of the entity, not the caller's object.
    *
    * @param entity - The entity to append
    * @returns Promise resolving when append is complete
    */
   async appendEntity(entity: Entity): Promise<void> {
+    const owned = deepCopyPlain(entity);
     await this.ensureLoaded();
 
-    return this.mutex.runExclusive(() => this.appendLocked([entity], GraphStorage.ENTITY_APPEND));
+    return this.mutex.runExclusive(() => this.appendLocked([owned], GraphStorage.ENTITY_APPEND));
   }
 
   /**
@@ -879,6 +884,7 @@ export class GraphStorage implements IGraphStorage {
    * writes).
    *
    * Duplicate names follow the same upsert semantics as `appendEntity`.
+   * The cache keeps copies of the entities, not the caller's objects.
    *
    * Segment mode (`MEMORY_STORAGE_SEGMENT_COUNT >= 2`) falls back to a
    * single full `saveAll` for the whole batch (documented segment-mode
@@ -888,9 +894,10 @@ export class GraphStorage implements IGraphStorage {
    */
   async appendEntities(entities: Entity[]): Promise<void> {
     if (entities.length === 0) return;
+    const owned = deepCopyPlain(entities);
     await this.ensureLoaded();
 
-    return this.mutex.runExclusive(() => this.appendLocked(entities, GraphStorage.ENTITY_APPEND));
+    return this.mutex.runExclusive(() => this.appendLocked(owned, GraphStorage.ENTITY_APPEND));
   }
 
   /**
@@ -899,14 +906,16 @@ export class GraphStorage implements IGraphStorage {
    * OPTIMIZED: Uses file append instead of full rewrite.
    * THREAD-SAFE: Uses mutex to prevent concurrent write operations.
    * Updates cache in-place and triggers compaction when threshold is reached.
+   * The cache keeps a copy of the relation, not the caller's object.
    *
    * @param relation - The relation to append
    * @returns Promise resolving when append is complete
    */
   async appendRelation(relation: Relation): Promise<void> {
+    const owned = deepCopyPlain(relation);
     await this.ensureLoaded();
 
-    return this.mutex.runExclusive(() => this.appendLocked([relation], GraphStorage.RELATION_APPEND));
+    return this.mutex.runExclusive(() => this.appendLocked([owned], GraphStorage.RELATION_APPEND));
   }
 
   /**
@@ -914,7 +923,7 @@ export class GraphStorage implements IGraphStorage {
    *
    * One serialized block, one fsync. Emits `relation:created` exactly once
    * per relation; no `graph:saved`. Duplicate keys follow the same upsert
-   * semantics as `appendRelation`.
+   * semantics as `appendRelation`. The cache keeps copies of the relations.
    *
    * Segment mode falls back to a single full `saveAll` for the batch.
    *
@@ -922,9 +931,10 @@ export class GraphStorage implements IGraphStorage {
    */
   async appendRelations(relations: Relation[]): Promise<void> {
     if (relations.length === 0) return;
+    const owned = deepCopyPlain(relations);
     await this.ensureLoaded();
 
-    return this.mutex.runExclusive(() => this.appendLocked(relations, GraphStorage.RELATION_APPEND));
+    return this.mutex.runExclusive(() => this.appendLocked(owned, GraphStorage.RELATION_APPEND));
   }
 
   /**
