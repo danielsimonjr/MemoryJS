@@ -123,6 +123,47 @@ describe('TFIDFIndexManager IDF and add/update pins', () => {
     expect(stateOf(first)).toBe(stateOf(second));
   });
 
+  it('addDocument and updateDocument differ in IDF key order inside a batch when terms are unchanged', () => {
+    // addDocument marks the batch dirty even when no term changed. The full pass
+    // at endIdfBatch() rebuilds the IDF map, so its key order changes.
+    const same = { name: 'B', entityType: 'note', observations: ['gamma beta'] };
+
+    first.beginIdfBatch();
+    try {
+      first.addDocument(same);
+    } finally {
+      first.endIdfBatch();
+    }
+    second.beginIdfBatch();
+    try {
+      second.updateDocument(same);
+    } finally {
+      second.endIdfBatch();
+    }
+
+    expect(stateOf(first)).not.toBe(stateOf(second));
+    expect(Array.from(first.getIndex()!.idf.keys())).toStrictEqual([
+      'a',
+      'note',
+      'alpha',
+      'beta',
+      'gamma',
+      'c',
+      'delta',
+      'b',
+    ]);
+    expect(Array.from(second.getIndex()!.idf.keys())).toStrictEqual([
+      'a',
+      'note',
+      'alpha',
+      'beta',
+      'b',
+      'gamma',
+      'c',
+      'delta',
+    ]);
+  });
+
   it('recalculates every term from the document frequency map, including a zero count, on a new document', () => {
     // A zero count is only reachable through a damaged index file. The full
     // pass writes log(N / 0) for it, which is Infinity.
