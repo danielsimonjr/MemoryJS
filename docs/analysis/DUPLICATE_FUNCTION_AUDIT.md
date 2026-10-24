@@ -418,6 +418,7 @@ The module `src/types/agent-memory.ts` holds nine record guards of one shape.
 - **Merge target**: the inline Jaccard sites call `jaccard`. `calculateEntitySimilarity` builds two prepared entities and calls `calculatePreparedSimilarity`. One `minMaxNormalize` goes to `src/utils`. `calculateIDF` builds token sets and calls the second form.
 - **Risk**: Medium. The empty-set result differs between the two Jaccard forms (0 and 1). Decide the contract. Then add a test for the empty case.
 - **Tests**: `cosineSimilarity` 1 file, `jaccard` 4, `minMaxNormalize` 2, `calculateIDF` 2, `calculateEntitySimilarity` 1, `jaccardSimilarity` 0.
+- **Outcome**: `textSimilarity.cosineSimilarity` and the cosine of `RelationConsolidator` share `cosineParts`. The two entity-similarity methods share `weightedEntitySimilarity`. The IDF pair and the cosine of `QuantizedVectorStore` stay separate (section 6).
 
 ### R18 Sleep, timeout and chunk helpers
 
@@ -486,6 +487,7 @@ The module `src/types/agent-memory.ts` holds nine record guards of one shape.
 - **Merge target**: one bounded heap class in `src/utils` that takes a comparator. The two vector searches use it for top-k.
 - **Risk**: Medium, because of the tie rule.
 - **Tests**: `InMemoryVectorStore` 4 files, `QuantizedVectorStore` 2, `SalienceEngine` 8.
+- **Outcome**: The two heaps stay separate (section 6). The quantized search has no heap. The quantized search sorts every score and slices.
 
 ### R22 Embedding batch methods
 
@@ -616,6 +618,9 @@ Decide each item before you merge the family that touches it.
 | `src/search/QueryParser.ts:219` `tokenize` and `src/search/BooleanSearch.ts:281` `tokenizeBooleanQuery` | Three different output contracts. | First pass only |
 | Constructors of `AccessTracker`, `ContextWindowManager`, `SalienceEngine`, `SessionManager`, `MemoryFormatter`, `ConsolidationPipeline`, `ConsolidationScheduler`, `DecayScheduler`, `WorkingMemoryManager`, `LangChainMemoryAdapter`, `LRUHotTier` and `RelationConsolidator` | Each merges its own default configuration. The syntax matches because the pattern matches. | Read (partial) |
 | Pairs that the first pass marked as false positives: the `MemoryEngine` tier checks, `ToolCallObserver.observeStart` against `observeError`, `MemoryDistiller.distill` against `distillWithLLM`, the two session-checkpoint migration functions, `WorkerPoolManager.getPoolStats` against `WorkerTaskManager.getStats`, `GraphTraversal` `bfs` against `dfs`, and the two `QueryCostEstimator` layer scorers | The first pass found a real difference in each pair. | First pass only |
+| `src/utils/searchAlgorithms.ts:130` `calculateIDF` and `src/utils/searchAlgorithms.ts:163` `calculateIDFFromTokenSets` | The count loops differ by design. The first loop filters, tokenizes and uses `includes`. The first loop skips holes. The second loop uses `for..of` and `has`. The second loop throws on a hole. A shared core adds 10 lines net. A shared core shares four one-line statements. | Executed. Two shared cores were written and tested. Tests pin the read order of the pair. |
+| `src/search/VectorStore.ts:168` `siftUpWorst` and `src/agent/SalienceEngine.ts:697` `heapSiftUp`, with the two sift-down functions | The vector heap breaks ties by insertion order. The salience heap has no tie key. The two heaps treat NaN differently. A shared heap with numeric keys had to stay at or below a ratio of 1.10. The salience heap alone, with ascending scores and k = 10, gave 1.19 (95% interval 1.16 to 1.23). Each arm had 24 samples. In a process that also runs the other heap sites, the ratio was 1.11 (interval 1.08 to 1.14). Ratios are new over old. | Executed. A shared heap was written and timed against the old code. |
+| `src/search/QuantizedVectorStore.ts:377` `cosineSimilarity` and `cosineParts` in `src/utils/textSimilarity.ts` | The input is a `Float32Array`. A loop shared with the `number[]` sites made the cosine slower at every site. This site keeps its typed loop. | Executed. |
 
 ---
 
