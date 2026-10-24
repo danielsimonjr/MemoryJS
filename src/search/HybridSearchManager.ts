@@ -15,6 +15,7 @@ import type { SemanticSearch } from './SemanticSearch.js';
 import type { RankedSearch } from './RankedSearch.js';
 import type { GraphRankPrior } from './GraphRankPrior.js';
 import { SymbolicSearch } from './SymbolicSearch.js';
+import { addNormalizedLexicalScores, addSimilarityScores, addSymbolicScores } from './hybridLayers.js';
 import { SEMANTIC_SEARCH_LIMITS } from '../utils/constants.js';
 import type { EvidencePath, EvidencePathOptions } from '../types/search.js';
 import { EvidencePathBuilder, type EvidenceAnchor } from './EvidencePathBuilder.js';
@@ -398,9 +399,7 @@ export class HybridSearchManager {
         options.minSimilarity ?? 0
       );
 
-      for (const result of semanticResults) {
-        results.set(result.entity.name, result.similarity);
-      }
+      addSimilarityScores(results, semanticResults);
     } catch {
       // Semantic search may fail if not indexed
     }
@@ -427,11 +426,7 @@ export class HybridSearchManager {
         limit
       );
 
-      // Normalize scores to 0-1 range
-      const maxScore = Math.max(...lexicalResults.map(r => r.score), 1);
-      for (const result of lexicalResults) {
-        results.set(result.entity.name, result.score / maxScore);
-      }
+      addNormalizedLexicalScores(results, lexicalResults);
     } catch {
       // Lexical search may fail
     }
@@ -454,9 +449,7 @@ export class HybridSearchManager {
     }
 
     const symbolicResults = this.symbolicSearch.search(entities, filters);
-    for (const result of symbolicResults) {
-      results.set(result.entity.name, result.score);
-    }
+    addSymbolicScores(results, symbolicResults);
 
     return results;
   }
