@@ -1110,7 +1110,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1871
+      "loc": 1875
     },
     {
       "file": "src/core/GraphTraversal.ts",
