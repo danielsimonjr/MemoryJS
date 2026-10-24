@@ -980,6 +980,126 @@ describe.each(VARIANTS)('storage safety net - $label', (variant) => {
       ]);
     });
 
+    /** The four append forms, each with the items it appends. */
+    const appendForms = (): Array<{ label: string; batch: boolean; isRelation: boolean; run: (store: Store) => Promise<void> }> => [
+      { label: 'appendEntity', batch: false, isRelation: false, run: store => store.appendEntity(entity('form-1', 'x')) },
+      {
+        label: 'appendEntities',
+        batch: true,
+        isRelation: false,
+        run: store => store.appendEntities([entity('form-2', 'x'), entity('form-3', 'x')]),
+      },
+      {
+        label: 'appendRelation',
+        batch: false,
+        isRelation: true,
+        run: store => store.appendRelation(relation('ent-01', 'ent-02', 'form')),
+      },
+      {
+        label: 'appendRelations',
+        batch: true,
+        isRelation: true,
+        run: store => store.appendRelations([relation('ent-03', 'ent-04', 'form'), relation('ent-03', 'ent-05', 'form')]),
+      },
+    ];
+
+    /** What a reader sees of a store: generation counters, pending counter, entity count, relation count. */
+    const viewOf = (store: Store) => {
+      const cache = (store as unknown as { cache: { entities: unknown[]; relations: unknown[] } }).cache;
+      return {
+        generations: getGraphGenerations(store),
+        pending: store.getPendingAppends(),
+        entities: cache.entities.length,
+        relations: cache.relations.length,
+      };
+    };
+
+    it.each(['appendEntity', 'appendEntities', 'appendRelation', 'appendRelations'])(
+      '%s: a listener of the created event sees the finished append',
+      async label => {
+        await seed();
+        const store = openStore();
+        await store.ensureLoaded();
+        const form = appendForms().find(candidate => candidate.label === label)!;
+        const views: Array<ReturnType<typeof viewOf>> = [];
+        store.events.on('entity:created', () => views.push(viewOf(store)));
+        store.events.on('relation:created', () => views.push(viewOf(store)));
+        const before = viewOf(store);
+
+        await form.run(store);
+
+        const after = viewOf(store);
+        expect(views.length).toBeGreaterThan(0);
+        for (const view of views) expect(view).toEqual(after);
+        // The append changed the counters and the cache, so the equality is not empty.
+        expect(after.generations).not.toEqual(before.generations);
+        expect(after.entities + after.relations).toBeGreaterThan(before.entities + before.relations);
+      },
+    );
+
+    // The JSONL storage in segment mode saves the segments after the cache update and reloads on a failure.
+    if (!segmented) {
+      it.each(['appendEntity', 'appendEntities', 'appendRelation', 'appendRelations'])(
+        '%s: a failed write leaves the cache, the counters and the events as they were',
+        async label => {
+          await seed();
+          const store = openStore();
+          await store.ensureLoaded();
+          const form = appendForms().find(candidate => candidate.label === label)!;
+          const proto = (variant.sqlite ? SQLiteStorage.prototype : GraphStorage.prototype) as unknown as Record<
+            string,
+            (...args: unknown[]) => unknown
+          >;
+          const writeMethod = variant.sqlite ? (form.isRelation ? 'runRelationUpsert' : 'runEntityUpsert') : 'appendLines';
+          const original = proto[writeMethod];
+          let calls = 0;
+          // The SQLite batch form writes its second row after its first, so the failure happens in the middle.
+          vi.spyOn(proto, writeMethod).mockImplementation(function (this: unknown, ...args: unknown[]) {
+            calls++;
+            if (variant.sqlite && form.batch && calls === 1) return original.apply(this, args);
+            if (variant.sqlite) throw new Error('write failed');
+            return Promise.reject(new Error('write failed'));
+          });
+          const events: string[] = [];
+          store.events.onAny(event => events.push(event.type));
+          const before = viewOf(store);
+
+          await expect(form.run(store)).rejects.toThrow('write failed');
+
+          expect(calls).toBe(variant.sqlite && form.batch ? 2 : 1);
+          expect(viewOf(store)).toEqual(before);
+          expect(events).toEqual([]);
+          vi.restoreAllMocks();
+          const reloaded = await openStore().loadGraph();
+          expect(reloaded.entities).toHaveLength(before.entities);
+          expect(reloaded.relations).toHaveLength(before.relations);
+        },
+      );
+    }
+
+    it.each(['appendEntities', 'appendRelations'])(
+      '%s: moves neither the counters nor the events when the cache update of the batch fails',
+      async label => {
+        await seed();
+        const store = openStore();
+        await store.ensureLoaded();
+        const form = appendForms().find(candidate => candidate.label === label)!;
+        const events: string[] = [];
+        store.events.onAny(event => events.push(event.type));
+        const before = viewOf(store);
+        const index = form.isRelation ? RelationIndex.prototype : NameIndex.prototype;
+        vi.spyOn(index, 'add').mockImplementationOnce(() => {
+          throw new Error('index failure');
+        });
+
+        await expect(form.run(store)).rejects.toThrow('index failure');
+
+        expect(viewOf(store).generations).toEqual(before.generations);
+        expect(viewOf(store).pending).toBe(before.pending);
+        expect(events).toEqual([]);
+      },
+    );
+
     if (segmented) {
       it('resets the pending counter in segment mode even when it was not zero', async () => {
         await seed();
