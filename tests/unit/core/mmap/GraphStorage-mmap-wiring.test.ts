@@ -613,5 +613,53 @@ describe('GraphStorage mmap wiring (task 84)', () => {
         ]);
       }
     });
+
+    it('closes the mmap handle once and after graph:loaded, also when the load throws', async () => {
+      process.env.MEMORY_USE_MMAP = 'true';
+      process.env.MEMORY_MMAP_THRESHOLD_BYTES = '0';
+      const order: string[] = [];
+      const realClose = FsReadMmapBackend.prototype.close;
+      const closeSpy = vi.spyOn(FsReadMmapBackend.prototype, 'close').mockImplementation(function (
+        this: FsReadMmapBackend,
+        ...args: Parameters<FsReadMmapBackend['close']>
+      ) {
+        order.push('close');
+        return realClose.apply(this, args);
+      });
+      try {
+        await fs.writeFile(filePath, ALICE_LINE + '\n', 'utf-8');
+        const storage = new GraphStorage(filePath);
+        storage.events.on('graph:loaded', () => order.push('graph:loaded'));
+        await storage.loadGraph();
+        expect(order).toEqual(['graph:loaded', 'close']);
+
+        // An entity line without entityType makes the lowercase index fail after the last line.
+        order.length = 0;
+        closeSpy.mockClear();
+        await fs.writeFile(filePath, ALICE_LINE + '\n{"type":"entity","name":"broken"}\n', 'utf-8');
+        await expect(new GraphStorage(filePath).loadGraph()).rejects.toThrow(TypeError);
+        expect(order).toEqual(['close']);
+        expect(closeSpy).toHaveBeenCalledTimes(1);
+      } finally {
+        closeSpy.mockRestore();
+      }
+    });
+
+    it('reads a line with a leading no-break space or BOM on the mmap path only (the paths trim differently)', async () => {
+      // This documents the behaviour before the D1 fix: the readFile path hands JSON.parse the
+      // untrimmed line, so the line is skipped; the mmap path trims first, so the line loads.
+      const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+      const entity = (name: string) =>
+        JSON.stringify({ type: 'entity', name, entityType: 'person', observations: [], createdAt: '2026-05-11T00:00:00Z', lastModified: '2026-05-11T00:00:00Z' });
+      const content = [entity('alice'), '\u00a0' + entity('nbsp'), '\ufeff' + entity('bom'), entity('bob')].join('\n') + '\n';
+      try {
+        const readFile = await loadWith(false, content);
+        const mmap = await loadWith(true, content);
+        expect(readFile.graph.entities.map((e) => e.name)).toEqual(['alice', 'bob']);
+        expect(mmap.graph.entities.map((e) => e.name)).toEqual(['alice', 'nbsp', 'bom', 'bob']);
+      } finally {
+        warnSpy.mockRestore();
+      }
+    });
   });
 });
