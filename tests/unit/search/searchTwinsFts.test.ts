@@ -12,6 +12,7 @@ import Database from 'better-sqlite3';
 import { SQLiteStorage } from '../../../src/core/SQLiteStorage.js';
 import { BM25Search } from '../../../src/search/BM25Search.js';
 import { RankedSearch } from '../../../src/search/RankedSearch.js';
+import { getFtsCandidateNames } from '../../../src/search/ftsCandidates.js';
 
 describe('FTS candidate lookup pins', () => {
   let storage: SQLiteStorage;
@@ -107,13 +108,17 @@ describe('FTS candidate lookup pins', () => {
     expect(Object.keys(ftsSpy.mock.calls[0][1]!)).toEqual(['limit']);
   });
 
-  it('a stale FTS posting is excluded by BM25Search and wipes RankedSearch results', async () => {
-    // Simulate a stale posting: drop the delete trigger, then delete the row.
-    // The FTS table keeps the posting of 'Needle' with no entities row.
+  // Simulate a stale posting: drop the delete trigger, then delete the row.
+  // The FTS table keeps the posting of 'Needle' with no entities row.
+  function makeStalePosting(): void {
     const raw = new Database(dbFile);
     raw.exec('DROP TRIGGER entities_ad');
     raw.prepare("DELETE FROM entities WHERE name = 'Needle'").run();
     raw.close();
+  }
+
+  it('a stale FTS posting is excluded by BM25Search and wipes RankedSearch results', async () => {
+    makeStalePosting();
 
     const bm25 = await new BM25Search(storage).search('zephyr');
     const ranked = await new RankedSearch(storage).searchNodesRanked('zephyr');
@@ -123,5 +128,19 @@ describe('FTS candidate lookup pins', () => {
     // RankedSearch uses ranked FTS: the stale posting raises inside the query,
     // the adapter catches it and returns no candidates at all.
     expect(ranked).toStrictEqual([]);
+  });
+
+  it('the FTS lookup on a stale posting returns no candidates when it ranks', async () => {
+    makeStalePosting();
+
+    expect(await getFtsCandidateNames(storage, 'zephyr', 3, true)).toStrictEqual(new Set());
+  });
+
+  it('the FTS lookup on a stale posting returns the live match when it does not rank', async () => {
+    makeStalePosting();
+
+    expect(await getFtsCandidateNames(storage, 'zephyr', 3, false)).toStrictEqual(
+      new Set(['Haystack']),
+    );
   });
 });
