@@ -224,6 +224,12 @@ describe('TagManager alias loader (pins)', () => {
     expect(manager['aliasCache']).toBe(loaded);
   });
 
+  it('keeps identical duplicate lines in file order', async () => {
+    await fs.writeFile(filePath, `${ALIAS_JS}\n${ALIAS_PY}\n${ALIAS_JS}\n${ALIAS_JS}\n`);
+
+    expect(JSON.stringify(await manager.listTagAliases())).toBe(`[${ALIAS_JS},${ALIAS_PY},${ALIAS_JS},${ALIAS_JS}]`);
+  });
+
   // The read is mocked to resolve at once, so each turn count is a microtask count.
   it('settles a cache miss in a fixed number of microtask turns', async () => {
     readFileSpy.mockResolvedValueOnce(`${ALIAS_JS}\n`);
