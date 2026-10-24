@@ -1222,7 +1222,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 2569
+      "loc": 2578
     },
     {
       "file": "src/core/storageCache.ts",
@@ -3875,7 +3875,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 1690
+      "loc": 1720
     },
     {
       "file": "tests/unit/core/storage-write-ownership.test.ts",

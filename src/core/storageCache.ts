@@ -95,9 +95,9 @@ export function upsertEntityInCache(state: StorageCacheState, entity: Entity): E
  *
  * Uses the same in-place replace strategy as `upsertEntityInCache`. A
  * duplicate `from`/`to`/`relationType` key mutates the live object. Fields
- * missing from the new relation are removed. This matches the on-disk
- * dedup-on-reload semantics and SQLite's INSERT OR REPLACE. The cache array
- * gets no duplicate row.
+ * missing from the new relation are removed. This matches the JSONL
+ * dedup-on-reload and the SQLite upsert, which updates the row in place.
+ * The cache array gets no duplicate row.
  *
  * @param state - The cache and index members of the storage
  * @param relation - The relation to upsert

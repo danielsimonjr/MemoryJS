@@ -406,6 +406,30 @@ describe('SQLiteStorage', () => {
         expect(graph.relations).toHaveLength(1);
         expect(graph.relations[0].from).toBe('Alice');
       });
+
+      it('updates a re-appended relation in its row, so a reload keeps its first position', async () => {
+        await storage.appendEntities(['a', 'b', 'c'].map(name => ({ name, entityType: 'node', observations: [] })));
+        await storage.appendRelation({ from: 'a', to: 'b', relationType: 'r', weight: 1, confidence: 0.5 });
+        await storage.appendRelation({ from: 'b', to: 'c', relationType: 'r' });
+        const rowidOfFirst = (): number => {
+          const db = new Database(testFilePath, { readonly: true });
+          try {
+            return (db.prepare("SELECT rowid FROM relations WHERE fromEntity = 'a'").get() as { rowid: number }).rowid;
+          } finally {
+            db.close();
+          }
+        };
+        const rowidBefore = rowidOfFirst();
+
+        await storage.appendRelation({ from: 'a', to: 'b', relationType: 'r', weight: 2 });
+
+        expect(rowidOfFirst()).toBe(rowidBefore);
+        storage.close();
+        storage = new SQLiteStorage(testFilePath);
+        const relations = (await storage.loadGraph()).relations;
+        expect(relations.map(r => `${r.from}>${r.to}:${r.weight}`)).toEqual(['a>b:2', 'b>c:undefined']);
+        expect(relations[0].confidence).toBeUndefined();
+      });
     });
   });
 

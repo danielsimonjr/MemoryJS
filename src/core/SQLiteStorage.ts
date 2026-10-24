@@ -1188,14 +1188,23 @@ export class SQLiteStorage implements IGraphStorage {
 
   /**
    * SQL for the relation upsert used by `appendRelation`/`appendRelations`.
+   *
+   * An existing key is updated in its row, as for `UPSERT_ENTITY_SQL`. Every
+   * field takes the value of the new relation. The row keeps its rowid, so a
+   * reload returns the relation at the position of its first write, as on
+   * JSONL. `INSERT OR REPLACE` deleted the old row and added a new one at the
+   * end.
    */
   private static readonly UPSERT_RELATION_SQL = `
-        INSERT OR REPLACE INTO relations (fromEntity, toEntity, relationType, createdAt, lastModified, weight, confidence, properties, metadata)
+        INSERT INTO relations (fromEntity, toEntity, relationType, createdAt, lastModified, weight, confidence, properties, metadata)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(fromEntity, toEntity, relationType) DO UPDATE SET
+          createdAt = excluded.createdAt, lastModified = excluded.lastModified, weight = excluded.weight,
+          confidence = excluded.confidence, properties = excluded.properties, metadata = excluded.metadata
       `;
 
   /**
-   * Run the relation INSERT OR REPLACE row write (no cache side effects).
+   * Run the relation upsert row write (no cache side effects).
    */
   private runRelationUpsert(relation: Relation): void {
     this.prepareCached(this.db!, SQLiteStorage.UPSERT_RELATION_SQL).run(

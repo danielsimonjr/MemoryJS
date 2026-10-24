@@ -376,7 +376,7 @@ export class RelationManager {
       }
       // S2: delta write via appendRelation's upsert semantics (same
       // composite key replaces the stored relation, mirroring SQLite's
-      // INSERT OR REPLACE and JSONL's dedup-on-reload). Emits
+      // ON CONFLICT upsert and JSONL's dedup-on-reload). Emits
       // relation:created for the replaced relation.
       const updated: Relation = {
         ...match,
