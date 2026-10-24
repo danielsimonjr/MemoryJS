@@ -254,12 +254,9 @@ describe('Review #8: strict env-var parsing + 1024-segment cap', () => {
     await expect(fs.access(join(dir, 'segments'))).rejects.toThrow();
   });
 
-  // 1024 segments is the cap, so this is the single most I/O-heavy test in the
-  // suite: it creates 1024 files while the other 305 test files run in parallel.
-  // At the default 30s it passes on a 32-core box and times out on a 12-core one
-  // — a green run there is not evidence it passes here. The assertion is
-  // unchanged; only the runtime budget is, and the budget is what was
-  // machine-dependent.
+  // 1024 segments is the cap. The save lists the segment folder once and writes
+  // only the occupied segment file, so the number of file system calls does not
+  // grow with the segment count (see the call-count test below).
   it('MEMORY_STORAGE_SEGMENT_COUNT="1024" (at the cap) IS accepted', async () => {
     process.env.MEMORY_STORAGE_SEGMENT_COUNT = '1024';
     const storage = new GraphStorage(join(dir, 'memory.jsonl'));
@@ -286,6 +283,34 @@ describe('Review #8: strict env-var parsing + 1024-segment cap', () => {
     const reloaded = await new GraphStorage(join(dir, 'memory.jsonl')).loadGraph();
     expect(reloaded.entities.map(e => e.name)).toEqual(['alice']);
   }, 30_000);
+
+  it('saves and loads one entity at the cap with no file system call per absent segment', async () => {
+    // Each file system call is one await on the thread pool. Under CPU load
+    // each await waits for the scheduler, so one call per segment multiplies
+    // that wait by the segment count. The save and the load list the segment
+    // folder once and touch only the segment files that exist.
+    process.env.MEMORY_STORAGE_SEGMENT_COUNT = '1024';
+    const path = join(dir, 'memory.jsonl');
+    const segmentFile = /[\\/]segments[\\/]\d+\.jsonl$/;
+    let segmentFileCalls = 0;
+    for (const name of ['access', 'readFile', 'lstat', 'stat', 'open'] as const) {
+      const original = fs[name].bind(fs) as (...args: unknown[]) => Promise<unknown>;
+      vi.spyOn(fs, name).mockImplementation((async (...args: unknown[]) => {
+        if (segmentFile.test(String(args[0]))) segmentFileCalls++;
+        return original(...args);
+      }) as never);
+    }
+    try {
+      await new GraphStorage(path).saveGraph({ entities: [ent('alice')], relations: [] });
+      const reloaded = await new GraphStorage(path).loadGraph();
+      expect(reloaded.entities.map(e => e.name)).toEqual(['alice']);
+    } finally {
+      vi.restoreAllMocks();
+    }
+    // Only the segment file that holds `alice`: the save reads its mode (stat)
+    // and the load reads its content. No call touches an absent segment.
+    expect(segmentFileCalls).toBe(2);
+  });
 
   it('truncates an existing segment file that becomes empty (no resurrection)', async () => {
     // The other half of the optimisation: skipping an empty segment is only

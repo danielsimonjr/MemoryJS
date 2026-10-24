@@ -1201,7 +1201,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 661
+      "loc": 685
     },
     {
       "file": "src/core/segments/ISegmentStorage.ts",
@@ -3833,7 +3833,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 442
+      "loc": 467
     },
     {
       "file": "tests/unit/core/sqlite-append-replace.test.ts",

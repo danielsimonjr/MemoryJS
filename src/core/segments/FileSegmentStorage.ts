@@ -86,14 +86,11 @@ function isEmptySegment(seg: Segment): boolean {
   return seg.entities.length === 0 && seg.relations.length === 0;
 }
 
-async function fileExists(path: string): Promise<boolean> {
-  try {
-    await fs.access(path);
-    return true;
-  } catch {
-    return false;
-  }
-}
+/**
+ * The name of a segment file: `<id>.jsonl`, with a decimal id and no leading
+ * zero. The match ignores case, as the file system does on Windows and macOS.
+ */
+const SEGMENT_FILE_NAME = /^(0|[1-9][0-9]*)\.jsonl$/i;
 
 /**
  * JSONL segment files under `<dir>/segments/`, committed atomically across
@@ -121,6 +118,32 @@ export class FileSegmentStorage implements ISegmentStorage {
   /** Path to the manifest sidecar that drives crash-atomic `saveAll`. */
   private manifestPath(): string {
     return join(this.segmentsDir, '_manifest.json');
+  }
+
+  /**
+   * The ids of the segment files that exist, from one read of the segment
+   * folder. A missing folder gives an empty set.
+   *
+   * `loadAll` and `saveAll` use this set instead of one file system call per
+   * segment. Each call is one await on the thread pool, and under CPU load
+   * each await waits for the scheduler. One call per segment waits once for
+   * each segment: 2047 waits for a one-entity save and load at the
+   * 1024-segment cap.
+   */
+  private async existingSegmentIds(): Promise<Set<SegmentId>> {
+    let names: string[];
+    try {
+      names = await fs.readdir(this.segmentsDir);
+    } catch (err) {
+      if (isENOENT(err)) return new Set();
+      throw err;
+    }
+    const ids = new Set<SegmentId>();
+    for (const name of names) {
+      const match = SEGMENT_FILE_NAME.exec(name);
+      if (match) ids.add(Number(match[1]));
+    }
+    return ids;
   }
 
   /**
@@ -225,9 +248,11 @@ export class FileSegmentStorage implements ISegmentStorage {
     // complete them before reading. This is what makes the multi-
     // segment save crash-atomic from the loader's perspective.
     await this.recoverFromManifestIfPresent();
+    // A segment without a file is empty, as `loadSegment` returns for ENOENT.
+    const existing = await this.existingSegmentIds();
     const segs: Segment[] = [];
     for (let i = 0; i < this.segmentCount; i++) {
-      segs.push(await this.loadSegment(i));
+      segs.push(existing.has(i) ? await this.loadSegment(i) : { id: i, entities: [], relations: [] });
     }
     return mergeSegmentsIntoGraph(segs);
   }
@@ -270,6 +295,7 @@ export class FileSegmentStorage implements ISegmentStorage {
     await this.recoverFromManifestIfPresent();
     const segs = splitGraphIntoSegments(graph, this.router);
     await this.ensureDir();
+    const existing = await this.existingSegmentIds();
 
     // Phase 1 — stage tmps. Tracked in `staged` so we can clean up
     // on any phase-1 failure.
@@ -278,17 +304,15 @@ export class FileSegmentStorage implements ISegmentStorage {
       for (const seg of segs) {
         const target = this.segmentPath(seg.id);
 
-        // An EMPTY segment whose file does not exist yet is skipped entirely.
-        // `loadSegment` already maps ENOENT onto an empty segment, so a missing
-        // file and an empty file are the same graph - but writing one costs a
-        // tmp write, an fsync and a rename each. At the 1024-segment cap a
-        // single-entity save wrote 1024 files (1023 of them empty) and took
-        // ~7.6 s; it now writes one.
+        // An EMPTY segment that has no file is skipped entirely. `loadSegment`
+        // maps ENOENT onto an empty segment, so a missing file and an empty
+        // file are the same graph. Writing one costs a tmp write, an fsync and
+        // a rename. At the 1024-segment cap, a one-entity save writes one file.
         //
         // An empty segment whose file DOES exist must still be written, to
         // truncate it. Skipping that would leave the previous contents on disk
         // and resurrect deleted entities on the next load.
-        if (isEmptySegment(seg) && !(await fileExists(target))) {
+        if (isEmptySegment(seg) && !existing.has(seg.id)) {
           continue;
         }
 
