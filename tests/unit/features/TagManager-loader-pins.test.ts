@@ -120,8 +120,7 @@ describe('TagManager alias loader (pins)', () => {
   });
 
   it('rethrows the TypeError of a non-string read result and does not cache it', async () => {
-    readFileSpy.mockResolvedValueOnce(Buffer.from(`${ALIAS_JS}
-`) as unknown as string);
+    readFileSpy.mockResolvedValueOnce(Buffer.from(`${ALIAS_JS}\n`) as unknown as string);
 
     await expect(manager.listTagAliases()).rejects.toMatchObject({
       name: 'TypeError',

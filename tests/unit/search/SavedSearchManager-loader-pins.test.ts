@@ -135,8 +135,7 @@ describe('SavedSearchManager loader (pins)', () => {
   });
 
   it('rethrows the TypeError of a non-string read result and does not cache it', async () => {
-    readFileSpy.mockResolvedValueOnce(Buffer.from(`${SEARCH_URGENT}
-`) as unknown as string);
+    readFileSpy.mockResolvedValueOnce(Buffer.from(`${SEARCH_URGENT}\n`) as unknown as string);
 
     await expect(manager.listSavedSearches()).rejects.toMatchObject({
       name: 'TypeError',
