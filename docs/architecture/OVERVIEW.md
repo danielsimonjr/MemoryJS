@@ -251,7 +251,7 @@ Most-used:
 
 - `MEMORY_STORAGE_TYPE` — `jsonl` (default) or `sqlite`
 - `MEMORY_BACKEND` — pluggable Memory Engine: `sqlite` (default) or `in-memory`
-- `MEMORY_EMBEDDING_PROVIDER` — `openai`, `local` (default), or `none`
+- `MEMORY_EMBEDDING_PROVIDER` — `openai`, `local` (default; needs the optional peer dependency `@huggingface/transformers`), `llamacpp`, or `none`
 - `MEMORY_OPENAI_API_KEY` — required when using OpenAI embeddings
 - `MEMORY_AGENT_ROLE` — built-in role profile (`researcher` / `planner` / `executor` / `reviewer` / `coordinator`)
 - `MEMORY_GOVERNANCE_ENABLED` — `'true'` wires `ctx.governanceManager`'s policy checks + audit logging into `EntityManager` mutations (the enforcement chokepoint); unset = `GovernanceManager` is still usable manually via `withTransaction`, but plain writes bypass it
@@ -282,9 +282,9 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 | Claim | Value | Source |
 |---|---|---|
 | totalSourceFiles | 738 | repo-tools map |
-| totalLinesOfCode | 254009 | repo-tools map |
+| totalLinesOfCode | 254158 | repo-tools map |
 | totalExports | 2921 | repo-tools map |
-| totalTypeOnlyImports | 769 | repo-tools map |
+| totalTypeOnlyImports | 771 | repo-tools map |
 | totalModules | 6 | repo-tools map |
 | entryRoots | 12 | repo-tools map |
 | reachableFiles | 303 | repo-tools map |

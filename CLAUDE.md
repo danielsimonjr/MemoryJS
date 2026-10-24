@@ -112,7 +112,7 @@ ctx.eventManager        // R1 event reification: actions as event hub entities (
 - `ContextWindowManager.compressEntitiesForContext()` — entity-aware compression wrapper
 - `IOManager.ingest(input, options)` — conversation ingestion pipeline (format-agnostic)
 - `AgentMemoryManager.writeDiary() / readDiary()` — per-agent persistent journal
-- Default embedding provider: `local` (zero-config semantic search, no API key needed)
+- Default embedding provider: `local` (Transformers.js, no API key needed; needs the optional peer dependency `@huggingface/transformers`)
 
 **Storage Layer** (`src/core/StorageFactory.ts`): Two backends selected via `MEMORY_STORAGE_TYPE` env var:
 - `GraphStorage` (JSONL, default): Human-readable, in-memory caching, atomic writes via temp file + rename
@@ -245,7 +245,7 @@ Vitest with 30s timeout. Coverage excludes `index.ts` barrel files. Custom `per-
 ### Embedding/Semantic Search
 | Variable | Values | Default |
 |----------|--------|---------|
-| `MEMORY_EMBEDDING_PROVIDER` | `openai`, `local`, `none` | `local` |
+| `MEMORY_EMBEDDING_PROVIDER` | `openai`, `local`, `llamacpp`, `none` | `local` |
 | `MEMORY_OPENAI_API_KEY` | API key string | - |
 | `MEMORY_EMBEDDING_MODEL` | Model name override | - |
 | `MEMORY_AUTO_INDEX_EMBEDDINGS` | `true`, `false` | `false` |

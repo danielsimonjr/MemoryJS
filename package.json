@@ -183,9 +183,13 @@
     "zod": "^4.6.6"
   },
   "peerDependencies": {
+    "@huggingface/transformers": "^4.3.1",
     "pg": ">=8.0.0"
   },
   "peerDependenciesMeta": {
+    "@huggingface/transformers": {
+      "optional": true
+    },
     "pg": {
       "optional": true
     }

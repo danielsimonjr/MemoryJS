@@ -88,7 +88,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/InMemoryBackend.ts` | src | reachable | 125 |
 | `src/agent/keyValueLine.ts` | src | reachable | 63 |
 | `src/agent/MemoryBackend.ts` | src | reachable | 156 |
-| `src/agent/MemoryEngine.ts` | src | reachable | 598 |
+| `src/agent/MemoryEngine.ts` | src | reachable | 597 |
 | `src/agent/MemoryFormatter.ts` | src | reachable | 516 |
 | `src/agent/MemoryValidator.ts` | src | reachable | 332 |
 | `src/agent/MultiAgentMemoryManager.ts` | src | reachable | 1149 |
@@ -243,7 +243,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/search/BooleanSearch.ts` | src | reachable | 572 |
 | `src/search/EarlyTerminationManager.ts` | src | reachable | 394 |
 | `src/search/EmbeddingCache.ts` | src | reachable | 347 |
-| `src/search/EmbeddingService.ts` | src | reachable | 912 |
+| `src/search/EmbeddingService.ts` | src | reachable | 928 |
 | `src/search/EvidencePathBuilder.ts` | src | reachable | 222 |
 | `src/search/ftsCandidates.ts` | src | reachable | 50 |
 | `src/search/FuzzySearch.ts` | src | reachable | 637 |
@@ -315,7 +315,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/utils/compression/CompressedMap.ts` | src | reachable | 295 |
 | `src/utils/compression/ICompressionAdapter.ts` | src | reachable | 176 |
 | `src/utils/compressionUtil.ts` | src | reachable | 422 |
-| `src/utils/constants.ts` | src | reachable | 339 |
+| `src/utils/constants.ts` | src | reachable | 344 |
 | `src/utils/Diagnostics.ts` | src | reachable | 85 |
 | `src/utils/durableWriteFile.ts` | src | reachable | 270 |
 | `src/utils/entityUtils.ts` | src | reachable | 889 |
@@ -443,7 +443,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/InMemoryBackend.test.ts` | tests | test | 99 |
 | `tests/unit/agent/keyValueLine.test.ts` | tests | test | 60 |
 | `tests/unit/agent/memoryBackend-wiring.test.ts` | tests | test | 71 |
-| `tests/unit/agent/MemoryEngine.test.ts` | tests | test | 776 |
+| `tests/unit/agent/MemoryEngine.test.ts` | tests | test | 858 |
 | `tests/unit/agent/MemoryFormatter.test.ts` | tests | test | 313 |
 | `tests/unit/agent/MemoryFormatterSalience.test.ts` | tests | test | 242 |
 | `tests/unit/agent/MemoryValidator.test.ts` | tests | test | 203 |
@@ -637,7 +637,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/search/cache-isolation.test.ts` | tests | test | 113 |
 | `tests/unit/search/EarlyTerminationManager.test.ts` | tests | test | 411 |
 | `tests/unit/search/EmbeddingCache.test.ts` | tests | test | 455 |
-| `tests/unit/search/EmbeddingService.test.ts` | tests | test | 1047 |
+| `tests/unit/search/EmbeddingService.test.ts` | tests | test | 1094 |
 | `tests/unit/search/EvidencePathBuilder.test.ts` | tests | test | 225 |
 | `tests/unit/search/FuzzySearch.test.ts` | tests | test | 1323 |
 | `tests/unit/search/FuzzySearchWorkerPath.test.ts` | tests | test | 97 |

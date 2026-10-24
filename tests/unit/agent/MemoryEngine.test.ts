@@ -1,7 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { MemoryEngine } from '../../../src/agent/MemoryEngine.js';
 import { ImportanceScorer } from '../../../src/agent/ImportanceScorer.js';
 import { ManagerContext } from '../../../src/core/ManagerContext.js';
+import type { SQLiteStorage } from '../../../src/core/SQLiteStorage.js';
+import { SQLiteVectorStore } from '../../../src/search/VectorStore.js';
+import { LocalEmbeddingService } from '../../../src/search/EmbeddingService.js';
+import { EMBEDDING_DEFAULTS } from '../../../src/utils/constants.js';
+import type { EmbeddingService } from '../../../src/types/types.js';
 import { rmSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -771,5 +776,82 @@ describe('MemoryEngine Jaccard tier at threshold 0 (pinned)', () => {
     const result = engine.checkTierJaccard('alpha', [candidate('c1', ''), candidate('c2', 'beta')]);
     expect(result.isDuplicate).toBe(true);
     expect(result.match?.name).toBe('c2');
+  });
+});
+
+describe('MemoryEngine — turn embeddings', () => {
+  it('stores a turn embedding under the model of the embedding service', async () => {
+    const file = path.join(os.tmpdir(), `memengine-embed-${Date.now()}-${Math.random()}.db`);
+    const previousStorageType = process.env.MEMORY_STORAGE_TYPE;
+    process.env.MEMORY_STORAGE_TYPE = 'sqlite';
+    const ctx = new ManagerContext(file);
+    const storage = ctx.storage as SQLiteStorage;
+    try {
+      const embeddingService: EmbeddingService = {
+        dimensions: 3,
+        provider: 'test',
+        model: 'test-model-v1',
+        embed: async () => [0.1, 0.2, 0.3],
+        embedBatch: async texts => texts.map(() => [0.1, 0.2, 0.3]),
+      };
+      const agent = ctx.agentMemory();
+      const engine = new MemoryEngine(
+        storage, ctx.entityManager, agent.episodicMemory,
+        agent.workingMemory, new ImportanceScorer(), undefined, embeddingService,
+      );
+
+      const { entity } = await engine.addTurn('a turn with an embedding', { sessionId: 'emb-A', role: 'user' });
+
+      const metadata = await storage.loadEmbeddingMetadata();
+      expect(metadata.find(m => m.entityName === entity.name)?.embeddingModel).toBe('test-model-v1');
+      // A vector store of the same model loads the vector, as after a restart.
+      const store = new SQLiteVectorStore(storage, embeddingService.model);
+      await store.initialize();
+      expect(store.has(entity.name)).toBe(true);
+    } finally {
+      storage.close();
+      if (previousStorageType === undefined) delete process.env.MEMORY_STORAGE_TYPE;
+      else process.env.MEMORY_STORAGE_TYPE = previousStorageType;
+      for (const suffix of ['', '-wal', '-shm']) rmSync(file + suffix, { force: true });
+    }
+  });
+
+  it('with no provider set, stores turn embeddings under the Transformers.js model name', async () => {
+    const file = path.join(os.tmpdir(), `memengine-local-${Date.now()}-${Math.random()}.db`);
+    const saved = {
+      MEMORY_STORAGE_TYPE: process.env.MEMORY_STORAGE_TYPE,
+      MEMORY_EMBEDDING_PROVIDER: process.env.MEMORY_EMBEDDING_PROVIDER,
+      MEMORY_EMBEDDING_MODEL: process.env.MEMORY_EMBEDDING_MODEL,
+    };
+    process.env.MEMORY_STORAGE_TYPE = 'sqlite';
+    delete process.env.MEMORY_EMBEDDING_PROVIDER;
+    delete process.env.MEMORY_EMBEDDING_MODEL;
+    // The Transformers.js pipeline is not loaded: the test replaces only the vector.
+    const embed = vi
+      .spyOn(LocalEmbeddingService.prototype, 'embed')
+      .mockResolvedValue(new Array(EMBEDDING_DEFAULTS.LOCAL_DIMENSIONS).fill(0.01));
+    const ctx = new ManagerContext(file);
+    const storage = ctx.storage as SQLiteStorage;
+    try {
+      expect(ctx.semanticSearch?.getEmbeddingService()).toBeInstanceOf(LocalEmbeddingService);
+
+      const { entity } = await ctx.memoryEngine.addTurn('a turn on the default provider', {
+        sessionId: 'emb-local',
+        role: 'user',
+      });
+
+      expect(embed).toHaveBeenCalledTimes(1);
+      const models = (await storage.loadEmbeddingMetadata()).map(m => [m.entityName, m.embeddingModel]);
+      expect(models).toEqual([[entity.name, 'Xenova/all-MiniLM-L6-v2']]);
+      expect(models.some(([, model]) => model === 'unknown')).toBe(false);
+    } finally {
+      embed.mockRestore();
+      storage.close();
+      for (const [key, value] of Object.entries(saved)) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+      for (const suffix of ['', '-wal', '-shm']) rmSync(file + suffix, { force: true });
+    }
   });
 });

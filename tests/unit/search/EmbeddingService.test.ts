@@ -7,6 +7,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { readFileSync } from 'node:fs';
 import {
   OpenAIEmbeddingService,
   LocalEmbeddingService,
@@ -14,6 +15,9 @@ import {
   createEmbeddingService,
 } from '../../../src/search/EmbeddingService.js';
 import { EMBEDDING_DEFAULTS } from '../../../src/utils/constants.js';
+
+/** The Transformers.js package that LocalEmbeddingService loads. */
+const TRANSFORMERS_PACKAGE = '@huggingface/transformers';
 
 describe('OpenAIEmbeddingService', () => {
   const mockApiKey = 'sk-test-api-key';
@@ -261,16 +265,59 @@ describe('LocalEmbeddingService', () => {
     expect(service.model).toBe(customModel);
   });
 
-  it('should report not ready before initialization', async () => {
-    // Mock import to fail
-    vi.doMock('@xenova/transformers', () => {
-      throw new Error('Module not found');
+  describe('Transformers.js loading', () => {
+    afterEach(() => {
+      vi.doUnmock(TRANSFORMERS_PACKAGE);
     });
 
-    const service = new LocalEmbeddingService();
-    const isReady = await service.isReady();
-    // Should return false when transformers is not available
-    expect(isReady).toBe(false);
+    it('should report not ready when Transformers.js cannot load', async () => {
+      vi.doMock(TRANSFORMERS_PACKAGE, () => {
+        throw new Error('Module not found');
+      });
+
+      const service = new LocalEmbeddingService();
+      expect(await service.isReady()).toBe(false);
+    });
+
+    it('names the package to install when Transformers.js cannot load', async () => {
+      vi.doMock(TRANSFORMERS_PACKAGE, () => {
+        throw new Error('Module not found');
+      });
+
+      const service = new LocalEmbeddingService();
+      await expect(service.initialize()).rejects.toThrow(`npm install ${TRANSFORMERS_PACKAGE}`);
+    });
+
+    it('loads the q8 feature-extraction pipeline of the model from @huggingface/transformers', async () => {
+      const extractor = vi.fn(async () => ({ data: Float32Array.from([0.6, 0.8]) }));
+      const pipeline = vi.fn(async () => extractor);
+      vi.doMock(TRANSFORMERS_PACKAGE, () => ({ pipeline }));
+
+      const service = new LocalEmbeddingService();
+      const vector = await service.embed('hello', 'query');
+
+      expect(pipeline).toHaveBeenCalledTimes(1);
+      expect(pipeline).toHaveBeenCalledWith('feature-extraction', EMBEDDING_DEFAULTS.LOCAL_MODEL, {
+        dtype: EMBEDDING_DEFAULTS.LOCAL_DTYPE,
+      });
+      expect(EMBEDDING_DEFAULTS.LOCAL_DTYPE).toBe('q8');
+      expect(extractor).toHaveBeenCalledWith(`${QUERY_PREFIX}hello`, { pooling: 'mean', normalize: true });
+      expect(vector).toEqual(Array.from(Float32Array.from([0.6, 0.8])));
+    });
+  });
+
+  it('declares @huggingface/transformers as an optional peer dependency only', () => {
+    const manifest = JSON.parse(
+      readFileSync(new URL('../../../package.json', import.meta.url), 'utf8'),
+    ) as Record<string, Record<string, unknown> | undefined>;
+
+    expect(manifest.peerDependencies?.[TRANSFORMERS_PACKAGE]).toEqual(expect.any(String));
+    expect(manifest.peerDependenciesMeta?.[TRANSFORMERS_PACKAGE]).toEqual({ optional: true });
+    expect(manifest.dependencies?.[TRANSFORMERS_PACKAGE]).toBeUndefined();
+    expect(manifest.devDependencies?.[TRANSFORMERS_PACKAGE]).toBeUndefined();
+    for (const field of ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']) {
+      expect(manifest[field]?.['@xenova/transformers']).toBeUndefined();
+    }
   });
 });
 

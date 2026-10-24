@@ -373,7 +373,7 @@ try {
 | Variable | Values | Default |
 |----------|--------|---------|
 | `MEMORY_STORAGE_TYPE` | `jsonl`, `sqlite` | `jsonl` |
-| `MEMORY_EMBEDDING_PROVIDER` | `openai`, `local`, `none` | `local` |
+| `MEMORY_EMBEDDING_PROVIDER` | `openai`, `local` (needs `@huggingface/transformers`), `llamacpp`, `none` | `local` |
 | `MEMORY_OPENAI_API_KEY` | API key | - |
 | `MEMORY_HYBRID_GRAPH_WEIGHT` | Number (0-1) | `0` (off) |
 | `MEMORY_RANKED_GRAPH_BOOST` | Number (≥0) | `0` (off) |

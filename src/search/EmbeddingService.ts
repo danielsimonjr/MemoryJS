@@ -599,14 +599,28 @@ export class LlamaCppEmbeddingService implements EmbeddingService {
 }
 
 /**
+ * The part of the `@huggingface/transformers` module that
+ * `LocalEmbeddingService` calls.
+ */
+interface TransformersModule {
+  pipeline(
+    task: 'feature-extraction',
+    model: string,
+    options: { dtype: typeof EMBEDDING_DEFAULTS.LOCAL_DTYPE },
+  ): Promise<unknown>;
+}
+
+/**
  * Local Embedding Service
  *
- * Uses @xenova/transformers for local embedding generation.
- * No API calls needed - runs entirely offline after initial model download.
- * Phase 12 Sprint 5: Added mode parameter and progress callback support.
+ * Uses Transformers.js (`@huggingface/transformers`) for local embedding
+ * generation. No API calls are necessary. The service runs offline after the
+ * first model download. Phase 12 Sprint 5: Added mode parameter and progress
+ * callback support.
  *
- * Note: Requires @xenova/transformers to be installed as an optional dependency.
- * If not available, initialization will fail gracefully.
+ * `@huggingface/transformers` is an optional peer dependency. Install it to
+ * use this service. Without it, `initialize()` throws and `isReady()`
+ * returns false.
  *
  * @example
  * ```typescript
@@ -653,18 +667,20 @@ export class LocalEmbeddingService implements EmbeddingService {
    */
   private async initializeInternal(): Promise<void> {
     try {
-      // Dynamic import to allow optional dependency
-      // @ts-expect-error - @xenova/transformers is an optional peer dependency
-      const transformers = await import('@xenova/transformers');
-      const { pipeline } = transformers;
+      // The dynamic import keeps the optional peer dependency out of module
+      // load. The `as string` cast stops TypeScript from resolving the module,
+      // so the type check passes with and without the package installed.
+      const transformers = (await import('@huggingface/transformers' as string)) as TransformersModule;
 
-      this.pipeline = await pipeline('feature-extraction', this.model);
+      this.pipeline = await transformers.pipeline('feature-extraction', this.model, {
+        dtype: EMBEDDING_DEFAULTS.LOCAL_DTYPE,
+      });
       this.initialized = true;
     } catch (error) {
       this.initPromise = null;
       throw new Error(
         `Failed to initialize local embedding service: ${error instanceof Error ? error.message : String(error)}. ` +
-        'Make sure @xenova/transformers is installed.'
+        'Install the optional peer dependency: npm install @huggingface/transformers'
       );
     }
   }

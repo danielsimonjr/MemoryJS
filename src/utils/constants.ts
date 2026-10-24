@@ -205,7 +205,7 @@ export type CompressionQuality =
  * Environment variable names for embedding configuration.
  */
 export const EMBEDDING_ENV_VARS = {
-  /** Embedding provider: 'openai', 'local', or 'none' (default: 'none') */
+  /** Embedding provider: 'openai', 'local', 'llamacpp', or 'none' (default: 'local') */
   PROVIDER: 'MEMORY_EMBEDDING_PROVIDER',
   /** OpenAI API key (required when provider is 'openai') */
   OPENAI_API_KEY: 'MEMORY_OPENAI_API_KEY',
@@ -231,6 +231,11 @@ export const EMBEDDING_DEFAULTS = {
   OPENAI_MODEL: 'text-embedding-3-small',
   /** Default local model for embeddings (384 dimensions) */
   LOCAL_MODEL: 'Xenova/all-MiniLM-L6-v2',
+  /**
+   * Transformers.js weight format of the local model. 'q8' loads the 8-bit
+   * `onnx/model_quantized.onnx` file (23 MB), not the 90 MB fp32 file.
+   */
+  LOCAL_DTYPE: 'q8' as const,
   /** OpenAI embedding dimensions for text-embedding-3-small */
   OPENAI_DIMENSIONS: 1536,
   /** Local embedding dimensions for all-MiniLM-L6-v2 */

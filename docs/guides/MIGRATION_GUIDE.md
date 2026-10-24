@@ -452,9 +452,8 @@ const checkpoints = new SessionCheckpointManager(
 
 ## Behavioral Changes (Unreleased — post-v2.9.0)
 
-Two changes from the delta-persistence + security optimization pass are
-**behavioral**, not purely additive — check them if your integration relies
-on the old shape.
+The changes in this section are **behavioral**, not purely additive — check
+them if your integration relies on the old shape.
 
 ### `UpdateEntitySchema` now strips unknown keys (Sec7)
 
@@ -533,6 +532,26 @@ one event regardless of batch size (per-item event counts now scale with
 the batch). Built-in consumers (`TFIDFEventSync`, `GraphRankPrior`,
 columnar observation store) were updated as part of this same change and
 require no action.
+
+### The `local` embedding provider loads `@huggingface/transformers`
+
+`LocalEmbeddingService` loads Transformers.js from the package
+`@huggingface/transformers` (`^4.3.1`). It does not load
+`@xenova/transformers`. The package is an optional peer dependency in
+`package.json`, so your package manager does not install it.
+
+**Action required if** you use the `local` provider, which is the default
+`MEMORY_EMBEDDING_PROVIDER`. Install the new package:
+
+```bash
+bun add @huggingface/transformers
+```
+
+You can remove `@xenova/transformers`. The model ID (`Xenova/all-MiniLM-L6-v2`)
+and the model file (`onnx/model_quantized.onnx`, 8-bit weights) do not change.
+Stored vectors keep their model name, so they stay in use. The ONNX runtime
+changes. In a measurement on one text, the cosine similarity between the
+vectors of the old and the new runtime was 0.998.
 
 ---
 
