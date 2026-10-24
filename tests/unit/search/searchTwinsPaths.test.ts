@@ -2,8 +2,8 @@
  * Pin tests for the two parent-walk path reconstructions:
  * GraphTraversal.reconstructPath and EvidencePathBuilder.reconstruct.
  *
- * Golden values were recorded from the code before the shared parent walk
- * was extracted. Both owners keep their own return shape.
+ * Each test pins the exact output of one caller on a fixed graph.
+ * Each caller keeps its own return shape.
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs';
