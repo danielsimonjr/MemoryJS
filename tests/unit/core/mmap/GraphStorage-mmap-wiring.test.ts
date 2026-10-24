@@ -585,5 +585,33 @@ describe('GraphStorage mmap wiring (task 84)', () => {
         expect(seen).toEqual([{ entity: 'alice', from: 1, words: ['alice', 'bob', 'carol'] }]);
       }
     });
+
+    it('loads blank, whitespace-only and CRLF-blank lines on both paths without a warning', async () => {
+      const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+      // A blank line is not a malformed line: no count, no warning.
+      const content = [ALICE_LINE, '', '   \t', BOB_LINE, '\r', ''].join('\r\n') + '\r\n\r\n  ';
+      try {
+        for (const useMmap of [false, true]) {
+          const result = await loadWith(useMmap, content);
+          expect(result.graph.entities.map((e) => e.name)).toEqual(['alice', 'bob']);
+        }
+        expect(warnSpy).not.toHaveBeenCalled();
+      } finally {
+        warnSpy.mockRestore();
+      }
+    });
+
+    it('decodes multi-byte UTF-8 names and observations the same way on both paths', async () => {
+      const entity = (name: string, observations: string[]) =>
+        JSON.stringify({ type: 'entity', name, entityType: 'person', observations, createdAt: '2026-05-11T00:00:00Z', lastModified: '2026-05-11T00:00:00Z' });
+      const content = [entity('gérard', ['café 漢字 😀']), entity('漢字', [])].join('\n') + '\n';
+      for (const useMmap of [false, true]) {
+        const { graph } = await loadWith(useMmap, content);
+        expect(graph.entities.map((e) => [e.name, e.observations])).toEqual([
+          ['gérard', ['café 漢字 😀']],
+          ['漢字', []],
+        ]);
+      }
+    });
   });
 });
