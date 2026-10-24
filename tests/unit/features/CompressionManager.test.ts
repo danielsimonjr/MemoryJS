@@ -493,3 +493,81 @@ describe('CompressionManager name length measure (D7, both argument orders)', ()
     expect(cm.calculatePreparedSimilarity(cm.prepareEntity(named(a)), cm.prepareEntity(named(b)))).toBe(0.5185185185185185);
   });
 });
+
+describe('CompressionManager similarity read order and edge values (pinned)', () => {
+  const cm = new CompressionManager({} as never) as unknown as {
+    calculateEntitySimilarity(e1: Entity, e2: Entity): number;
+    prepareEntity(entity: Entity): unknown;
+    calculatePreparedSimilarity(p1: unknown, p2: unknown): number;
+  };
+  const make = (name: string, entityType: string, observations: unknown[], tags?: unknown) =>
+    ({ name, entityType, observations, tags }) as unknown as Entity;
+  const both = (e1: Entity, e2: Entity) => [
+    cm.calculateEntitySimilarity(e1, e2),
+    cm.calculatePreparedSimilarity(cm.prepareEntity(e1), cm.prepareEntity(e2)),
+  ];
+  const traced = (entity: Entity, trace: string[], tag: string) =>
+    new Proxy(entity, {
+      get(t, key) {
+        trace.push(tag + String(key));
+        return Reflect.get(t, key);
+      },
+    });
+  const throwing = (entity: Entity, key: keyof Entity, message: string) =>
+    Object.defineProperty(entity, key, {
+      get() {
+        throw new Error(message);
+      },
+    });
+
+  it('returns NaN on both paths for two empty names', () => {
+    const [calc, prepared] = both(make('', 'p', []), make('', 'p', []));
+    expect(calc).toBeNaN();
+    expect(prepared).toBeNaN();
+  });
+
+  it.each([
+    ['tags on one side only', make('Alice', 'p', ['a'], ['x']), make('Alice', 'p', ['a']), 0.8999999999999999],
+    ['duplicate tags after lowercasing', make('Alice', 'p', ['a'], ['A', 'a']), make('Alicia', 'q', ['A', 'b'], ['a']), 0.5166666666666666],
+  ])('returns the literal value for %s on both paths', (_label, e1, e2, expected) => {
+    expect(both(e1, e2)).toEqual([expected, expected]);
+  });
+
+  it('reads each name twice and the other fields once, one factor at a time', () => {
+    const withTags: string[] = [];
+    cm.calculateEntitySimilarity(
+      traced(make('Ann', 'P', ['a', 'b'], ['t']), withTags, '1.'),
+      traced(make('Anna', 'p', ['B']), withTags, '2.'),
+    );
+    expect(withTags).toEqual([
+      '1.name', '2.name', '1.name', '2.name', '1.entityType', '2.entityType',
+      '1.observations', '2.observations', '1.tags', '1.tags', '2.tags',
+    ]);
+    const noTags: string[] = [];
+    cm.calculateEntitySimilarity(
+      traced(make('Ann', 'P', ['a']), noTags, '1.'),
+      traced(make('Anna', 'p', ['B'], []), noTags, '2.'),
+    );
+    expect(noTags).toEqual([
+      '1.name', '2.name', '1.name', '2.name', '1.entityType', '2.entityType',
+      '1.observations', '2.observations', '1.tags', '2.tags',
+    ]);
+  });
+
+  it('throws the error of the first factor that fails', () => {
+    expect(() =>
+      cm.calculateEntitySimilarity(throwing(make('A', 'p', []), 'entityType', 'type1'), throwing(make('B', 'p', []), 'name', 'name2')),
+    ).toThrow('name2');
+    expect(() =>
+      cm.calculateEntitySimilarity(throwing(make('A', 'p', []), 'observations', 'obs1'), throwing(make('B', 'p', []), 'entityType', 'type2')),
+    ).toThrow('type2');
+    expect(() => cm.calculateEntitySimilarity(make('A', 'p', [1]), make('B', 'p', [], { length: 1 }))).toThrow(/o\.toLowerCase is not a function/);
+  });
+
+  it('skips the tag factor without reading tag items when both tag lengths are zero or missing', () => {
+    expect(cm.calculateEntitySimilarity(make('Al', 'p', ['a'], ''), make('Al', 'p', ['a'], ''))).toBe(1);
+    expect(cm.calculateEntitySimilarity(make('Al', 'p', ['a'], 5), make('Al', 'p', ['a'], 5))).toBe(1);
+    expect(() => cm.prepareEntity(make('Al', 'p', ['a'], 5))).toThrow(TypeError);
+    expect(() => cm.calculateEntitySimilarity(make('A', 'p', []), make('B', 'p', [], 'ab'))).toThrow(/\.map is not a function/);
+  });
+});

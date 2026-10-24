@@ -765,6 +765,56 @@ describe('calculateIDF (pinned)', () => {
   });
 });
 
+describe('calculateIDF and calculateIDFFromTokenSets check order (pinned)', () => {
+  const traced = <T extends object>(target: T, trace: string[]): T =>
+    new Proxy(target, {
+      get(t, key) {
+        trace.push(String(key));
+        return Reflect.get(t, key);
+      },
+    });
+
+  it('returns 0 for no documents before it reads the term', () => {
+    expect(calculateIDF(undefined as unknown as string, [])).toBe(0);
+    expect(calculateIDFFromTokenSets(undefined as unknown as string, [])).toBe(0);
+  });
+
+  it('reads the term before any document', () => {
+    const trace: string[] = [];
+    const documents = traced(['alpha', 5 as unknown as string], trace);
+    expect(() => calculateIDF(undefined as unknown as string, documents)).toThrow(TypeError);
+    expect(trace).toEqual(['length']);
+  });
+
+  it('does not read documents.length again when no document has the term', () => {
+    const trace: string[] = [];
+    expect(calculateIDF('zzz', traced(['alpha beta', 'gamma'], trace))).toBe(0);
+    expect(trace).toEqual(['length', 'filter', 'length', 'constructor', '0', '1']);
+  });
+
+  it('walks the token sets with the iterator and reads length at the end only when a set has the term', () => {
+    const sets = [new Set(['alpha', 'beta']), new Set(['gamma'])];
+    const hit: string[] = [];
+    expect(calculateIDFFromTokenSets('beta', traced(sets, hit))).toBe(Math.log(2));
+    expect(hit).toEqual(['length', 'Symbol(Symbol.iterator)', 'length', '0', 'length', '1', 'length', 'length']);
+    const miss: string[] = [];
+    expect(calculateIDFFromTokenSets('zzz', traced(sets, miss))).toBe(0);
+    expect(miss).toEqual(['length', 'Symbol(Symbol.iterator)', 'length', '0', 'length', '1', 'length']);
+  });
+
+  it('throws a TypeError on a hole in the token sets and on a set without has', () => {
+    const sparse = [new Set(['a']), new Set(['b']), new Set(['c'])];
+    delete (sparse as unknown[])[1];
+    expect(() => calculateIDFFromTokenSets('a', sparse)).toThrow(TypeError);
+    expect(() => calculateIDFFromTokenSets('a', [['a'] as unknown as Set<string>])).toThrow(/tokenSet\.has is not a function/);
+  });
+
+  it('accepts any token set object with a has method', () => {
+    const sets = [new Map([['a', 1]]) as unknown as Set<string>, new Set<string>()];
+    expect(calculateIDFFromTokenSets('A', sets)).toBe(Math.log(2));
+  });
+});
+
 describe('minMaxNormalize (shared helper)', () => {
   it('returns a new map with the literal values for each score shape', () => {
     const input = new Map([['a', 1], ['b', 3], ['c', 2]]);
