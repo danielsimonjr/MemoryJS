@@ -143,7 +143,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/retrieval/QueryRewriter.ts` | src | reachable | 83 |
 | `src/agent/RoleProfiles.ts` | src | reachable | 237 |
 | `src/agent/RuleEvaluator.ts` | src | reachable | 149 |
-| `src/agent/SalienceEngine.ts` | src | reachable | 734 |
+| `src/agent/SalienceEngine.ts` | src | reachable | 747 |
 | `src/agent/SessionCheckpoint.ts` | src | reachable | 692 |
 | `src/agent/SessionManager.ts` | src | reachable | 678 |
 | `src/agent/SessionQueryBuilder.ts` | src | reachable | 558 |
@@ -491,7 +491,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/RelationConsolidator.test.ts` | tests | test | 670 |
 | `tests/unit/agent/RoleProfiles.test.ts` | tests | test | 255 |
 | `tests/unit/agent/RuleEvaluator.test.ts` | tests | test | 310 |
-| `tests/unit/agent/SalienceEngine.test.ts` | tests | test | 749 |
+| `tests/unit/agent/SalienceEngine.test.ts` | tests | test | 812 |
 | `tests/unit/agent/SessionCheckpoint.test.ts` | tests | test | 698 |
 | `tests/unit/agent/SessionManager.test.ts` | tests | test | 827 |
 | `tests/unit/agent/SessionQueryBuilder.test.ts` | tests | test | 526 |

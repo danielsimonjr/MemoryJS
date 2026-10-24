@@ -28,6 +28,16 @@ import type { SalienceEngineConfig } from '../types/agent-memory.js';
 export type { SalienceEngineConfig };
 
 /**
+ * Converts a result limit to a count of entities, with the limit rule of
+ * InMemoryVectorStore.search. NaN, zero and a negative limit give 0. A finite
+ * limit is floored. The count is never more than `size`.
+ */
+function limitCount(limit: number, size: number): number {
+  if (!(limit > 0)) return 0;
+  return Number.isFinite(limit) ? Math.min(size, Math.floor(limit)) : size;
+}
+
+/**
  * Calculates multi-factor salience scores for memories.
  *
  * The SalienceEngine combines multiple signals to produce a single
@@ -187,7 +197,8 @@ export class SalienceEngine {
    * Get top N entities by salience from storage.
    *
    * @param context - Context for relevance scoring
-   * @param limit - Maximum number of entities to return (default: 10)
+   * @param limit - Maximum number of entities to return (default: 10).
+   *   NaN, zero and a negative limit return no entities. A fractional limit is floored.
    * @returns Top entities sorted by salience
    */
   async getTopSalient(
@@ -198,7 +209,7 @@ export class SalienceEngine {
     const agentEntities = graph.entities.filter(isAgentEntity) as AgentEntity[];
 
     const ranked = await this.rankEntitiesBySalience(agentEntities, context);
-    return ranked.slice(0, limit);
+    return ranked.slice(0, limitCount(limit, ranked.length));
   }
 
   // ==================== Component Calculations ====================
@@ -604,7 +615,8 @@ export class SalienceEngine {
    * Time complexity: O(n log k) where n is total entities, k is limit.
    *
    * @param context - Context for relevance scoring
-   * @param limit - Maximum number of entities to return (default: 10)
+   * @param limit - Maximum number of entities to return (default: 10).
+   *   NaN, zero and a negative limit return no entities. A fractional limit is floored.
    * @returns Top entities sorted by salience (descending)
    */
   async getMostSalient(
@@ -613,14 +625,15 @@ export class SalienceEngine {
   ): Promise<ScoredEntity[]> {
     const graph = await this.storage.loadGraph();
     const agentEntities = graph.entities.filter(isAgentEntity) as AgentEntity[];
+    const count = limitCount(limit, agentEntities.length);
 
-    if (agentEntities.length === 0) {
+    if (count === 0) {
       return [];
     }
 
     // For small datasets or large limits, use simple sort
-    if (agentEntities.length <= limit * 3) {
-      return this.getTopSalient(context, limit);
+    if (agentEntities.length <= count * 3) {
+      return this.getTopSalient(context, count);
     }
 
     // Use min-heap for O(n log k) selection
@@ -629,7 +642,7 @@ export class SalienceEngine {
     for (const entity of agentEntities) {
       const scored = await this.calculateSalience(entity, context);
 
-      if (heap.length < limit) {
+      if (heap.length < count) {
         // Heap not full - insert and maintain heap property
         this.heapInsert(heap, scored);
       } else if (scored.salienceScore > heap[0].salienceScore) {
