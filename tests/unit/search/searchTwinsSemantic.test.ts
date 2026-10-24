@@ -139,3 +139,54 @@ describe('SemanticSearch.findSimilar pins', () => {
     ]);
   });
 });
+
+describe('SemanticSearch member lookups', () => {
+  /** Wrap a search object so that each string member that a call reads is logged. */
+  const withLookupLog = (semantic: SemanticSearch) => {
+    const log: string[] = [];
+    const proxy = new Proxy(semantic, {
+      get(target, property, receiver) {
+        if (typeof property === 'string') log.push(property);
+        return Reflect.get(target, property, receiver);
+      },
+    });
+    return { proxy, log };
+  };
+
+  it('search reads these members of this, in this order', async () => {
+    const { semantic } = await createIndexed();
+    const { proxy, log } = withLookupLog(semantic);
+
+    await proxy.search(graph, 'databases at Acme', 2);
+
+    expect(log).toStrictEqual([
+      'search',
+      'ensureStoreReady',
+      'storeReady',
+      'storeReady',
+      'embedCached',
+      'embeddingCache',
+      'embeddingService',
+      'embeddingCache',
+      'vectorStore',
+      'buildEntityMap',
+    ]);
+  });
+
+  it('findSimilar reads these members of this, in this order', async () => {
+    const { semantic } = await createIndexed();
+    const { proxy, log } = withLookupLog(semantic);
+
+    await proxy.findSimilar(graph, 'Alice', 2);
+
+    expect(log).toStrictEqual([
+      'findSimilar',
+      'ensureStoreReady',
+      'storeReady',
+      'storeReady',
+      'vectorStore',
+      'vectorStore',
+      'buildEntityMap',
+    ]);
+  });
+});

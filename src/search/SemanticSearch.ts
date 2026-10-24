@@ -53,6 +53,54 @@ export function entityToText(entity: Entity): string {
 }
 
 /**
+ * Convert vector store hits into semantic results with entity lookup.
+ *
+ * Hits below the threshold are skipped. The excluded name is skipped when it is set.
+ * The list stops at the limit. The function does not use `this`, so a caller reads
+ * the entity map itself.
+ *
+ * @param entityMap - Entities by name
+ * @param vectorResults - Hits from the vector store, best first
+ * @param effectiveLimit - Maximum number of results
+ * @param minSimilarity - Minimum similarity threshold
+ * @param excludeName - Entity name to skip, such as the entity itself
+ * @returns Semantic results in the order of the hits
+ */
+function toSemanticResults(
+  entityMap: Map<string, Entity>,
+  vectorResults: VectorSearchResult[],
+  effectiveLimit: number,
+  minSimilarity: number,
+  excludeName?: string,
+): SemanticSearchResult[] {
+  const results: SemanticSearchResult[] = [];
+  for (const result of vectorResults) {
+    // Skip self
+    if (excludeName !== undefined && result.name === excludeName) {
+      continue;
+    }
+
+    if (result.score < minSimilarity) {
+      continue;
+    }
+
+    const entity = entityMap.get(result.name);
+    if (entity) {
+      results.push({
+        entity,
+        similarity: result.score,
+      });
+    }
+
+    if (results.length >= effectiveLimit) {
+      break;
+    }
+  }
+
+  return results;
+}
+
+/**
  * Optional collaborators for `SemanticSearch`, such as the embedding cache.
  */
 export interface SemanticSearchOptions {
@@ -386,7 +434,7 @@ export class SemanticSearch {
     // Search vector store
     const vectorResults = this.vectorStore.search(queryEmbedding, effectiveLimit * 2); // Get extra for filtering
 
-    return this.searchStore(graph, vectorResults, effectiveLimit, minSimilarity);
+    return toSemanticResults(this.buildEntityMap(graph), vectorResults, effectiveLimit, minSimilarity);
   }
 
   /**
@@ -423,57 +471,13 @@ export class SemanticSearch {
     // Search vector store (request extra to filter out self)
     const vectorResults = this.vectorStore.search(embedding, effectiveLimit + 1);
 
-    return this.searchStore(graph, vectorResults, effectiveLimit, minSimilarity, entityName);
-  }
-
-  /**
-   * Convert vector store hits into semantic results with entity lookup.
-   *
-   * Hits below the threshold are skipped. The excluded name is skipped when it is set.
-   * The list stops at the limit.
-   *
-   * @param graph - Knowledge graph that holds the entities
-   * @param vectorResults - Hits from the vector store, best first
-   * @param effectiveLimit - Maximum number of results
-   * @param minSimilarity - Minimum similarity threshold
-   * @param excludeName - Entity name to skip, such as the entity itself
-   * @returns Semantic results in the order of the hits
-   */
-  private searchStore(
-    graph: ReadonlyKnowledgeGraph,
-    vectorResults: VectorSearchResult[],
-    effectiveLimit: number,
-    minSimilarity: number,
-    excludeName?: string,
-  ): SemanticSearchResult[] {
-    // Convert to SemanticSearchResult with entity lookup
-    const entityMap = this.buildEntityMap(graph);
-
-    const results: SemanticSearchResult[] = [];
-    for (const result of vectorResults) {
-      // Skip self
-      if (excludeName !== undefined && result.name === excludeName) {
-        continue;
-      }
-
-      if (result.score < minSimilarity) {
-        continue;
-      }
-
-      const entity = entityMap.get(result.name);
-      if (entity) {
-        results.push({
-          entity,
-          similarity: result.score,
-        });
-      }
-
-      if (results.length >= effectiveLimit) {
-        break;
-      }
-    }
-
-    return results;
+    return toSemanticResults(
+      this.buildEntityMap(graph),
+      vectorResults,
+      effectiveLimit,
+      minSimilarity,
+      entityName,
+    );
   }
 
   /**
