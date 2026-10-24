@@ -1,12 +1,12 @@
 {
-  "generated": "2026-10-23",
-  "totalFiles": 707,
+  "generated": "2026-10-24",
+  "totalFiles": 708,
   "byDisposition": {
     "reachable": 296,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 391,
+    "test": 392,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -15,7 +15,7 @@
   "byArea": {
     "benchmarks": 4,
     "src": 300,
-    "tests": 391,
+    "tests": 392,
     "tools": 10,
     "config": 2
   },
@@ -151,7 +151,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 336
+      "loc": 331
     },
     {
       "file": "src/agent/collaboration/CollaborationAuditEnforcer.ts",
@@ -172,7 +172,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 472
+      "loc": 467
     },
     {
       "file": "src/agent/connectivity.ts",
@@ -242,7 +242,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 340
+      "loc": 339
     },
     {
       "file": "src/agent/DreamEngine.ts",
@@ -312,7 +312,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 356
+      "loc": 354
     },
     {
       "file": "src/agent/ImportanceScorer.ts",
@@ -354,7 +354,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 602
+      "loc": 598
     },
     {
       "file": "src/agent/MemoryFormatter.ts",
@@ -382,7 +382,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 264
+      "loc": 261
     },
     {
       "file": "src/agent/ObserverPipeline.ts",
@@ -571,7 +571,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 239
+      "loc": 236
     },
     {
       "file": "src/agent/procedural/ProcedureStore.ts",
@@ -1285,7 +1285,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 689
+      "loc": 686
     },
     {
       "file": "src/features/ContradictionDetector.ts",
@@ -1453,14 +1453,14 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 383
+      "loc": 361
     },
     {
       "file": "src/search/HybridScorer.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 355
+      "loc": 327
     },
     {
       "file": "src/search/HybridSearchManager.ts",
@@ -2090,7 +2090,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 219
+      "loc": 249
     },
     {
       "file": "src/utils/searchCache.ts",
@@ -2594,7 +2594,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 346
+      "loc": 362
     },
     {
       "file": "tests/unit/agent/CollaborationAuditEnforcer.test.ts",
@@ -2615,7 +2615,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 453
+      "loc": 466
     },
     {
       "file": "tests/unit/agent/ConnectivitySignals.test.ts",
@@ -2706,7 +2706,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 834
+      "loc": 850
     },
     {
       "file": "tests/unit/agent/DreamEngine.test.ts",
@@ -2776,7 +2776,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 177
+      "loc": 206
     },
     {
       "file": "tests/unit/agent/IMemoryBackend.contract.test.ts",
@@ -2818,7 +2818,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 739
+      "loc": 776
     },
     {
       "file": "tests/unit/agent/MemoryFormatter.test.ts",
@@ -2853,7 +2853,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 200
+      "loc": 229
     },
     {
       "file": "tests/unit/agent/ObservationDedupReportStage.test.ts",
@@ -3042,7 +3042,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 398
+      "loc": 413
     },
     {
       "file": "tests/unit/agent/ProcedureStore.test.ts",
@@ -3133,7 +3133,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 553
+      "loc": 670
     },
     {
       "file": "tests/unit/agent/RoleProfiles.test.ts",
@@ -3938,7 +3938,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 436
+      "loc": 496
     },
     {
       "file": "tests/unit/features/contradiction-detector-detect.test.ts",
@@ -4162,14 +4162,14 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 565
+      "loc": 612
     },
     {
       "file": "tests/unit/search/HybridScorer.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 328
+      "loc": 368
     },
     {
       "file": "tests/unit/search/HybridScorerGraphChannel.test.ts",
@@ -4295,7 +4295,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 274
+      "loc": 358
     },
     {
       "file": "tests/unit/search/QueryAnalyzer.test.ts",
@@ -4841,7 +4841,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 726
+      "loc": 784
     },
     {
       "file": "tests/unit/utils/searchCache.test.ts",
@@ -4856,6 +4856,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 1118
+    },
+    {
+      "file": "tests/unit/utils/textSimilarity.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 113
     },
     {
       "file": "tests/unit/utils/timing.test.ts",

@@ -1,10 +1,10 @@
 metadata:
   name: "@danielsimonjr/memoryjs"
   version: 4.3.0
-  lastUpdated: "2026-10-23"
+  lastUpdated: "2026-10-24"
   totalFiles: 300
   totalModules: 12
-  totalExports: 2059
+  totalExports: 2060
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -645,6 +645,9 @@ modules:
       externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../utils/textSimilarity.js
+          imports:
+            - jaccard
         - file: ../types/agent-memory.js
           imports:
             - AgentEntity
@@ -726,6 +729,9 @@ modules:
           imports:
             - EventEmitter
       internalDependencies:
+        - file: ../utils/textSimilarity.js
+          imports:
+            - jaccard
         - file: ../types/agent-memory.js
           imports:
             - AgentEntity
@@ -1174,6 +1180,9 @@ modules:
       externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../utils/textSimilarity.js
+          imports:
+            - jaccard
         - file: ../types/types.js
           imports:
             - Entity
@@ -1566,6 +1575,9 @@ modules:
           imports:
             - randomUUID
       internalDependencies:
+        - file: ../utils/textSimilarity.js
+          imports:
+            - jaccard
         - file: ../types/types.js
           imports:
             - Entity
@@ -3048,6 +3060,9 @@ modules:
           imports:
             - createHash
       internalDependencies:
+        - file: ../utils/textSimilarity.js
+          imports:
+            - jaccard
         - file: ../types/types.js
           imports:
             - IGraphStorage
@@ -3189,6 +3204,9 @@ modules:
           imports:
             - createHash
       internalDependencies:
+        - file: ../utils/textSimilarity.js
+          imports:
+            - jaccard
         - file: ../types/types.js
           imports:
             - Entity
@@ -4428,6 +4446,7 @@ modules:
             - StepSequencer
         - file: ../../utils/textSimilarity.js
           imports:
+            - jaccard
             - tokenizeToSet
       exports:
         - ProcedureManager
@@ -8107,6 +8126,9 @@ modules:
       externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../utils/textSimilarity.js
+          imports:
+            - jaccard
         - file: ../types/index.js
           imports:
             - Entity
@@ -9130,6 +9152,9 @@ modules:
       externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../utils/searchAlgorithms.js
+          imports:
+            - minMaxNormalize
         - file: ../core/GraphTraversal.js
           imports:
             - GraphTraversal
@@ -9162,6 +9187,9 @@ modules:
       externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../utils/searchAlgorithms.js
+          imports:
+            - minMaxNormalize
         - file: ../types/index.js
           imports:
             - Entity
@@ -13753,6 +13781,7 @@ modules:
         - calculateIDFFromTokenSets
         - calculateTFIDF
         - tokenize
+        - minMaxNormalize
       functions:
         - levenshteinDistance
         - calculateTF
@@ -13761,6 +13790,7 @@ modules:
         - calculateIDFFromTokenSets
         - calculateTFIDF
         - tokenize
+        - minMaxNormalize
     src/utils/searchCache.ts:
       description: Search Result Cache
       externalDependencies: []
@@ -14408,11 +14438,11 @@ reachability:
 statistics:
   totalTypeScriptFiles: 300
   totalModules: 12
-  totalLinesOfCode: 103801
-  totalExports: 2059
+  totalLinesOfCode: 103755
+  totalExports: 2060
   totalClasses: 236
   totalInterfaces: 624
-  totalFunctions: 345
+  totalFunctions: 346
   totalTypeGuards: 31
   totalEnums: 4
   totalConstants: 123

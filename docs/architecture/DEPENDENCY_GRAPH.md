@@ -4,7 +4,7 @@
 
 # @danielsimonjr/memoryjs - Dependency Graph
 
-**Version**: 4.3.0 | **Last Updated**: 2026-10-23
+**Version**: 4.3.0 | **Last Updated**: 2026-10-24
 
 This document provides a comprehensive dependency graph of all files, components, imports, functions, and variables in the codebase.
 
@@ -348,6 +348,7 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../utils/textSimilarity.js` | `jaccard` | Import |
 | `../types/agent-memory.js` | `AgentEntity, CognitiveLoadMetrics, AdaptiveReductionResult` | Import (type-only) |
 
 **Exports:**
@@ -401,6 +402,7 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../utils/textSimilarity.js` | `jaccard` | Import |
 | `../types/agent-memory.js` | `AgentEntity, AgentMetadata, ConflictInfo, ConflictStrategy` | Import (type-only) |
 | `../types/agent-memory.js` | `compareTrustLevel, inferTrustLevel` | Import |
 
@@ -603,6 +605,7 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../utils/textSimilarity.js` | `jaccard` | Import |
 | `../types/types.js` | `Entity` | Import (type-only) |
 | `../types/types.js` | `HybridSearchResult` | Import (type-only) |
 | `../features/FreshnessManager.js` | `FreshnessManager` | Import |
@@ -810,6 +813,7 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../utils/textSimilarity.js` | `jaccard` | Import |
 | `../types/types.js` | `Entity, IGraphStorage` | Import (type-only) |
 | `../types/agent-memory.js` | `Heuristic, HeuristicEntity, HeuristicId` | Import (type-only) |
 | `../types/agent-memory.js` | `isHeuristicMemory, toIsoDateTime` | Import |
@@ -946,6 +950,7 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../utils/textSimilarity.js` | `jaccard` | Import |
 | `../types/types.js` | `IGraphStorage, ReadonlyKnowledgeGraph` | Import (type-only) |
 | `../types/agent-memory.js` | `AgentEntity` | Import (type-only) |
 | `../core/EntityManager.js` | `EntityManager` | Import (type-only) |
@@ -1024,6 +1029,7 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../utils/textSimilarity.js` | `jaccard` | Import |
 | `../types/types.js` | `Entity, IGraphStorage` | Import (type-only) |
 
 **Exports:**
@@ -1510,7 +1516,7 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 | `../../types/procedure.js` | `Procedure, ProcedureStep, ProcedureMatch, ProcedureFeedback` | Import (type-only) |
 | `./ProcedureStore.js` | `ProcedureStore` | Import |
 | `./StepSequencer.js` | `StepSequencer` | Import |
-| `../../utils/textSimilarity.js` | `tokenizeToSet` | Import |
+| `../../utils/textSimilarity.js` | `jaccard, tokenizeToSet` | Import |
 
 **Exports:**
 - Classes: `ProcedureManager`
@@ -3505,6 +3511,7 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../utils/textSimilarity.js` | `jaccard` | Import |
 | `../types/index.js` | `Entity, Relation, GraphCompressionResult, KnowledgeGraph, LongRunningOperationOptions, PreparedEntity` | Import (type-only) |
 | `../core/GraphStorage.js` | `GraphStorage` | Import (type-only) |
 | `../utils/index.js` | `levenshteinDistance, checkCancellation, createProgressReporter, createProgress, fnv1aHash` | Import |
@@ -3951,6 +3958,7 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../utils/searchAlgorithms.js` | `minMaxNormalize` | Import |
 | `../core/GraphTraversal.js` | `GraphTraversal` | Import |
 | `../utils/timing.js` | `CoalescingTimer` | Import |
 | `../core/GraphStorage.js` | `GraphStorage` | Import (type-only) |
@@ -3969,6 +3977,7 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../utils/searchAlgorithms.js` | `minMaxNormalize` | Import |
 | `../types/index.js` | `Entity` | Import (type-only) |
 
 **Exports:**
@@ -5285,7 +5294,7 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 ### `src/utils/searchAlgorithms.ts` - Search Algorithms
 
 **Exports:**
-- Functions: `levenshteinDistance`, `calculateTF`, `calculateTFFromTokens`, `calculateIDF`, `calculateIDFFromTokenSets`, `calculateTFIDF`, `tokenize`
+- Functions: `levenshteinDistance`, `calculateTF`, `calculateTFFromTokens`, `calculateIDF`, `calculateIDFFromTokenSets`, `calculateTFIDF`, `tokenize`, `minMaxNormalize`
 
 ---
 
@@ -5443,6 +5452,7 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/cli/commands/index` | 24 files | 1 file |
 | `src/agent/ConsolidationPipeline` | 15 files | 7 files |
 | `src/cli/formatters` | 2 files | 20 files |
+| `src/utils/textSimilarity` | 0 files | 20 files |
 | `src/agent/ContextWindowManager` | 14 files | 5 files |
 | `src/search/SearchManager` | 16 files | 3 files |
 | `src/utils/constants` | 0 files | 19 files |
@@ -5456,16 +5466,15 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/search/RankedSearch` | 10 files | 7 files |
 | `src/core/ObservationManager` | 10 files | 6 files |
 | `src/core/RelationManager` | 6 files | 10 files |
+| `src/agent/MemoryEngine` | 10 files | 4 files |
 | `src/agent/SalienceEngine` | 7 files | 7 files |
 | `src/agent/WorkingMemoryManager` | 7 files | 7 files |
 | `src/core/index` | 13 files | 1 file |
 | `src/search/HybridSearchManager` | 9 files | 5 files |
-| `src/agent/MemoryEngine` | 9 files | 4 files |
 | `src/agent/procedural/graph/ProceduralGraphEvolution` | 11 files | 2 files |
 | `src/core/SQLiteStorage` | 10 files | 3 files |
 | `src/search/FuzzySearch` | 11 files | 2 files |
 | `src/utils/searchCache` | 2 files | 11 files |
-| `src/utils/textSimilarity` | 0 files | 13 files |
 | `src/core/GraphEventEmitter` | 2 files | 10 files |
 
 ---
@@ -5712,12 +5721,12 @@ graph TD
 |----------|-------|
 | Total TypeScript Files | 300 |
 | Total Modules | 12 |
-| Total Lines of Code | 103801 |
-| Total Exports | 2059 |
+| Total Lines of Code | 103755 |
+| Total Exports | 2060 |
 | Total Re-exports | 1340 |
 | Total Classes | 236 |
 | Total Interfaces | 624 |
-| Total Functions | 345 |
+| Total Functions | 346 |
 | Total Type Guards | 31 |
 | Total Enums | 4 |
 | Type-only Imports | 480 |
@@ -5729,5 +5738,5 @@ graph TD
 
 ---
 
-*Last Updated*: 2026-10-23
+*Last Updated*: 2026-10-24
 *Version*: 4.3.0
