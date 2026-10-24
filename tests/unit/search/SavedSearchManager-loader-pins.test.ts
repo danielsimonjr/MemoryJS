@@ -164,6 +164,12 @@ describe('SavedSearchManager loader (pins)', () => {
     }
   });
 
+  it('keeps the last line of a file that has no final newline', async () => {
+    await fs.writeFile(filePath, `${SEARCH_URGENT}\n${SEARCH_REVIEW}`);
+
+    expect(JSON.stringify(await manager.listSavedSearches())).toBe(`[${SEARCH_URGENT},${SEARCH_REVIEW}]`);
+  });
+
   // The read is mocked to resolve at once, so each turn count is a microtask count.
   it('settles a cache miss in a fixed number of microtask turns', async () => {
     readFileSpy.mockResolvedValueOnce(`${SEARCH_URGENT}\n`);
