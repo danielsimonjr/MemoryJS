@@ -165,7 +165,9 @@ export class SessionManager {
    * a previous session via previousSessionId.
    *
    * @param options - Session configuration options
-   * @returns Created SessionEntity
+   * @returns Created SessionEntity. This object is a snapshot: a later storage
+   *   update of the session does not change it. `getActiveSession` returns the
+   *   stored session.
    * @throws Error if custom sessionId already exists
    *
    * @example
@@ -253,8 +255,11 @@ export class SessionManager {
     // Persist to storage
     await this.storage.appendEntity(session as Entity);
 
-    // Track as active
-    this.activeSessions.set(sessionId, session);
+    // Track the stored session as active. The storage keeps a copy of
+    // `session`, so a later storage update of the session (for example the
+    // back-link of a continued session) shows only in the stored object.
+    const stored = this.storage.getEntityByName(sessionId);
+    this.activeSessions.set(sessionId, stored && isSessionEntity(stored) ? stored : session);
 
     return session;
   }
