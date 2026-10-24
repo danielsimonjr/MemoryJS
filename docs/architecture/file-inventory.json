@@ -697,7 +697,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 962
+      "loc": 956
     },
     {
       "file": "src/agent/retrieval/ActiveRetrievalController.ts",
@@ -2132,7 +2132,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 141
+      "loc": 158
     },
     {
       "file": "src/utils/timing.ts",
@@ -4960,7 +4960,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 113
+      "loc": 147
     },
     {
       "file": "tests/unit/utils/timing.test.ts",

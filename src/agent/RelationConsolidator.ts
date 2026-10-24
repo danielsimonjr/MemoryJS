@@ -41,6 +41,7 @@
 import type { Entity, Relation, RelationProperties } from '../types/types.js';
 import type { LLMProvider } from '../search/LLMQueryPlanner.js';
 import { extractJson } from './reconstruction/MemoryDistiller.js';
+import { cosineParts } from '../utils/textSimilarity.js';
 import type { PipelineStage, StageResult } from './ConsolidationPipeline.js';
 import type { AgentEntity, ConsolidateOptions } from '../types/agent-memory.js';
 
@@ -232,14 +233,7 @@ export function relationKey(r: Pick<Relation, 'from' | 'to' | 'relationType'>): 
 
 function cosineSimilarity(a: number[], b: number[]): number {
   const n = Math.min(a.length, b.length);
-  let dot = 0;
-  let na = 0;
-  let nb = 0;
-  for (let i = 0; i < n; i++) {
-    dot += a[i] * b[i];
-    na += a[i] * a[i];
-    nb += b[i] * b[i];
-  }
+  const { dot, normA: na, normB: nb } = cosineParts(a, b, n);
   if (na === 0 || nb === 0) return 0;
   return dot / (Math.sqrt(na) * Math.sqrt(nb));
 }
