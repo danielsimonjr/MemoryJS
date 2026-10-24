@@ -38,6 +38,30 @@ function makeState(withObservationIndex: boolean) {
   return { state, cache, calls };
 }
 
+/** Wraps the cache and index steps of a state. The returned list gets one label for each step, in call order. */
+function recordSteps(state: StorageCacheState): string[] {
+  const steps: string[] = [];
+  const wrap = (target: object, method: string, label: string): void => {
+    const record = target as Record<string, (...args: unknown[]) => unknown>;
+    const original = record[method].bind(target);
+    record[method] = (...args: unknown[]) => {
+      steps.push(label);
+      return original(...args);
+    };
+  };
+  wrap(state.cache!.entities, 'push', 'entities.push');
+  wrap(state.cache!.relations, 'push', 'relations.push');
+  wrap(state.nameIndex, 'add', 'nameIndex.add');
+  wrap(state.typeIndex, 'add', 'typeIndex.add');
+  wrap(state.typeIndex, 'updateType', 'typeIndex.updateType');
+  wrap(state.relationIndex, 'add', 'relationIndex.add');
+  wrap(state.relationKeyMap, 'set', 'relationKeyMap.set');
+  wrap(state.observationIndex!, 'remove', 'observationIndex.remove');
+  wrap(state.observationIndex!, 'add', 'observationIndex.add');
+  wrap(state, 'setLowercase', 'setLowercase');
+  return steps;
+}
+
 describe('relationKeyOf', () => {
   it('joins from, to and type with NUL separators', () => {
     expect(relationKeyOf({ from: 'a', to: 'b', relationType: 't' })).toBe('a\u0000b\u0000t');
@@ -90,6 +114,42 @@ describe('upsertEntityInCache', () => {
     expect([...state.observationIndex!.getEntitiesWithWord('gamma')]).toEqual(['e1']);
   });
 
+  it('runs the steps in a fixed order: cache row first, then the indexes, then the lowercase view', () => {
+    const { state } = makeState(true);
+    const steps = recordSteps(state);
+    const live: Entity = { name: 'e1', entityType: 'A', observations: ['alpha'] };
+
+    upsertEntityInCache(state, live);
+    expect(steps.splice(0)).toEqual([
+      'entities.push',
+      'nameIndex.add',
+      'typeIndex.add',
+      'setLowercase',
+      'observationIndex.remove',
+      'observationIndex.add',
+    ]);
+
+    upsertEntityInCache(state, { name: 'e1', entityType: 'B', observations: ['beta'] });
+    expect(steps.splice(0)).toEqual([
+      'typeIndex.updateType',
+      'setLowercase',
+      'observationIndex.remove',
+      'observationIndex.add',
+    ]);
+
+    upsertEntityInCache(state, { name: 'e1', entityType: 'B', observations: ['gamma'] });
+    expect(steps.splice(0)).toEqual(['setLowercase', 'observationIndex.remove', 'observationIndex.add']);
+
+    upsertEntityInCache(state, live);
+    expect(steps.splice(0)).toEqual([
+      'nameIndex.add',
+      'typeIndex.add',
+      'setLowercase',
+      'observationIndex.remove',
+      'observationIndex.add',
+    ]);
+  });
+
   it('works without an observation index', () => {
     const { state, cache } = makeState(false);
     const entity: Entity = { name: 'e1', entityType: 'A', observations: ['alpha'] };
@@ -132,6 +192,19 @@ describe('upsertRelationInCache', () => {
 
     expect(upsertRelationInCache(state, live)).toBe(live);
     expect(cache.relations).toEqual([live]);
+  });
+
+  it('runs the steps in a fixed order: cache row, relation index, key map', () => {
+    const { state } = makeState(true);
+    const steps = recordSteps(state);
+    const live: Relation = { from: 'a', to: 'b', relationType: 't' };
+
+    upsertRelationInCache(state, live);
+    expect(steps.splice(0)).toEqual(['relations.push', 'relationIndex.add', 'relationKeyMap.set']);
+
+    upsertRelationInCache(state, { from: 'a', to: 'b', relationType: 't', weight: 1 });
+    upsertRelationInCache(state, live);
+    expect(steps).toEqual([]);
   });
 
   it('finds the live relation by its exact key and keeps keys apart that differ only in letter case', () => {

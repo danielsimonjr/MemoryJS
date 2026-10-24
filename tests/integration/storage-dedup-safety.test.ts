@@ -19,7 +19,7 @@ import { GraphStorage } from '../../src/core/GraphStorage.js';
 import { SQLiteStorage } from '../../src/core/SQLiteStorage.js';
 import { ManagerContext, type ManagerContextOptions } from '../../src/core/ManagerContext.js';
 import { getGraphGenerations } from '../../src/utils/searchCache.js';
-import { NameIndex, RelationIndex } from '../../src/utils/indexes.js';
+import { NameIndex, ObservationIndex, RelationIndex, TypeIndex } from '../../src/utils/indexes.js';
 import type { Entity, Relation } from '../../src/types/types.js';
 import { injectFlushFailure } from '../test-utils/inject-flush-failure.js';
 import { microtaskTicks } from '../test-utils/microtask-ticks.js';
@@ -209,9 +209,8 @@ const DELETE_RELATIONS_UNSEGMENTED = [
 ];
 
 /**
- * Order of the calls that `deleteEntities(['ent-09', 'ent-02', 'ent-05'])` makes on the name index and
- * on the relation index, one entry per variant, recorded before the R02 refactor. The order is the
- * order of the cache, so it follows the segments in segment mode.
+ * Entities and relations that `deleteEntities(['ent-09', 'ent-02', 'ent-05'])` removes from the indexes,
+ * in call order, one entry per variant, recorded before the R02 refactor.
  */
 const DELETE_INDEX_ORDER: Record<string, { names: string[]; relations: string[] }> = {
   'JSONL': { names: ['ent-02', 'ent-05', 'ent-09'], relations: DELETE_RELATIONS_UNSEGMENTED },
@@ -934,27 +933,46 @@ describe.each(VARIANTS)('storage safety net - $label', (variant) => {
       expect(describeAdded((await openStore().loadGraph()).relations).sort()).toEqual(['Case-A>Case-B:T=2', 'case-a>case-b:t=3']);
     });
 
-    it('removes the names and relations of a delete from the indexes in cache order', async () => {
+    it('removes a deleted entity from each index in a fixed order, entities first and then relations', async () => {
       await seed();
       const store = openStore();
       await store.ensureLoaded();
-      const removedNames: string[] = [];
-      const removedRelations: string[] = [];
-      const nameRemove = NameIndex.prototype.remove;
-      const relationRemove = RelationIndex.prototype.remove;
-      vi.spyOn(NameIndex.prototype, 'remove').mockImplementation(function (this: NameIndex, name: string) {
-        removedNames.push(name);
-        return nameRemove.call(this, name);
-      });
-      vi.spyOn(RelationIndex.prototype, 'remove').mockImplementation(function (this: RelationIndex, removed: Relation) {
-        removedRelations.push(`${removed.from}>${removed.to}:${removed.relationType}`);
-        return relationRemove.call(this, removed);
+      const steps: string[] = [];
+      const spyStep = (target: object, method: string, label: string, describeArg: (arg: never) => string): void => {
+        const original = (target as Record<string, (...args: never[]) => void>)[method];
+        vi.spyOn(target as Record<string, (...args: never[]) => void>, method).mockImplementation(function (
+          this: unknown,
+          ...args: never[]
+        ) {
+          steps.push(`${label}:${describeArg(args[0])}`);
+          return original.apply(this, args);
+        });
+      };
+      const byName = (name: never): string => String(name);
+      spyStep(NameIndex.prototype, 'remove', 'name', byName);
+      spyStep(TypeIndex.prototype, 'remove', 'type', byName);
+      // The JSONL storage keeps its lowercase view in a LowercaseCache, the SQLite storage in a Map.
+      const lowercaseCache = (store as unknown as { lowercaseCache: object }).lowercaseCache;
+      spyStep(lowercaseCache, variant.sqlite ? 'delete' : 'remove', 'lowercase', byName);
+      spyStep(ObservationIndex.prototype, 'remove', 'observations', byName);
+      spyStep(RelationIndex.prototype, 'remove', 'relation', (removed: never) => {
+        const { from, to, relationType } = removed as Relation;
+        return `${from}>${to}:${relationType}`;
       });
 
       await store.deleteEntities(['ent-09', 'ent-02', 'ent-05']);
 
-      expect(removedNames).toEqual(DELETE_INDEX_ORDER[variant.label].names);
-      expect(removedRelations).toEqual(DELETE_INDEX_ORDER[variant.label].relations);
+      // The entity order is the order of the cache, so it follows the segments in segment mode.
+      const order = DELETE_INDEX_ORDER[variant.label];
+      expect(steps).toEqual([
+        ...order.names.flatMap(name => [
+          `name:${name}`,
+          `type:${name}`,
+          `lowercase:${name}`,
+          ...(variant.sqlite ? [] : [`observations:${name}`]),
+        ]),
+        ...order.relations.map(relationKey => `relation:${relationKey}`),
+      ]);
     });
 
     if (segmented) {
