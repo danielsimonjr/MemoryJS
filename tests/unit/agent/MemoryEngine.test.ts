@@ -736,3 +736,40 @@ describe('MemoryEngine — repeated turn count', () => {
     } finally { cleanup(); }
   });
 });
+
+describe('MemoryEngine Jaccard tier (pinned)', () => {
+  // checkTierJaccard reads only cfg and module helpers, so the prototype is enough.
+  const engine = Object.assign(Object.create(MemoryEngine.prototype), { cfg: { jaccardThreshold: 0.72 } }) as {
+    checkTierJaccard(content: string, candidates: unknown[]): { isDuplicate: boolean; tier?: string };
+  };
+  const candidate = (observation: string) => ({ name: 'c', entityType: 'turn', observations: [observation] });
+  const shared = Array.from({ length: 18 }, (_, i) => `token${String(i + 1).padStart(2, '0')}`);
+
+  it('rejects a pair below the threshold and skips empty sides', () => {
+    expect(engine.checkTierJaccard('alpha beta gamma', [candidate('beta gamma delta epsilon')]).isDuplicate).toBe(false);
+    expect(engine.checkTierJaccard('', [candidate('alpha beta')]).isDuplicate).toBe(false);
+    expect(engine.checkTierJaccard('alpha beta', [candidate('')]).isDuplicate).toBe(false);
+  });
+
+  it('accepts a pair exactly at the threshold (18 shared of 25 tokens = 0.72)', () => {
+    const content = [...shared, 'extraone', 'extratwo', 'extrathree'].join(' ');
+    const other = candidate([...shared, 'extrafour', 'extrafive', 'extrasix', 'extraseven'].join(' '));
+    expect(engine.checkTierJaccard(content, [other])).toMatchObject({ isDuplicate: true, tier: 'jaccard' });
+  });
+});
+
+describe('MemoryEngine Jaccard tier at threshold 0 (pinned)', () => {
+  // checkTierJaccard reads only cfg and module helpers, so the prototype is enough.
+  const engine = Object.assign(Object.create(MemoryEngine.prototype), { cfg: { jaccardThreshold: 0 } }) as {
+    checkTierJaccard(content: string, candidates: unknown[]): { isDuplicate: boolean; match?: { name: string } };
+  };
+  const candidate = (name: string, observation: string) => ({ name, entityType: 'turn', observations: [observation] });
+
+  it('skips empty content and empty candidates although a score of 0 would pass', () => {
+    expect(engine.checkTierJaccard('', [candidate('c1', 'alpha')])).toEqual({ isDuplicate: false });
+    expect(engine.checkTierJaccard('alpha', [candidate('c1', '')])).toEqual({ isDuplicate: false });
+    const result = engine.checkTierJaccard('alpha', [candidate('c1', ''), candidate('c2', 'beta')]);
+    expect(result.isDuplicate).toBe(true);
+    expect(result.match?.name).toBe('c2');
+  });
+});

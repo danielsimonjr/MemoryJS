@@ -13,6 +13,7 @@ import { GraphStorage } from '../../../src/core/GraphStorage.js';
 import { EntityNotFoundError, InsufficientEntitiesError } from '../../../src/utils/errors.js';
 import { promises as fs } from 'fs';
 import { join } from 'path';
+import type { Entity } from '../../../src/types/types.js';
 import { tmpdir } from 'os';
 
 describe('CompressionManager', () => {
@@ -431,5 +432,64 @@ describe('CompressionManager', () => {
       const duplicates = await compressionManager.findDuplicates(0.8);
       expect(duplicates.length).toBeGreaterThanOrEqual(0);
     });
+  });
+
+  describe('calculateEntitySimilarity', () => {
+    it('measures the name length after lowercasing, as the prepared path does', () => {
+      // U+0130 lowercases to two code units, so the lowercased name is longer than the original.
+      const e1 = { name: 'İx', entityType: 'person', observations: [] } as unknown as Entity;
+      const e2 = { name: 'ix', entityType: 'person', observations: [] } as unknown as Entity;
+      const internals = compressionManager as unknown as {
+        prepareEntity(entity: Entity): unknown;
+        calculatePreparedSimilarity(p1: unknown, p2: unknown): number;
+      };
+      const prepared = internals.calculatePreparedSimilarity(
+        internals.prepareEntity(e1),
+        internals.prepareEntity(e2),
+      );
+
+      expect(compressionManager.calculateEntitySimilarity(e1, e2)).toBe(prepared);
+    });
+  });
+});
+
+describe('CompressionManager similarity values (pinned)', () => {
+  const cm = new CompressionManager({} as never) as unknown as {
+    calculateEntitySimilarity(e1: Entity, e2: Entity): number;
+    prepareEntity(entity: Entity): unknown;
+    calculatePreparedSimilarity(p1: unknown, p2: unknown): number;
+  };
+  const make = (name: string, observations: unknown[], tags?: string[]) =>
+    ({ name, entityType: 'Person', observations, tags }) as unknown as Entity;
+
+  it.each([
+    ['with tags', make('Alice', ['a', 'b', 'c'], ['x', 'y']), make('Alyce', ['B', 'c', 'd', 'e'], ['Y', 'z']), 0.6733333333333332],
+    ['without tags', make('Alice', ['a']), make('Alice', ['a', 'b']), 0.8333333333333334],
+    ['without observations', make('Bob', []), make('Bob', []), 0.6666666666666666],
+  ])('returns the literal value %s on both paths', (_label, e1, e2, expected) => {
+    expect(cm.calculateEntitySimilarity(e1, e2)).toBe(expected);
+    expect(cm.calculatePreparedSimilarity(cm.prepareEntity(e1), cm.prepareEntity(e2))).toBe(expected);
+  });
+
+  it('throws the same TypeError for a non-string observation', () => {
+    expect(() => cm.calculateEntitySimilarity(make('A', [1]), make('A', ['x']))).toThrow(/o\.toLowerCase is not a function/);
+  });
+});
+
+describe('CompressionManager name length measure (D7, both argument orders)', () => {
+  const cm = new CompressionManager({} as never) as unknown as {
+    calculateEntitySimilarity(e1: Entity, e2: Entity): number;
+    prepareEntity(entity: Entity): unknown;
+    calculatePreparedSimilarity(p1: unknown, p2: unknown): number;
+  };
+  const named = (name: string) => ({ name, entityType: 'person', observations: [] }) as unknown as Entity;
+
+  // U+0130 lowercases to two code units. The literal is the score of the prepared path, which always measured the lowercased name.
+  it.each([
+    ['İx', 'ix'],
+    ['ix', 'İx'],
+  ])('scores %s and %s as the prepared path does', (a, b) => {
+    expect(cm.calculateEntitySimilarity(named(a), named(b))).toBe(0.5185185185185185);
+    expect(cm.calculatePreparedSimilarity(cm.prepareEntity(named(a)), cm.prepareEntity(named(b)))).toBe(0.5185185185185185);
   });
 });

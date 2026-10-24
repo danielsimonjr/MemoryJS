@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The inline Jaccard similarity of `CompressionManager`, `ConflictResolver`, `DistillationPolicy`, `ObservationDedupManager`, `ProcedureManager`, `MemoryEngine`, `CognitiveLoadAnalyzer` and `HeuristicManager` calls `jaccard` in `src/utils/textSimilarity.ts`. Each site keeps its own empty-set rule. Behaviour is unchanged.
+- `HybridScorer.minMaxNormalize` and `GraphRankPrior.minMaxNormalize` delegate to `minMaxNormalize` in `src/utils/searchAlgorithms.ts`. Behaviour is unchanged.
 - The CLI command actions share one error frame (`runAction` in `src/cli/commands/helpers.ts`). The frame reads the options, creates the logger and the context, and logs an error from the body once before it exits with code 1. Output, exit codes and the order of the setup calls are unchanged. The error log and the exit run one microtask step later than before.
 - Cache eviction and TTL cleanup in the search layer share three helpers in `src/utils/searchCache.ts`: `evictOldest`, `evictInsertionOrder` and `cleanupExpiredEntries`. `GraphRankPrior` and `TFIDFEventSync` share `CoalescingTimer` in `src/utils/timing.ts`. `QueryPlanCache` writes analysis and plan entries through one private method. Behaviour does not change.
 - The sleep, timeout and chunk helpers of the utilities and the search layer share one implementation. `src/utils/timing.ts` also holds `sleep`, `createTimeout` and `withTimeout`. `chunkArray` accepts a readonly array. Behaviour is unchanged.
@@ -61,6 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `CompressionManager.calculateEntitySimilarity` measures the name length after lowercasing, as `calculatePreparedSimilarity` does. Before, a name whose lowercase form has another length (for example `İx`) could score differently on the two paths.
 - `BatchProcessor` clears the item timeout timer when the item settles. Before, the timer stayed pending until the timeout passed, even after the item finished. The timer is now owned by `withTimeout` in the internal module `src/utils/timing.ts`.
 - `FileSegmentStorage.saveAll` writes each staged segment file and the recovery manifest with the mode of `durableWriteFile`: `0o600`, or the tighter mode of the existing file. Before, these files got the default mode from the umask, usually `0o644`. `saveSegment` already wrote `0o600`.
 - `SearchFilterChain` excludes an entity whose `createdAt` or `lastModified` cannot be parsed, when a created or modified bound is set. Before, such an entity passed every date bound.

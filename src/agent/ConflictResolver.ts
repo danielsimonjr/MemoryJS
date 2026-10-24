@@ -6,6 +6,7 @@
  * @module agent/ConflictResolver
  */
 
+import { jaccard } from '../utils/textSimilarity.js';
 import type {
   AgentEntity,
   AgentMetadata,
@@ -219,13 +220,7 @@ export class ConflictResolver extends EventEmitter {
 
     if (words1.size === 0 || words2.size === 0) return 0;
 
-    let intersection = 0;
-    for (const word of words1) {
-      if (words2.has(word)) intersection++;
-    }
-
-    const union = words1.size + words2.size - intersection;
-    return union > 0 ? intersection / union : 0;
+    return jaccard(words1, words2);
   }
 
   /**

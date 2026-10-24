@@ -343,3 +343,19 @@ describe('CognitiveLoadAnalyzer', () => {
     });
   });
 });
+
+describe('CognitiveLoadAnalyzer jaccardSimilarity (pinned)', () => {
+  const analyzer = new CognitiveLoadAnalyzer() as unknown as {
+    jaccardSimilarity(a: AgentEntity, b: AgentEntity): number;
+  };
+  // An empty name and type add no tokens, so only the observations form the token set.
+  const entity = (observations: string[]) => ({ name: '', entityType: '', observations }) as unknown as AgentEntity;
+
+  it('returns literal values and the empty-token rules', () => {
+    expect(analyzer.jaccardSimilarity(entity(['alpha beta gamma']), entity(['beta gamma delta epsilon']))).toBe(0.4);
+    expect(analyzer.jaccardSimilarity(entity([]), entity([]))).toBe(1);
+    expect(analyzer.jaccardSimilarity(entity(['alpha beta']), entity([]))).toBe(0);
+    expect(analyzer.jaccardSimilarity(entity(['alpha beta']), entity(['alpha beta']))).toBe(1);
+    expect(analyzer.jaccardSimilarity(entity(['alpha beta']), entity(['gamma delta']))).toBe(0);
+  });
+});

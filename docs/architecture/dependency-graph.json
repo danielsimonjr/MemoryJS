@@ -2,10 +2,10 @@
   "metadata": {
     "name": "@danielsimonjr/memoryjs",
     "version": "4.3.0",
-    "lastUpdated": "2026-10-23",
+    "lastUpdated": "2026-10-24",
     "totalFiles": 300,
     "totalModules": 12,
-    "totalExports": 2059
+    "totalExports": 2060
   },
   "entryPoints": [
     {
@@ -992,6 +992,12 @@
         "nodeDependencies": [],
         "internalDependencies": [
           {
+            "file": "../utils/textSimilarity.js",
+            "imports": [
+              "jaccard"
+            ]
+          },
+          {
             "file": "../types/agent-memory.js",
             "imports": [
               "AgentEntity",
@@ -1121,6 +1127,12 @@
           }
         ],
         "internalDependencies": [
+          {
+            "file": "../utils/textSimilarity.js",
+            "imports": [
+              "jaccard"
+            ]
+          },
           {
             "file": "../types/agent-memory.js",
             "imports": [
@@ -1823,6 +1835,12 @@
         "nodeDependencies": [],
         "internalDependencies": [
           {
+            "file": "../utils/textSimilarity.js",
+            "imports": [
+              "jaccard"
+            ]
+          },
+          {
             "file": "../types/types.js",
             "imports": [
               "Entity"
@@ -2423,6 +2441,12 @@
           }
         ],
         "internalDependencies": [
+          {
+            "file": "../utils/textSimilarity.js",
+            "imports": [
+              "jaccard"
+            ]
+          },
           {
             "file": "../types/types.js",
             "imports": [
@@ -4150,6 +4174,12 @@
         ],
         "internalDependencies": [
           {
+            "file": "../utils/textSimilarity.js",
+            "imports": [
+              "jaccard"
+            ]
+          },
+          {
             "file": "../types/types.js",
             "imports": [
               "IGraphStorage",
@@ -4375,6 +4405,12 @@
           }
         ],
         "internalDependencies": [
+          {
+            "file": "../utils/textSimilarity.js",
+            "imports": [
+              "jaccard"
+            ]
+          },
           {
             "file": "../types/types.js",
             "imports": [
@@ -6161,6 +6197,7 @@
           {
             "file": "../../utils/textSimilarity.js",
             "imports": [
+              "jaccard",
               "tokenizeToSet"
             ]
           }
@@ -12056,6 +12093,12 @@
         "nodeDependencies": [],
         "internalDependencies": [
           {
+            "file": "../utils/textSimilarity.js",
+            "imports": [
+              "jaccard"
+            ]
+          },
+          {
             "file": "../types/index.js",
             "imports": [
               "Entity",
@@ -13589,6 +13632,12 @@
         "nodeDependencies": [],
         "internalDependencies": [
           {
+            "file": "../utils/searchAlgorithms.js",
+            "imports": [
+              "minMaxNormalize"
+            ]
+          },
+          {
             "file": "../core/GraphTraversal.js",
             "imports": [
               "GraphTraversal"
@@ -13641,6 +13690,12 @@
         "externalDependencies": [],
         "nodeDependencies": [],
         "internalDependencies": [
+          {
+            "file": "../utils/searchAlgorithms.js",
+            "imports": [
+              "minMaxNormalize"
+            ]
+          },
           {
             "file": "../types/index.js",
             "imports": [
@@ -19440,7 +19495,8 @@
           "calculateIDF",
           "calculateIDFFromTokenSets",
           "calculateTFIDF",
-          "tokenize"
+          "tokenize",
+          "minMaxNormalize"
         ],
         "functions": [
           "levenshteinDistance",
@@ -19449,7 +19505,8 @@
           "calculateIDF",
           "calculateIDFFromTokenSets",
           "calculateTFIDF",
-          "tokenize"
+          "tokenize",
+          "minMaxNormalize"
         ]
       },
       "src/utils/searchCache.ts": {
@@ -20266,11 +20323,11 @@
   "statistics": {
     "totalTypeScriptFiles": 300,
     "totalModules": 12,
-    "totalLinesOfCode": 103801,
-    "totalExports": 2059,
+    "totalLinesOfCode": 103755,
+    "totalExports": 2060,
     "totalClasses": 236,
     "totalInterfaces": 624,
-    "totalFunctions": 345,
+    "totalFunctions": 346,
     "totalTypeGuards": 31,
     "totalEnums": 4,
     "totalConstants": 123,

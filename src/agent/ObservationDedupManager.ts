@@ -25,6 +25,7 @@
  * @module agent/ObservationDedupManager
  */
 
+import { jaccard } from '../utils/textSimilarity.js';
 import { createHash } from 'crypto';
 import type { Entity, IGraphStorage } from '../types/types.js';
 
@@ -176,11 +177,7 @@ export class ObservationDedupManager {
         const a = all[i]!;
         const b = all[j]!;
         if (a.tokens.size === 0 || b.tokens.size === 0) continue;
-        let intersect = 0;
-        for (const t of a.tokens) if (b.tokens.has(t)) intersect++;
-        const union = a.tokens.size + b.tokens.size - intersect;
-        if (union === 0) continue;
-        if (intersect / union >= this.jaccardThreshold) {
+        if (jaccard(a.tokens, b.tokens) >= this.jaccardThreshold) {
           const ra = find(a.hash);
           const rb = find(b.hash);
           if (ra !== rb) parent.set(ra, rb);

@@ -8,6 +8,7 @@
  * @module agent/DistillationPolicy
  */
 
+import { jaccard } from '../utils/textSimilarity.js';
 import type { Entity } from '../types/types.js';
 import type { HybridSearchResult } from '../types/types.js';
 import { FreshnessManager } from '../features/FreshnessManager.js';
@@ -242,9 +243,7 @@ export class DefaultDistillationPolicy implements IDistillationPolicy {
     const nameTokens = new Set(this.tokenise(entity.name));
     for (const seen of seenNames) {
       const seenTokens = new Set(this.tokenise(seen));
-      const intersection = [...nameTokens].filter((t) => seenTokens.has(t));
-      const union = new Set([...nameTokens, ...seenTokens]);
-      if (union.size > 0 && intersection.length / union.size > 0.8) {
+      if (jaccard(nameTokens, seenTokens) > 0.8) {
         return true;
       }
     }

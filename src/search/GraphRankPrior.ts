@@ -19,6 +19,7 @@
  * @experimental
  */
 
+import { minMaxNormalize } from '../utils/searchAlgorithms.js';
 import { GraphTraversal } from '../core/GraphTraversal.js';
 import { CoalescingTimer } from '../utils/timing.js';
 import type { GraphStorage } from '../core/GraphStorage.js';
@@ -354,29 +355,6 @@ export class GraphRankPrior {
    * @internal
    */
   private minMaxNormalize(scores: Map<string, number>): Map<string, number> {
-    const normalized = new Map<string, number>();
-    if (scores.size === 0) {
-      return normalized;
-    }
-
-    let min = Infinity;
-    let max = -Infinity;
-    for (const score of scores.values()) {
-      if (score < min) min = score;
-      if (score > max) max = score;
-    }
-
-    if (max === min) {
-      for (const name of scores.keys()) {
-        normalized.set(name, max === 0 ? 0 : 1);
-      }
-      return normalized;
-    }
-
-    const range = max - min;
-    for (const [name, score] of scores) {
-      normalized.set(name, (score - min) / range);
-    }
-    return normalized;
+    return minMaxNormalize(scores);
   }
 }

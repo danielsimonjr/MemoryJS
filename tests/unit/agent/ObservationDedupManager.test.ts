@@ -197,3 +197,32 @@ describe('ObservationDedupManager', () => {
     });
   });
 });
+
+describe('ObservationDedupManager Jaccard tier (pinned)', () => {
+  const entity = (name: string, observations: string[]) =>
+    ({ name, entityType: 'concept', observations }) as unknown as Entity;
+
+  it('merges a pair at exactly the threshold (2 shared of 4 tokens = 0.5)', async () => {
+    const storage = createMockStorage([entity('A', ['alpha beta']), entity('B', ['alpha beta gamma delta'])]);
+    const mgr = new ObservationDedupManager(storage, { jaccardThreshold: 0.5 });
+    expect(await mgr.findJaccardDuplicates()).toHaveLength(1);
+  });
+
+  it('does not merge a pair below the threshold (1 shared of 3 tokens)', async () => {
+    const storage = createMockStorage([entity('A', ['alpha beta']), entity('C', ['alpha gamma'])]);
+    const mgr = new ObservationDedupManager(storage, { jaccardThreshold: 0.5 });
+    expect(await mgr.findJaccardDuplicates()).toHaveLength(0);
+  });
+});
+
+describe('ObservationDedupManager Jaccard tier at threshold 0 (pinned)', () => {
+  const entity = (name: string, observations: string[]) =>
+    ({ name, entityType: 'concept', observations }) as unknown as Entity;
+
+  it('keeps an observation without tokens out of every group although a score of 0 would pass', async () => {
+    const storage = createMockStorage([entity('A', ['alpha beta']), entity('B', ['gamma delta']), entity('C', ['a'])]);
+    const mgr = new ObservationDedupManager(storage, { jaccardThreshold: 0 });
+    const groups = await mgr.findJaccardDuplicates({ minOccurrences: 1 });
+    expect(groups.map((g) => g.occurrences.map((o) => o.entityName))).toEqual([['A', 'B'], ['C']]);
+  });
+});
