@@ -1,0 +1,119 @@
+/**
+ * TagManager alias loader pins
+ *
+ * Pins how the alias loader reads its JSONL sidecar: a missing file, the
+ * cache, malformed lines, blank lines, CRLF line ends, a BOM, non-object
+ * values, an empty file and a non-ENOENT read error. Each expected value is
+ * the output of the loader before the shared JSONL reader existed.
+ */
+
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import * as fsPromises from 'fs/promises';
+import { promises as fs } from 'fs';
+import { join } from 'path';
+import { tmpdir } from 'os';
+import { TagManager } from '../../../src/features/TagManager.js';
+import { logger } from '../../../src/utils/logger.js';
+
+vi.mock('fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('fs/promises')>();
+  return { ...actual, readFile: vi.fn(actual.readFile) };
+});
+
+const readFileSpy = vi.mocked(fsPromises.readFile);
+
+const ALIAS_JS = '{"alias":"js","canonical":"javascript","createdAt":"2026-01-01T00:00:00.000Z"}';
+const ALIAS_PY = '{"alias":"py","canonical":"python"}';
+const ALIAS_TS = '{"alias":"ts","canonical":"typescript"}';
+
+describe('TagManager alias loader (pins)', () => {
+  let testDir: string;
+  let filePath: string;
+  let manager: TagManager;
+
+  beforeEach(async () => {
+    testDir = join(tmpdir(), `tag-loader-pins-${Date.now()}-${Math.random()}`);
+    await fs.mkdir(testDir, { recursive: true });
+    filePath = join(testDir, 'tag-aliases.jsonl');
+    manager = new TagManager(filePath);
+    readFileSpy.mockClear();
+    vi.spyOn(logger, 'warn');
+  });
+
+  afterEach(async () => {
+    vi.mocked(logger.warn).mockRestore();
+    try {
+      await fs.rm(testDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+
+  it('gives an empty list for a missing file and caches it', async () => {
+    expect(JSON.stringify(await manager.listTagAliases())).toBe('[]');
+    expect(readFileSpy).toHaveBeenCalledTimes(1);
+    expect(readFileSpy).toHaveBeenNthCalledWith(1, filePath, 'utf-8');
+
+    await fs.writeFile(filePath, `${ALIAS_JS}\n`);
+
+    expect(JSON.stringify(await manager.listTagAliases())).toBe('[]');
+    expect(readFileSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not read the file again on a second call', async () => {
+    await fs.writeFile(filePath, `${ALIAS_JS}\n`);
+
+    const first = JSON.stringify(await manager.listTagAliases());
+    const second = JSON.stringify(await manager.listTagAliases());
+
+    expect(first).toBe(`[${ALIAS_JS}]`);
+    expect(second).toBe(`[${ALIAS_JS}]`);
+    expect(readFileSpy).toHaveBeenCalledTimes(1);
+    expect(readFileSpy).toHaveBeenNthCalledWith(1, filePath, 'utf-8');
+  });
+
+  it('skips a malformed line silently and keeps the others in order', async () => {
+    await fs.writeFile(filePath, `${ALIAS_JS}\n{"alias":"py",\n${ALIAS_TS}\n`);
+
+    expect(JSON.stringify(await manager.listTagAliases())).toBe(`[${ALIAS_JS},${ALIAS_TS}]`);
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  it('skips blank and whitespace-only lines and accepts CRLF line ends', async () => {
+    await fs.writeFile(filePath, `${ALIAS_JS}\r\n\r\n   \r\n${ALIAS_PY}\r\n`);
+
+    expect(JSON.stringify(await manager.listTagAliases())).toBe(`[${ALIAS_JS},${ALIAS_PY}]`);
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  it('skips a first line that starts with a byte order mark', async () => {
+    await fs.writeFile(filePath, `﻿${ALIAS_JS}\n${ALIAS_PY}\n`);
+
+    expect(JSON.stringify(await manager.listTagAliases())).toBe(`[${ALIAS_PY}]`);
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  it('keeps lines that parse to a non-object value as parsed', async () => {
+    await fs.writeFile(filePath, 'null\n5\n"text"\n{"foo":1}\n');
+
+    expect(JSON.stringify(await manager.listTagAliases())).toBe('[null,5,"text",{"foo":1}]');
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  it('gives an empty list for an empty file', async () => {
+    await fs.writeFile(filePath, '');
+
+    expect(JSON.stringify(await manager.listTagAliases())).toBe('[]');
+  });
+
+  it('rethrows a non-ENOENT read error and does not cache it', async () => {
+    const readError = Object.assign(new Error('EACCES: permission denied'), { code: 'EACCES' });
+    readFileSpy.mockRejectedValueOnce(readError);
+
+    await expect(manager.listTagAliases()).rejects.toBe(readError);
+    expect(readFileSpy).toHaveBeenCalledTimes(1);
+
+    expect(JSON.stringify(await manager.listTagAliases())).toBe('[]');
+    expect(readFileSpy).toHaveBeenCalledTimes(2);
+  });
+});
