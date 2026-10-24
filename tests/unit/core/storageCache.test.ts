@@ -173,7 +173,7 @@ describe('upsertRelationInCache', () => {
 
   it('returns the live object on replace and keeps one cache row', () => {
     const { state, cache } = makeState(false);
-    const live: Relation = { from: 'a', to: 'b', relationType: 't', weight: 1, note: 'n' };
+    const live = { from: 'a', to: 'b', relationType: 't', weight: 1, note: 'n' } as Relation;
     upsertRelationInCache(state, live);
 
     const result = upsertRelationInCache(state, { from: 'a', to: 'b', relationType: 't', weight: 2 });

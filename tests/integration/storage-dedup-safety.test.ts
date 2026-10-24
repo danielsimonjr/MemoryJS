@@ -756,7 +756,7 @@ describe.each(VARIANTS)('storage safety net - $label', (variant) => {
       expect(store.getEntityByName('key-1')).toBe(liveEntity);
       expect(Object.keys(liveEntity)).toEqual(['name', 'entityType', 'observations']);
 
-      await store.appendRelation({ from: 'ent-00', to: 'ent-02', relationType: 'keyed', weight: 3, note: 'n' });
+      await store.appendRelation({ from: 'ent-00', to: 'ent-02', relationType: 'keyed', weight: 3, note: 'n' } as Relation);
       const liveRelation = store.getRelationsFrom('ent-00').find(r => r.relationType === 'keyed') as Relation;
       await store.appendRelation({ from: 'ent-00', to: 'ent-02', relationType: 'keyed' });
       expect(store.getRelationsFrom('ent-00').filter(r => r.relationType === 'keyed')).toEqual([liveRelation]);
