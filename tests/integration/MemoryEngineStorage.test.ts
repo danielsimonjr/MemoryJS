@@ -4,6 +4,7 @@ import type { SQLiteStorage } from '../../src/core/SQLiteStorage.js';
 import { rmSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { removeSqliteFiles } from '../test-utils/sqlite-files.js';
 
 describe('MemoryEngine integration — JSONL roundtrip', () => {
   let file: string;
@@ -73,44 +74,48 @@ describe('MemoryEngine integration — JSONL roundtrip', () => {
 describe('MemoryEngine integration — SQLite roundtrip', () => {
   let file: string;
   const prevStorageType = process.env.MEMORY_STORAGE_TYPE;
+  /** Contexts that afterEach closes before it removes the database files. */
+  let contexts: ManagerContext[] = [];
+  const open = (dbPath: string): ManagerContext => {
+    const ctx = new ManagerContext(dbPath);
+    contexts.push(ctx);
+    return ctx;
+  };
 
   beforeEach(() => {
     file = path.join(os.tmpdir(), `memengine-sqlite-int-${Date.now()}-${Math.random()}.db`);
     process.env.MEMORY_STORAGE_TYPE = 'sqlite';
   });
   afterEach(() => {
-    if (existsSync(file)) {
-      try {
-        rmSync(file, { force: true });
-      } catch {
-        // SQLite WAL/SHM file locks on Windows can briefly prevent unlink.
-      }
-    }
+    // Windows does not delete a SQLite file that a connection holds open.
+    for (const ctx of contexts) ctx.close();
+    contexts = [];
+    removeSqliteFiles(file);
     if (prevStorageType === undefined) delete process.env.MEMORY_STORAGE_TYPE;
     else process.env.MEMORY_STORAGE_TYPE = prevStorageType;
   });
 
   it('contentHash populates the indexed column on SQLite', async () => {
-    const ctx1 = new ManagerContext(file);
+    const ctx1 = open(file);
     await ctx1.memoryEngine.addTurn('sqlite content', {
       sessionId: 's-A',
       role: 'user',
     });
 
-    const ctx2 = new ManagerContext(file);
+    const ctx2 = open(file);
     const turns = await ctx2.memoryEngine.getSessionTurns('s-A');
     expect(turns).toHaveLength(1);
     expect(turns[0].contentHash).toMatch(/^[0-9a-f]{64}$/);
   });
 
   it('dedup via index hits across SQLite reopen', async () => {
-    const ctx1 = new ManagerContext(file);
+    const ctx1 = open(file);
     const first = await ctx1.memoryEngine.addTurn('persist dedup sqlite', {
       sessionId: 's-A',
       role: 'user',
     });
 
-    const ctx2 = new ManagerContext(file);
+    const ctx2 = open(file);
     const second = await ctx2.memoryEngine.addTurn('persist dedup sqlite', {
       sessionId: 's-A',
       role: 'user',
@@ -121,7 +126,7 @@ describe('MemoryEngine integration — SQLite roundtrip', () => {
   });
 
   it('uses the contentHash index without loading the full graph on an exact hit', async () => {
-    const ctx = new ManagerContext(file);
+    const ctx = open(file);
     await ctx.memoryEngine.addTurn('indexed exact hit', {
       sessionId: 's-A',
       role: 'user',
@@ -143,23 +148,23 @@ describe('MemoryEngine integration — SQLite roundtrip', () => {
   });
 
   it('handles SQLite migration idempotently across multiple opens', async () => {
-    const ctx1 = new ManagerContext(file);
+    const ctx1 = open(file);
     await ctx1.memoryEngine.addTurn('warm-up', { sessionId: 's-A', role: 'user' });
 
     // Re-opening the same DB must not re-run destructive migrations or throw.
-    expect(() => new ManagerContext(file)).not.toThrow();
-    expect(() => new ManagerContext(file)).not.toThrow();
+    expect(() => open(file)).not.toThrow();
+    expect(() => open(file)).not.toThrow();
   });
 
   it('AgentEntity-extension fields survive close/reopen via agentMetadata blob', async () => {
-    const ctx1 = new ManagerContext(file);
+    const ctx1 = open(file);
     await ctx1.memoryEngine.addTurn('round-trip me sqlite', {
       sessionId: 'rt-S',
       role: 'assistant',
       agentId: 'agent-y',
     });
 
-    const ctx2 = new ManagerContext(file);
+    const ctx2 = open(file);
     const turns = await ctx2.memoryEngine.getSessionTurns('rt-S');
     expect(turns).toHaveLength(1);
 

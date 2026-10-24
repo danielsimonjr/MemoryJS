@@ -1,12 +1,12 @@
 {
   "generated": "2026-10-24",
-  "totalFiles": 727,
+  "totalFiles": 728,
   "byDisposition": {
     "reachable": 299,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 408,
+    "test": 409,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -15,7 +15,7 @@
   "byArea": {
     "benchmarks": 4,
     "src": 303,
-    "tests": 408,
+    "tests": 409,
     "tools": 10,
     "config": 2
   },
@@ -2251,7 +2251,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 177
+      "loc": 182
     },
     {
       "file": "tests/integration/operation-progress.test.ts",
@@ -2490,6 +2490,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 47
+    },
+    {
+      "file": "tests/test-utils/sqlite-files.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 34
     },
     {
       "file": "tests/unit/adapters/ApiKeyAuthMiddleware.test.ts",
@@ -3210,7 +3217,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 152
+      "loc": 154
     },
     {
       "file": "tests/unit/agent/SummarizationService.test.ts",

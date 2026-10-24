@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { SQLiteStorage } from '../../../src/core/SQLiteStorage.js';
-import { rmSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { removeSqliteFiles } from '../../test-utils/sqlite-files.js';
 
 describe('SQLiteStorage contentHash migration', () => {
   let dbPath: string;
@@ -18,7 +18,7 @@ describe('SQLiteStorage contentHash migration', () => {
       storage.close();
       storage = null;
     }
-    if (existsSync(dbPath)) rmSync(dbPath, { force: true });
+    removeSqliteFiles(dbPath);
   });
 
   it('adds contentHash column on first open', async () => {

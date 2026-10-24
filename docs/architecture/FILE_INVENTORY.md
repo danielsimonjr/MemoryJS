@@ -10,7 +10,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 727
+**Total files**: 728
 
 ## Disposition counts
 
@@ -20,12 +20,12 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 408 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 409 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 4 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 0 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **727** | |
+| **Total** | **728** | |
 
 ## Per-area counts
 
@@ -34,7 +34,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `benchmarks` | 4 |
 | `config` | 2 |
 | `src` | 303 |
-| `tests` | 408 |
+| `tests` | 409 |
 | `tools` | 10 |
 
 ## All files
@@ -359,7 +359,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/integration/features/contradiction-detector-supersede.test.ts` | tests | test | 68 |
 | `tests/integration/features/governance-enforcement.test.ts` | tests | test | 322 |
 | `tests/integration/hybrid-search.test.ts` | tests | test | 332 |
-| `tests/integration/MemoryEngineStorage.test.ts` | tests | test | 177 |
+| `tests/integration/MemoryEngineStorage.test.ts` | tests | test | 182 |
 | `tests/integration/operation-progress.test.ts` | tests | test | 270 |
 | `tests/integration/procedural-graph-guidance.test.ts` | tests | test | 57 |
 | `tests/integration/procedural-graph-iomanager-roundtrip.test.ts` | tests | test | 81 |
@@ -394,6 +394,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/performance/write-performance.test.ts` | tests | test | 464 |
 | `tests/test-utils/inject-flush-failure.ts` | tests | test | 68 |
 | `tests/test-utils/microtask-ticks.ts` | tests | test | 47 |
+| `tests/test-utils/sqlite-files.ts` | tests | test | 34 |
 | `tests/unit/adapters/ApiKeyAuthMiddleware.test.ts` | tests | test | 266 |
 | `tests/unit/adapters/LangChainMemoryAdapter.test.ts` | tests | test | 98 |
 | `tests/unit/adapters/MCPToolObserverAdapter.test.ts` | tests | test | 164 |
@@ -496,7 +497,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/SessionCheckpoint.test.ts` | tests | test | 698 |
 | `tests/unit/agent/SessionManager.test.ts` | tests | test | 827 |
 | `tests/unit/agent/SessionQueryBuilder.test.ts` | tests | test | 526 |
-| `tests/unit/agent/SQLiteBackend.test.ts` | tests | test | 152 |
+| `tests/unit/agent/SQLiteBackend.test.ts` | tests | test | 154 |
 | `tests/unit/agent/SummarizationService.test.ts` | tests | test | 531 |
 | `tests/unit/agent/ToolAffordanceManager.test.ts` | tests | test | 198 |
 | `tests/unit/agent/ToolCallObserver.test.ts` | tests | test | 339 |
