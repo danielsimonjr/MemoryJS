@@ -175,6 +175,22 @@ describe('TagManager alias loader (pins)', () => {
     expect(records[2999].n).toBe(2999);
   });
 
+  it('skips only the line for which JSON.parse throws, whatever the error class', async () => {
+    const third = ALIAS_TS;
+    await fs.writeFile(filePath, `${ALIAS_JS}\n${ALIAS_PY}\n${third}\n`);
+    const realParse = JSON.parse.bind(JSON);
+    const parseSpy = vi.spyOn(JSON, 'parse').mockImplementation((text: string, reviver?: (this: unknown, key: string, value: unknown) => unknown) => {
+      if (text === ALIAS_PY) throw new RangeError('stand-in');
+      return realParse(text, reviver);
+    });
+
+    try {
+      expect(JSON.stringify(await manager.listTagAliases())).toBe(`[${ALIAS_JS},${third}]`);
+    } finally {
+      parseSpy.mockRestore();
+    }
+  });
+
   // The read is mocked to resolve at once, so each turn count is a microtask count.
   it('settles a cache miss in a fixed number of microtask turns', async () => {
     readFileSpy.mockResolvedValueOnce(`${ALIAS_JS}\n`);
