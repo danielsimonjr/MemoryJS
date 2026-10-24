@@ -2839,7 +2839,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 817
+      "loc": 858
     },
     {
       "file": "tests/unit/agent/MemoryFormatter.test.ts",

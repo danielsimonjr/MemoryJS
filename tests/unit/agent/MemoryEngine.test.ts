@@ -1,9 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { MemoryEngine } from '../../../src/agent/MemoryEngine.js';
 import { ImportanceScorer } from '../../../src/agent/ImportanceScorer.js';
 import { ManagerContext } from '../../../src/core/ManagerContext.js';
 import type { SQLiteStorage } from '../../../src/core/SQLiteStorage.js';
 import { SQLiteVectorStore } from '../../../src/search/VectorStore.js';
+import { LocalEmbeddingService } from '../../../src/search/EmbeddingService.js';
+import { EMBEDDING_DEFAULTS } from '../../../src/utils/constants.js';
 import type { EmbeddingService } from '../../../src/types/types.js';
 import { rmSync, existsSync } from 'node:fs';
 import path from 'node:path';
@@ -810,6 +812,45 @@ describe('MemoryEngine — turn embeddings', () => {
       storage.close();
       if (previousStorageType === undefined) delete process.env.MEMORY_STORAGE_TYPE;
       else process.env.MEMORY_STORAGE_TYPE = previousStorageType;
+      for (const suffix of ['', '-wal', '-shm']) rmSync(file + suffix, { force: true });
+    }
+  });
+
+  it('with no provider set, stores turn embeddings under the Transformers.js model name', async () => {
+    const file = path.join(os.tmpdir(), `memengine-local-${Date.now()}-${Math.random()}.db`);
+    const saved = {
+      MEMORY_STORAGE_TYPE: process.env.MEMORY_STORAGE_TYPE,
+      MEMORY_EMBEDDING_PROVIDER: process.env.MEMORY_EMBEDDING_PROVIDER,
+      MEMORY_EMBEDDING_MODEL: process.env.MEMORY_EMBEDDING_MODEL,
+    };
+    process.env.MEMORY_STORAGE_TYPE = 'sqlite';
+    delete process.env.MEMORY_EMBEDDING_PROVIDER;
+    delete process.env.MEMORY_EMBEDDING_MODEL;
+    // The Transformers.js pipeline is not loaded: the test replaces only the vector.
+    const embed = vi
+      .spyOn(LocalEmbeddingService.prototype, 'embed')
+      .mockResolvedValue(new Array(EMBEDDING_DEFAULTS.LOCAL_DIMENSIONS).fill(0.01));
+    const ctx = new ManagerContext(file);
+    const storage = ctx.storage as SQLiteStorage;
+    try {
+      expect(ctx.semanticSearch?.getEmbeddingService()).toBeInstanceOf(LocalEmbeddingService);
+
+      const { entity } = await ctx.memoryEngine.addTurn('a turn on the default provider', {
+        sessionId: 'emb-local',
+        role: 'user',
+      });
+
+      expect(embed).toHaveBeenCalledTimes(1);
+      const models = (await storage.loadEmbeddingMetadata()).map(m => [m.entityName, m.embeddingModel]);
+      expect(models).toEqual([[entity.name, 'Xenova/all-MiniLM-L6-v2']]);
+      expect(models.some(([, model]) => model === 'unknown')).toBe(false);
+    } finally {
+      embed.mockRestore();
+      storage.close();
+      for (const [key, value] of Object.entries(saved)) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
       for (const suffix of ['', '-wal', '-shm']) rmSync(file + suffix, { force: true });
     }
   });

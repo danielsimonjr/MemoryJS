@@ -443,7 +443,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/InMemoryBackend.test.ts` | tests | test | 99 |
 | `tests/unit/agent/keyValueLine.test.ts` | tests | test | 60 |
 | `tests/unit/agent/memoryBackend-wiring.test.ts` | tests | test | 71 |
-| `tests/unit/agent/MemoryEngine.test.ts` | tests | test | 817 |
+| `tests/unit/agent/MemoryEngine.test.ts` | tests | test | 858 |
 | `tests/unit/agent/MemoryFormatter.test.ts` | tests | test | 313 |
 | `tests/unit/agent/MemoryFormatterSalience.test.ts` | tests | test | 242 |
 | `tests/unit/agent/MemoryValidator.test.ts` | tests | test | 203 |
