@@ -504,5 +504,25 @@ describe('GraphStorage mmap wiring (task 84)', () => {
         ]);
       }
     });
+
+    it('keeps names that differ by case apart and lets a later duplicate relation replace an earlier one', async () => {
+      const entity = (name: string) =>
+        JSON.stringify({ type: 'entity', name, entityType: 'person', observations: [], createdAt: '2026-05-11T00:00:00Z', lastModified: '2026-05-11T00:00:00Z' });
+      const relation = (relationType: string, weight: number) =>
+        JSON.stringify({ type: 'relation', from: 'alice', to: 'bob', relationType, weight, createdAt: '2026-05-11T00:00:00Z', lastModified: '2026-05-11T00:00:00Z' });
+      const content = [
+        entity('Alice'), entity('alice'), entity('ALICE'),
+        relation('knows', 1), relation('owns', 5), relation('knows', 2),
+      ].join('\n') + '\n';
+      for (const useMmap of [false, true]) {
+        const { graph } = await loadWith(useMmap, content);
+        expect(graph.entities.map((e) => e.name)).toEqual(['Alice', 'alice', 'ALICE']);
+        // The duplicate keeps the position of the first line and the content of the last line.
+        expect(graph.relations.map((r) => [r.relationType, (r as Relation & { weight: number }).weight])).toEqual([
+          ['knows', 2],
+          ['owns', 5],
+        ]);
+      }
+    });
   });
 });
