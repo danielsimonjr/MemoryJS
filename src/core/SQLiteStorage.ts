@@ -473,6 +473,9 @@ export class SQLiteStorage implements IGraphStorage {
     // Create tables and indexes
     this.createTables();
 
+    // Drop the postings that an older release left in the full-text index
+    this.repairFullTextIndex();
+
     // Load cache from database
     this.loadCache();
 
@@ -602,6 +605,29 @@ export class SQLiteStorage implements IGraphStorage {
         VALUES (NEW.rowid, NEW.name, NEW.entityType, NEW.observations, NEW.tags);
       END
     `);
+  }
+
+  /**
+   * Value of `PRAGMA user_version` for a database whose full-text index holds no
+   * posting of a replaced row. A database from an older release reads 0.
+   */
+  private static readonly FTS_REPAIRED_VERSION = 1;
+
+  /**
+   * Rebuild the full-text index once for a database that an older release wrote.
+   * That release replaced rows with `INSERT OR REPLACE`. The write left the
+   * postings of the old rows in the index. The marker in `user_version` stops a
+   * rebuild on later opens. A new database holds no rows, so its rebuild costs nothing.
+   */
+  private repairFullTextIndex(): void {
+    const db = this.db!;
+    const version = db.pragma('user_version', { simple: true }) as number;
+    if (version >= SQLiteStorage.FTS_REPAIRED_VERSION) return;
+
+    db.transaction(() => {
+      db.exec(`INSERT INTO entities_fts(entities_fts) VALUES('rebuild')`);
+      db.pragma(`user_version = ${SQLiteStorage.FTS_REPAIRED_VERSION}`);
+    })();
   }
 
   /**
@@ -1036,10 +1062,23 @@ export class SQLiteStorage implements IGraphStorage {
   /**
    * SQL for the entity upsert used by `appendEntity`/`appendEntities`.
    * Prepared once per connection via `prepareCached` (S3).
+   *
+   * An existing name is updated in place. `INSERT OR REPLACE` deletes the old row
+   * first. With foreign keys on, that delete drops the relations of the entity and
+   * clears the `parentId` of its children. The old full-text posting stays in the
+   * index, because `recursive_triggers` is off and `entities_ad` does not fire.
    */
   private static readonly UPSERT_ENTITY_SQL = `
-        INSERT OR REPLACE INTO entities (name, id, entityType, observations, tags, importance, parentId, createdAt, lastModified, projectId, version, parentEntityName, rootEntityName, isLatest, supersededBy, contentHash, agentMetadata)
+        INSERT INTO entities (name, id, entityType, observations, tags, importance, parentId, createdAt, lastModified, projectId, version, parentEntityName, rootEntityName, isLatest, supersededBy, contentHash, agentMetadata)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(name) DO UPDATE SET
+          id = excluded.id, entityType = excluded.entityType, observations = excluded.observations,
+          tags = excluded.tags, importance = excluded.importance, parentId = excluded.parentId,
+          createdAt = excluded.createdAt, lastModified = excluded.lastModified, projectId = excluded.projectId,
+          version = excluded.version, parentEntityName = excluded.parentEntityName,
+          rootEntityName = excluded.rootEntityName, isLatest = excluded.isLatest,
+          supersededBy = excluded.supersededBy, contentHash = excluded.contentHash,
+          agentMetadata = excluded.agentMetadata
       `;
 
   /**
@@ -1076,7 +1115,7 @@ export class SQLiteStorage implements IGraphStorage {
   }
 
   /**
-   * Run the entity INSERT OR REPLACE row write (no cache side effects).
+   * Run the entity upsert row write (no cache side effects).
    */
   private runEntityUpsert(entity: Entity): void {
     this.prepareCached(this.db!, SQLiteStorage.UPSERT_ENTITY_SQL).run(
@@ -1209,7 +1248,7 @@ export class SQLiteStorage implements IGraphStorage {
   private appendOneLocked<T>(item: T, d: AppendDescriptor<T>): void {
     if (!this.db) throw new Error('Database not initialized');
 
-    // Use INSERT OR REPLACE to handle updates (cached statement — S3)
+    // The upsert statement handles an existing name (cached statement — S3)
     d.writeAll(this, [item]);
 
     // Update cache + indexes in O(1)

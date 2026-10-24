@@ -153,8 +153,8 @@ describe('FTS candidate lookup pins', () => {
     );
   });
 
-  // appendEntity replaces an existing name with INSERT OR REPLACE.
-  // The replace does not fire the delete trigger, so the old posting stays in the FTS table.
+  // appendEntity replaces an existing name in place.
+  // The update fires the FTS triggers, so the FTS table keeps no posting of the old content.
   async function replaceThroughAppendEntity(): Promise<void> {
     await storage.appendEntity({
       name: 'Needle',
@@ -168,7 +168,7 @@ describe('FTS candidate lookup pins', () => {
       )
       .all();
     raw.close();
-    expect(stale).toHaveLength(1);
+    expect(stale).toHaveLength(0);
   }
 
   it('RankedSearch returns the live matches after appendEntity replaces an entity', async () => {
