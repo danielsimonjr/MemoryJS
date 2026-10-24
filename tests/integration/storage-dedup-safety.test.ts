@@ -640,6 +640,219 @@ describe.each(VARIANTS)('storage safety net - $label', (variant) => {
       });
     });
   });
+
+  describe('R02 and R01 cache, index and transaction pins', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    /** Entity names of one type, read through the type index. */
+    const namesOfType = (store: Store, entityType: string): string[] =>
+      store.getEntitiesByType(entityType).map(e => e.name);
+
+    it('moves a replaced entity to its new type bucket and refreshes its lowercase view', async () => {
+      await seed();
+      const store = openStore();
+      await store.ensureLoaded();
+      expect(namesOfType(store, 'project')).toContain('ent-01');
+
+      await store.appendEntity({ name: 'ent-01', entityType: 'person', observations: ['Moved Word'] });
+
+      expect(namesOfType(store, 'project')).not.toContain('ent-01');
+      expect(namesOfType(store, 'person')).toContain('ent-01');
+      expect(store.getLowercased('ent-01')).toMatchObject({
+        entityType: 'person',
+        observations: ['moved word'],
+      });
+    });
+
+    it('indexes a new entity: type bucket, lowercase view and observation words', async () => {
+      await seed();
+      const store = openStore();
+      await store.ensureLoaded();
+
+      await store.appendEntity({ name: 'ix-new', entityType: 'gadget', observations: ['ZyxWord Mixed'] });
+
+      expect(namesOfType(store, 'gadget')).toEqual(['ix-new']);
+      expect(store.getLowercased('ix-new')).toMatchObject({ name: 'ix-new', observations: ['zyxword mixed'] });
+      expect(observationHits(store, 'zyxword')).toEqual(['ix-new']);
+    });
+
+    it('re-appends the live entity object without a second cache row and with fresh indexes', async () => {
+      await seed();
+      const store = openStore();
+      await store.ensureLoaded();
+      const live = store.getEntityByName('ent-01') as Entity;
+      const rows = (await store.loadGraph()).entities.length;
+
+      live.entityType = 'person';
+      live.observations = ['inplaceword'];
+      await store.appendEntity(live);
+
+      expect((await store.loadGraph()).entities).toHaveLength(rows);
+      expect(store.getEntityByName('ent-01')).toBe(live);
+      expect(namesOfType(store, 'person')).toContain('ent-01');
+      expect(observationHits(store, 'inplaceword')).toEqual(['ent-01']);
+      expect(observationHits(store, 'fact')).not.toContain('ent-01');
+      expect(store.getLowercased('ent-01')).toMatchObject({ observations: ['inplaceword'] });
+    });
+
+    it('drops the fields that a replacing entity or relation does not carry', async () => {
+      await seed();
+      const store = openStore();
+      await store.ensureLoaded();
+      await store.appendEntity({ name: 'key-1', entityType: 'person', observations: ['o'], tags: ['x'], importance: 4 });
+      const liveEntity = store.getEntityByName('key-1') as Entity;
+      await store.appendEntity({ name: 'key-1', entityType: 'person', observations: ['p'] });
+      expect(store.getEntityByName('key-1')).toBe(liveEntity);
+      expect(Object.keys(liveEntity)).toEqual(['name', 'entityType', 'observations']);
+
+      await store.appendRelation({ from: 'ent-00', to: 'ent-02', relationType: 'keyed', weight: 3, note: 'n' });
+      const liveRelation = store.getRelationsFrom('ent-00').find(r => r.relationType === 'keyed') as Relation;
+      await store.appendRelation({ from: 'ent-00', to: 'ent-02', relationType: 'keyed' });
+      expect(store.getRelationsFrom('ent-00').filter(r => r.relationType === 'keyed')).toEqual([liveRelation]);
+      expect(Object.keys(liveRelation)).toEqual(['from', 'to', 'relationType']);
+    });
+
+    it('forgets the key of a deleted relation, so the same relation can be appended again', async () => {
+      await seed();
+      const store = openStore();
+      await store.ensureLoaded();
+
+      await store.deleteEntities(['ent-00']);
+      await store.appendEntity(entity('ent-00', 'back again'));
+      await store.appendRelation({ from: 'ent-00', to: 'ent-03', relationType: 'knows' });
+
+      expect(store.getRelationsFrom('ent-00')).toHaveLength(1);
+      expect((await store.loadGraph()).relations.filter(r => r.from === 'ent-00')).toHaveLength(1);
+    });
+
+    it('keeps relations apart whose names differ only by separator position or by direction', async () => {
+      await seed();
+      const store = openStore();
+      await store.ensureLoaded();
+      await store.appendEntities(['a|b', 'c', 'a', 'b|c', 'x', 'y'].map(name => entity(name, 'endpoint')));
+      const before = (await store.loadGraph()).relations.length;
+
+      await store.appendRelations([
+        { from: 'a|b', to: 'c', relationType: 't' },
+        { from: 'a', to: 'b|c', relationType: 't' },
+        { from: 'x', to: 'y', relationType: 't' },
+        { from: 'y', to: 'x', relationType: 't' },
+      ]);
+
+      expect((await store.loadGraph()).relations).toHaveLength(before + 4);
+    });
+
+    it('sends the appended object itself in the created events', async () => {
+      await seed();
+      const store = openStore();
+      await store.ensureLoaded();
+      const entities: unknown[] = [];
+      const relations: unknown[] = [];
+      store.events.on('entity:created', event => entities.push(event.entity));
+      store.events.on('relation:created', event => relations.push(event.relation));
+      const single = entity('ev-1', 'event note');
+      const batch = [entity('ev-2', 'event note'), entity('ev-3', 'event note')];
+      const replacement = { name: 'ent-01', entityType: 'person', observations: ['again'] };
+      const link = relation('ev-1', 'ev-2', 'evented');
+      const links = [relation('ev-2', 'ev-3', 'evented'), relation('ev-3', 'ev-1', 'evented')];
+
+      await store.appendEntity(single);
+      await store.appendEntities(batch);
+      await store.appendEntity(replacement);
+      await store.appendRelation(link);
+      await store.appendRelations(links);
+
+      expect(entities).toHaveLength(4);
+      expect(entities[0]).toBe(single);
+      expect(entities[1]).toBe(batch[0]);
+      expect(entities[2]).toBe(batch[1]);
+      expect(entities[3]).toBe(replacement);
+      expect(relations).toHaveLength(3);
+      expect(relations[0]).toBe(link);
+      expect(relations[1]).toBe(links[0]);
+      expect(relations[2]).toBe(links[1]);
+    });
+
+    it('moves neither the generation counters nor the pending counter when the cache update fails', async () => {
+      await seed();
+      const store = openStore();
+      await store.ensureLoaded();
+      const generations = getGraphGenerations(store);
+      const pending = store.getPendingAppends();
+
+      vi.spyOn(NameIndex.prototype, 'add').mockImplementationOnce(() => {
+        throw new Error('index failure');
+      });
+      await expect(store.appendEntity(entity('boom-1', 'x'))).rejects.toThrow('index failure');
+      vi.spyOn(RelationIndex.prototype, 'add').mockImplementationOnce(() => {
+        throw new Error('relation index failure');
+      });
+      await expect(store.appendRelation(relation('ent-01', 'ent-02', 'boom'))).rejects.toThrow(
+        'relation index failure',
+      );
+
+      expect(getGraphGenerations(store)).toEqual(generations);
+      expect(store.getPendingAppends()).toBe(pending);
+    });
+
+    if (segmented) {
+      it('resets the pending counter in segment mode even when it was not zero', async () => {
+        await seed();
+        const store = openStore();
+        await store.ensureLoaded();
+        (store as unknown as { pendingAppends: number }).pendingAppends = 5;
+
+        await store.appendEntity(entity('seg-reset', 'x'));
+        expect(store.getPendingAppends()).toBe(0);
+
+        (store as unknown as { pendingAppends: number }).pendingAppends = 5;
+        await store.appendRelations([relation('ent-01', 'ent-02', 'seg-reset')]);
+        expect(store.getPendingAppends()).toBe(0);
+      });
+    }
+
+    if (variant.sqlite) {
+      it('opens no transaction for a single append and one transaction for each batch append', async () => {
+        await seed();
+        const store = openStore() as SQLiteStorage;
+        await store.ensureLoaded();
+        const db = (store as unknown as { db: { transaction: (...args: unknown[]) => unknown } }).db;
+        const transaction = vi.spyOn(db, 'transaction');
+        const counts: number[] = [];
+
+        await store.appendEntity(entity('tx-1', 'x'));
+        counts.push(transaction.mock.calls.length);
+        await store.appendRelation(relation('ent-01', 'tx-1', 'tx'));
+        counts.push(transaction.mock.calls.length);
+        await store.appendEntities([entity('tx-2', 'x'), entity('tx-3', 'x')]);
+        counts.push(transaction.mock.calls.length);
+        await store.appendRelations([relation('tx-2', 'tx-3', 'tx')]);
+        counts.push(transaction.mock.calls.length);
+
+        expect(counts).toEqual([0, 0, 1, 2]);
+      });
+
+      it('rejects every append form with "Database not initialized" when the connection is gone', async () => {
+        await seed();
+        const store = openStore() as SQLiteStorage;
+        await store.ensureLoaded();
+        const holder = store as unknown as { db: unknown };
+        const connection = holder.db;
+        holder.db = null;
+        try {
+          const text = 'Database not initialized';
+          await expect(store.appendEntity(entity('gone-1', 'x'))).rejects.toThrow(text);
+          await expect(store.appendEntities([entity('gone-2', 'x')])).rejects.toThrow(text);
+          await expect(store.appendRelation(relation('ent-01', 'ent-02', 'gone'))).rejects.toThrow(text);
+          await expect(store.appendRelations([relation('ent-01', 'ent-02', 'gone')])).rejects.toThrow(text);
+        } finally {
+          holder.db = connection;
+        }
+      });
+    }
+  });
 });
 
 describe('storage safety net - JSONL crash simulation', () => {
