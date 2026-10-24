@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- CI runs the test suite a second time on the `node:sqlite` driver (`MEMORY_SQLITE_DRIVER=node`), on the ubuntu-latest and Node 24 leg. The job names do not change. The `SQLiteStorage` test that records the table reads and the `ALTER TABLE` statements now spies on the driver that `SQLiteStorage` resolves. Before, it spied on `better-sqlite3` only and failed on the `node:sqlite` driver, which no CI job ran.
 - `docs/analysis/DUPLICATE_FUNCTION_AUDIT.md` records three measured outcomes. The IDF pair, the two top-k heaps and the `QuantizedVectorStore` cosine stay separate. Section 6 gives the reason and the measurement for each.
 - `CompressionManager.calculateEntitySimilarity` and the prepared comparison of `findDuplicates` share the weighted score in one module function, `weightedEntitySimilarity` in `src/features/CompressionManager.ts`. Each path keeps its own reads of the entity fields, in the same order as before. Behaviour is unchanged for every input that the types allow.
 - The cosine loop of `textSimilarity` and `RelationConsolidator` moves to `cosineParts` in `src/utils/textSimilarity.ts`. Each site keeps its own mismatch rule, zero rule and clamp. `QuantizedVectorStore` keeps its own loop. Its input is a `Float32Array`. When it shared `cosineParts`, a measurement showed a slower cosine at every site. Behaviour is unchanged.
