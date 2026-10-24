@@ -572,63 +572,67 @@ describe.each(VARIANTS)('storage safety net - $label', (variant) => {
       expect(trace.map(row => row.ticks)).toEqual(R01_TICKS[variant.label]);
     });
 
-    it.skipIf(variant.sqlite || segmented)('compacts on the append that reaches the threshold, for single and batch forms', async () => {
-      await seed();
-      const store = openStore();
-      await store.loadGraph();
-      // A threshold of 3 makes compaction visible in a few calls. The getter is read once per append.
-      const threshold = vi
-        .spyOn(GraphStorage.prototype as unknown as { compactionThreshold: number }, 'compactionThreshold', 'get')
-        .mockReturnValue(3);
-      const rows: Array<[string, number, number, number]> = [];
-      const lineCount = async (): Promise<number> =>
-        (await fs.readFile(file, 'utf8')).split('\n').filter(line => line.length > 0).length;
-      async function row(op: string, start: () => Promise<unknown>): Promise<void> {
-        const reads = threshold.mock.calls.length;
-        await start();
-        rows.push([op, await lineCount(), store.getPendingAppends(), threshold.mock.calls.length - reads]);
-      }
-      await row('appendEntity', () => store.appendEntity(entity('cmp-a', 'compact note')));
-      await row('appendEntity', () => store.appendEntity(entity('cmp-b', 'compact note')));
-      await row('appendEntity', () => store.appendEntity(entity('cmp-c', 'compact note')));
-      await row('appendEntities', () =>
-        store.appendEntities([entity('cmp-d', 'compact note'), entity('cmp-e', 'compact note'), entity('cmp-f', 'compact note')]),
-      );
-      await row('appendRelation', () => store.appendRelation(relation('ent-01', 'cmp-a', 'compacted')));
-      await row('appendRelation', () => store.appendRelation(relation('ent-02', 'cmp-b', 'compacted')));
-      await row('appendRelations', () =>
-        store.appendRelations([relation('ent-03', 'cmp-c', 'compacted'), relation('ent-04', 'cmp-d', 'compacted'), relation('ent-05', 'cmp-e', 'compacted')]),
-      );
-      // Rows: op, file lines after the call, pending appends after the call, threshold reads in the call.
-      expect(rows).toEqual([
-        ['appendEntity', 51, 1, 1],
-        ['appendEntity', 52, 2, 1],
-        ['appendEntity', 53, 0, 1],
-        ['appendEntities', 56, 0, 1],
-        ['appendRelation', 57, 1, 1],
-        ['appendRelation', 58, 2, 1],
-        ['appendRelations', 61, 0, 1],
-      ]);
-    });
-
-    it.skipIf(!segmented || variant.sqlite)('routes an appended relation to the segment of its from endpoint', async () => {
-      await seed();
-      const store = openStore();
-      await store.loadGraph();
-      await store.appendRelation(relation('ent-07', 'ent-12', 'routed'));
-      await store.appendRelations([relation('ent-08', 'ent-13', 'routed-batch')]);
-      const segmentsDir = join(dir, 'segments');
-      const holders = async (marker: string): Promise<number[]> => {
-        const ids: number[] = [];
-        for (let id = 0; id < 4; id++) {
-          const text = await fs.readFile(join(segmentsDir, `${id}.jsonl`), 'utf8');
-          if (text.includes(marker)) ids.push(id);
+    if (!variant.sqlite && !segmented) {
+      it('compacts on the append that reaches the threshold, for single and batch forms', async () => {
+        await seed();
+        const store = openStore();
+        await store.loadGraph();
+        // A threshold of 3 makes compaction visible in a few calls. The getter is read once per append.
+        const threshold = vi
+          .spyOn(GraphStorage.prototype as unknown as { compactionThreshold: number }, 'compactionThreshold', 'get')
+          .mockReturnValue(3);
+        const rows: Array<[string, number, number, number]> = [];
+        const lineCount = async (): Promise<number> =>
+          (await fs.readFile(file, 'utf8')).split('\n').filter(line => line.length > 0).length;
+        async function row(op: string, start: () => Promise<unknown>): Promise<void> {
+          const reads = threshold.mock.calls.length;
+          await start();
+          rows.push([op, await lineCount(), store.getPendingAppends(), threshold.mock.calls.length - reads]);
         }
-        return ids;
-      };
-      expect(await holders('"relationType":"routed"')).toEqual([0]);
-      expect(await holders('"relationType":"routed-batch"')).toEqual([1]);
-    });
+        await row('appendEntity', () => store.appendEntity(entity('cmp-a', 'compact note')));
+        await row('appendEntity', () => store.appendEntity(entity('cmp-b', 'compact note')));
+        await row('appendEntity', () => store.appendEntity(entity('cmp-c', 'compact note')));
+        await row('appendEntities', () =>
+          store.appendEntities([entity('cmp-d', 'compact note'), entity('cmp-e', 'compact note'), entity('cmp-f', 'compact note')]),
+        );
+        await row('appendRelation', () => store.appendRelation(relation('ent-01', 'cmp-a', 'compacted')));
+        await row('appendRelation', () => store.appendRelation(relation('ent-02', 'cmp-b', 'compacted')));
+        await row('appendRelations', () =>
+          store.appendRelations([relation('ent-03', 'cmp-c', 'compacted'), relation('ent-04', 'cmp-d', 'compacted'), relation('ent-05', 'cmp-e', 'compacted')]),
+        );
+        // Rows: op, file lines after the call, pending appends after the call, threshold reads in the call.
+        expect(rows).toEqual([
+          ['appendEntity', 51, 1, 1],
+          ['appendEntity', 52, 2, 1],
+          ['appendEntity', 53, 0, 1],
+          ['appendEntities', 56, 0, 1],
+          ['appendRelation', 57, 1, 1],
+          ['appendRelation', 58, 2, 1],
+          ['appendRelations', 61, 0, 1],
+        ]);
+      });
+    }
+
+    if (segmented && !variant.sqlite) {
+      it('routes an appended relation to the segment of its from endpoint', async () => {
+        await seed();
+        const store = openStore();
+        await store.loadGraph();
+        await store.appendRelation(relation('ent-07', 'ent-12', 'routed'));
+        await store.appendRelations([relation('ent-08', 'ent-13', 'routed-batch')]);
+        const segmentsDir = join(dir, 'segments');
+        const holders = async (marker: string): Promise<number[]> => {
+          const ids: number[] = [];
+          for (let id = 0; id < 4; id++) {
+            const text = await fs.readFile(join(segmentsDir, `${id}.jsonl`), 'utf8');
+            if (text.includes(marker)) ids.push(id);
+          }
+          return ids;
+        };
+        expect(await holders('"relationType":"routed"')).toEqual([0]);
+        expect(await holders('"relationType":"routed-batch"')).toEqual([1]);
+      });
+    }
   });
 
   describe('R02 and R01 evaluation order and error texts', () => {
