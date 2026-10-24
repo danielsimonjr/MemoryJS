@@ -30,6 +30,13 @@ import { FileSegmentStorage } from './segments/FileSegmentStorage.js';
 import { FnvSegmentRouter } from './segments/ISegmentStorage.js';
 import { FsReadMmapBackend } from './mmap/FsReadMmapBackend.js';
 import { streamLines } from './mmap/IMmapBackend.js';
+import {
+  relationKeyOf,
+  removeEntitiesFromIndexes,
+  upsertEntityInCache,
+  upsertRelationInCache,
+  type StorageCacheState,
+} from './storageCache.js';
 
 /**
  * Read `MEMORY_STORAGE_SEGMENT_COUNT` and return a `FileSegmentStorage`
@@ -126,15 +133,6 @@ function copyOptionalPersistedFields(
 }
 
 /**
- * Composite key uniquely identifying a relation (`from`/`to`/`relationType`
- * triple). `\u0000` separator matches `RelationManager.deleteRelations` and
- * cannot collide with entity-name content in practice.
- */
-function relationKeyOf(r: Pick<Relation, 'from' | 'to' | 'relationType'>): string {
-  return `${r.from}\u0000${r.to}\u0000${r.relationType}`;
-}
-
-/**
  * Serialize an entity to its JSONL line (shared by append / update /
  * full-save paths so the on-disk shape stays identical everywhere).
  */
@@ -169,6 +167,29 @@ function serializeRelationLine(r: Relation): string {
   if (r.properties) relationData.properties = r.properties;
   if (r.metadata) relationData.metadata = r.metadata;
   return JSON.stringify(relationData);
+}
+
+/**
+ * The steps that differ between the entity and the relation append paths.
+ * Each step receives the storage as `owner`, so that the steps can be shared
+ * static values.
+ *
+ * `routeAll` and `serializeAll` take the whole list. Their parameter has the
+ * name of the public parameter (`entities`, `relations`), so that a list that
+ * is not an array fails with the same message as before: V8 prints the source
+ * text of the failing expression.
+ */
+interface AppendDescriptor<T> {
+  /** Segment ids of the items, in item order. */
+  routeAll(owner: GraphStorage, items: readonly T[]): number[];
+  /** JSONL lines of the items, in item order. */
+  serializeAll(items: readonly T[]): string[];
+  /** Upserts one item into the cache and indexes. */
+  upsert(owner: GraphStorage, item: T): void;
+  /** Bumps the generation counter of the item kind. */
+  bumpGeneration(owner: GraphStorage): void;
+  /** Emits the created event of one item. */
+  emit(owner: GraphStorage, item: T): void;
 }
 
 /**
@@ -298,6 +319,12 @@ export class GraphStorage implements IGraphStorage {
   private segmentStorage: FileSegmentStorage | null;
 
   /**
+   * Cache and index members for the shared cache steps. Each data member is
+   * a getter, so a read takes the current value of the field.
+   */
+  private readonly cacheState: StorageCacheState;
+
+  /**
    * Create a new GraphStorage instance.
    *
    * @param memoryFilePath - Absolute path to the JSONL file
@@ -310,6 +337,40 @@ export class GraphStorage implements IGraphStorage {
     // defense-in-depth check still runs.
     this.memoryFilePath = validateFilePath(memoryFilePath, undefined, false);
     this.segmentStorage = resolveSegmentStorage(this.memoryFilePath);
+    this.cacheState = GraphStorage.cacheStateOf(this);
+  }
+
+  /**
+   * Build the cache and index members for `owner`. Each getter reads the
+   * owner field at the moment of use.
+   */
+  private static cacheStateOf(owner: GraphStorage): StorageCacheState {
+    return {
+      get cache() {
+        return owner.cache;
+      },
+      get nameIndex() {
+        return owner.nameIndex;
+      },
+      get typeIndex() {
+        return owner.typeIndex;
+      },
+      get relationIndex() {
+        return owner.relationIndex;
+      },
+      get relationKeyMap() {
+        return owner.relationKeyMap;
+      },
+      get observationIndex() {
+        return owner.observationIndex;
+      },
+      setLowercase(entity: Entity): void {
+        owner.lowercaseCache.set(entity);
+      },
+      removeLowercase(entity: Entity): void {
+        owner.lowercaseCache.remove(entity.name);
+      },
+    };
   }
 
   // ==================== Phase 10 Sprint 2: Event Emitter Access ====================
@@ -769,77 +830,6 @@ export class GraphStorage implements IGraphStorage {
   }
 
   /**
-   * Upsert an entity into the in-memory cache + indexes.
-   *
-   * When an entity with the same name already exists, its live object is
-   * mutated **in place** (stale fields removed, new fields assigned) so
-   * every structure holding a reference to it — `cache.entities`,
-   * `NameIndex` — stays consistent in O(1) without array scans. This
-   * mirrors the on-disk JSONL semantics where a later line for the same
-   * name replaces the earlier one on reload.
-   *
-   * @returns The live cache object for the entity (the existing object on
-   *   replace, the given object on insert)
-   */
-  private upsertEntityInCache(entity: Entity): Entity {
-    const existing = this.nameIndex.get(entity.name);
-    if (existing !== undefined && existing !== entity) {
-      const oldType = existing.entityType;
-      const target = existing as unknown as Record<string, unknown>;
-      const source = entity as unknown as Record<string, unknown>;
-      for (const key of Object.keys(target)) {
-        if (!(key in source)) delete target[key];
-      }
-      Object.assign(target, source);
-      if (oldType !== existing.entityType) {
-        this.typeIndex.updateType(existing.name, oldType, existing.entityType);
-      }
-      this.lowercaseCache.set(existing);
-      this.observationIndex.remove(existing.name);
-      this.observationIndex.add(existing.name, existing.observations);
-      return existing;
-    }
-    if (existing === undefined) {
-      this.cache!.entities.push(entity);
-    }
-    this.nameIndex.add(entity);
-    this.typeIndex.add(entity);
-    this.lowercaseCache.set(entity);
-    this.observationIndex.remove(entity.name);
-    this.observationIndex.add(entity.name, entity.observations);
-    return entity;
-  }
-
-  /**
-   * Upsert a relation into the in-memory cache + indexes. Same in-place
-   * replace strategy as `upsertEntityInCache` — a duplicate
-   * `from`/`to`/`relationType` key mutates the live object (matching the
-   * on-disk dedup-on-reload semantics and SQLite's INSERT OR REPLACE)
-   * instead of pushing a duplicate row into the cache array.
-   *
-   * @returns The live cache object for the relation
-   */
-  private upsertRelationInCache(relation: Relation): Relation {
-    const key = relationKeyOf(relation);
-    const existing = this.relationKeyMap.get(key);
-    if (existing !== undefined && existing !== relation) {
-      const target = existing as unknown as Record<string, unknown>;
-      const source = relation as unknown as Record<string, unknown>;
-      for (const k of Object.keys(target)) {
-        if (!(k in source)) delete target[k];
-      }
-      Object.assign(target, source);
-      return existing;
-    }
-    if (existing === undefined) {
-      this.cache!.relations.push(relation);
-      this.relationIndex.add(relation);
-      this.relationKeyMap.set(key, relation);
-    }
-    return relation;
-  }
-
-  /**
    * Save the knowledge graph to disk.
    *
    * OPTIMIZED: Updates cache directly after write to avoid re-reading.
@@ -870,46 +860,7 @@ export class GraphStorage implements IGraphStorage {
   async appendEntity(entity: Entity): Promise<void> {
     await this.ensureLoaded();
 
-    return this.mutex.runExclusive(async () => {
-      if (this.segmentStorage !== null) {
-        // Segment mode rewrites only the owning segment for this entity.
-        // `pendingAppends` is a single-file compaction counter, so it
-        // remains reset in segment mode.
-        await this.appendViaSegmentSave(
-          () => {
-            this.upsertEntityInCache(entity);
-          },
-          new Set([this.segmentStorage.router.route(entity.name)]),
-        );
-        this.pendingAppends = 0;
-        bumpEntityGeneration(this);
-        this.eventEmitter.emitEntityCreated(entity);
-        return;
-      }
-
-      const line = serializeEntityLine(entity);
-
-      // Append to file with fsync for durability (write FIRST, then update cache)
-      await this.appendLines([line]);
-
-      // Update cache + indexes in-place (after successful file write).
-      // Duplicate names replace the live cache object (matches on-disk
-      // dedup-on-reload semantics and SQLite's INSERT OR REPLACE).
-      this.upsertEntityInCache(entity);
-
-      this.pendingAppends++;
-
-      // S6: lazily invalidate entity-dependent search caches
-      bumpEntityGeneration(this);
-
-      // Phase 10 Sprint 2: Emit entity:created event
-      this.eventEmitter.emitEntityCreated(entity);
-
-      // Trigger compaction if threshold reached
-      if (this.pendingAppends >= this.compactionThreshold) {
-        await this.compactInternal();
-      }
-    });
+    return this.mutex.runExclusive(() => this.appendLocked([entity], GraphStorage.ENTITY_APPEND));
   }
 
   /**
@@ -933,45 +884,7 @@ export class GraphStorage implements IGraphStorage {
     if (entities.length === 0) return;
     await this.ensureLoaded();
 
-    return this.mutex.runExclusive(async () => {
-      if (this.segmentStorage !== null) {
-        const dirtySegments = new Set(
-          entities.map(entity => this.segmentStorage!.router.route(entity.name)),
-        );
-        await this.appendViaSegmentSave(
-          () => {
-            for (const entity of entities) {
-              this.upsertEntityInCache(entity);
-            }
-          },
-          dirtySegments,
-        );
-        this.pendingAppends = 0;
-        bumpEntityGeneration(this);
-        for (const entity of entities) {
-          this.eventEmitter.emitEntityCreated(entity);
-        }
-        return;
-      }
-
-      const lines = entities.map(serializeEntityLine);
-      await this.appendLines(lines);
-
-      for (const entity of entities) {
-        this.upsertEntityInCache(entity);
-      }
-
-      this.pendingAppends += entities.length;
-      bumpEntityGeneration(this);
-
-      for (const entity of entities) {
-        this.eventEmitter.emitEntityCreated(entity);
-      }
-
-      if (this.pendingAppends >= this.compactionThreshold) {
-        await this.compactInternal();
-      }
-    });
+    return this.mutex.runExclusive(() => this.appendLocked(entities, GraphStorage.ENTITY_APPEND));
   }
 
   /**
@@ -987,44 +900,7 @@ export class GraphStorage implements IGraphStorage {
   async appendRelation(relation: Relation): Promise<void> {
     await this.ensureLoaded();
 
-    return this.mutex.runExclusive(async () => {
-      if (this.segmentStorage !== null) {
-        // Relations are owned by the segment of their `from` endpoint.
-        await this.appendViaSegmentSave(
-          () => {
-            this.upsertRelationInCache(relation);
-          },
-          new Set([this.segmentStorage.router.route(relation.from)]),
-        );
-        this.pendingAppends = 0;
-        bumpRelationGeneration(this);
-        this.eventEmitter.emitRelationCreated(relation);
-        return;
-      }
-
-      const line = serializeRelationLine(relation);
-
-      // Append to file with fsync for durability (write FIRST, then update cache)
-      await this.appendLines([line]);
-
-      // Update cache + index in-place (after successful file write).
-      // Duplicate keys replace the live cache object (matches on-disk
-      // dedup-on-reload semantics and SQLite's INSERT OR REPLACE).
-      this.upsertRelationInCache(relation);
-
-      this.pendingAppends++;
-
-      // S6: lazily invalidate relation-dependent search caches
-      bumpRelationGeneration(this);
-
-      // Phase 10 Sprint 2: Emit relation:created event
-      this.eventEmitter.emitRelationCreated(relation);
-
-      // Trigger compaction if threshold reached
-      if (this.pendingAppends >= this.compactionThreshold) {
-        await this.compactInternal();
-      }
-    });
+    return this.mutex.runExclusive(() => this.appendLocked([relation], GraphStorage.RELATION_APPEND));
   }
 
   /**
@@ -1042,45 +918,79 @@ export class GraphStorage implements IGraphStorage {
     if (relations.length === 0) return;
     await this.ensureLoaded();
 
-    return this.mutex.runExclusive(async () => {
-      if (this.segmentStorage !== null) {
-        const dirtySegments = new Set(
-          relations.map(relation => this.segmentStorage!.router.route(relation.from)),
-        );
-        await this.appendViaSegmentSave(
-          () => {
-            for (const relation of relations) {
-              this.upsertRelationInCache(relation);
-            }
-          },
-          dirtySegments,
-        );
-        this.pendingAppends = 0;
-        bumpRelationGeneration(this);
-        for (const relation of relations) {
-          this.eventEmitter.emitRelationCreated(relation);
+    return this.mutex.runExclusive(() => this.appendLocked(relations, GraphStorage.RELATION_APPEND));
+  }
+
+  /**
+   * Entity steps for `appendLocked`. Each step receives the storage as its
+   * owner. An entity belongs to the segment of its name.
+   */
+  private static readonly ENTITY_APPEND: AppendDescriptor<Entity> = {
+    routeAll: (owner, entities) => entities.map(entity => owner.segmentStorage!.router.route(entity.name)),
+    serializeAll: entities => entities.map(serializeEntityLine),
+    upsert: (owner, entity) => upsertEntityInCache(owner.cacheState, entity),
+    bumpGeneration: owner => bumpEntityGeneration(owner),
+    emit: (owner, entity) => owner.eventEmitter.emitEntityCreated(entity),
+  };
+
+  /**
+   * Relation steps for `appendLocked`. Each step receives the storage as its
+   * owner. A relation belongs to the segment of its `from` endpoint.
+   */
+  private static readonly RELATION_APPEND: AppendDescriptor<Relation> = {
+    routeAll: (owner, relations) => relations.map(relation => owner.segmentStorage!.router.route(relation.from)),
+    serializeAll: relations => relations.map(serializeRelationLine),
+    upsert: (owner, relation) => upsertRelationInCache(owner.cacheState, relation),
+    bumpGeneration: owner => bumpRelationGeneration(owner),
+    emit: (owner, relation) => owner.eventEmitter.emitRelationCreated(relation),
+  };
+
+  /**
+   * Append one or more items in one serialized block (S2 delta persistence).
+   *
+   * Runs inside the mutex. A single append passes a one-item list. Segment
+   * mode rewrites the dirty segments and does not compact. Single-file mode
+   * appends one block, then compacts when the threshold is reached.
+   *
+   * @param items - Items to append. The list holds at least one item.
+   * @param d - The steps that differ between entities and relations
+   */
+  private async appendLocked<T>(items: readonly T[], d: AppendDescriptor<T>): Promise<void> {
+    if (this.segmentStorage !== null) {
+      const dirtySegments = new Set(d.routeAll(this, items));
+      await this.appendViaSegmentSave(() => {
+        for (const item of items) {
+          d.upsert(this, item);
         }
-        return;
+      }, dirtySegments);
+      // `pendingAppends` counts single-file appends, so segment mode keeps it at zero.
+      this.pendingAppends = 0;
+      d.bumpGeneration(this);
+      for (const item of items) {
+        d.emit(this, item);
       }
+      return;
+    }
 
-      const lines = relations.map(serializeRelationLine);
-      await this.appendLines(lines);
+    const lines = d.serializeAll(items);
 
-      for (const relation of relations) {
-        this.upsertRelationInCache(relation);
-      }
+    // Write first with fsync for durability, then update the cache and the indexes.
+    await this.appendLines(lines);
 
-      this.pendingAppends += relations.length;
-      bumpRelationGeneration(this);
+    for (const item of items) {
+      d.upsert(this, item);
+    }
 
-      for (const relation of relations) {
-        this.eventEmitter.emitRelationCreated(relation);
-      }
+    this.pendingAppends += items.length;
+    d.bumpGeneration(this);
 
-      if (this.pendingAppends >= this.compactionThreshold) {
-        await this.compactInternal();
-      }
-    });
+    for (const item of items) {
+      d.emit(this, item);
+    }
+
+    if (this.pendingAppends >= this.compactionThreshold) {
+      await this.compactInternal();
+    }
   }
 
   /**
@@ -1487,16 +1397,7 @@ export class GraphStorage implements IGraphStorage {
         this.cache!.relations = this.cache!.relations.filter(
           r => !nameSet.has(r.from) && !nameSet.has(r.to),
         );
-        for (const e of deletedEntities) {
-          this.nameIndex.remove(e.name);
-          this.typeIndex.remove(e.name, e.entityType);
-          this.lowercaseCache.remove(e.name);
-          this.observationIndex.remove(e.name);
-        }
-        for (const r of deletedRelations) {
-          this.relationIndex.remove(r);
-          this.relationKeyMap.delete(relationKeyOf(r));
-        }
+        removeEntitiesFromIndexes(this.cacheState, deletedEntities, deletedRelations);
       };
 
       if (this.segmentStorage !== null) {

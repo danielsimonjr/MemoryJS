@@ -41,7 +41,7 @@ The codebase is organized into the following modules:
 - **adapters**: 7 files
 - **agent**: 108 files
 - **cli**: 31 files
-- **core**: 25 files
+- **core**: 26 files
 - **features**: 18 files
 - **entry**: 1 file
 - **search**: 52 files
@@ -63,7 +63,7 @@ Seeded build/entry roots (package `exports`, `bin` targets, tsup entries, script
 - `src/sqlite.ts`
 - `src/workers/levenshteinWorker.ts`
 
-Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
+Reachable from a root: **301** of 301 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
 
 ---
 
@@ -2956,6 +2956,7 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 | `./segments/ISegmentStorage.js` | `FnvSegmentRouter` | Import |
 | `./mmap/FsReadMmapBackend.js` | `FsReadMmapBackend` | Import |
 | `./mmap/IMmapBackend.js` | `streamLines` | Import |
+| `./storageCache.js` | `relationKeyOf, removeEntitiesFromIndexes, upsertEntityInCache, upsertRelationInCache, StorageCacheState` | Import |
 
 **Exports:**
 - Classes: `GraphStorage`
@@ -3343,11 +3344,26 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 | `../utils/logger.js` | `logger` | Import |
 | `../search/PartialIndexAdvisor.js` | `PartialIndexAdvisor, FilterObservation` | Import |
 | `./GraphEventEmitter.js` | `GraphEventEmitter` | Import |
+| `./storageCache.js` | `relationKeyOf, removeEntitiesFromIndexes, upsertEntityInCache, upsertRelationInCache, StorageCacheState` | Import |
 
 **Exports:**
 - Classes: `SQLiteStorage`
 - Types: `DatabaseCtor`
 - Functions: `__resetDatabaseCtorForTests`, `resolveSQLiteDatabaseCtor`, `resolveSQLiteSynchronousMode`
+
+---
+
+### `src/core/storageCache.ts` - Cache and index steps shared by the storage backends.
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../types/index.js` | `KnowledgeGraph, Entity, Relation` | Import (type-only) |
+| `../utils/indexes.js` | `NameIndex, TypeIndex, RelationIndex, ObservationIndex` | Import (type-only) |
+
+**Exports:**
+- Interfaces: `StorageCacheState`
+- Functions: `relationKeyOf`, `upsertEntityInCache`, `upsertRelationInCache`, `removeEntitiesFromIndexes`
 
 ---
 
@@ -5437,12 +5453,12 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports From | Exports To |
 |------|--------------|------------|
 | `src/core/ManagerContext` | 91 files | 9 files |
-| `src/types/index` | 10 files | 63 files |
+| `src/types/index` | 10 files | 64 files |
 | `src/types/types` | 1 file | 66 files |
 | `src/agent/index` | 62 files | 1 file |
 | `src/utils/index` | 27 files | 27 files |
 | `src/types/agent-memory` | 1 file | 46 files |
-| `src/core/GraphStorage` | 13 files | 31 files |
+| `src/core/GraphStorage` | 14 files | 31 files |
 | `src/search/index` | 40 files | 1 file |
 | `src/core/EntityManager` | 10 files | 30 files |
 | `src/agent/AgentMemoryManager` | 29 files | 2 files |
@@ -5470,9 +5486,9 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/agent/SalienceEngine` | 7 files | 7 files |
 | `src/agent/WorkingMemoryManager` | 7 files | 7 files |
 | `src/core/index` | 13 files | 1 file |
+| `src/core/SQLiteStorage` | 11 files | 3 files |
 | `src/search/HybridSearchManager` | 9 files | 5 files |
 | `src/agent/procedural/graph/ProceduralGraphEvolution` | 11 files | 2 files |
-| `src/core/SQLiteStorage` | 10 files | 3 files |
 | `src/search/FuzzySearch` | 11 files | 2 files |
 | `src/utils/searchCache` | 2 files | 11 files |
 | `src/core/GraphEventEmitter` | 2 files | 10 files |
@@ -5556,7 +5572,7 @@ graph TD
         N36[HierarchyManager]
         N37[index]
         N38[ManagerContext]
-        N39[...15 more]
+        N39[...16 more]
     end
 
     subgraph Features
@@ -5719,21 +5735,21 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 300 |
+| Total TypeScript Files | 301 |
 | Total Modules | 12 |
-| Total Lines of Code | 103755 |
-| Total Exports | 2060 |
+| Total Lines of Code | 103810 |
+| Total Exports | 2064 |
 | Total Re-exports | 1340 |
 | Total Classes | 236 |
-| Total Interfaces | 624 |
-| Total Functions | 346 |
+| Total Interfaces | 625 |
+| Total Functions | 350 |
 | Total Type Guards | 31 |
 | Total Enums | 4 |
-| Type-only Imports | 480 |
+| Type-only Imports | 482 |
 | Runtime Circular Deps | 0 |
 | Type-only Circular Deps | 8 |
 | Entry/Build Roots | 4 |
-| Reachable Files | 300 |
+| Reachable Files | 301 |
 | Dormant Files (orphaned / test-only) | 0 (0 / 0) |
 
 ---

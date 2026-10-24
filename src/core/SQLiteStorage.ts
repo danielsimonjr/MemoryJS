@@ -123,13 +123,34 @@ import { logger } from '../utils/logger.js';
 import { randomUUID } from 'node:crypto';
 import { PartialIndexAdvisor, type FilterObservation } from '../search/PartialIndexAdvisor.js';
 import { GraphEventEmitter } from './GraphEventEmitter.js';
+import {
+  relationKeyOf,
+  removeEntitiesFromIndexes,
+  upsertEntityInCache,
+  upsertRelationInCache,
+  type StorageCacheState,
+} from './storageCache.js';
+
 
 /**
- * Composite key uniquely identifying a relation. NUL separator cannot
- * appear inside validated entity names (mirrors `GraphStorage`).
+ * The steps that differ between the entity and the relation append paths.
+ * Each step receives the storage as `owner`, so that the steps can be shared
+ * static values.
+ *
+ * `writeAll` takes the whole list. Its parameter has the name of the public
+ * parameter (`entities`, `relations`), so that a list that is not iterable
+ * fails with the same message as before: V8 prints the source text of the
+ * failing expression.
  */
-function relationKeyOf(r: Pick<Relation, 'from' | 'to' | 'relationType'>): string {
-  return `${r.from}\u0000${r.to}\u0000${r.relationType}`;
+interface AppendDescriptor<T> {
+  /** Writes the items to the database, without a transaction of its own. */
+  writeAll(owner: SQLiteStorage, items: readonly T[]): void;
+  /** Upserts one item into the cache and indexes. */
+  upsert(owner: SQLiteStorage, item: T): void;
+  /** Bumps the generation counter of the item kind. */
+  bumpGeneration(owner: SQLiteStorage): void;
+  /** Emits the created event of one item. */
+  emit(owner: SQLiteStorage, item: T): void;
 }
 
 /**
@@ -305,6 +326,12 @@ export class SQLiteStorage implements IGraphStorage {
   private readonly validatedDbFilePath: string;
 
   /**
+   * Cache and index members for the shared cache steps. Each data member is
+   * a getter, so a read takes the current value of the field.
+   */
+  private readonly cacheState: StorageCacheState;
+
+  /**
    * Create a new SQLiteStorage instance.
    *
    * @param dbFilePath - Absolute path to the SQLite database file
@@ -316,6 +343,37 @@ export class SQLiteStorage implements IGraphStorage {
     // already validated it. Tests pass tmpdir() paths; the ".." segment
     // defense-in-depth check still runs.
     this.validatedDbFilePath = validateFilePath(dbFilePath, undefined, false);
+    this.cacheState = SQLiteStorage.cacheStateOf(this);
+  }
+
+  /**
+   * Build the cache and index members for `owner`. Each getter reads the
+   * owner field at the moment of use.
+   */
+  private static cacheStateOf(owner: SQLiteStorage): StorageCacheState {
+    return {
+      get cache() {
+        return owner.cache;
+      },
+      get nameIndex() {
+        return owner.nameIndex;
+      },
+      get typeIndex() {
+        return owner.typeIndex;
+      },
+      get relationIndex() {
+        return owner.relationIndex;
+      },
+      get relationKeyMap() {
+        return owner.relationKeyMap;
+      },
+      setLowercase(entity: Entity): void {
+        owner.updateLowercaseCache(entity);
+      },
+      removeLowercase(entity: Entity): void {
+        owner.lowercaseCache.delete(entity.name);
+      },
+    };
   }
 
   /**
@@ -1031,39 +1089,6 @@ export class SQLiteStorage implements IGraphStorage {
   }
 
   /**
-   * Upsert an entity into the in-memory cache + indexes in O(1) (S3 —
-   * replaces the previous `findIndex` array scan). On a duplicate name
-   * the live cache object is mutated **in place** (stale fields removed,
-   * new fields assigned) so `cache.entities` and `NameIndex` stay
-   * consistent without any scan; the type index is updated when the
-   * entityType changed.
-   */
-  private upsertEntityInCache(entity: Entity): Entity {
-    const existing = this.nameIndex.get(entity.name);
-    if (existing !== undefined && existing !== entity) {
-      const oldType = existing.entityType;
-      const target = existing as unknown as Record<string, unknown>;
-      const source = entity as unknown as Record<string, unknown>;
-      for (const key of Object.keys(target)) {
-        if (!(key in source)) delete target[key];
-      }
-      Object.assign(target, source);
-      if (oldType !== existing.entityType) {
-        this.typeIndex.updateType(existing.name, oldType, existing.entityType);
-      }
-      this.updateLowercaseCache(existing);
-      return existing;
-    }
-    if (existing === undefined) {
-      this.cache!.entities.push(entity);
-    }
-    this.nameIndex.add(entity);
-    this.typeIndex.add(entity);
-    this.updateLowercaseCache(entity);
-    return entity;
-  }
-
-  /**
    * Append a single entity to storage.
    *
    * THREAD-SAFE: Uses mutex to prevent concurrent write operations.
@@ -1075,19 +1100,7 @@ export class SQLiteStorage implements IGraphStorage {
     await this.ensureLoaded();
 
     return this.mutex.runExclusive(async () => {
-      if (!this.db) throw new Error('Database not initialized');
-
-      // Use INSERT OR REPLACE to handle updates (cached statement — S3)
-      this.runEntityUpsert(entity);
-
-      // Update cache + indexes in O(1)
-      this.upsertEntityInCache(entity);
-      bumpEntityGeneration(this);
-
-      this.pendingChanges++;
-
-      // Emit entity:created (parity with GraphStorage.appendEntity)
-      this.eventEmitter.emitEntityCreated(entity);
+      this.appendOneLocked(entity, SQLiteStorage.ENTITY_APPEND);
     });
   }
 
@@ -1105,25 +1118,7 @@ export class SQLiteStorage implements IGraphStorage {
     await this.ensureLoaded();
 
     return this.mutex.runExclusive(async () => {
-      if (!this.db) throw new Error('Database not initialized');
-
-      const tx = this.db.transaction(() => {
-        for (const entity of entities) {
-          this.runEntityUpsert(entity);
-        }
-      });
-      tx();
-
-      for (const entity of entities) {
-        this.upsertEntityInCache(entity);
-      }
-      bumpEntityGeneration(this);
-
-      this.pendingChanges += entities.length;
-
-      for (const entity of entities) {
-        this.eventEmitter.emitEntityCreated(entity);
-      }
+      this.appendManyLocked(entities, SQLiteStorage.ENTITY_APPEND);
     });
   }
 
@@ -1139,19 +1134,7 @@ export class SQLiteStorage implements IGraphStorage {
     await this.ensureLoaded();
 
     return this.mutex.runExclusive(async () => {
-      if (!this.db) throw new Error('Database not initialized');
-
-      // Use INSERT OR REPLACE to handle updates (cached statement — S3)
-      this.runRelationUpsert(relation);
-
-      // Update cache in O(1) via the relation key map
-      this.upsertRelationInCache(relation);
-      bumpRelationGeneration(this);
-
-      this.pendingChanges++;
-
-      // Emit relation:created (parity with GraphStorage.appendRelation)
-      this.eventEmitter.emitRelationCreated(relation);
+      this.appendOneLocked(relation, SQLiteStorage.RELATION_APPEND);
     });
   }
 
@@ -1181,31 +1164,6 @@ export class SQLiteStorage implements IGraphStorage {
   }
 
   /**
-   * Upsert a relation into the in-memory cache in O(1) via the composite
-   * key map (S3 — replaces the previous `findIndex` scan). Duplicate keys
-   * mutate the live object in place, mirroring INSERT OR REPLACE.
-   */
-  private upsertRelationInCache(relation: Relation): Relation {
-    const key = relationKeyOf(relation);
-    const existing = this.relationKeyMap.get(key);
-    if (existing !== undefined && existing !== relation) {
-      const target = existing as unknown as Record<string, unknown>;
-      const source = relation as unknown as Record<string, unknown>;
-      for (const k of Object.keys(target)) {
-        if (!(k in source)) delete target[k];
-      }
-      Object.assign(target, source);
-      return existing;
-    }
-    if (existing === undefined) {
-      this.cache!.relations.push(relation);
-      this.relationIndex.add(relation);
-      this.relationKeyMap.set(key, relation);
-    }
-    return relation;
-  }
-
-  /**
    * Append multiple relations in a single transaction (S2 delta
    * persistence). Emits `relation:created` exactly once per relation; no
    * `graph:saved`.
@@ -1217,26 +1175,77 @@ export class SQLiteStorage implements IGraphStorage {
     await this.ensureLoaded();
 
     return this.mutex.runExclusive(async () => {
-      if (!this.db) throw new Error('Database not initialized');
-
-      const tx = this.db.transaction(() => {
-        for (const relation of relations) {
-          this.runRelationUpsert(relation);
-        }
-      });
-      tx();
-
-      for (const relation of relations) {
-        this.upsertRelationInCache(relation);
-      }
-      bumpRelationGeneration(this);
-
-      this.pendingChanges += relations.length;
-
-      for (const relation of relations) {
-        this.eventEmitter.emitRelationCreated(relation);
-      }
+      this.appendManyLocked(relations, SQLiteStorage.RELATION_APPEND);
     });
+  }
+
+  /** Entity steps for the append helpers. Each step receives the storage as its owner. */
+  private static readonly ENTITY_APPEND: AppendDescriptor<Entity> = {
+    writeAll: (owner, entities) => {
+      for (const entity of entities) owner.runEntityUpsert(entity);
+    },
+    upsert: (owner, entity) => upsertEntityInCache(owner.cacheState, entity),
+    bumpGeneration: owner => bumpEntityGeneration(owner),
+    emit: (owner, entity) => owner.eventEmitter.emitEntityCreated(entity),
+  };
+
+  /** Relation steps for the append helpers. Each step receives the storage as its owner. */
+  private static readonly RELATION_APPEND: AppendDescriptor<Relation> = {
+    writeAll: (owner, relations) => {
+      for (const relation of relations) owner.runRelationUpsert(relation);
+    },
+    upsert: (owner, relation) => upsertRelationInCache(owner.cacheState, relation),
+    bumpGeneration: owner => bumpRelationGeneration(owner),
+    emit: (owner, relation) => owner.eventEmitter.emitRelationCreated(relation),
+  };
+
+  /**
+   * Write one item in a single statement, then update the cache, the
+   * indexes and the events. Runs inside the mutex and takes no transaction.
+   *
+   * @param item - The entity or relation to append
+   * @param d - The steps that differ between entities and relations
+   */
+  private appendOneLocked<T>(item: T, d: AppendDescriptor<T>): void {
+    if (!this.db) throw new Error('Database not initialized');
+
+    // Use INSERT OR REPLACE to handle updates (cached statement — S3)
+    d.writeAll(this, [item]);
+
+    // Update cache + indexes in O(1)
+    d.upsert(this, item);
+    d.bumpGeneration(this);
+
+    this.pendingChanges++;
+
+    d.emit(this, item);
+  }
+
+  /**
+   * Write many items in one transaction, then update the cache, the indexes
+   * and the events. Runs inside the mutex.
+   *
+   * @param items - The entities or relations to append. The list holds at least one item.
+   * @param d - The steps that differ between entities and relations
+   */
+  private appendManyLocked<T>(items: readonly T[], d: AppendDescriptor<T>): void {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const tx = this.db.transaction(() => {
+      d.writeAll(this, items);
+    });
+    tx();
+
+    for (const item of items) {
+      d.upsert(this, item);
+    }
+    d.bumpGeneration(this);
+
+    this.pendingChanges += items.length;
+
+    for (const item of items) {
+      d.emit(this, item);
+    }
   }
 
   /**
@@ -1512,15 +1521,7 @@ export class SQLiteStorage implements IGraphStorage {
       this.cache!.relations = this.cache!.relations.filter(
         r => !nameSet.has(r.from) && !nameSet.has(r.to),
       );
-      for (const e of deletedEntities) {
-        this.nameIndex.remove(e.name);
-        this.typeIndex.remove(e.name, e.entityType);
-        this.lowercaseCache.delete(e.name);
-      }
-      for (const r of deletedRelations) {
-        this.relationIndex.remove(r);
-        this.relationKeyMap.delete(relationKeyOf(r));
-      }
+      removeEntitiesFromIndexes(this.cacheState, deletedEntities, deletedRelations);
 
       if (deletedEntities.length > 0) bumpEntityGeneration(this);
       if (deletedRelations.length > 0) bumpRelationGeneration(this);

@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `GraphStorage` and `SQLiteStorage` share their append paths. `GraphStorage` runs all four append methods through `appendLocked`. `SQLiteStorage` runs its single forms through `appendOneLocked` and its batch forms through `appendManyLocked`. Both `SQLiteStorage` helpers serve entities and relations through a descriptor. Behaviour is unchanged. The pins are in `tests/integration/storage-dedup-safety.test.ts`.
+- `GraphStorage` and `SQLiteStorage` share their cache and index steps: `upsertEntityInCache`, `upsertRelationInCache` and `removeEntitiesFromIndexes` in `src/core/storageCache.ts`. Behaviour is unchanged. The pins are in `tests/integration/storage-dedup-safety.test.ts`.
 - The inline Jaccard similarity of `CompressionManager`, `ConflictResolver`, `DistillationPolicy`, `ObservationDedupManager`, `ProcedureManager`, `MemoryEngine`, `CognitiveLoadAnalyzer` and `HeuristicManager` calls `jaccard` in `src/utils/textSimilarity.ts`. Each site keeps its own empty-set rule. Behaviour is unchanged.
 - `HybridScorer.minMaxNormalize` and `GraphRankPrior.minMaxNormalize` delegate to `minMaxNormalize` in `src/utils/searchAlgorithms.ts`. Behaviour is unchanged.
 - The CLI command actions share one error frame (`runAction` in `src/cli/commands/helpers.ts`). The frame reads the options, creates the logger and the context, and logs an error from the body once before it exits with code 1. Output, exit codes and the order of the setup calls are unchanged. The error log and the exit run one microtask step later than before.
