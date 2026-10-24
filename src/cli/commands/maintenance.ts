@@ -5,7 +5,7 @@
  */
 
 import { Command, InvalidArgumentError } from 'commander';
-import { getOptions, createContext, createLogger } from './helpers.js';
+import { runAction, getOptions, createContext, createLogger } from './helpers.js';
 import { formatValidation, formatSuccess, formatError } from '../formatters.js';
 import { IMPORTANCE_RANGE } from '../../utils/constants.js';
 
@@ -34,30 +34,25 @@ export function registerMaintenanceCommands(program: Command): void {
   program
     .command('stats')
     .description('Show knowledge graph statistics')
-    .action(async () => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
+    .action(runAction(program, async (ctx, options, logger) => {
+      const graph = await ctx.storage.loadGraph();
+      const stats = await ctx.analyticsManager.getGraphStats(graph);
 
-      try {
-        const graph = await ctx.storage.loadGraph();
-        const stats = await ctx.analyticsManager.getGraphStats(graph);
+      let observationCount = 0;
+      const allTags = new Set<string>();
+      for (const e of graph.entities) {
+        observationCount += e.observations?.length || 0;
+        (e.tags || []).forEach(tag => allTags.add(tag));
+      }
 
-        let observationCount = 0;
-        const allTags = new Set<string>();
-        for (const e of graph.entities) {
-          observationCount += e.observations?.length || 0;
-          (e.tags || []).forEach(tag => allTags.add(tag));
-        }
-
-        if (options.format === 'json') {
-          logger.log(JSON.stringify({
-            ...stats,
-            observationCount,
-            uniqueTagCount: allTags.size,
-          }, null, 2));
-        } else {
-          logger.log(`
+      if (options.format === 'json') {
+        logger.log(JSON.stringify({
+          ...stats,
+          observationCount,
+          uniqueTagCount: allTags.size,
+        }, null, 2));
+      } else {
+        logger.log(`
 Knowledge Graph Statistics
 ==========================
 Entities:      ${stats.totalEntities}
@@ -67,12 +62,8 @@ Relation Types: ${Object.keys(stats.relationTypesCounts).length}
 Observations:  ${observationCount}
 Tags Used:     ${allTags.size}
 `);
-        }
-      } catch (error) {
-        logger.error(formatError((error as Error).message));
-        process.exit(1);
       }
-    });
+    }));
 
   // Archive
   program
@@ -175,22 +166,13 @@ Tags Used:     ${allTags.size}
   program
     .command('validate')
     .description('Validate graph integrity')
-    .action(async () => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-
-      try {
-        const result = await ctx.analyticsManager.validateGraph();
-        logger.log(formatValidation(result, options.format));
-        if (!result.isValid) {
-          process.exit(1);
-        }
-      } catch (error) {
-        logger.error(formatError((error as Error).message));
+    .action(runAction(program, async (ctx, options, logger) => {
+      const result = await ctx.analyticsManager.validateGraph();
+      logger.log(formatValidation(result, options.format));
+      if (!result.isValid) {
         process.exit(1);
       }
-    });
+    }));
 
   // Interactive mode
   program

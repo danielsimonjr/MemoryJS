@@ -7,6 +7,7 @@
  * --apply), and that --apply actually mutates the on-disk graph.
  */
 
+import { createCliHarness, cleanupCliHarness, errorLines, type CliHarness } from './helpers/cliTestHarness.js';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Command } from 'commander';
 import { promises as fs } from 'node:fs';
@@ -143,5 +144,21 @@ describe('check CLI command', () => {
     expect(report.applied).toBe(true);
     // `actions` is only attached when there was something to fix.
     expect(report.actions).toBeUndefined();
+  });
+});
+
+describe('check error path', () => {
+  it('logs the error once, then exits 1', async () => {
+    const h = await createCliHarness(registerCheckCommand);
+    try {
+      // A directory at the storage path makes every read fail with EISDIR.
+      await fs.mkdir(h.storagePath);
+      await expect(h.parse(['check'])).rejects.toThrow('process.exit called');
+      expect(errorLines(h.errorSpy)).toEqual(['[ERROR] ✗ EISDIR: illegal operation on a directory, read']);
+      expect(h.errorSpy.mock.invocationCallOrder[0]).toBeLessThan(h.processExitSpy.mock.invocationCallOrder[0]!);
+      expect(h.processExitSpy).toHaveBeenCalledWith(1);
+    } finally {
+      await cleanupCliHarness(h);
+    }
   });
 });

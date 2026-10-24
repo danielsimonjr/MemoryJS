@@ -2,10 +2,11 @@
  * Graph algorithm CLI command coverage.
  */
 
+import { promises as fs } from 'node:fs';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { ManagerContext } from '../../../src/core/ManagerContext.js';
 import { registerGraphCommands } from '../../../src/cli/commands/graph.js';
-import { createCliHarness, cleanupCliHarness, type CliHarness } from './helpers/cliTestHarness.js';
+import { createCliHarness, cleanupCliHarness, errorLines, type CliHarness } from './helpers/cliTestHarness.js';
 
 describe('graph CLI', () => {
   let h: CliHarness;
@@ -55,5 +56,21 @@ describe('graph CLI', () => {
   it('components lists connected subgraphs', async () => {
     await h.parse(['graph', 'components']);
     expect(h.output().length).toBeGreaterThan(0);
+  });
+});
+
+describe('graph error path', () => {
+  it('logs the error once, then exits 1', async () => {
+    const h = await createCliHarness(registerGraphCommands);
+    try {
+      // A directory at the storage path makes every read fail with EISDIR.
+      await fs.mkdir(h.storagePath);
+      await expect(h.parse(['graph', 'components'])).rejects.toThrow('process.exit called');
+      expect(errorLines(h.errorSpy)).toEqual(['[ERROR] ✗ EISDIR: illegal operation on a directory, read']);
+      expect(h.errorSpy.mock.invocationCallOrder[0]).toBeLessThan(h.processExitSpy.mock.invocationCallOrder[0]!);
+      expect(h.processExitSpy).toHaveBeenCalledWith(1);
+    } finally {
+      await cleanupCliHarness(h);
+    }
   });
 });

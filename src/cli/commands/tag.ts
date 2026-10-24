@@ -5,8 +5,8 @@
  */
 
 import { Command } from 'commander';
-import { getOptions, createContext, createLogger } from './helpers.js';
-import { formatSuccess, formatError, escapeCSV } from '../formatters.js';
+import { runAction } from './helpers.js';
+import { formatSuccess, escapeCSV } from '../formatters.js';
 
 /**
  * Register the `tag` command group: `add`, `remove`, `alias` and `aliases`.
@@ -21,89 +21,53 @@ export function registerTagCommands(program: Command): void {
   tag
     .command('add <entity> <tags...>')
     .description('Add tags to an entity')
-    .action(async (entity: string, tags: string[]) => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-
-      try {
-        await ctx.entityManager.addTags(entity, tags);
-        logger.info(formatSuccess(`Added tags [${tags.join(', ')}] to ${entity}`));
-      } catch (error) {
-        logger.error(formatError((error as Error).message));
-        process.exit(1);
-      }
-    });
+    .action(runAction(program, async (ctx, _options, logger, entity: string, tags: string[]) => {
+      await ctx.entityManager.addTags(entity, tags);
+      logger.info(formatSuccess(`Added tags [${tags.join(', ')}] to ${entity}`));
+    }));
 
   tag
     .command('remove <entity> <tags...>')
     .description('Remove tags from an entity')
-    .action(async (entity: string, tags: string[]) => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-
-      try {
-        await ctx.entityManager.removeTags(entity, tags);
-        logger.info(formatSuccess(`Removed tags [${tags.join(', ')}] from ${entity}`));
-      } catch (error) {
-        logger.error(formatError((error as Error).message));
-        process.exit(1);
-      }
-    });
+    .action(runAction(program, async (ctx, _options, logger, entity: string, tags: string[]) => {
+      await ctx.entityManager.removeTags(entity, tags);
+      logger.info(formatSuccess(`Removed tags [${tags.join(', ')}] from ${entity}`));
+    }));
 
   tag
     .command('alias <alias> <canonical>')
     .description('Create a tag alias')
     .option('-d, --description <desc>', 'Alias description')
-    .action(async (alias: string, canonical: string, opts: Record<string, unknown>) => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-
-      try {
-        const result = await ctx.tagManager.addTagAlias(alias, canonical, opts.description as string | undefined);
-        logger.info(formatSuccess(`Created alias: ${alias} -> ${canonical}`));
-        if (options.format === 'json') {
-          logger.info(JSON.stringify(result, null, 2));
-        }
-      } catch (error) {
-        logger.error(formatError((error as Error).message));
-        process.exit(1);
+    .action(runAction(program, async (ctx, options, logger, alias: string, canonical: string, opts: Record<string, unknown>) => {
+      const result = await ctx.tagManager.addTagAlias(alias, canonical, opts.description as string | undefined);
+      logger.info(formatSuccess(`Created alias: ${alias} -> ${canonical}`));
+      if (options.format === 'json') {
+        logger.info(JSON.stringify(result, null, 2));
       }
-    });
+    }));
 
   tag
     .command('aliases')
     .description('List all tag aliases')
-    .action(async () => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-
-      try {
-        const aliases = await ctx.tagManager.listTagAliases();
-        if (options.format === 'json') {
-          logger.log(JSON.stringify(aliases, null, 2));
-        } else if (options.format === 'csv') {
-          logger.log('alias,canonical,description');
-          for (const a of aliases) {
-            logger.log(`${escapeCSV(a.alias)},${escapeCSV(a.canonical)},${escapeCSV(a.description || '')}`);
-          }
+    .action(runAction(program, async (ctx, options, logger) => {
+      const aliases = await ctx.tagManager.listTagAliases();
+      if (options.format === 'json') {
+        logger.log(JSON.stringify(aliases, null, 2));
+      } else if (options.format === 'csv') {
+        logger.log('alias,canonical,description');
+        for (const a of aliases) {
+          logger.log(`${escapeCSV(a.alias)},${escapeCSV(a.canonical)},${escapeCSV(a.description || '')}`);
+        }
+      } else {
+        if (aliases.length === 0) {
+          logger.log('No tag aliases defined.');
         } else {
-          if (aliases.length === 0) {
-            logger.log('No tag aliases defined.');
-          } else {
-            logger.log(`Tag aliases (${aliases.length}):`);
-            for (const a of aliases) {
-              const desc = a.description ? ` (${a.description})` : '';
-              logger.log(`  ${a.alias} -> ${a.canonical}${desc}`);
-            }
+          logger.log(`Tag aliases (${aliases.length}):`);
+          for (const a of aliases) {
+            const desc = a.description ? ` (${a.description})` : '';
+            logger.log(`  ${a.alias} -> ${a.canonical}${desc}`);
           }
         }
-      } catch (error) {
-        logger.error(formatError((error as Error).message));
-        process.exit(1);
       }
-    });
+    }));
 }

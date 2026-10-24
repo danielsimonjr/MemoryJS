@@ -8,8 +8,8 @@
  */
 
 import { Command } from 'commander';
-import { getOptions, createContext, createLogger } from './helpers.js';
-import { formatError } from '../formatters.js';
+import { runAction } from './helpers.js';
+
 
 interface DedupFilter {
   entityType?: string | string[];
@@ -61,19 +61,11 @@ export function registerObservationDedupCommands(program: Command): void {
     .option('--session-id <id>', 'Filter to one sessionId')
     .option('--min-occurrences <n>', 'Minimum occurrences per group (≥2)', (v) => parseInt(v, 10))
     .option('--max-groups <n>', 'Maximum groups to return', (v) => parseInt(v, 10))
-    .action(async (opts: Record<string, unknown>) => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-      try {
-        const filter = buildFilter(opts);
-        const groups = await ctx.observationDedupManager.findDuplicateObservations(filter);
-        emitJson({ filter, groups, count: groups.length });
-      } catch (error) {
-        logger.error(formatError((error as Error).message));
-        process.exit(1);
-      }
-    });
+    .action(runAction(program, async (ctx, _options, _logger, opts: Record<string, unknown>) => {
+      const filter = buildFilter(opts);
+      const groups = await ctx.observationDedupManager.findDuplicateObservations(filter);
+      emitJson({ filter, groups, count: groups.length });
+    }));
 
   od.command('find-jaccard')
     .description('Find near-duplicate observations across entities by Jaccard similarity')
@@ -82,17 +74,9 @@ export function registerObservationDedupCommands(program: Command): void {
     .option('--session-id <id>', 'Filter to one sessionId')
     .option('--min-occurrences <n>', 'Minimum occurrences per group (≥2)', (v) => parseInt(v, 10))
     .option('--max-groups <n>', 'Maximum groups to return', (v) => parseInt(v, 10))
-    .action(async (opts: Record<string, unknown>) => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-      try {
-        const filter = buildFilter(opts);
-        const groups = await ctx.observationDedupManager.findJaccardDuplicates(filter);
-        emitJson({ filter, groups, count: groups.length });
-      } catch (error) {
-        logger.error(formatError((error as Error).message));
-        process.exit(1);
-      }
-    });
+    .action(runAction(program, async (ctx, _options, _logger, opts: Record<string, unknown>) => {
+      const filter = buildFilter(opts);
+      const groups = await ctx.observationDedupManager.findJaccardDuplicates(filter);
+      emitJson({ filter, groups, count: groups.length });
+    }));
 }

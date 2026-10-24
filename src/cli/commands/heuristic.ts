@@ -8,7 +8,7 @@
  */
 
 import { Command } from 'commander';
-import { getOptions, createContext, createLogger } from './helpers.js';
+import { runAction, getOptions, createContext, createLogger } from './helpers.js';
 import { formatError } from '../formatters.js';
 
 function emitJson(payload: unknown): void {
@@ -31,71 +31,39 @@ export function registerHeuristicCommands(program: Command): void {
     .option('-c, --confidence <n>', 'Initial confidence 0–1', parseFloat)
     .option('-i, --importance <n>', 'Importance 0–10', parseFloat)
     .option('-a, --agent-id <id>', 'Owning agent ID')
-    .action(async (condition: string, action: string, opts: Record<string, unknown>) => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-      try {
-        const id = await ctx.heuristicManager.add({
-          condition,
-          action,
-          priority: opts.priority as number | undefined,
-          initialConfidence: opts.confidence as number | undefined,
-          importance: opts.importance as number | undefined,
-          agentId: opts.agentId as string | undefined,
-        });
-        emitJson({ id });
-      } catch (error) {
-        logger.error(formatError((error as Error).message));
-        process.exit(1);
-      }
-    });
+    .action(runAction(program, async (ctx, _options, _logger, condition: string, action: string, opts: Record<string, unknown>) => {
+      const id = await ctx.heuristicManager.add({
+        condition,
+        action,
+        priority: opts.priority as number | undefined,
+        initialConfidence: opts.confidence as number | undefined,
+        importance: opts.importance as number | undefined,
+        agentId: opts.agentId as string | undefined,
+      });
+      emitJson({ id });
+    }));
 
   h.command('list')
     .description('List all heuristics')
-    .action(async () => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-      try {
-        const heuristics = await ctx.heuristicManager.list();
-        emitJson({ heuristics, count: heuristics.length });
-      } catch (error) {
-        logger.error(formatError((error as Error).message));
-        process.exit(1);
-      }
-    });
+    .action(runAction(program, async (ctx, _options, _logger) => {
+      const heuristics = await ctx.heuristicManager.list();
+      emitJson({ heuristics, count: heuristics.length });
+    }));
 
   h.command('count')
     .description('Print the current heuristic count')
-    .action(async () => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-      try {
-        const count = await ctx.heuristicManager.size();
-        emitJson({ count });
-      } catch (error) {
-        logger.error(formatError((error as Error).message));
-        process.exit(1);
-      }
-    });
+    .action(runAction(program, async (ctx, _options, _logger) => {
+      const count = await ctx.heuristicManager.size();
+      emitJson({ count });
+    }));
 
   h.command('get <id>')
     .description('Get a heuristic by id')
-    .action(async (id: string) => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-      try {
-        await ctx.storage.ensureLoaded();
-        const heuristic = ctx.heuristicManager.get(id);
-        emitJson({ id, heuristic: heuristic ?? null });
-      } catch (error) {
-        logger.error(formatError((error as Error).message));
-        process.exit(1);
-      }
-    });
+    .action(runAction(program, async (ctx, _options, _logger, id: string) => {
+      await ctx.storage.ensureLoaded();
+      const heuristic = ctx.heuristicManager.get(id);
+      emitJson({ id, heuristic: heuristic ?? null });
+    }));
 
   h.command('match <input...>')
     .description('Match heuristics whose condition fits the given input')
@@ -120,77 +88,37 @@ export function registerHeuristicCommands(program: Command): void {
 
   h.command('reinforce <id>')
     .description('Reinforce a heuristic (bump confidence toward 1)')
-    .action(async (id: string) => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-      try {
-        const result = await ctx.heuristicManager.reinforce(id);
-        emitJson({ id, result });
-      } catch (error) {
-        logger.error(formatError((error as Error).message));
-        process.exit(1);
-      }
-    });
+    .action(runAction(program, async (ctx, _options, _logger, id: string) => {
+      const result = await ctx.heuristicManager.reinforce(id);
+      emitJson({ id, result });
+    }));
 
   h.command('contradict <id>')
     .description('Record a contradiction (decreases confidence)')
-    .action(async (id: string) => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-      try {
-        const result = await ctx.heuristicManager.recordContradiction(id);
-        emitJson({ id, result });
-      } catch (error) {
-        logger.error(formatError((error as Error).message));
-        process.exit(1);
-      }
-    });
+    .action(runAction(program, async (ctx, _options, _logger, id: string) => {
+      const result = await ctx.heuristicManager.recordContradiction(id);
+      emitJson({ id, result });
+    }));
 
   h.command('conflicts')
     .description('Detect heuristics with conflicting actions for similar conditions')
-    .action(async () => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-      try {
-        const conflicts = await ctx.heuristicManager.detectConflicts();
-        emitJson({ conflicts, count: conflicts.length });
-      } catch (error) {
-        logger.error(formatError((error as Error).message));
-        process.exit(1);
-      }
-    });
+    .action(runAction(program, async (ctx, _options, _logger) => {
+      const conflicts = await ctx.heuristicManager.detectConflicts();
+      emitJson({ conflicts, count: conflicts.length });
+    }));
 
   h.command('remove <id>')
     .description('Remove a heuristic by id')
-    .action(async (id: string) => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-      try {
-        await ctx.storage.ensureLoaded();
-        const removed = await ctx.heuristicManager.remove(id);
-        emitJson({ id, removed });
-      } catch (error) {
-        logger.error(formatError((error as Error).message));
-        process.exit(1);
-      }
-    });
+    .action(runAction(program, async (ctx, _options, _logger, id: string) => {
+      await ctx.storage.ensureLoaded();
+      const removed = await ctx.heuristicManager.remove(id);
+      emitJson({ id, removed });
+    }));
 
   h.command('clear')
     .description('Remove all heuristics. Destructive; no --dry-run yet.')
-    .action(async () => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-      try {
-        await ctx.heuristicManager.clear();
-        emitJson({ cleared: true });
-      } catch (error) {
-        logger.error(formatError((error as Error).message));
-        process.exit(1);
-      }
-    });
+    .action(runAction(program, async (ctx, _options, _logger) => {
+      await ctx.heuristicManager.clear();
+      emitJson({ cleared: true });
+    }));
 }

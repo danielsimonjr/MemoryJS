@@ -6,6 +6,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Command } from 'commander';
+import { errorLines } from './helpers/cliTestHarness.js';
 
 // Mock fs module
 vi.mock('fs', async () => {
@@ -731,5 +732,82 @@ describe('CLI Commands', () => {
         expect(cmd.description()).toBeTruthy();
       }
     });
+  });
+});
+
+describe('CLI action error path (managers mocked)', () => {
+  let program: Command;
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+  let exitSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    program = new Command();
+    program.exitOverride();
+    program.configureOutput({
+      writeErr: () => {},
+      writeOut: () => {},
+    });
+    program.option('-s, --storage <path>', 'Path to storage file', './test.jsonl');
+    program.option('--output-format <type>', 'Output format', 'json');
+
+    errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {
+      throw new Error('process.exit called');
+    });
+  });
+
+  afterEach(() => {
+    errorSpy.mockRestore();
+    exitSpy.mockRestore();
+  });
+
+  it('entity get logs the manager error once, then exits 1', async () => {
+    mockEntityManager.getEntity.mockRejectedValueOnce(new Error('boom'));
+    registerCommands(program);
+
+    await expect(program.parseAsync(['node', 'test', 'entity', 'get', 'A'])).rejects.toThrow(
+      'process.exit called'
+    );
+    expect(errorLines(errorSpy)).toEqual(['[ERROR] ✗ boom']);
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it('relation create logs the manager error once, then exits 1', async () => {
+    mockRelationManager.createRelations.mockRejectedValueOnce(new Error('boom'));
+    registerCommands(program);
+
+    await expect(
+      program.parseAsync(['node', 'test', 'relation', 'create', 'A', 'knows', 'B'])
+    ).rejects.toThrow('process.exit called');
+    expect(errorLines(errorSpy)).toEqual(['[ERROR] ✗ boom']);
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it('export logs the io error once, then exits 1', async () => {
+    mockIoManager.exportGraph.mockImplementationOnce(() => {
+      throw new Error('boom');
+    });
+    registerCommands(program);
+
+    await expect(program.parseAsync(['node', 'test', 'export', 'output.json'])).rejects.toThrow(
+      'process.exit called'
+    );
+    expect(errorLines(errorSpy)).toEqual(['[ERROR] ✗ boom']);
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it('entity get logs the not-found error, then the exit that the catch logs again', async () => {
+    mockEntityManager.getEntity.mockResolvedValueOnce(undefined);
+    registerCommands(program);
+
+    // The body calls process.exit(1) inside its try. The spy throws, so the catch logs the exit error too.
+    await expect(program.parseAsync(['node', 'test', 'entity', 'get', 'A'])).rejects.toThrow(
+      'process.exit called'
+    );
+    expect(errorLines(errorSpy)).toEqual([
+      '[ERROR] ✗ Entity "A" not found',
+      '[ERROR] ✗ process.exit called',
+    ]);
+    expect(exitSpy.mock.calls).toEqual([[1], [1]]);
   });
 });

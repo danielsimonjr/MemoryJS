@@ -19,8 +19,8 @@ import { Command } from 'commander';
 import { promises as fs } from 'node:fs';
 import { ManagerContext } from '../../core/ManagerContext.js';
 import type { Relation, ReadonlyKnowledgeGraph } from '../../types/types.js';
-import { getOptions, createContext, createLogger } from './helpers.js';
-import { formatError } from '../formatters.js';
+import { runAction } from './helpers.js';
+
 
 interface EntitySnapshot {
   name: string;
@@ -211,79 +211,47 @@ export function registerInspectCommands(program: Command): void {
   program
     .command('show <entity>')
     .description('Verbose snapshot of one entity (observations, relations in/out, tags, hierarchy, timestamps)')
-    .action(async (entity: string) => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-      try {
-        const snap = await snapshotEntity(ctx, entity);
-        console.log(JSON.stringify(snap, null, 2));
-      } catch (e) {
-        logger.error(formatError((e as Error).message));
-        process.exit(1);
-      }
-    });
+    .action(runAction(program, async (ctx, _options, _logger, entity: string) => {
+      const snap = await snapshotEntity(ctx, entity);
+      console.log(JSON.stringify(snap, null, 2));
+    }));
 
   program
     .command('tree [root]')
     .description('Hierarchy tree from a root entity (or all roots when omitted)')
     .option('--ascii', 'Render as ASCII tree instead of JSON (overrides --output-format)')
-    .action(async (root: string | undefined, opts: { ascii?: boolean }) => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-      try {
-        let trees: TreeNode[];
-        if (root) {
-          trees = [await buildTree(ctx, root)];
-        } else {
-          const roots = await ctx.hierarchyManager.getRootEntities();
-          trees = await Promise.all(roots.map((r) => buildTree(ctx, r.name)));
-        }
-        if (opts.ascii) {
-          for (const t of trees) {
-            process.stdout.write(renderTreeAscii(t));
-          }
-        } else {
-          console.log(JSON.stringify(trees, null, 2));
-        }
-      } catch (e) {
-        logger.error(formatError((e as Error).message));
-        process.exit(1);
+    .action(runAction(program, async (ctx, _options, _logger, root: string | undefined, opts: { ascii?: boolean }) => {
+      let trees: TreeNode[];
+      if (root) {
+        trees = [await buildTree(ctx, root)];
+      } else {
+        const roots = await ctx.hierarchyManager.getRootEntities();
+        trees = await Promise.all(roots.map((r) => buildTree(ctx, r.name)));
       }
-    });
+      if (opts.ascii) {
+        for (const t of trees) {
+          process.stdout.write(renderTreeAscii(t));
+        }
+      } else {
+        console.log(JSON.stringify(trees, null, 2));
+      }
+    }));
 
   program
     .command('neighbors <entity>')
     .description('Incoming + outgoing relations of one entity (with in/out degree counts)')
-    .action(async (entity: string) => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-      try {
-        const report = await neighbors(ctx, entity);
-        console.log(JSON.stringify(report, null, 2));
-      } catch (e) {
-        logger.error(formatError((e as Error).message));
-        process.exit(1);
-      }
-    });
+    .action(runAction(program, async (ctx, _options, _logger, entity: string) => {
+      const report = await neighbors(ctx, entity);
+      console.log(JSON.stringify(report, null, 2));
+    }));
 
   program
     .command('size')
     .description('Graph size + storage footprint summary (entity/relation/observation counts, file bytes, line count)')
-    .action(async () => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-      try {
-        const report = await buildSizeReport(ctx, options.storage);
-        console.log(JSON.stringify(report, null, 2));
-      } catch (e) {
-        logger.error(formatError((e as Error).message));
-        process.exit(1);
-      }
-    });
+    .action(runAction(program, async (ctx, options, _logger) => {
+      const report = await buildSizeReport(ctx, options.storage);
+      console.log(JSON.stringify(report, null, 2));
+    }));
 }
 
 // Re-export internals for the REPL bridge.

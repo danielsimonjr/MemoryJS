@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The CLI command actions share one error frame (`runAction` in `src/cli/commands/helpers.ts`). The frame reads the options, creates the logger and the context, and logs an error from the body once before it exits with code 1. Output, exit codes and the order of the setup calls are unchanged. The error log and the exit run one microtask step later than before.
 - Cache eviction and TTL cleanup in the search layer share three helpers in `src/utils/searchCache.ts`: `evictOldest`, `evictInsertionOrder` and `cleanupExpiredEntries`. `GraphRankPrior` and `TFIDFEventSync` share `CoalescingTimer` in `src/utils/timing.ts`. `QueryPlanCache` writes analysis and plan entries through one private method. Behaviour does not change.
 - The sleep, timeout and chunk helpers of the utilities and the search layer share one implementation. `src/utils/timing.ts` also holds `sleep`, `createTimeout` and `withTimeout`. `chunkArray` accepts a readonly array. Behaviour is unchanged.
 - `TransactionManager` and `BatchTransaction` share their entity and relation operation code (`applyGraphOperation` in `src/core/TransactionManager.ts`). Behaviour is unchanged.

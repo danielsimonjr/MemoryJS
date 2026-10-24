@@ -10,7 +10,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 706
+**Total files**: 707
 
 ## Disposition counts
 
@@ -20,12 +20,12 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 390 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 391 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 4 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 0 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **706** | |
+| **Total** | **707** | |
 
 ## Per-area counts
 
@@ -34,7 +34,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `benchmarks` | 4 |
 | `config` | 2 |
 | `src` | 300 |
-| `tests` | 390 |
+| `tests` | 391 |
 | `tools` | 10 |
 
 ## All files
@@ -162,29 +162,29 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/world/WorldStateSnapshot.ts` | src | reachable | 125 |
 | `src/cli/commands/audit.ts` | src | reachable | 286 |
 | `src/cli/commands/cache.ts` | src | reachable | 76 |
-| `src/cli/commands/check.ts` | src | reachable | 180 |
-| `src/cli/commands/decision.ts` | src | reachable | 239 |
-| `src/cli/commands/diag.ts` | src | reachable | 310 |
+| `src/cli/commands/check.ts` | src | reachable | 172 |
+| `src/cli/commands/decision.ts` | src | reachable | 185 |
+| `src/cli/commands/diag.ts` | src | reachable | 294 |
 | `src/cli/commands/doctor.ts` | src | reachable | 486 |
-| `src/cli/commands/entity.ts` | src | reachable | 165 |
-| `src/cli/commands/exclusion.ts` | src | reachable | 122 |
-| `src/cli/commands/graph.ts` | src | reachable | 106 |
-| `src/cli/commands/helpers.ts` | src | reachable | 32 |
-| `src/cli/commands/heuristic.ts` | src | reachable | 197 |
-| `src/cli/commands/hierarchy.ts` | src | reachable | 111 |
+| `src/cli/commands/entity.ts` | src | reachable | 115 |
+| `src/cli/commands/exclusion.ts` | src | reachable | 113 |
+| `src/cli/commands/graph.ts` | src | reachable | 79 |
+| `src/cli/commands/helpers.ts` | src | reachable | 69 |
+| `src/cli/commands/heuristic.ts` | src | reachable | 125 |
+| `src/cli/commands/hierarchy.ts` | src | reachable | 66 |
 | `src/cli/commands/index.ts` | src | reachable | 66 |
-| `src/cli/commands/inspect.ts` | src | reachable | 292 |
-| `src/cli/commands/io.ts` | src | reachable | 89 |
-| `src/cli/commands/maintenance.ts` | src | reachable | 206 |
-| `src/cli/commands/observation.ts` | src | reachable | 107 |
-| `src/cli/commands/observationDedup.ts` | src | reachable | 99 |
-| `src/cli/commands/projectContext.ts` | src | reachable | 142 |
+| `src/cli/commands/inspect.ts` | src | reachable | 260 |
+| `src/cli/commands/io.ts` | src | reachable | 71 |
+| `src/cli/commands/maintenance.ts` | src | reachable | 188 |
+| `src/cli/commands/observation.ts` | src | reachable | 80 |
+| `src/cli/commands/observationDedup.ts` | src | reachable | 83 |
+| `src/cli/commands/projectContext.ts` | src | reachable | 102 |
 | `src/cli/commands/reindex.ts` | src | reachable | 97 |
-| `src/cli/commands/relation.ts` | src | reachable | 88 |
+| `src/cli/commands/relation.ts` | src | reachable | 61 |
 | `src/cli/commands/search.ts` | src | reachable | 94 |
 | `src/cli/commands/smoke.ts` | src | reachable | 420 |
-| `src/cli/commands/spell.ts` | src | reachable | 79 |
-| `src/cli/commands/tag.ts` | src | reachable | 110 |
+| `src/cli/commands/spell.ts` | src | reachable | 55 |
+| `src/cli/commands/tag.ts` | src | reachable | 74 |
 | `src/cli/commands/toolAffordance.ts` | src | reachable | 114 |
 | `src/cli/config.ts` | src | reachable | 94 |
 | `src/cli/formatters.ts` | src | reachable | 362 |
@@ -502,33 +502,34 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/WorkingMemoryManager.test.ts` | tests | test | 1269 |
 | `tests/unit/agent/WorkThreadManager.test.ts` | tests | test | 1197 |
 | `tests/unit/agent/WorldModel.test.ts` | tests | test | 176 |
-| `tests/unit/cli/audit.test.ts` | tests | test | 404 |
-| `tests/unit/cli/cache-reindex.test.ts` | tests | test | 121 |
-| `tests/unit/cli/check.test.ts` | tests | test | 148 |
-| `tests/unit/cli/commands.test.ts` | tests | test | 736 |
+| `tests/unit/cli/actionFrame.test.ts` | tests | test | 416 |
+| `tests/unit/cli/audit.test.ts` | tests | test | 420 |
+| `tests/unit/cli/cache-reindex.test.ts` | tests | test | 157 |
+| `tests/unit/cli/check.test.ts` | tests | test | 165 |
+| `tests/unit/cli/commands.test.ts` | tests | test | 814 |
 | `tests/unit/cli/config.test.ts` | tests | test | 323 |
-| `tests/unit/cli/decision.test.ts` | tests | test | 98 |
-| `tests/unit/cli/diag.test.ts` | tests | test | 168 |
-| `tests/unit/cli/doctor.test.ts` | tests | test | 399 |
-| `tests/unit/cli/exclusion.test.ts` | tests | test | 54 |
+| `tests/unit/cli/decision.test.ts` | tests | test | 114 |
+| `tests/unit/cli/diag.test.ts` | tests | test | 185 |
+| `tests/unit/cli/doctor.test.ts` | tests | test | 419 |
+| `tests/unit/cli/exclusion.test.ts` | tests | test | 71 |
 | `tests/unit/cli/formatters.test.ts` | tests | test | 617 |
-| `tests/unit/cli/graph.test.ts` | tests | test | 60 |
-| `tests/unit/cli/helpers/cliTestHarness.ts` | tests | test | 91 |
-| `tests/unit/cli/heuristic.test.ts` | tests | test | 53 |
-| `tests/unit/cli/hierarchy.test.ts` | tests | test | 48 |
+| `tests/unit/cli/graph.test.ts` | tests | test | 77 |
+| `tests/unit/cli/helpers/cliTestHarness.ts` | tests | test | 103 |
+| `tests/unit/cli/heuristic.test.ts` | tests | test | 70 |
+| `tests/unit/cli/hierarchy.test.ts` | tests | test | 65 |
 | `tests/unit/cli/index.test.ts` | tests | test | 255 |
-| `tests/unit/cli/inspect.test.ts` | tests | test | 167 |
+| `tests/unit/cli/inspect.test.ts` | tests | test | 184 |
 | `tests/unit/cli/interactive.test.ts` | tests | test | 925 |
-| `tests/unit/cli/maintenance-cli.test.ts` | tests | test | 61 |
-| `tests/unit/cli/observation.test.ts` | tests | test | 49 |
-| `tests/unit/cli/observationDedup.test.ts` | tests | test | 43 |
+| `tests/unit/cli/maintenance-cli.test.ts` | tests | test | 78 |
+| `tests/unit/cli/observation.test.ts` | tests | test | 66 |
+| `tests/unit/cli/observationDedup.test.ts` | tests | test | 60 |
 | `tests/unit/cli/options.test.ts` | tests | test | 313 |
-| `tests/unit/cli/projectContext.test.ts` | tests | test | 48 |
-| `tests/unit/cli/search-extended.test.ts` | tests | test | 49 |
-| `tests/unit/cli/smoke.test.ts` | tests | test | 69 |
-| `tests/unit/cli/spell.test.ts` | tests | test | 37 |
-| `tests/unit/cli/tag.test.ts` | tests | test | 49 |
-| `tests/unit/cli/toolAffordance.test.ts` | tests | test | 59 |
+| `tests/unit/cli/projectContext.test.ts` | tests | test | 65 |
+| `tests/unit/cli/search-extended.test.ts` | tests | test | 66 |
+| `tests/unit/cli/smoke.test.ts` | tests | test | 83 |
+| `tests/unit/cli/spell.test.ts` | tests | test | 72 |
+| `tests/unit/cli/tag.test.ts` | tests | test | 66 |
+| `tests/unit/cli/toolAffordance.test.ts` | tests | test | 76 |
 | `tests/unit/core/BatchTransaction.test.ts` | tests | test | 695 |
 | `tests/unit/core/columns/columns-review-fixes.test.ts` | tests | test | 338 |
 | `tests/unit/core/columns/IColumnStore.test.ts` | tests | test | 132 |

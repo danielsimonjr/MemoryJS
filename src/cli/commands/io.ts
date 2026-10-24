@@ -7,8 +7,8 @@
 import { readFileSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
 import { Command, Option } from 'commander';
-import { getOptions, createContext, createLogger } from './helpers.js';
-import { formatSuccess, formatError } from '../formatters.js';
+import { runAction } from './helpers.js';
+import { formatSuccess } from '../formatters.js';
 import { validateFilePath } from '../../utils/entityUtils.js';
 
 const IMPORT_FORMATS = ['json', 'csv', 'graphml'] as const;
@@ -30,30 +30,21 @@ export function registerIOCommands(program: Command): void {
         .default('json')
     )
     .option('--merge <strategy>', 'Merge strategy (replace|skip|merge|fail)', 'skip')
-    .action(async (file: string, opts: Record<string, unknown>) => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
+    .action(runAction(program, async (ctx, _options, logger, file: string, opts: Record<string, unknown>) => {
+      // CLI path is user-explicit; ".." defense-in-depth still runs.
+      const resolvedPath = validateFilePath(resolve(file), undefined, false);
+      const data = readFileSync(resolvedPath, 'utf-8');
 
-      try {
-        // CLI path is user-explicit; ".." defense-in-depth still runs.
-        const resolvedPath = validateFilePath(resolve(file), undefined, false);
-        const data = readFileSync(resolvedPath, 'utf-8');
+      const result = await ctx.ioManager.importGraph(
+        opts.format as typeof IMPORT_FORMATS[number],
+        data,
+        opts.merge as 'replace' | 'skip' | 'merge' | 'fail'
+      );
 
-        const result = await ctx.ioManager.importGraph(
-          opts.format as typeof IMPORT_FORMATS[number],
-          data,
-          opts.merge as 'replace' | 'skip' | 'merge' | 'fail'
-        );
-
-        logger.info(formatSuccess(
-          `Imported ${result.entitiesAdded} entities and ${result.relationsAdded} relations`
-        ));
-      } catch (error) {
-        logger.error(formatError((error as Error).message));
-        process.exit(1);
-      }
-    });
+      logger.info(formatSuccess(
+        `Imported ${result.entitiesAdded} entities and ${result.relationsAdded} relations`
+      ));
+    }));
 
   program
     .command('export <file>')
@@ -63,26 +54,17 @@ export function registerIOCommands(program: Command): void {
         .choices([...EXPORT_FORMATS])
         .default('json')
     )
-    .action(async (file: string, opts: Record<string, unknown>) => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
+    .action(runAction(program, async (ctx, _options, logger, file: string, opts: Record<string, unknown>) => {
+      // CLI path is user-explicit; ".." defense-in-depth still runs.
+      const resolvedPath = validateFilePath(resolve(file), undefined, false);
+      const graph = await ctx.storage.loadGraph();
+      const data = ctx.ioManager.exportGraph(
+        graph,
+        opts.format as typeof EXPORT_FORMATS[number]
+      );
 
-      try {
-        // CLI path is user-explicit; ".." defense-in-depth still runs.
-        const resolvedPath = validateFilePath(resolve(file), undefined, false);
-        const graph = await ctx.storage.loadGraph();
-        const data = ctx.ioManager.exportGraph(
-          graph,
-          opts.format as typeof EXPORT_FORMATS[number]
-        );
+      writeFileSync(resolvedPath, data, 'utf-8');
 
-        writeFileSync(resolvedPath, data, 'utf-8');
-
-        logger.info(formatSuccess(`Exported to ${resolvedPath}`));
-      } catch (error) {
-        logger.error(formatError((error as Error).message));
-        process.exit(1);
-      }
-    });
+      logger.info(formatSuccess(`Exported to ${resolvedPath}`));
+    }));
 }

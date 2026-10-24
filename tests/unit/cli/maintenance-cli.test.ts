@@ -2,10 +2,11 @@
  * Maintenance CLI command coverage (stats, archive, compress, validate).
  */
 
+import { promises as fs } from 'node:fs';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { ManagerContext } from '../../../src/core/ManagerContext.js';
 import { registerMaintenanceCommands } from '../../../src/cli/commands/maintenance.js';
-import { createCliHarness, cleanupCliHarness, type CliHarness } from './helpers/cliTestHarness.js';
+import { createCliHarness, cleanupCliHarness, errorLines, type CliHarness } from './helpers/cliTestHarness.js';
 
 describe('maintenance CLI', () => {
   let h: CliHarness;
@@ -56,5 +57,21 @@ describe('maintenance CLI', () => {
   it('compress json output', async () => {
     await h.parse(['--output-format', 'json', 'compress', '--dry-run']);
     expect(h.lastJson<{ duplicatesFound: number }>().duplicatesFound).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe('maintenance-cli error path', () => {
+  it('logs the error once, then exits 1', async () => {
+    const h = await createCliHarness(registerMaintenanceCommands);
+    try {
+      // A directory at the storage path makes every read fail with EISDIR.
+      await fs.mkdir(h.storagePath);
+      await expect(h.parse(['stats'])).rejects.toThrow('process.exit called');
+      expect(errorLines(h.errorSpy)).toEqual(['[ERROR] ✗ EISDIR: illegal operation on a directory, read']);
+      expect(h.errorSpy.mock.invocationCallOrder[0]).toBeLessThan(h.processExitSpy.mock.invocationCallOrder[0]!);
+      expect(h.processExitSpy).toHaveBeenCalledWith(1);
+    } finally {
+      await cleanupCliHarness(h);
+    }
   });
 });

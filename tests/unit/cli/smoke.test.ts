@@ -8,6 +8,7 @@
  * spinup) and stays in-process for clean teardown.
  */
 
+import { createCliHarness, cleanupCliHarness, errorLines, type CliHarness } from './helpers/cliTestHarness.js';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Command } from 'commander';
 import { promises as fs } from 'node:fs';
@@ -64,5 +65,18 @@ describe('smoke CLI command', () => {
     expect(calls).toMatch(/entity:create/);
     expect(calls).toMatch(/decision:accept/);
     expect(calls).toMatch(/spell:rebuild \+ suggest/);
+  });
+});
+
+describe('smoke run output', () => {
+  it('passes every step and does not exit', async () => {
+    const h = await createCliHarness(registerSmokeCommand);
+    try {
+      await h.parse(['smoke']);
+      expect(h.output()).toContain('Smoke test passed: 30/30 steps');
+      expect(h.processExitSpy).not.toHaveBeenCalled();
+    } finally {
+      await cleanupCliHarness(h);
+    }
   });
 });
