@@ -149,4 +149,13 @@ describe('parseJsonlRecords', () => {
   it('treats the type parameter as a cast only', () => {
     expect(parseJsonlRecords<number>('{"a":1}\n')).toEqual([{ a: 1 }]);
   });
+
+  it('throws the split TypeError of the old loaders for a non-string input', () => {
+    expect(() => parseJsonlRecords<unknown>(Buffer.from('{"a":1}\n') as unknown as string)).toThrow(
+      new TypeError('data.split is not a function'),
+    );
+    expect(() => parseJsonlRecords<unknown>(undefined as unknown as string)).toThrow(
+      new TypeError("Cannot read properties of undefined (reading 'split')"),
+    );
+  });
 });

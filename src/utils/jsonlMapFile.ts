@@ -88,12 +88,14 @@ export function serializeJsonlMap<V>(map: ReadonlyMap<string, V>, format: JsonlM
  * Keep lines that parse to any JSON value, including null.
  * Treat the type parameter as a cast only.
  *
- * @param text - Newline-delimited JSON string to parse.
+ * @param data - Newline-delimited JSON string to parse.
  * @returns Parsed values in line order.
  */
-export function parseJsonlRecords<T>(text: string): T[] {
+export function parseJsonlRecords<T>(data: string): T[] {
   const records: T[] = [];
-  for (const line of text.split('\n')) {
+  // A call outside the loop head gives a non-string input the error "data.split is not a function".
+  const lines = data.split('\n');
+  for (const line of lines) {
     if (line.trim() === '') continue;
     try {
       records.push(JSON.parse(line) as T);
