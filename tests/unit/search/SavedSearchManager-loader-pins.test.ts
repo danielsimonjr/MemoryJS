@@ -224,6 +224,25 @@ describe('SavedSearchManager loader (pins)', () => {
     expect(readFileSpy).toHaveBeenCalledTimes(2);
   });
 
+  it('caches the very array that the loader returns and indexes it by name', async () => {
+    await fs.writeFile(filePath, `${SEARCH_URGENT}\n${SEARCH_REVIEW}\n`);
+
+    const loaded = await manager['loadSavedSearches']();
+
+    expect(manager['searchCache']).toBe(loaded);
+    expect(await manager['loadSavedSearches']()).toBe(loaded);
+    expect(Array.from(manager['searchIndex']!.keys())).toEqual(['urgent', 'review']);
+  });
+
+  it('caches an empty array and an empty index for a missing file', async () => {
+    const loaded = await manager['loadSavedSearches']();
+
+    expect(loaded).toEqual([]);
+    expect(manager['searchCache']).toBe(loaded);
+    expect(manager['searchIndex']).toBeInstanceOf(Map);
+    expect(manager['searchIndex']!.size).toBe(0);
+  });
+
   // The read is mocked to resolve at once, so each turn count is a microtask count.
   it('settles a cache miss in a fixed number of microtask turns', async () => {
     readFileSpy.mockResolvedValueOnce(`${SEARCH_URGENT}\n`);
