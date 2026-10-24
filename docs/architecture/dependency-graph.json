@@ -5,7 +5,7 @@
     "lastUpdated": "2026-10-24",
     "totalFiles": 303,
     "totalModules": 12,
-    "totalExports": 2070
+    "totalExports": 2071
   },
   "entryPoints": [
     {
@@ -7098,6 +7098,12 @@
             "file": "./reconstruction/MemoryDistiller.js",
             "imports": [
               "extractJson"
+            ]
+          },
+          {
+            "file": "../utils/textSimilarity.js",
+            "imports": [
+              "cosineParts"
             ]
           },
           {
@@ -19824,6 +19830,7 @@
           "tokenizeToSet",
           "tokenizeAlphanumeric",
           "buildTFVector",
+          "cosineParts",
           "cosineSimilarity",
           "calculateTextSimilarity",
           "jaccard"
@@ -19833,6 +19840,7 @@
           "tokenizeToSet",
           "tokenizeAlphanumeric",
           "buildTFVector",
+          "cosineParts",
           "cosineSimilarity",
           "calculateTextSimilarity",
           "jaccard"
@@ -20507,11 +20515,11 @@
   "statistics": {
     "totalTypeScriptFiles": 303,
     "totalModules": 12,
-    "totalLinesOfCode": 103967,
-    "totalExports": 2070,
+    "totalLinesOfCode": 103978,
+    "totalExports": 2071,
     "totalClasses": 236,
     "totalInterfaces": 626,
-    "totalFunctions": 356,
+    "totalFunctions": 357,
     "totalTypeGuards": 31,
     "totalEnums": 4,
     "totalConstants": 123,

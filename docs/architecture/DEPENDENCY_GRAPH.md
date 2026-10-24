@@ -1810,6 +1810,7 @@ Reachable from a root: **303** of 303 files. Dormant: **0** (0 orphaned, 0 test-
 | `../types/types.js` | `Entity, Relation, RelationProperties` | Import (type-only) |
 | `../search/LLMQueryPlanner.js` | `LLMProvider` | Import (type-only) |
 | `./reconstruction/MemoryDistiller.js` | `extractJson` | Import |
+| `../utils/textSimilarity.js` | `cosineParts` | Import |
 | `./ConsolidationPipeline.js` | `PipelineStage, StageResult` | Import (type-only) |
 | `../types/agent-memory.js` | `AgentEntity, ConsolidateOptions` | Import (type-only) |
 
@@ -5392,7 +5393,7 @@ Reachable from a root: **303** of 303 files. Dormant: **0** (0 orphaned, 0 test-
 ### `src/utils/textSimilarity.ts` - Text Similarity Utilities
 
 **Exports:**
-- Functions: `tokenizeStripped`, `tokenizeToSet`, `tokenizeAlphanumeric`, `buildTFVector`, `cosineSimilarity`, `calculateTextSimilarity`, `jaccard`
+- Functions: `tokenizeStripped`, `tokenizeToSet`, `tokenizeAlphanumeric`, `buildTFVector`, `cosineParts`, `cosineSimilarity`, `calculateTextSimilarity`, `jaccard`
 
 ---
 
@@ -5503,7 +5504,7 @@ Reachable from a root: **303** of 303 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/cli/commands/index` | 24 files | 1 file |
 | `src/agent/ConsolidationPipeline` | 15 files | 7 files |
 | `src/cli/formatters` | 2 files | 20 files |
-| `src/utils/textSimilarity` | 0 files | 20 files |
+| `src/utils/textSimilarity` | 0 files | 21 files |
 | `src/agent/ContextWindowManager` | 14 files | 5 files |
 | `src/search/SearchManager` | 16 files | 3 files |
 | `src/utils/constants` | 0 files | 19 files |
@@ -5772,12 +5773,12 @@ graph TD
 |----------|-------|
 | Total TypeScript Files | 303 |
 | Total Modules | 12 |
-| Total Lines of Code | 103967 |
-| Total Exports | 2070 |
+| Total Lines of Code | 103978 |
+| Total Exports | 2071 |
 | Total Re-exports | 1340 |
 | Total Classes | 236 |
 | Total Interfaces | 626 |
-| Total Functions | 356 |
+| Total Functions | 357 |
 | Total Type Guards | 31 |
 | Total Enums | 4 |
 | Type-only Imports | 485 |

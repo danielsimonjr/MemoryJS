@@ -137,7 +137,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/reconstruction/MemoryReconstructor.ts` | src | reachable | 394 |
 | `src/agent/reconstruction/MemoryToolkit.ts` | src | reachable | 111 |
 | `src/agent/reconstruction/ReconstructiveMemory.ts` | src | reachable | 151 |
-| `src/agent/RelationConsolidator.ts` | src | reachable | 962 |
+| `src/agent/RelationConsolidator.ts` | src | reachable | 956 |
 | `src/agent/retrieval/ActiveRetrievalController.ts` | src | reachable | 189 |
 | `src/agent/retrieval/index.ts` | src | reachable | 20 |
 | `src/agent/retrieval/QueryRewriter.ts` | src | reachable | 83 |
@@ -342,7 +342,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/utils/searchAlgorithms.ts` | src | reachable | 249 |
 | `src/utils/searchCache.ts` | src | reachable | 496 |
 | `src/utils/taskScheduler.ts` | src | reachable | 642 |
-| `src/utils/textSimilarity.ts` | src | reachable | 141 |
+| `src/utils/textSimilarity.ts` | src | reachable | 158 |
 | `src/utils/timing.ts` | src | reachable | 100 |
 | `src/utils/validators.ts` | src | reachable | 335 |
 | `src/utils/WorkerPoolManager.ts` | src | reachable | 402 |
@@ -746,7 +746,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/utils/searchAlgorithms.test.ts` | tests | test | 784 |
 | `tests/unit/utils/searchCache.test.ts` | tests | test | 780 |
 | `tests/unit/utils/taskScheduler.test.ts` | tests | test | 1118 |
-| `tests/unit/utils/textSimilarity.test.ts` | tests | test | 113 |
+| `tests/unit/utils/textSimilarity.test.ts` | tests | test | 147 |
 | `tests/unit/utils/timing.test.ts` | tests | test | 192 |
 | `tests/unit/utils/update-entity-schema-strip.test.ts` | tests | test | 202 |
 | `tests/unit/utils/validators.test.ts` | tests | test | 1001 |
