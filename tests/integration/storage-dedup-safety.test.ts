@@ -959,6 +959,11 @@ describe.each(VARIANTS)('storage safety net - $label', (variant) => {
         const { from, to, relationType } = removed as Relation;
         return `${from}>${to}:${relationType}`;
       });
+      const relationKeyMap = (store as unknown as { relationKeyMap: Map<string, Relation> }).relationKeyMap;
+      spyStep(relationKeyMap, 'delete', 'relationKey', (key: never) => {
+        const [from, to, relationType] = String(key).split('\u0000');
+        return `${from}>${to}:${relationType}`;
+      });
 
       await store.deleteEntities(['ent-09', 'ent-02', 'ent-05']);
 
@@ -971,7 +976,7 @@ describe.each(VARIANTS)('storage safety net - $label', (variant) => {
           `lowercase:${name}`,
           ...(variant.sqlite ? [] : [`observations:${name}`]),
         ]),
-        ...order.relations.map(relationKey => `relation:${relationKey}`),
+        ...order.relations.flatMap(relationKey => [`relation:${relationKey}`, `relationKey:${relationKey}`]),
       ]);
     });
 
