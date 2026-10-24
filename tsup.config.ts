@@ -23,7 +23,7 @@ const libraryEntry = {
 const libraryShared = {
   sourcemap: true,
   outDir: 'dist',
-  target: 'node18' as const,
+  target: 'node22' as const,
   shims: true,
   external: ['better-sqlite3'],
 };
@@ -65,7 +65,7 @@ export default defineConfig([
     sourcemap: true,
     clean: false,
     outDir: 'dist/cli',
-    target: 'node18',
+    target: 'node22',
     shims: true,
     external: ['better-sqlite3'],
     banner: {
@@ -81,7 +81,7 @@ export default defineConfig([
     sourcemap: true,
     clean: false,
     outDir: 'dist/workers',
-    target: 'node18',
+    target: 'node22',
     shims: true,
   },
 ]);

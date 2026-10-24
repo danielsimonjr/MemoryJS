@@ -37,7 +37,7 @@ Thank you for your interest in contributing to MemoryJS! This document provides 
 
 ### Prerequisites
 
-- Node.js 18.x or higher (production runtime)
+- Node.js 22.12 or higher (production runtime)
 - Bun 1.4.x or higher (package manager / script driver)
 - Git
 - A code editor (VS Code recommended)
