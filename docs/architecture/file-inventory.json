@@ -2111,7 +2111,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 249
+      "loc": 252
     },
     {
       "file": "src/utils/searchCache.ts",
@@ -4939,7 +4939,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 834
+      "loc": 856
     },
     {
       "file": "tests/unit/utils/searchCache.test.ts",
