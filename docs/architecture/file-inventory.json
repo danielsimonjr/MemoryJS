@@ -739,7 +739,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 734
+      "loc": 747
     },
     {
       "file": "src/agent/SessionCheckpoint.ts",
@@ -3175,7 +3175,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 749
+      "loc": 812
     },
     {
       "file": "tests/unit/agent/SessionCheckpoint.test.ts",
