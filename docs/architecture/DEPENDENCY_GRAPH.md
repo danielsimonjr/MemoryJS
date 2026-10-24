@@ -2950,6 +2950,7 @@ Reachable from a root: **301** of 301 files. Dormant: **0** (0 orphaned, 0 test-
 | `../utils/indexes.js` | `NameIndex, TypeIndex, LowercaseCache, RelationIndex, ObservationIndex` | Import |
 | `../utils/index.js` | `sanitizeObject, validateFilePath, AsyncMutex` | Import |
 | `../utils/errors.js` | `EntityNotFoundError, DuplicateEntityError` | Import |
+| `../utils/logger.js` | `logger` | Import |
 | `./TransactionManager.js` | `BatchTransaction` | Import |
 | `./GraphEventEmitter.js` | `GraphEventEmitter` | Import |
 | `./segments/FileSegmentStorage.js` | `FileSegmentStorage` | Import |
@@ -5458,12 +5459,12 @@ Reachable from a root: **301** of 301 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/agent/index` | 62 files | 1 file |
 | `src/utils/index` | 27 files | 27 files |
 | `src/types/agent-memory` | 1 file | 46 files |
-| `src/core/GraphStorage` | 14 files | 31 files |
+| `src/core/GraphStorage` | 15 files | 31 files |
 | `src/search/index` | 40 files | 1 file |
 | `src/core/EntityManager` | 10 files | 30 files |
 | `src/agent/AgentMemoryManager` | 29 files | 2 files |
+| `src/utils/logger` | 0 files | 29 files |
 | `src/utils/errors` | 0 files | 28 files |
-| `src/utils/logger` | 0 files | 28 files |
 | `src/cli/commands/helpers` | 4 files | 23 files |
 | `src/cli/commands/index` | 24 files | 1 file |
 | `src/agent/ConsolidationPipeline` | 15 files | 7 files |
@@ -5737,7 +5738,7 @@ graph TD
 |----------|-------|
 | Total TypeScript Files | 301 |
 | Total Modules | 12 |
-| Total Lines of Code | 103810 |
+| Total Lines of Code | 103816 |
 | Total Exports | 2064 |
 | Total Re-exports | 1340 |
 | Total Classes | 236 |

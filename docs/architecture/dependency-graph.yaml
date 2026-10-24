@@ -6879,6 +6879,9 @@ modules:
           imports:
             - EntityNotFoundError
             - DuplicateEntityError
+        - file: ../utils/logger.js
+          imports:
+            - logger
         - file: ./TransactionManager.js
           imports:
             - BatchTransaction
@@ -14483,7 +14486,7 @@ reachability:
 statistics:
   totalTypeScriptFiles: 301
   totalModules: 12
-  totalLinesOfCode: 103810
+  totalLinesOfCode: 103816
   totalExports: 2064
   totalClasses: 236
   totalInterfaces: 625
