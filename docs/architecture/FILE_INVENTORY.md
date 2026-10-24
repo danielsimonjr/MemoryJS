@@ -88,7 +88,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/InMemoryBackend.ts` | src | reachable | 125 |
 | `src/agent/keyValueLine.ts` | src | reachable | 63 |
 | `src/agent/MemoryBackend.ts` | src | reachable | 156 |
-| `src/agent/MemoryEngine.ts` | src | reachable | 598 |
+| `src/agent/MemoryEngine.ts` | src | reachable | 597 |
 | `src/agent/MemoryFormatter.ts` | src | reachable | 516 |
 | `src/agent/MemoryValidator.ts` | src | reachable | 332 |
 | `src/agent/MultiAgentMemoryManager.ts` | src | reachable | 1149 |
@@ -443,7 +443,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/InMemoryBackend.test.ts` | tests | test | 99 |
 | `tests/unit/agent/keyValueLine.test.ts` | tests | test | 60 |
 | `tests/unit/agent/memoryBackend-wiring.test.ts` | tests | test | 71 |
-| `tests/unit/agent/MemoryEngine.test.ts` | tests | test | 776 |
+| `tests/unit/agent/MemoryEngine.test.ts` | tests | test | 817 |
 | `tests/unit/agent/MemoryFormatter.test.ts` | tests | test | 313 |
 | `tests/unit/agent/MemoryFormatterSalience.test.ts` | tests | test | 242 |
 | `tests/unit/agent/MemoryValidator.test.ts` | tests | test | 203 |

@@ -301,10 +301,9 @@ export class MemoryEngine {
     if (this.deps.embeddingService && hasStoreEmbedding(this.deps.storage)) {
       try {
         const vector = await this.deps.embeddingService.embed(content);
-        const model =
-          (this.deps.embeddingService as { getModelName?: () => string }).getModelName?.() ??
-          'unknown';
-        this.deps.storage.storeEmbedding(entity.name, vector, model);
+        // SQLiteVectorStore loads only the rows of its own model, and
+        // ManagerContext builds it with this same `model`.
+        this.deps.storage.storeEmbedding(entity.name, vector, this.deps.embeddingService.model);
       } catch {
         // Embedding is best-effort; failure does not abort the write.
       }
