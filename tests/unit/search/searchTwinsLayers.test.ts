@@ -203,3 +203,60 @@ describe('ParallelSearchExecutor timing pins', () => {
     expect(result.totalTimeMs).toBeGreaterThanOrEqual(0);
   });
 });
+
+describe('search layer TypeError text pins', () => {
+  // A collaborator without the method throws a TypeError. The message names the
+  // call expression, so each message is recorded from the old code.
+  it('keeps the symbolic TypeError text in the hybrid rejection', async () => {
+    const hybrid = new HybridSearchManager(null, rankedWith([]) as any);
+    (hybrid as any).symbolicSearch = {};
+
+    await expect(
+      hybrid.search(graph, 'alpha', {
+        semanticWeight: 0,
+        lexicalWeight: 0,
+        symbolicWeight: 1,
+        symbolic: { entityTypes: ['note'] },
+      }),
+    ).rejects.toThrow('this.symbolicSearch.search is not a function');
+  });
+
+  it('keeps the semantic TypeError text in the parallel layer error', async () => {
+    const executor = new ParallelSearchExecutor({} as any, rankedWith([]) as any);
+
+    const result = await executor.execute(graph, 'alpha', { semantic: {} });
+
+    expect(result.timings[0]).toMatchObject({
+      layer: 'semantic',
+      success: false,
+      error: 'this.semanticSearch.search is not a function',
+    });
+  });
+
+  it('keeps the lexical TypeError text in the parallel layer error', async () => {
+    const executor = new ParallelSearchExecutor(null, {} as any);
+
+    const result = await executor.execute(graph, 'alpha');
+
+    expect(result.timings[1]).toMatchObject({
+      layer: 'lexical',
+      success: false,
+      error: 'this.rankedSearch.searchNodesRanked is not a function',
+    });
+  });
+
+  it('keeps the symbolic TypeError text in the parallel layer error', async () => {
+    const executor = new ParallelSearchExecutor(null, rankedWith([]) as any);
+    (executor as any).symbolicSearch = {};
+
+    const result = await executor.execute(graph, 'alpha', {
+      symbolic: { entityTypes: ['note'] },
+    });
+
+    expect(result.timings[2]).toMatchObject({
+      layer: 'symbolic',
+      success: false,
+      error: 'this.symbolicSearch.search is not a function',
+    });
+  });
+});
