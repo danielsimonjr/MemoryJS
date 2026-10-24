@@ -16,6 +16,7 @@ import { tmpdir } from 'os';
 import { SavedSearchManager } from '../../../src/search/SavedSearchManager.js';
 import type { BasicSearch } from '../../../src/search/BasicSearch.js';
 import { logger } from '../../../src/utils/logger.js';
+import { microtaskTicks } from '../../test-utils/microtask-ticks.js';
 
 vi.mock('fs/promises', async (importOriginal) => {
   const actual = await importOriginal<typeof import('fs/promises')>();
@@ -131,5 +132,25 @@ describe('SavedSearchManager loader (pins)', () => {
 
     expect(JSON.stringify(await manager.listSavedSearches())).toBe('[]');
     expect(readFileSpy).toHaveBeenCalledTimes(2);
+  });
+
+  // The read is mocked to resolve at once, so each turn count is a microtask count.
+  it('settles a cache miss in a fixed number of microtask turns', async () => {
+    readFileSpy.mockResolvedValueOnce(`${SEARCH_URGENT}\n`);
+
+    expect(await microtaskTicks(manager.listSavedSearches())).toBe(3);
+  });
+
+  it('settles an ENOENT miss in a fixed number of microtask turns', async () => {
+    readFileSpy.mockRejectedValueOnce(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }));
+
+    expect(await microtaskTicks(manager.listSavedSearches())).toBe(3);
+  });
+
+  it('settles a cache hit in a fixed number of microtask turns', async () => {
+    readFileSpy.mockResolvedValueOnce(`${SEARCH_URGENT}\n`);
+    await manager.listSavedSearches();
+
+    expect(await microtaskTicks(manager.listSavedSearches())).toBe(2);
   });
 });

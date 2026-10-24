@@ -14,6 +14,7 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 import { TagManager } from '../../../src/features/TagManager.js';
 import { logger } from '../../../src/utils/logger.js';
+import { microtaskTicks } from '../../test-utils/microtask-ticks.js';
 
 vi.mock('fs/promises', async (importOriginal) => {
   const actual = await importOriginal<typeof import('fs/promises')>();
@@ -115,5 +116,25 @@ describe('TagManager alias loader (pins)', () => {
 
     expect(JSON.stringify(await manager.listTagAliases())).toBe('[]');
     expect(readFileSpy).toHaveBeenCalledTimes(2);
+  });
+
+  // The read is mocked to resolve at once, so each turn count is a microtask count.
+  it('settles a cache miss in a fixed number of microtask turns', async () => {
+    readFileSpy.mockResolvedValueOnce(`${ALIAS_JS}\n`);
+
+    expect(await microtaskTicks(manager.listTagAliases())).toBe(3);
+  });
+
+  it('settles an ENOENT miss in a fixed number of microtask turns', async () => {
+    readFileSpy.mockRejectedValueOnce(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }));
+
+    expect(await microtaskTicks(manager.listTagAliases())).toBe(3);
+  });
+
+  it('settles a cache hit in a fixed number of microtask turns', async () => {
+    readFileSpy.mockResolvedValueOnce(`${ALIAS_JS}\n`);
+    await manager.listTagAliases();
+
+    expect(await microtaskTicks(manager.listTagAliases())).toBe(2);
   });
 });
