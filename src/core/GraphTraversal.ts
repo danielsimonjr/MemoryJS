@@ -21,6 +21,7 @@ import type { GraphStorage } from './GraphStorage.js';
 import type { AccessTracker } from '../agent/AccessTracker.js';
 import { checkCancellation } from '../utils/index.js';
 import { jaccard, tokenizeToSet } from '../utils/textSimilarity.js';
+import { walkParents } from '../utils/relationHelpers.js';
 
 /**
  * Structural similarity surface for NL-guided neighbor ranking (R7).
@@ -451,20 +452,7 @@ export class GraphTraversal {
     target: string,
     parents: Map<string, { parent: string; relation: Relation } | null>
   ): PathResult {
-    const path: string[] = [];
-    const relations: Relation[] = [];
-    let current: string | null = target;
-
-    while (current !== null) {
-      path.unshift(current);
-      const parentInfo = parents.get(current);
-      if (parentInfo) {
-        relations.unshift(parentInfo.relation);
-        current = parentInfo.parent;
-      } else {
-        current = null;
-      }
-    }
+    const { nodes: path, relations } = walkParents(target, parents);
 
     return {
       path,

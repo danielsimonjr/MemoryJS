@@ -251,3 +251,35 @@ export class RelationBuilder {
     return { ...this.relation };
   }
 }
+
+/**
+ * Walk parent links from a target node back to the root.
+ *
+ * Nodes run from the root to the target. Relations run in the same order and have one entry fewer.
+ * The walk does not detect cycles, so a cycle in the parent map never ends.
+ *
+ * @param target - Node to start from
+ * @param parents - Map from each node to its parent and the relation to it. A null or missing entry marks the root.
+ * @returns Nodes from the root to the target, and the relations along the path
+ */
+export function walkParents<E>(
+  target: string,
+  parents: Map<string, { parent: string; relation: E } | null>,
+): { nodes: string[]; relations: E[] } {
+  const nodes: string[] = [];
+  const relations: E[] = [];
+  let current: string | null = target;
+
+  while (current !== null) {
+    nodes.unshift(current);
+    const info = parents.get(current);
+    if (info) {
+      relations.unshift(info.relation);
+      current = info.parent;
+    } else {
+      current = null;
+    }
+  }
+
+  return { nodes, relations };
+}
