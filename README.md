@@ -988,7 +988,7 @@ knobs) lives in [CLAUDE.md](CLAUDE.md#environment-variables).
 ### Prerequisites
 
 - Bun 1.4.2+ (package manager and script driver; `packageManager: bun@1.4.2`; `bun.lock` is authoritative)
-- Node.js 18+ (production runtime for the published package and native addons)
+- Node.js 22.12+ (production runtime for the published package and native addons)
 - TypeScript 7.0+
 
 > **Bun installs; Node ships.** CI and local development use Bun to install
