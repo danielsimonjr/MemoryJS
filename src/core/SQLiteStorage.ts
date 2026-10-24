@@ -326,8 +326,8 @@ export class SQLiteStorage implements IGraphStorage {
   private readonly validatedDbFilePath: string;
 
   /**
-   * Cache and index members for the shared cache steps. Each member is a
-   * getter, so a read takes the current value of the field.
+   * Cache and index members for the shared cache steps. Each data member is
+   * a getter, so a read takes the current value of the field.
    */
   private readonly cacheState: StorageCacheState;
 

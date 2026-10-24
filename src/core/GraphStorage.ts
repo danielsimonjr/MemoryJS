@@ -319,8 +319,8 @@ export class GraphStorage implements IGraphStorage {
   private segmentStorage: FileSegmentStorage | null;
 
   /**
-   * Cache and index members for the shared cache steps. Each member is a
-   * getter, so a read takes the current value of the field.
+   * Cache and index members for the shared cache steps. Each data member is
+   * a getter, so a read takes the current value of the field.
    */
   private readonly cacheState: StorageCacheState;
 
@@ -921,7 +921,10 @@ export class GraphStorage implements IGraphStorage {
     return this.mutex.runExclusive(() => this.appendLocked(relations, GraphStorage.RELATION_APPEND));
   }
 
-  /** Entity steps for `appendLocked`. Each step receives the storage as its owner. */
+  /**
+   * Entity steps for `appendLocked`. Each step receives the storage as its
+   * owner. An entity belongs to the segment of its name.
+   */
   private static readonly ENTITY_APPEND: AppendDescriptor<Entity> = {
     routeAll: (owner, entities) => entities.map(entity => owner.segmentStorage!.router.route(entity.name)),
     serializeAll: entities => entities.map(serializeEntityLine),
@@ -930,7 +933,10 @@ export class GraphStorage implements IGraphStorage {
     emit: (owner, entity) => owner.eventEmitter.emitEntityCreated(entity),
   };
 
-  /** Relation steps for `appendLocked`. Each step receives the storage as its owner. */
+  /**
+   * Relation steps for `appendLocked`. Each step receives the storage as its
+   * owner. A relation belongs to the segment of its `from` endpoint.
+   */
   private static readonly RELATION_APPEND: AppendDescriptor<Relation> = {
     routeAll: (owner, relations) => relations.map(relation => owner.segmentStorage!.router.route(relation.from)),
     serializeAll: relations => relations.map(serializeRelationLine),
@@ -957,6 +963,7 @@ export class GraphStorage implements IGraphStorage {
           d.upsert(this, item);
         }
       }, dirtySegments);
+      // `pendingAppends` counts single-file appends, so segment mode keeps it at zero.
       this.pendingAppends = 0;
       d.bumpGeneration(this);
       for (const item of items) {
@@ -966,6 +973,8 @@ export class GraphStorage implements IGraphStorage {
     }
 
     const lines = d.serializeAll(items);
+
+    // Write first with fsync for durability, then update the cache and the indexes.
     await this.appendLines(lines);
 
     for (const item of items) {

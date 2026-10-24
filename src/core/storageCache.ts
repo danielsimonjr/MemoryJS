@@ -1,9 +1,10 @@
 /**
  * Cache and index steps shared by the storage backends.
  *
- * `GraphStorage` and `SQLiteStorage` keep the same in-memory graph snapshot
- * and the same indexes. The functions here change those structures in place.
- * The caller keeps the persistence step and the event emission.
+ * `GraphStorage` and `SQLiteStorage` keep an in-memory graph snapshot and
+ * the name, type and relation indexes of the same kind. The functions here
+ * change those structures in place. The caller keeps the persistence step
+ * and the event emission.
  */
 
 import type { KnowledgeGraph, Entity, Relation } from '../types/index.js';
@@ -12,7 +13,7 @@ import type { NameIndex, TypeIndex, RelationIndex, ObservationIndex } from '../u
 /**
  * The cache and index members that the shared cache steps read and write.
  *
- * Each member is a getter in the storage class. A read takes the current
+ * Each data member is a getter in the storage class. A read takes the current
  * value of the owner's field, so a replaced snapshot is always seen.
  */
 export interface StorageCacheState {
