@@ -170,6 +170,12 @@ describe('SavedSearchManager loader (pins)', () => {
     expect(JSON.stringify(await manager.listSavedSearches())).toBe(`[${SEARCH_URGENT},${SEARCH_REVIEW}]`);
   });
 
+  it('does not split a line at a lone carriage return inside it', async () => {
+    await fs.writeFile(filePath, '{"name":"urgent"\r,"query":"bug"}\n');
+
+    expect(JSON.stringify(await manager.listSavedSearches())).toBe('[{"name":"urgent","query":"bug"}]');
+  });
+
   // The read is mocked to resolve at once, so each turn count is a microtask count.
   it('settles a cache miss in a fixed number of microtask turns', async () => {
     readFileSpy.mockResolvedValueOnce(`${SEARCH_URGENT}\n`);
