@@ -361,7 +361,14 @@ export class PostgreSQLStorage implements IGraphStorage {
 
   // ==================== IGraphStorage — write ====================
 
-  async saveGraph(graph: KnowledgeGraph): Promise<void> {
+  /**
+   * Save the whole graph. The storage saves and caches a copy of the graph,
+   * so a later change to the caller's graph does not reach the cache.
+   *
+   * @param callerGraph - The knowledge graph to save
+   */
+  async saveGraph(callerGraph: KnowledgeGraph): Promise<void> {
+    const graph = deepCopyPlain(callerGraph);
     await this.initSchema();
     const pool = await this.getPool();
     // Truncate-and-reinsert is the simplest correct implementation. For very
@@ -393,10 +400,7 @@ export class PostgreSQLStorage implements IGraphStorage {
     } finally {
       client?.release();
     }
-    this.cache = {
-      entities: graph.entities.map((e) => ({ ...e })),
-      relations: graph.relations.map((r) => ({ ...r })),
-    };
+    this.cache = graph;
     this.rebuildIndexes(this.cache);
     this.pendingAppends = 0;
   }
@@ -422,7 +426,13 @@ export class PostgreSQLStorage implements IGraphStorage {
     );
   }
 
-  async appendEntity(entity: Entity): Promise<void> {
+  /**
+   * Append one entity. The cache keeps a copy of the entity, not the caller's object.
+   *
+   * @param callerEntity - The entity to append
+   */
+  async appendEntity(callerEntity: Entity): Promise<void> {
+    const entity = deepCopyPlain(callerEntity);
     await this.ensureLoaded();
     const pool = await this.getPool();
     await this.insertEntityRow(pool, entity);
@@ -434,7 +444,13 @@ export class PostgreSQLStorage implements IGraphStorage {
     this.pendingAppends += 1;
   }
 
-  async appendRelation(relation: Relation): Promise<void> {
+  /**
+   * Append one relation. The cache keeps a copy of the relation, not the caller's object.
+   *
+   * @param callerRelation - The relation to append
+   */
+  async appendRelation(callerRelation: Relation): Promise<void> {
+    const relation = deepCopyPlain(callerRelation);
     await this.ensureLoaded();
     const pool = await this.getPool();
     await this.insertRelationRow(pool, relation);

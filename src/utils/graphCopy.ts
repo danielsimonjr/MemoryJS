@@ -11,6 +11,9 @@
  *   must not mutate it. Outside production the view is a deep-frozen copy,
  *   so an accidental mutation throws a TypeError.
  *
+ * A write (`saveGraph` and the append methods) stores a copy of the objects
+ * it gets. The caller keeps its objects, and no later write changes them.
+ *
  * @module utils/graphCopy
  */
 
