@@ -1565,7 +1565,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 232
+      "loc": 234
     },
     {
       "file": "src/search/QuantizedVectorStore.ts",
@@ -4498,7 +4498,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 113
+      "loc": 125
     },
     {
       "file": "tests/unit/search/searchTwinsSemantic.test.ts",

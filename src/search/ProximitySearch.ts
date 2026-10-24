@@ -127,13 +127,7 @@ export class ProximitySearch {
 
     // Find all positions of each term
     for (const term of terms) {
-      const termPositions: number[] = [];
-      for (let i = 0; i < words.length; i++) {
-        // Check for exact match or contains
-        if (words[i] === term || words[i].includes(term)) {
-          termPositions.push(i);
-        }
-      }
+      const termPositions = this.scanTerm(words, term);
       if (termPositions.length === 0) return null; // Term not found
       positions.set(term, termPositions);
     }
@@ -175,16 +169,24 @@ export class ProximitySearch {
     const positions = new Map<string, number[]>();
 
     for (const term of terms) {
-      const termPositions: number[] = [];
-      for (let i = 0; i < words.length; i++) {
-        if (words[i] === term || words[i].includes(term)) {
-          termPositions.push(i);
-        }
-      }
-      positions.set(term, termPositions);
+      positions.set(term, this.scanTerm(words, term));
     }
 
     return positions;
+  }
+
+  /**
+   * Get the index of every word that equals the term or contains it.
+   * `findProximity` stops at the first term with no index. `getPositions` keeps every term.
+   */
+  private scanTerm(words: string[], term: string): number[] {
+    const termPositions: number[] = [];
+    for (let i = 0; i < words.length; i++) {
+      if (words[i] === term || words[i].includes(term)) {
+        termPositions.push(i);
+      }
+    }
+    return termPositions;
   }
 
   /**

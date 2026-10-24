@@ -106,6 +106,18 @@ describe('ProximitySearch findProximity pins', () => {
     expect(new ProximitySearch().search(entities, node([], 5))).toStrictEqual([]);
   });
 
+  it('stops at the first absent term and never reads a later term', () => {
+    const later = {
+      toString() {
+        throw new Error('a later term was read');
+      },
+    } as unknown as string;
+    const search = new ProximitySearch();
+
+    expect(search.search(entities, node(['missing', later], 9))).toStrictEqual([]);
+    expect(() => search.search(entities, node(['alpha', later], 9))).toThrow('a later term was read');
+  });
+
   it('keeps the two-term span of calculateProximityScore', () => {
     expect(ProximitySearch.calculateProximityScore('x alpha y z beta', 'alpha', 'beta', 5)).toBe(0.25);
   });
