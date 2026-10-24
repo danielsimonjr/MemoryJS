@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The alias loader of `TagManager` and the saved-search loader of `SavedSearchManager` share one JSONL line parser, `parseJsonlRecords` in `src/utils/jsonlMapFile.ts`. Each loader keeps its own read and cache code. Behaviour is unchanged.
 - `SemanticSearch.search` and `findSimilar` share the conversion of vector hits into results in one module function, `toSemanticResults` in `src/search/SemanticSearch.ts`. Each method keeps its own vector store fetch count. Behaviour is unchanged.
 - `GraphTraversal.reconstructPath` and `EvidencePathBuilder.reconstruct` share one parent walk, `walkParents` in `src/utils/relationHelpers.ts`. Each caller keeps its own return shape. Behaviour is unchanged.
 - `HybridSearchManager` and `ParallelSearchExecutor` share the score mapping of their semantic, lexical and symbolic layers in `src/search/hybridLayers.ts`. The layer calls stay in each caller, so the error messages do not change. Behaviour is unchanged.

@@ -79,3 +79,27 @@ export function serializeJsonlMap<V>(map: ReadonlyMap<string, V>, format: JsonlM
   }
   return lines.length === 0 ? '' : lines.join('\n') + '\n';
 }
+
+/**
+ * Parses a newline-delimited JSON string into an array.
+ * Split the input text on newline characters.
+ * Skip lines that contain only whitespace.
+ * Skip lines that fail JSON parsing without warning.
+ * Keep lines that parse to any JSON value, including null.
+ * Treat the type parameter as a cast only.
+ *
+ * @param text - Newline-delimited JSON string to parse.
+ * @returns Parsed values in line order.
+ */
+export function parseJsonlRecords<T>(text: string): T[] {
+  const records: T[] = [];
+  for (const line of text.split('\n')) {
+    if (line.trim() === '') continue;
+    try {
+      records.push(JSON.parse(line) as T);
+    } catch {
+      // Skip malformed JSON lines
+    }
+  }
+  return records;
+}
