@@ -39,6 +39,12 @@ export function createContext(options: GlobalOptions): ManagerContext {
  * If the body throws, the action logs the error message through formatError.
  * Then the action calls process.exit with code 1.
  *
+ * The body is an async function, so a synchronous throw in it becomes a rejected promise.
+ * The catch runs in the first microtask after the action returns, not during the action call.
+ * An inline try block in the action would catch the same throw before the action returns.
+ * The CLI entry runs no code after `program.parse()`, and pipe mode awaits `parseAsync`.
+ * Thus the output and the exit code do not change.
+ *
  * @param program - The Commander program that holds the global options.
  * @param body - The async command logic.
  * @returns The action listener. The listener takes the command arguments, without the context, options and logger.

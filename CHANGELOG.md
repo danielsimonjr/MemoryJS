@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Pin tests for the time at which `runAction` (`src/cli/commands/helpers.ts`) logs a body error and calls `process.exit` (`tests/unit/cli/actionFrame.test.ts`, "time of the log and the exit"). A synchronous throw in the async body reaches the catch in the first microtask after `program.parse()` returns. The `runAction` JSDoc states why the CLI output and exit code do not change. No source behaviour changed.
 - Pin tests for the top-k selection of `InMemoryVectorStore.search`, `QuantizedVectorStore.search` and the heap path of `SalienceEngine.getMostSalient` (83 tests in `tests/unit/search/VectorStore-topk-pins.test.ts`, `tests/unit/search/QuantizedVectorStore-topk-pins.test.ts` and `tests/unit/agent/SalienceEngine-heap-pins.test.ts`). They fix the selected items and their order for equal scores at the k boundary, for NaN, Infinity and -0 scores, for skipped vectors and for odd k or limit values.
 - `docs/analysis/DUPLICATE_FUNCTION_AUDIT.md` lists duplicate and near-duplicate functions in `src/`. It groups them into 26 refactor families, proposes a merge target for each family, and records 13 behaviour differences and defects. No source file changed.
 - SQLite `embeddings` table: nullable `contentHash` column, written by `storeEmbedding(name, vector, model, contentHash?)` and read by `loadEmbeddingMetadata()`. Existing databases get the column when they open.

@@ -169,7 +169,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/cli/commands/entity.ts` | src | reachable | 115 |
 | `src/cli/commands/exclusion.ts` | src | reachable | 113 |
 | `src/cli/commands/graph.ts` | src | reachable | 79 |
-| `src/cli/commands/helpers.ts` | src | reachable | 69 |
+| `src/cli/commands/helpers.ts` | src | reachable | 75 |
 | `src/cli/commands/heuristic.ts` | src | reachable | 125 |
 | `src/cli/commands/hierarchy.ts` | src | reachable | 66 |
 | `src/cli/commands/index.ts` | src | reachable | 66 |
@@ -506,7 +506,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/WorkingMemoryManager.test.ts` | tests | test | 1269 |
 | `tests/unit/agent/WorkThreadManager.test.ts` | tests | test | 1197 |
 | `tests/unit/agent/WorldModel.test.ts` | tests | test | 176 |
-| `tests/unit/cli/actionFrame.test.ts` | tests | test | 416 |
+| `tests/unit/cli/actionFrame.test.ts` | tests | test | 446 |
 | `tests/unit/cli/audit.test.ts` | tests | test | 420 |
 | `tests/unit/cli/cache-reindex.test.ts` | tests | test | 157 |
 | `tests/unit/cli/check.test.ts` | tests | test | 165 |
