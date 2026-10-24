@@ -1,10 +1,11 @@
 /**
  * Top-k selection pins for QuantizedVectorStore.search.
  *
- * The search scores every vector, sorts by similarity and returns `slice(0, k)`.
- * The sort is stable, so equal similarities keep insertion order. `slice` gives the
- * k semantics: a negative k drops items from the end, and a fractional k truncates.
- * These tests fix that behaviour. Every expected value comes from the current source.
+ * The search scores every vector, sorts by similarity and returns the first k.
+ * The sort is stable, so equal similarities keep insertion order. The k rule is the
+ * rule of InMemoryVectorStore.search: a k of 0, a negative k or NaN gives no results,
+ * a fractional k rounds down, and a k larger than the store gives every vector.
+ * These tests fix that behaviour.
  * The order of a NaN similarity among finite ones depends on the sort algorithm of the
  * engine, so no test here fixes it.
  */
@@ -44,19 +45,20 @@ describe('QuantizedVectorStore.search top-k pins', () => {
 
     it.each([
       [0, []],
+      [0.5, []],
       [1, ['v1']],
       [2.5, ['v1', 'v2']],
       [4, ['v1', 'v2', 'v0', 'v3']],
       [5, ['v1', 'v2', 'v0', 'v3']],
       [Number.POSITIVE_INFINITY, ['v1', 'v2', 'v0', 'v3']],
       [Number.NaN, []],
-      [-1, ['v1', 'v2', 'v0']],
-      [-2, ['v1', 'v2']],
+      [-1, []],
+      [-2, []],
       [-0.5, []],
       [-4, []],
       [-9, []],
       [Number.NEGATIVE_INFINITY, []],
-    ])('k = %d follows slice(0, k)', (k, expected) => {
+    ])('k = %d', (k, expected) => {
       expect(idsOf(['lo', 'hi', 'mid', 'neg'], k)).toEqual(expected);
     });
 
@@ -83,8 +85,8 @@ describe('QuantizedVectorStore.search top-k pins', () => {
       expect(results.every(r => r.quantized === true)).toBe(true);
     });
 
-    it('follows slice(0, k) for a negative k', () => {
-      expect(idsOf(['mid', 'lo', 'mid', 'hi', 'mid'], -2, 2)).toEqual(['v3', 'v0', 'v2']);
+    it('returns nothing for a negative k', () => {
+      expect(idsOf(['mid', 'lo', 'mid', 'hi', 'mid'], -2, 2)).toEqual([]);
     });
   });
 });

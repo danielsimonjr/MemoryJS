@@ -262,7 +262,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/search/ParallelSearchExecutor.ts` | src | reachable | 581 |
 | `src/search/PartialIndexAdvisor.ts` | src | reachable | 209 |
 | `src/search/ProximitySearch.ts` | src | reachable | 234 |
-| `src/search/QuantizedVectorStore.ts` | src | reachable | 403 |
+| `src/search/QuantizedVectorStore.ts` | src | reachable | 408 |
 | `src/search/QueryAnalyzer.ts` | src | reachable | 258 |
 | `src/search/QueryCostEstimator.ts` | src | reachable | 795 |
 | `src/search/QueryLogger.ts` | src | reachable | 212 |
@@ -661,7 +661,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/search/ParallelSearchExecutor.test.ts` | tests | test | 551 |
 | `tests/unit/search/PartialIndexAdvisor.test.ts` | tests | test | 111 |
 | `tests/unit/search/ProximitySearch.test.ts` | tests | test | 530 |
-| `tests/unit/search/QuantizedVectorStore-topk-pins.test.ts` | tests | test | 91 |
+| `tests/unit/search/QuantizedVectorStore-topk-pins.test.ts` | tests | test | 93 |
 | `tests/unit/search/QuantizedVectorStore.test.ts` | tests | test | 358 |
 | `tests/unit/search/QueryAnalyzer.test.ts` | tests | test | 252 |
 | `tests/unit/search/QueryCostEstimator.test.ts` | tests | test | 668 |

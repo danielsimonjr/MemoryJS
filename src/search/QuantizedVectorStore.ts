@@ -169,11 +169,16 @@ export class QuantizedVectorStore {
   /**
    * Search for similar vectors.
    *
+   * The k rule is the rule of `InMemoryVectorStore.search`. A k of 0, a
+   * negative k or NaN gives no results. A fractional k rounds down. A k larger
+   * than the store gives every vector.
+   *
    * @param query - Query vector
    * @param k - Number of results to return
    * @returns Top k similar vectors with scores
    */
   search(query: number[], k: number): QuantizedSearchResult[] {
+    if (!(k > 0)) return [];
     const queryVector = new Float32Array(query);
     const results: QuantizedSearchResult[] = [];
 
@@ -195,7 +200,7 @@ export class QuantizedVectorStore {
     // Sort by similarity descending and take top k
     return results
       .sort((a, b) => b.similarity - a.similarity)
-      .slice(0, k);
+      .slice(0, Math.floor(k));
   }
 
   /**
