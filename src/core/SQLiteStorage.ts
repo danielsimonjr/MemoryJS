@@ -116,20 +116,41 @@ import {
   bumpEntityGeneration,
   bumpRelationGeneration,
 } from '../utils/searchCache.js';
-import { NameIndex, RelationIndex, TypeIndex } from '../utils/indexes.js';
+import { NameIndex, RelationIndex, TypeIndex, computeLowercase } from '../utils/indexes.js';
 import { sanitizeObject, validateFilePath, AsyncMutex } from '../utils/index.js';
 import { EntityNotFoundError, DuplicateEntityError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 import { randomUUID } from 'node:crypto';
 import { PartialIndexAdvisor, type FilterObservation } from '../search/PartialIndexAdvisor.js';
 import { GraphEventEmitter } from './GraphEventEmitter.js';
+import {
+  relationKeyOf,
+  removeEntitiesFromIndexes,
+  upsertEntityInCache,
+  upsertRelationInCache,
+  type StorageCacheState,
+} from './storageCache.js';
+
 
 /**
- * Composite key uniquely identifying a relation. NUL separator cannot
- * appear inside validated entity names (mirrors `GraphStorage`).
+ * The steps that differ between the entity and the relation append paths.
+ * Each step receives the storage as `owner`, so that the steps can be shared
+ * static values.
+ *
+ * `writeAll` takes the whole list. Its parameter has the name of the public
+ * parameter (`entities`, `relations`), so that a list that is not iterable
+ * fails with the same message as before: V8 prints the source text of the
+ * failing expression.
  */
-function relationKeyOf(r: Pick<Relation, 'from' | 'to' | 'relationType'>): string {
-  return `${r.from}\u0000${r.to}\u0000${r.relationType}`;
+interface AppendDescriptor<T> {
+  /** Writes the items to the database, without a transaction of its own. */
+  writeAll(owner: SQLiteStorage, items: readonly T[]): void;
+  /** Upserts one item into the cache and indexes. */
+  upsert(owner: SQLiteStorage, item: T): void;
+  /** Bumps the generation counter of the item kind. */
+  bumpGeneration(owner: SQLiteStorage): void;
+  /** Emits the created event of one item. */
+  emit(owner: SQLiteStorage, item: T): void;
 }
 
 /**
@@ -305,6 +326,12 @@ export class SQLiteStorage implements IGraphStorage {
   private readonly validatedDbFilePath: string;
 
   /**
+   * Cache and index members for the shared cache steps. Each data member is
+   * a getter, so a read takes the current value of the field.
+   */
+  private readonly cacheState: StorageCacheState;
+
+  /**
    * Create a new SQLiteStorage instance.
    *
    * @param dbFilePath - Absolute path to the SQLite database file
@@ -316,6 +343,37 @@ export class SQLiteStorage implements IGraphStorage {
     // already validated it. Tests pass tmpdir() paths; the ".." segment
     // defense-in-depth check still runs.
     this.validatedDbFilePath = validateFilePath(dbFilePath, undefined, false);
+    this.cacheState = SQLiteStorage.cacheStateOf(this);
+  }
+
+  /**
+   * Build the cache and index members for `owner`. Each getter reads the
+   * owner field at the moment of use.
+   */
+  private static cacheStateOf(owner: SQLiteStorage): StorageCacheState {
+    return {
+      get cache() {
+        return owner.cache;
+      },
+      get nameIndex() {
+        return owner.nameIndex;
+      },
+      get typeIndex() {
+        return owner.typeIndex;
+      },
+      get relationIndex() {
+        return owner.relationIndex;
+      },
+      get relationKeyMap() {
+        return owner.relationKeyMap;
+      },
+      setLowercase(entity: Entity): void {
+        owner.updateLowercaseCache(entity);
+      },
+      removeLowercase(entity: Entity): void {
+        owner.lowercaseCache.delete(entity.name);
+      },
+    };
   }
 
   /**
@@ -475,6 +533,7 @@ export class SQLiteStorage implements IGraphStorage {
 
     // Schema migration for existing DBs (v1.8.0)
     this.migrateEntitiesTable();
+    this.migrateEmbeddingsTable();
 
     // Indexes for fast lookups
     this.db.exec(`CREATE INDEX IF NOT EXISTS idx_entity_type ON entities(entityType)`);
@@ -546,29 +605,37 @@ export class SQLiteStorage implements IGraphStorage {
   }
 
   /**
+   * Add each column that `table` lacks, in the order given. Reads the
+   * table's columns once, before the first `ALTER`. A caller that has read
+   * them already passes them as `present`, so the table is not read twice.
+   */
+  private ensureColumns(
+    table: 'relations' | 'entities' | 'embeddings',
+    columns: ReadonlyArray<readonly [name: string, ddl: string]>,
+    present: ReadonlyArray<{ name: string }> = this.db!.pragma(`table_info(${table})`) as Array<{ name: string }>,
+  ): void {
+    const existing = new Set(present.map(c => c.name));
+    for (const [name, ddl] of columns) {
+      if (!existing.has(name)) {
+        this.db!.exec(`ALTER TABLE ${table} ADD COLUMN ${name} ${ddl}`);
+      }
+    }
+  }
+
+  /**
    * Phase 1 Sprint 5: Migrate relations table to add metadata columns.
    * Checks if columns exist and adds them if not for backward compatibility.
    */
   private migrateRelationsTable(): void {
     if (!this.db) return;
 
-    // Get current column names
-    const columns = this.db.pragma('table_info(relations)') as Array<{ name: string }>;
-    const columnNames = new Set(columns.map(c => c.name));
-
     // Add missing columns for metadata support
-    if (!columnNames.has('weight')) {
-      this.db.exec('ALTER TABLE relations ADD COLUMN weight REAL');
-    }
-    if (!columnNames.has('confidence')) {
-      this.db.exec('ALTER TABLE relations ADD COLUMN confidence REAL');
-    }
-    if (!columnNames.has('properties')) {
-      this.db.exec('ALTER TABLE relations ADD COLUMN properties TEXT');
-    }
-    if (!columnNames.has('metadata')) {
-      this.db.exec('ALTER TABLE relations ADD COLUMN metadata TEXT');
-    }
+    this.ensureColumns('relations', [
+      ['weight', 'REAL'],
+      ['confidence', 'REAL'],
+      ['properties', 'TEXT'],
+      ['metadata', 'TEXT'],
+    ]);
   }
 
   /**
@@ -578,43 +645,23 @@ export class SQLiteStorage implements IGraphStorage {
   private migrateEntitiesTable(): void {
     if (!this.db) return;
 
-    // Get current column names
-    const columns = this.db.pragma('table_info(entities)') as Array<{ name: string }>;
-    const columnNames = new Set(columns.map(c => c.name));
-
     // Add missing columns for v1.8.0 fields
-    if (!columnNames.has('projectId')) {
-      this.db.exec('ALTER TABLE entities ADD COLUMN projectId TEXT');
-    }
-    if (!columnNames.has('version')) {
-      this.db.exec('ALTER TABLE entities ADD COLUMN version INTEGER DEFAULT 1');
-    }
-    if (!columnNames.has('parentEntityName')) {
-      this.db.exec('ALTER TABLE entities ADD COLUMN parentEntityName TEXT');
-    }
-    if (!columnNames.has('rootEntityName')) {
-      this.db.exec('ALTER TABLE entities ADD COLUMN rootEntityName TEXT');
-    }
-    if (!columnNames.has('isLatest')) {
-      this.db.exec('ALTER TABLE entities ADD COLUMN isLatest INTEGER DEFAULT 1');
-    }
-    if (!columnNames.has('supersededBy')) {
-      this.db.exec('ALTER TABLE entities ADD COLUMN supersededBy TEXT');
-    }
-    if (!columnNames.has('contentHash')) {
-      this.db.exec('ALTER TABLE entities ADD COLUMN contentHash TEXT');
-    }
-    if (!columnNames.has('agentMetadata')) {
+    this.ensureColumns('entities', [
+      ['projectId', 'TEXT'],
+      ['version', 'INTEGER DEFAULT 1'],
+      ['parentEntityName', 'TEXT'],
+      ['rootEntityName', 'TEXT'],
+      ['isLatest', 'INTEGER DEFAULT 1'],
+      ['supersededBy', 'TEXT'],
+      ['contentHash', 'TEXT'],
       // Single JSON-blob column for AgentEntity / SessionEntity /
       // ArtifactEntity extension fields. Subsumes the field-list drift
       // problem: future schema additions just extend the JSON shape.
-      this.db.exec('ALTER TABLE entities ADD COLUMN agentMetadata TEXT');
-    }
-    if (!columnNames.has('id')) {
+      ['agentMetadata', 'TEXT'],
       // Stable opaque entity identifier (survives renames). New DBs get
       // the column via CREATE TABLE; this ALTER covers pre-existing DBs.
-      this.db.exec('ALTER TABLE entities ADD COLUMN id TEXT');
-    }
+      ['id', 'TEXT'],
+    ]);
 
     // Backfill: assign a stable id to any row that lacks one (pre-id DBs,
     // or rows written by code paths that bypass EntityManager). Idempotent
@@ -636,6 +683,20 @@ export class SQLiteStorage implements IGraphStorage {
     this.db.exec(`CREATE INDEX IF NOT EXISTS idx_entities_projectId ON entities(projectId)`);
     this.db.exec(`CREATE INDEX IF NOT EXISTS idx_entities_isLatest ON entities(isLatest)`);
     this.db.exec(`CREATE INDEX IF NOT EXISTS idx_entities_content_hash ON entities(contentHash)`);
+  }
+
+  /**
+   * Migrate the embeddings table to add the contentHash column.
+   * Does nothing when the table does not exist yet; `ensureEmbeddingsTable`
+   * creates it with the column.
+   */
+  private migrateEmbeddingsTable(): void {
+    if (!this.db) return;
+
+    const columns = this.db.pragma('table_info(embeddings)') as Array<{ name: string }>;
+    if (columns.length === 0) return;
+
+    this.ensureColumns('embeddings', [['contentHash', 'TEXT']], columns);
   }
 
   /**
@@ -820,12 +881,7 @@ export class SQLiteStorage implements IGraphStorage {
    * Update lowercase cache for an entity.
    */
   private updateLowercaseCache(entity: Entity): void {
-    this.lowercaseCache.set(entity.name, {
-      name: entity.name.toLowerCase(),
-      entityType: entity.entityType.toLowerCase(),
-      observations: entity.observations.map(o => o.toLowerCase()),
-      tags: entity.tags?.map(t => t.toLowerCase()) || [],
-    });
+    this.lowercaseCache.set(entity.name, computeLowercase(entity));
   }
 
   // ==================== IGraphStorage Implementation ====================
@@ -987,19 +1043,27 @@ export class SQLiteStorage implements IGraphStorage {
       `;
 
   /**
-   * Run the entity INSERT OR REPLACE row write (no cache side effects).
+   * Bind values for the entity fields that the INSERT and the UPDATE write
+   * before their timestamps: id, type, observations, tags, importance, parent.
    */
-  private runEntityUpsert(entity: Entity): void {
-    this.prepareCached(this.db!, SQLiteStorage.UPSERT_ENTITY_SQL).run(
-      entity.name,
+  private entityLeadingBinds(entity: Entity): Array<string | number | null> {
+    return [
       entity.id ?? null,
       entity.entityType,
       JSON.stringify(entity.observations),
       entity.tags ? JSON.stringify(entity.tags) : null,
       entity.importance ?? null,
       entity.parentId ?? null,
-      entity.createdAt || new Date().toISOString(),
-      entity.lastModified || new Date().toISOString(),
+    ];
+  }
+
+  /**
+   * Bind values for the entity fields that the INSERT and the UPDATE write
+   * after their timestamps: project, version chain, content hash, and the
+   * metadata blob.
+   */
+  private entityTrailingBinds(entity: Entity): Array<string | number | null> {
+    return [
       entity.projectId ?? null,
       entity.version ?? 1,
       entity.parentEntityName ?? null,
@@ -1008,40 +1072,20 @@ export class SQLiteStorage implements IGraphStorage {
       entity.supersededBy ?? null,
       entity.contentHash ?? null,
       this.serializeExtensionFields(entity),
-    );
+    ];
   }
 
   /**
-   * Upsert an entity into the in-memory cache + indexes in O(1) (S3 —
-   * replaces the previous `findIndex` array scan). On a duplicate name
-   * the live cache object is mutated **in place** (stale fields removed,
-   * new fields assigned) so `cache.entities` and `NameIndex` stay
-   * consistent without any scan; the type index is updated when the
-   * entityType changed.
+   * Run the entity INSERT OR REPLACE row write (no cache side effects).
    */
-  private upsertEntityInCache(entity: Entity): Entity {
-    const existing = this.nameIndex.get(entity.name);
-    if (existing !== undefined && existing !== entity) {
-      const oldType = existing.entityType;
-      const target = existing as unknown as Record<string, unknown>;
-      const source = entity as unknown as Record<string, unknown>;
-      for (const key of Object.keys(target)) {
-        if (!(key in source)) delete target[key];
-      }
-      Object.assign(target, source);
-      if (oldType !== existing.entityType) {
-        this.typeIndex.updateType(existing.name, oldType, existing.entityType);
-      }
-      this.updateLowercaseCache(existing);
-      return existing;
-    }
-    if (existing === undefined) {
-      this.cache!.entities.push(entity);
-    }
-    this.nameIndex.add(entity);
-    this.typeIndex.add(entity);
-    this.updateLowercaseCache(entity);
-    return entity;
+  private runEntityUpsert(entity: Entity): void {
+    this.prepareCached(this.db!, SQLiteStorage.UPSERT_ENTITY_SQL).run(
+      entity.name,
+      ...this.entityLeadingBinds(entity),
+      entity.createdAt || new Date().toISOString(),
+      entity.lastModified || new Date().toISOString(),
+      ...this.entityTrailingBinds(entity),
+    );
   }
 
   /**
@@ -1056,19 +1100,7 @@ export class SQLiteStorage implements IGraphStorage {
     await this.ensureLoaded();
 
     return this.mutex.runExclusive(async () => {
-      if (!this.db) throw new Error('Database not initialized');
-
-      // Use INSERT OR REPLACE to handle updates (cached statement — S3)
-      this.runEntityUpsert(entity);
-
-      // Update cache + indexes in O(1)
-      this.upsertEntityInCache(entity);
-      bumpEntityGeneration(this);
-
-      this.pendingChanges++;
-
-      // Emit entity:created (parity with GraphStorage.appendEntity)
-      this.eventEmitter.emitEntityCreated(entity);
+      this.appendOneLocked(entity, SQLiteStorage.ENTITY_APPEND);
     });
   }
 
@@ -1086,25 +1118,7 @@ export class SQLiteStorage implements IGraphStorage {
     await this.ensureLoaded();
 
     return this.mutex.runExclusive(async () => {
-      if (!this.db) throw new Error('Database not initialized');
-
-      const tx = this.db.transaction(() => {
-        for (const entity of entities) {
-          this.runEntityUpsert(entity);
-        }
-      });
-      tx();
-
-      for (const entity of entities) {
-        this.upsertEntityInCache(entity);
-      }
-      bumpEntityGeneration(this);
-
-      this.pendingChanges += entities.length;
-
-      for (const entity of entities) {
-        this.eventEmitter.emitEntityCreated(entity);
-      }
+      this.appendManyLocked(entities, SQLiteStorage.ENTITY_APPEND);
     });
   }
 
@@ -1120,19 +1134,7 @@ export class SQLiteStorage implements IGraphStorage {
     await this.ensureLoaded();
 
     return this.mutex.runExclusive(async () => {
-      if (!this.db) throw new Error('Database not initialized');
-
-      // Use INSERT OR REPLACE to handle updates (cached statement — S3)
-      this.runRelationUpsert(relation);
-
-      // Update cache in O(1) via the relation key map
-      this.upsertRelationInCache(relation);
-      bumpRelationGeneration(this);
-
-      this.pendingChanges++;
-
-      // Emit relation:created (parity with GraphStorage.appendRelation)
-      this.eventEmitter.emitRelationCreated(relation);
+      this.appendOneLocked(relation, SQLiteStorage.RELATION_APPEND);
     });
   }
 
@@ -1162,31 +1164,6 @@ export class SQLiteStorage implements IGraphStorage {
   }
 
   /**
-   * Upsert a relation into the in-memory cache in O(1) via the composite
-   * key map (S3 — replaces the previous `findIndex` scan). Duplicate keys
-   * mutate the live object in place, mirroring INSERT OR REPLACE.
-   */
-  private upsertRelationInCache(relation: Relation): Relation {
-    const key = relationKeyOf(relation);
-    const existing = this.relationKeyMap.get(key);
-    if (existing !== undefined && existing !== relation) {
-      const target = existing as unknown as Record<string, unknown>;
-      const source = relation as unknown as Record<string, unknown>;
-      for (const k of Object.keys(target)) {
-        if (!(k in source)) delete target[k];
-      }
-      Object.assign(target, source);
-      return existing;
-    }
-    if (existing === undefined) {
-      this.cache!.relations.push(relation);
-      this.relationIndex.add(relation);
-      this.relationKeyMap.set(key, relation);
-    }
-    return relation;
-  }
-
-  /**
    * Append multiple relations in a single transaction (S2 delta
    * persistence). Emits `relation:created` exactly once per relation; no
    * `graph:saved`.
@@ -1198,26 +1175,77 @@ export class SQLiteStorage implements IGraphStorage {
     await this.ensureLoaded();
 
     return this.mutex.runExclusive(async () => {
-      if (!this.db) throw new Error('Database not initialized');
-
-      const tx = this.db.transaction(() => {
-        for (const relation of relations) {
-          this.runRelationUpsert(relation);
-        }
-      });
-      tx();
-
-      for (const relation of relations) {
-        this.upsertRelationInCache(relation);
-      }
-      bumpRelationGeneration(this);
-
-      this.pendingChanges += relations.length;
-
-      for (const relation of relations) {
-        this.eventEmitter.emitRelationCreated(relation);
-      }
+      this.appendManyLocked(relations, SQLiteStorage.RELATION_APPEND);
     });
+  }
+
+  /** Entity steps for the append helpers. Each step receives the storage as its owner. */
+  private static readonly ENTITY_APPEND: AppendDescriptor<Entity> = {
+    writeAll: (owner, entities) => {
+      for (const entity of entities) owner.runEntityUpsert(entity);
+    },
+    upsert: (owner, entity) => upsertEntityInCache(owner.cacheState, entity),
+    bumpGeneration: owner => bumpEntityGeneration(owner),
+    emit: (owner, entity) => owner.eventEmitter.emitEntityCreated(entity),
+  };
+
+  /** Relation steps for the append helpers. Each step receives the storage as its owner. */
+  private static readonly RELATION_APPEND: AppendDescriptor<Relation> = {
+    writeAll: (owner, relations) => {
+      for (const relation of relations) owner.runRelationUpsert(relation);
+    },
+    upsert: (owner, relation) => upsertRelationInCache(owner.cacheState, relation),
+    bumpGeneration: owner => bumpRelationGeneration(owner),
+    emit: (owner, relation) => owner.eventEmitter.emitRelationCreated(relation),
+  };
+
+  /**
+   * Write one item in a single statement, then update the cache, the
+   * indexes and the events. Runs inside the mutex and takes no transaction.
+   *
+   * @param item - The entity or relation to append
+   * @param d - The steps that differ between entities and relations
+   */
+  private appendOneLocked<T>(item: T, d: AppendDescriptor<T>): void {
+    if (!this.db) throw new Error('Database not initialized');
+
+    // Use INSERT OR REPLACE to handle updates (cached statement — S3)
+    d.writeAll(this, [item]);
+
+    // Update cache + indexes in O(1)
+    d.upsert(this, item);
+    d.bumpGeneration(this);
+
+    this.pendingChanges++;
+
+    d.emit(this, item);
+  }
+
+  /**
+   * Write many items in one transaction, then update the cache, the indexes
+   * and the events. Runs inside the mutex.
+   *
+   * @param items - The entities or relations to append. The list holds at least one item.
+   * @param d - The steps that differ between entities and relations
+   */
+  private appendManyLocked<T>(items: readonly T[], d: AppendDescriptor<T>): void {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const tx = this.db.transaction(() => {
+      d.writeAll(this, items);
+    });
+    tx();
+
+    for (const item of items) {
+      d.upsert(this, item);
+    }
+    d.bumpGeneration(this);
+
+    this.pendingChanges += items.length;
+
+    for (const item of items) {
+      d.emit(this, item);
+    }
   }
 
   /**
@@ -1309,21 +1337,9 @@ export class SQLiteStorage implements IGraphStorage {
    */
   private runEntityUpdateRow(entity: Entity, entityName: string): void {
     this.prepareCached(this.db!, SQLiteStorage.UPDATE_ENTITY_SQL).run(
-      entity.id ?? null,
-      entity.entityType,
-      JSON.stringify(entity.observations),
-      entity.tags ? JSON.stringify(entity.tags) : null,
-      entity.importance ?? null,
-      entity.parentId ?? null,
+      ...this.entityLeadingBinds(entity),
       entity.lastModified,
-      entity.projectId ?? null,
-      entity.version ?? 1,
-      entity.parentEntityName ?? null,
-      entity.rootEntityName ?? null,
-      entity.isLatest === false ? 0 : 1,
-      entity.supersededBy ?? null,
-      entity.contentHash ?? null,
-      this.serializeExtensionFields(entity),
+      ...this.entityTrailingBinds(entity),
       entityName,
     );
   }
@@ -1505,15 +1521,7 @@ export class SQLiteStorage implements IGraphStorage {
       this.cache!.relations = this.cache!.relations.filter(
         r => !nameSet.has(r.from) && !nameSet.has(r.to),
       );
-      for (const e of deletedEntities) {
-        this.nameIndex.remove(e.name);
-        this.typeIndex.remove(e.name, e.entityType);
-        this.lowercaseCache.delete(e.name);
-      }
-      for (const r of deletedRelations) {
-        this.relationIndex.remove(r);
-        this.relationKeyMap.delete(relationKeyOf(r));
-      }
+      removeEntitiesFromIndexes(this.cacheState, deletedEntities, deletedRelations);
 
       if (deletedEntities.length > 0) bumpEntityGeneration(this);
       if (deletedRelations.length > 0) bumpRelationGeneration(this);
@@ -2204,15 +2212,7 @@ export class SQLiteStorage implements IGraphStorage {
    * @returns Array of relations where entity is the source
    */
   getRelationsFrom(entityName: string): Relation[] {
-    if (this.cache) {
-      return this.relationIndex.getRelationsFrom(entityName);
-    }
-
-    // Fall back to database query (Phase 1 Sprint 5: SELECT * for metadata)
-    if (!this.db || !this.initialized) return [];
-    const stmt = this.prepareCached(this.db, 'SELECT * FROM relations WHERE fromEntity = ?');
-    const rows = stmt.all(entityName) as RelationRow[];
-    return rows.map(row => this.rowToRelation(row));
+    return this.relationsFor(entityName, 'from');
   }
 
   /**
@@ -2224,15 +2224,7 @@ export class SQLiteStorage implements IGraphStorage {
    * @returns Array of relations where entity is the target
    */
   getRelationsTo(entityName: string): Relation[] {
-    if (this.cache) {
-      return this.relationIndex.getRelationsTo(entityName);
-    }
-
-    // Fall back to database query (Phase 1 Sprint 5: SELECT * for metadata)
-    if (!this.db || !this.initialized) return [];
-    const stmt = this.prepareCached(this.db, 'SELECT * FROM relations WHERE toEntity = ?');
-    const rows = stmt.all(entityName) as RelationRow[];
-    return rows.map(row => this.rowToRelation(row));
+    return this.relationsFor(entityName, 'to');
   }
 
   /**
@@ -2244,16 +2236,32 @@ export class SQLiteStorage implements IGraphStorage {
    * @returns Array of all relations involving the entity
    */
   getRelationsFor(entityName: string): Relation[] {
+    return this.relationsFor(entityName, 'either');
+  }
+
+  /** Select statements for relation lookups by direction, one constant per direction. */
+  private static readonly RELATION_SELECT_SQL = {
+    from: 'SELECT * FROM relations WHERE fromEntity = ?',
+    to: 'SELECT * FROM relations WHERE toEntity = ?',
+    either: 'SELECT * FROM relations WHERE fromEntity = ? OR toEntity = ?',
+  } as const;
+
+  /**
+   * Relations that touch `entityName` in one direction. Reads the relation
+   * index when the cache is loaded, otherwise runs one indexed query.
+   */
+  private relationsFor(entityName: string, which: 'from' | 'to' | 'either'): Relation[] {
     if (this.cache) {
+      if (which === 'from') return this.relationIndex.getRelationsFrom(entityName);
+      if (which === 'to') return this.relationIndex.getRelationsTo(entityName);
       return this.relationIndex.getRelationsFor(entityName);
     }
 
+    // Fall back to database query (Phase 1 Sprint 5: SELECT * for metadata)
     if (!this.db || !this.initialized) return [];
-    const stmt = this.prepareCached(
-      this.db,
-      'SELECT * FROM relations WHERE fromEntity = ? OR toEntity = ?',
-    );
-    const rows = stmt.all(entityName, entityName) as RelationRow[];
+    const stmt = this.prepareCached(this.db, SQLiteStorage.RELATION_SELECT_SQL[which]);
+    const binds = which === 'either' ? [entityName, entityName] : [entityName];
+    const rows = stmt.all(...binds) as RelationRow[];
     return rows.map(row => this.rowToRelation(row));
   }
 
@@ -2295,7 +2303,8 @@ export class SQLiteStorage implements IGraphStorage {
         embedding BLOB NOT NULL,
         embeddingModel TEXT NOT NULL,
         embeddingUpdatedAt TEXT NOT NULL,
-        dimensions INTEGER NOT NULL
+        dimensions INTEGER NOT NULL,
+        contentHash TEXT
       )
     `);
 
@@ -2309,8 +2318,9 @@ export class SQLiteStorage implements IGraphStorage {
    * @param entityName - Name of the entity
    * @param vector - Embedding vector
    * @param model - Model name used for the embedding
+   * @param contentHash - Optional hash of the content the vector was made from; stored as NULL when absent
    */
-  storeEmbedding(entityName: string, vector: number[], model: string): void {
+  storeEmbedding(entityName: string, vector: number[], model: string, contentHash?: string): void {
     if (!this.db || !this.initialized) {
       throw new Error('Database not initialized');
     }
@@ -2321,11 +2331,11 @@ export class SQLiteStorage implements IGraphStorage {
     const buffer = Buffer.from(new Float32Array(vector).buffer);
 
     const stmt = this.db.prepare(`
-      INSERT OR REPLACE INTO embeddings (entityName, embedding, embeddingModel, embeddingUpdatedAt, dimensions)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT OR REPLACE INTO embeddings (entityName, embedding, embeddingModel, embeddingUpdatedAt, dimensions, contentHash)
+      VALUES (?, ?, ?, ?, ?, ?)
     `);
 
-    stmt.run(entityName, buffer, model, new Date().toISOString(), vector.length);
+    stmt.run(entityName, buffer, model, new Date().toISOString(), vector.length, contentHash ?? null);
   }
 
   /**
@@ -2371,6 +2381,24 @@ export class SQLiteStorage implements IGraphStorage {
         const float32Array = new Float32Array(row.embedding.buffer, row.embedding.byteOffset, row.embedding.length / 4);
         return [row.entityName, Array.from(float32Array)] as [string, number[]];
       });
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Load the metadata of every stored embedding, without the vectors.
+   *
+   * @returns One entry per embedding with its entity name, model and content hash (null when none was stored)
+   */
+  async loadEmbeddingMetadata(): Promise<Array<{ entityName: string; embeddingModel: string; contentHash: string | null }>> {
+    if (!this.db || !this.initialized) return [];
+
+    try {
+      this.ensureEmbeddingsTable();
+
+      const stmt = this.db.prepare(`SELECT entityName, embeddingModel, contentHash FROM embeddings`);
+      return stmt.all() as Array<{ entityName: string; embeddingModel: string; contentHash: string | null }>;
     } catch {
       return [];
     }

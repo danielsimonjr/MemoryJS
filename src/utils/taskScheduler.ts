@@ -13,6 +13,7 @@
 
 import os from 'os';
 import { logger } from './logger.js';
+import { sleep } from './timing.js';
 
 /**
  * Validates that the input is a real function object.
@@ -344,7 +345,7 @@ export class TaskQueue {
   async drain(): Promise<TaskResult[]> {
     // Wait for queue to empty and all running tasks to complete
     while (this.queue.length > 0 || this.running.size > 0) {
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await sleep(10);
     }
     return [...this.completed];
   }
@@ -520,7 +521,7 @@ export async function rateLimitedProcess<T, R>(
     const now = Date.now();
     const timeSinceLast = now - lastExecutionTime;
     if (timeSinceLast < minInterval) {
-      await new Promise(resolve => setTimeout(resolve, minInterval - timeSinceLast));
+      await sleep(minInterval - timeSinceLast);
     }
 
     lastExecutionTime = Date.now();
@@ -571,7 +572,7 @@ export async function withRetry<T>(
         if (onRetry) {
           onRetry(lastError, attempt + 1);
         }
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await sleep(delay);
       }
     }
   }

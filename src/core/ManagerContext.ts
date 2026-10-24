@@ -51,7 +51,7 @@ import type { LLMQueryPlannerConfig } from '../search/LLMQueryPlanner.js';
 import { SemanticSearch } from '../search/SemanticSearch.js';
 import { createEmbeddingService } from '../search/EmbeddingService.js';
 import { EmbeddingCache } from '../search/EmbeddingCache.js';
-import { createVectorStore } from '../search/VectorStore.js';
+import { createVectorStore, isEmbeddingStorage } from '../search/VectorStore.js';
 import { IOManager } from '../features/IOManager.js';
 import { TagManager } from '../features/TagManager.js';
 import { AnalyticsManager } from '../features/AnalyticsManager.js';
@@ -858,7 +858,9 @@ export class ManagerContext {
       const embeddingService = createEmbeddingService(config);
 
       if (embeddingService) {
-        const vectorStore = createVectorStore('jsonl');
+        const vectorStore = isEmbeddingStorage(this.storage)
+          ? createVectorStore('sqlite', this.storage, embeddingService.model)
+          : createVectorStore('jsonl');
         const pressure = this.cachePressure.enabled ? this.cachePressure : undefined;
         const embeddingCache = pressure
           ? new EmbeddingCache({ dimensions: embeddingService.dimensions })
@@ -1601,10 +1603,17 @@ export class ManagerContext {
 
   /**
    * ContextWindowManager - Token-budgeted memory retrieval.
+   *
+   * When `MEMORY_CONTEXT_HYBRID_RANKING` is `'true'` (default off), the
+   * manager ranks candidates through {@link hybridSearchManager} once at
+   * construction. The hybrid manager is not built while the switch is off.
+   *
+   * This getter covers only this context's instance. `AgentMemoryManager`
+   * builds its own ContextWindowManager and does not use this switch.
    */
   get contextWindowManager(): ContextWindowManager {
     if (!this._contextWindowManager) {
-      this._contextWindowManager = new ContextWindowManager(
+      const manager = new ContextWindowManager(
         this.storage,
         this.salienceEngine,
         {
@@ -1615,6 +1624,10 @@ export class ManagerContext {
           enforceDiversity: this.getEnvBool('MEMORY_CONTEXT_ENFORCE_DIVERSITY', true),
         }
       );
+      if (this.getEnvBool('MEMORY_CONTEXT_HYBRID_RANKING', false)) {
+        manager.setHybridSearch(this.hybridSearchManager);
+      }
+      this._contextWindowManager = manager;
     }
     return this._contextWindowManager;
   }

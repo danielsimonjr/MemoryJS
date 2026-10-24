@@ -18,7 +18,9 @@ import type { GraphEventEmitter } from '../core/GraphEventEmitter.js';
 import type { CachePressureCoordinator } from '../utils/CachePressureCoordinator.js';
 import { calculateTFFromTokens, calculateIDFFromTokenSets, tokenize } from '../utils/index.js';
 import { SEARCH_LIMITS } from '../utils/constants.js';
+import { evictInsertionOrder } from '../utils/searchCache.js';
 import { TFIDFIndexManager } from './TFIDFIndexManager.js';
+import { getFtsCandidateNames, type FtsOwner } from './ftsCandidates.js';
 import { SearchFilterChain, type SearchFilters } from './SearchFilterChain.js';
 import type { IndexHealthSnapshot } from '../utils/IIndexHealth.js';
 import type { GraphRankPrior } from './GraphRankPrior.js';
@@ -159,12 +161,7 @@ export class RankedSearch {
 
   /** Evict oldest tokenized documents using Map insertion order. */
   evictTo(targetEntries: number): void {
-    const target = Math.max(0, Math.floor(targetEntries));
-    while (this.fallbackTokenCache.size > target) {
-      const oldest = this.fallbackTokenCache.keys().next().value;
-      if (oldest === undefined) break;
-      this.fallbackTokenCache.delete(oldest);
-    }
+    evictInsertionOrder(this.fallbackTokenCache, targetEntries);
   }
 
   /**
@@ -264,7 +261,13 @@ export class RankedSearch {
     // the projectId constraint as a post-score filter so rankings stay meaningful.
     const preFilters: SearchFilters = { tags, minImportance, maxImportance };
     const candidateEntities = SearchFilterChain.applyFilters(graph.entities, preFilters);
-    const ftsCandidateNames = await this.getFtsCandidateNames(query, graph.entities.length);
+    // The lookup runs with this search as `this` and reads its `storage` field.
+    const ftsCandidateNames = await getFtsCandidateNames.call(
+      this as unknown as FtsOwner,
+      query,
+      graph.entities.length,
+      false,
+    );
     const lexicalCandidates = ftsCandidateNames === null
       ? candidateEntities
       : candidateEntities.filter(entity => ftsCandidateNames.has(entity.name));
@@ -306,25 +309,6 @@ export class RankedSearch {
     scored = await this.applyGraphBoost(scored);
 
     return scored.slice(0, effectiveLimit);
-  }
-
-  /**
-   * Retrieve lexical candidates from a storage-native FTS index when one is
-   * available. A null result means "capability unavailable"; an empty Set is
-   * a valid indexed no-match result and avoids an in-memory corpus scan.
-   */
-  private async getFtsCandidateNames(
-    query: string,
-    corpusSize: number,
-  ): Promise<Set<string> | null> {
-    if (!this.storage.fullTextSearch) return null;
-    await this.storage.ensureLoaded();
-    const matches = await this.storage.fullTextSearch(query, {
-      // Retrieve every FTS match so tag/importance post-filtering cannot
-      // hide a lower-ranked but eligible candidate.
-      limit: Math.max(corpusSize, 1),
-    });
-    return new Set(matches.map(match => match.name));
   }
 
   /**

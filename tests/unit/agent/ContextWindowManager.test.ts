@@ -9,8 +9,11 @@ import { ContextWindowManager } from '../../../src/agent/ContextWindowManager.js
 import { SalienceEngine } from '../../../src/agent/SalienceEngine.js';
 import { AccessTracker } from '../../../src/agent/AccessTracker.js';
 import { DecayEngine } from '../../../src/agent/DecayEngine.js';
+import { HybridSearchManager } from '../../../src/search/HybridSearchManager.js';
+import type { GraphRankPrior } from '../../../src/search/GraphRankPrior.js';
 import type { IGraphStorage, Entity, Relation } from '../../../src/types/types.js';
 import type { AgentEntity, ContextRetrievalOptions } from '../../../src/types/agent-memory.js';
+import { logger } from '../../../src/utils/logger.js';
 
 /**
  * Create a mock storage with entities.
@@ -442,6 +445,84 @@ describe('ContextWindowManager', () => {
       expect(config.episodicBudgetPct).toBe(0.25);
       expect(config.semanticBudgetPct).toBe(0.25);
       expect(config.recentSessionCount).toBe(5);
+    });
+  });
+
+  describe('budget selection (pins)', () => {
+    it('selects the same entities and tokens in each retrieval method when the budget fits two of three', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+      try {
+        const stamp = '2026-01-01T00:00:00.000Z';
+        const sameSize = (name: string, memoryType: 'working' | 'episodic' | 'semantic') =>
+          createTestEntity({
+            name,
+            memoryType,
+            sessionId: 'session_1',
+            observations: ['same size text'],
+            createdAt: stamp,
+            lastModified: stamp,
+            lastAccessedAt: stamp,
+          });
+        storage = createMockStorage([
+          sameSize('w1', 'working'), sameSize('w2', 'working'), sameSize('w3', 'working'),
+          sameSize('e1', 'episodic'), sameSize('e2', 'episodic'), sameSize('e3', 'episodic'),
+          sameSize('s1', 'semantic'), sameSize('s2', 'semantic'), sameSize('s3', 'semantic'),
+        ]);
+        accessTracker = new AccessTracker(storage);
+        decayEngine = new DecayEngine(storage, accessTracker);
+        salienceEngine = new SalienceEngine(storage, accessTracker, decayEngine);
+        contextManager = new ContextWindowManager(storage, salienceEngine);
+
+        const oneEntity = sameSize('w1', 'working');
+        const budget = 2 * contextManager.estimateTokens(oneEntity);
+
+        const working = await contextManager.retrieveWorkingMemory('session_1', budget);
+        const episodic = await contextManager.retrieveEpisodicRecent(budget);
+        const semantic = await contextManager.retrieveSemanticRelevant(budget);
+
+        expect({
+          working: working.entities.map((e) => e.name),
+          episodic: episodic.entities.map((e) => e.name),
+          semantic: semantic.entities.map((e) => e.name),
+        }).toStrictEqual({
+          working: ['w1', 'w2'],
+          episodic: ['e1', 'e2'],
+          semantic: ['s1', 's2'],
+        });
+        expect(working.tokens).toBe(budget);
+        expect(episodic.tokens).toBe(budget);
+        expect(semantic.tokens).toBe(budget);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('skips a candidate that does not fit and goes on with the next one', async () => {
+      const small = (name: string) =>
+        createTestEntity({ name, memoryType: 'semantic', observations: ['same size text'] });
+      const first = small('s1');
+      const second = small('s2');
+      const big = createTestEntity({
+        name: 'big',
+        memoryType: 'semantic',
+        observations: ['many words in this long text '.repeat(40)],
+      });
+      storage = createMockStorage([first, big, second]);
+      accessTracker = new AccessTracker(storage);
+      decayEngine = new DecayEngine(storage, accessTracker);
+      salienceEngine = new SalienceEngine(storage, accessTracker, decayEngine);
+      contextManager = new ContextWindowManager(storage, salienceEngine);
+      const ranked = [first, big, second].map((entity) => ({ entity, salienceScore: 1, components: {} }));
+      vi.spyOn(salienceEngine, 'rankEntitiesBySalience').mockResolvedValue(
+        ranked as unknown as Awaited<ReturnType<SalienceEngine['rankEntitiesBySalience']>>
+      );
+      const budget = contextManager.estimateTokens(first) + contextManager.estimateTokens(second);
+
+      const result = await contextManager.retrieveSemanticRelevant(budget);
+
+      expect(result.entities.map((e) => e.name)).toStrictEqual(['s1', 's2']);
+      expect(result.tokens).toBe(budget);
     });
   });
 
@@ -947,6 +1028,689 @@ describe('ContextWindowManager', () => {
 
       expect(config.diversityThreshold).toBe(0.5);
       expect(config.enforceDiversity).toBe(true);
+    });
+  });
+
+  /**
+   * Build a manager over the given entities with no budget reserve,
+   * so the budget equals maxTokens.
+   */
+  function createBudgetManager(entities: AgentEntity[]): ContextWindowManager {
+    const budgetStorage = createMockStorage(entities);
+    const tracker = new AccessTracker(budgetStorage);
+    const decay = new DecayEngine(budgetStorage, tracker);
+    const salience = new SalienceEngine(budgetStorage, tracker, decay);
+    return new ContextWindowManager(budgetStorage, salience, { reserveBuffer: 0 });
+  }
+
+  /**
+   * Create entities that each cost 8 tokens (one-word name, three observation words).
+   *
+   * All entities share one timestamp, so recency affects them equally. Importance falls by
+   * 0.25 per entity from 6, below the point where normalized importance saturates at 1,
+   * so the salience order is strict and the clock cannot break ties between calls.
+   */
+  function createNamedEntities(names: string[]): AgentEntity[] {
+    const timestamp = new Date().toISOString();
+    return names.map((name, index) =>
+      createTestEntity({
+        name,
+        observations: ['alpha beta gamma'],
+        createdAt: timestamp,
+        lastModified: timestamp,
+        lastAccessedAt: timestamp,
+        importance: 6 - index * 0.25,
+      })
+    );
+  }
+
+  /** Names 'e01' to 'e16'. */
+  function sixteenNames(): string[] {
+    return Array.from({ length: 16 }, (_, i) => `e${String(i + 1).padStart(2, '0')}`);
+  }
+
+  describe('budget-cut report', () => {
+    it('reports sourceTokens and compressionRatio when the budget cuts entities', async () => {
+      const manager = createBudgetManager(createNamedEntities(['e1', 'e2', 'e3', 'e4']));
+
+      const result = await manager.retrieveForContext({ maxTokens: 20 });
+
+      expect(result.totalTokens).toBe(16);
+      expect(result.sourceTokens).toBe(32);
+      expect(result.compressionRatio).toBe(2);
+      expect(result.excluded).toHaveLength(2);
+      expect(result.excluded.map((e) => e.reason)).toEqual(['budget_exceeded', 'budget_exceeded']);
+    });
+
+    it('reports a ratio of 1 when every candidate fits', async () => {
+      const manager = createBudgetManager(createNamedEntities(['e1', 'e2', 'e3', 'e4']));
+
+      const result = await manager.retrieveForContext({ maxTokens: 1000 });
+
+      expect(result.totalTokens).toBe(32);
+      expect(result.sourceTokens).toBe(32);
+      expect(result.compressionRatio).toBe(1);
+      expect(result.excluded).toEqual([]);
+    });
+
+    it('reports a ratio of 1 for an empty store', async () => {
+      const manager = createBudgetManager([]);
+
+      const result = await manager.retrieveForContext({ maxTokens: 1000 });
+
+      expect(result.totalTokens).toBe(0);
+      expect(result.sourceTokens).toBe(0);
+      expect(result.compressionRatio).toBe(1);
+    });
+
+    it('counts low-salience exclusions in sourceTokens', async () => {
+      const manager = createBudgetManager(createNamedEntities(['e1', 'e2', 'e3', 'e4']));
+
+      // Salience is in [0, 1], so minSalience 2 excludes every entity.
+      const result = await manager.retrieveForContext({ maxTokens: 1000, minSalience: 2 });
+
+      expect(result.totalTokens).toBe(0);
+      expect(result.sourceTokens).toBe(32);
+      expect(result.compressionRatio).toBe(32);
+    });
+
+    it('sets both fields in retrieveWithBudgetAllocation', async () => {
+      const manager = createBudgetManager(createNamedEntities(['e1', 'e2', 'e3', 'e4']));
+
+      const result = await manager.retrieveWithBudgetAllocation({ maxTokens: 1000 });
+
+      const excludedTokens = result.excluded.reduce((sum, e) => sum + e.tokens, 0);
+      expect(result.sourceTokens).toBe(result.totalTokens + excludedTokens);
+      expect(result.compressionRatio).toBe(
+        result.sourceTokens === result.totalTokens
+          ? 1
+          : result.sourceTokens / Math.max(result.totalTokens, 1)
+      );
+    });
+  });
+
+  describe('excluded summary', () => {
+    /** Summarizer stub that resolves to 'S'. */
+    function createSummarizerStub() {
+      return { summarize: vi.fn().mockResolvedValue('S') };
+    }
+
+    it('summarizes excluded memories with the query', async () => {
+      const manager = createBudgetManager(createNamedEntities(['e1', 'e2', 'e3', 'e4']));
+      const summarizer = createSummarizerStub();
+      manager.setSummarizer(summarizer);
+
+      const result = await manager.retrieveForContext({
+        maxTokens: 20,
+        summarizeExcluded: true,
+        context: { queryText: 'q' },
+      });
+
+      expect(result.excludedSummary).toBe('S');
+      expect(summarizer.summarize).toHaveBeenCalledTimes(1);
+      expect(summarizer.summarize).toHaveBeenCalledWith(['alpha beta gamma', 'alpha beta gamma'], 'q');
+    });
+
+    it('does not count the summary in totalTokens', async () => {
+      const manager = createBudgetManager(createNamedEntities(['e1', 'e2', 'e3', 'e4']));
+      manager.setSummarizer({ summarize: vi.fn().mockResolvedValue('a long summary of many words') });
+
+      const result = await manager.retrieveForContext({ maxTokens: 20, summarizeExcluded: true });
+
+      expect(result.totalTokens).toBe(16);
+      expect(result.excludedSummary).toBe('a long summary of many words');
+    });
+
+    it('does not summarize by default', async () => {
+      const manager = createBudgetManager(createNamedEntities(['e1', 'e2', 'e3', 'e4']));
+      const summarizer = createSummarizerStub();
+      manager.setSummarizer(summarizer);
+
+      const result = await manager.retrieveForContext({ maxTokens: 20 });
+
+      expect(summarizer.summarize).not.toHaveBeenCalled();
+      expect(result.excludedSummary).toBeUndefined();
+    });
+
+    it('does not summarize when nothing is excluded', async () => {
+      const manager = createBudgetManager(createNamedEntities(['e1', 'e2', 'e3', 'e4']));
+      const summarizer = createSummarizerStub();
+      manager.setSummarizer(summarizer);
+
+      const result = await manager.retrieveForContext({ maxTokens: 1000, summarizeExcluded: true });
+
+      expect(summarizer.summarize).not.toHaveBeenCalled();
+      expect(result.excludedSummary).toBeUndefined();
+    });
+
+    it('does not summarize without an attached summarizer', async () => {
+      const manager = createBudgetManager(createNamedEntities(['e1', 'e2', 'e3', 'e4']));
+      const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+
+      const result = await manager.retrieveForContext({ maxTokens: 20, summarizeExcluded: true });
+
+      expect(result.excludedSummary).toBeUndefined();
+      expect(result.excluded).toHaveLength(2);
+      expect(warn).not.toHaveBeenCalled();
+      warn.mockRestore();
+    });
+
+    it('stops summarizing after setSummarizer(undefined)', async () => {
+      const manager = createBudgetManager(createNamedEntities(['e1', 'e2', 'e3', 'e4']));
+      const summarizer = createSummarizerStub();
+      manager.setSummarizer(summarizer);
+      manager.setSummarizer(undefined);
+
+      const result = await manager.retrieveForContext({ maxTokens: 20, summarizeExcluded: true });
+
+      expect(summarizer.summarize).not.toHaveBeenCalled();
+      expect(result.excludedSummary).toBeUndefined();
+    });
+
+    it('takes summarizeExcluded from the profile', async () => {
+      const manager = createBudgetManager(createNamedEntities(['e1', 'e2', 'e3', 'e4']));
+      const summarizer = createSummarizerStub();
+      manager.setSummarizer(summarizer);
+      const profiles = manager.getContextProfileManager();
+      profiles.registerProfile('planning', {
+        ...profiles.getProfile('planning'),
+        retrieval: { summarizeExcluded: true },
+      });
+
+      const result = await manager.retrieveForContext({
+        maxTokens: 20,
+        profile: 'planning',
+        context: { queryText: 'q' },
+      });
+
+      expect(summarizer.summarize).toHaveBeenCalledTimes(1);
+      expect(result.excludedSummary).toBe('S');
+    });
+
+    it('lets an explicit summarizeExcluded override the profile', async () => {
+      const manager = createBudgetManager(createNamedEntities(['e1', 'e2', 'e3', 'e4']));
+      const summarizer = createSummarizerStub();
+      manager.setSummarizer(summarizer);
+      const profiles = manager.getContextProfileManager();
+      profiles.registerProfile('planning', {
+        ...profiles.getProfile('planning'),
+        retrieval: { summarizeExcluded: true },
+      });
+
+      const result = await manager.retrieveForContext({
+        maxTokens: 20,
+        profile: 'planning',
+        summarizeExcluded: false,
+      });
+
+      expect(summarizer.summarize).not.toHaveBeenCalled();
+      expect(result.excludedSummary).toBeUndefined();
+    });
+
+    it('summarizes the entities that the slot cap cut', async () => {
+      const manager = createBudgetManager(createNamedEntities(['e1', 'e2', 'e3']));
+      const summarizer = createSummarizerStub();
+      manager.setSummarizer(summarizer);
+
+      const result = await manager.retrieveForContext({
+        maxTokens: 1000,
+        maxSlots: 2,
+        summarizeExcluded: true,
+      });
+
+      expect(result.excluded.map((e) => e.reason)).toEqual(['slot_limit']);
+      expect(summarizer.summarize).toHaveBeenCalledWith(['alpha beta gamma'], undefined);
+    });
+
+    it('summarizes the entities that the salience floor cut', async () => {
+      const manager = createBudgetManager(createNamedEntities(['e1', 'e2']));
+      const summarizer = createSummarizerStub();
+      manager.setSummarizer(summarizer);
+
+      const result = await manager.retrieveForContext({
+        maxTokens: 1000,
+        minSalience: 2,
+        summarizeExcluded: true,
+      });
+
+      expect(result.excluded.map((e) => e.reason)).toEqual(['low_salience', 'low_salience']);
+      expect(summarizer.summarize).toHaveBeenCalledWith(['alpha beta gamma', 'alpha beta gamma'], undefined);
+    });
+
+    it('passes no query when the query text is blank', async () => {
+      const manager = createBudgetManager(createNamedEntities(['e1', 'e2', 'e3', 'e4']));
+      const summarizer = createSummarizerStub();
+      manager.setSummarizer(summarizer);
+
+      await manager.retrieveForContext({
+        maxTokens: 20,
+        summarizeExcluded: true,
+        context: { queryText: '   ' },
+      });
+
+      expect(summarizer.summarize).toHaveBeenCalledWith(['alpha beta gamma', 'alpha beta gamma'], undefined);
+    });
+
+    it('leaves empty observation lists out of the summarizer input', async () => {
+      const timestamp = new Date().toISOString();
+      const empty = createTestEntity({
+        name: 'empty',
+        observations: [],
+        createdAt: timestamp,
+        lastModified: timestamp,
+        lastAccessedAt: timestamp,
+      });
+      const manager = createBudgetManager([...createNamedEntities(['e1']), empty]);
+      const summarizer = createSummarizerStub();
+      manager.setSummarizer(summarizer);
+
+      const result = await manager.retrieveForContext({ maxTokens: 1000, minSalience: 2, summarizeExcluded: true });
+
+      expect(result.excluded).toHaveLength(2);
+      expect(summarizer.summarize).toHaveBeenCalledWith(['alpha beta gamma'], undefined);
+    });
+
+    it('does not call the summarizer when every excluded entity has no observations', async () => {
+      const timestamp = new Date().toISOString();
+      const empty = createTestEntity({
+        name: 'empty',
+        observations: [],
+        createdAt: timestamp,
+        lastModified: timestamp,
+        lastAccessedAt: timestamp,
+      });
+      const manager = createBudgetManager([empty]);
+      const summarizer = createSummarizerStub();
+      manager.setSummarizer(summarizer);
+
+      const result = await manager.retrieveForContext({ maxTokens: 1000, minSalience: 2, summarizeExcluded: true });
+
+      expect(result.excluded).toHaveLength(1);
+      expect(summarizer.summarize).not.toHaveBeenCalled();
+      expect(result.excludedSummary).toBeUndefined();
+    });
+
+    it('returns the package without a summary when the summarizer throws', async () => {
+      const manager = createBudgetManager(createNamedEntities(['e1', 'e2', 'e3', 'e4']));
+      manager.setSummarizer({ summarize: vi.fn().mockRejectedValue(new Error('down')) });
+      const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+
+      const result = await manager.retrieveForContext({ maxTokens: 20, summarizeExcluded: true });
+
+      expect(result.excludedSummary).toBeUndefined();
+      expect(result.memories.map((m) => m.name)).toEqual(['e1', 'e2']);
+      expect(result.excluded).toHaveLength(2);
+      expect(warn).toHaveBeenCalledTimes(1);
+      warn.mockRestore();
+    });
+  });
+
+  describe('query ranking', () => {
+    // Recent, so decay does not flatten the importance differences between entities.
+    const timestamp = new Date().toISOString();
+
+    /** Four entities with one fixed timestamp and distinct importance below 10. */
+    function createQueryEntities(names: string[] = ['e1', 'e2', 'e3', 'e4']): AgentEntity[] {
+      return names.map((name, index) =>
+        createTestEntity({
+          name,
+          observations: ['alpha beta gamma'],
+          createdAt: timestamp,
+          lastModified: timestamp,
+          lastAccessedAt: timestamp,
+          importance: 6 - index * 0.25,
+        })
+      );
+    }
+
+    function createQueryManager(
+      entities: AgentEntity[],
+      relations: Relation[] = []
+    ): ContextWindowManager {
+      const queryStorage = createMockStorage(entities, relations);
+      const tracker = new AccessTracker(queryStorage);
+      const decay = new DecayEngine(queryStorage, tracker);
+      const salience = new SalienceEngine(queryStorage, tracker, decay);
+      return new ContextWindowManager(queryStorage, salience, { reserveBuffer: 0 });
+    }
+
+    function hit(entity: AgentEntity) {
+      return {
+        entity,
+        scores: { semantic: 0, lexical: 1, symbolic: 0, combined: 1 },
+        matchedLayers: ['lexical'],
+      };
+    }
+
+    function namesOf(memories: Array<{ name: string }>): string[] {
+      return memories.map((m) => m.name);
+    }
+
+    it('orders candidates by hybrid rank when queryText is set', async () => {
+      const entities = createQueryEntities();
+      const manager = createQueryManager(entities);
+      const search = vi.fn().mockResolvedValue([hit(entities[2]), hit(entities[0])]);
+      manager.setHybridSearch({ search });
+
+      const result = await manager.retrieveForContext({
+        maxTokens: 1000,
+        context: { queryText: 'alpha' },
+      });
+
+      expect(namesOf(result.memories)).toEqual(['e3', 'e1']);
+    });
+
+    it('passes the scoped graph and limit to hybrid search', async () => {
+      const entities = createQueryEntities();
+      const relations: Relation[] = [
+        { from: 'e1', to: 'e2', relationType: 'links_to' },
+        { from: 'e1', to: 'outside', relationType: 'links_to' },
+      ];
+      const manager = createQueryManager(entities, relations);
+      const search = vi.fn().mockResolvedValue([hit(entities[2]), hit(entities[0])]);
+      manager.setHybridSearch({ search });
+
+      await manager.retrieveForContext({
+        maxTokens: 1000,
+        context: { queryText: 'alpha' },
+      });
+
+      expect(search).toHaveBeenCalledTimes(1);
+      const [scopedGraph, queryText, options] = search.mock.calls[0];
+      expect(scopedGraph.entities.map((e: { name: string }) => e.name)).toEqual([
+        'e1',
+        'e2',
+        'e3',
+        'e4',
+      ]);
+      expect(scopedGraph.relations).toHaveLength(1);
+      expect(queryText).toBe('alpha');
+      expect(options).toEqual({ limit: 1000 });
+    });
+
+    it('keeps the salience path when queryText is absent', async () => {
+      const entities = createQueryEntities();
+      const manager = createQueryManager(entities);
+      const search = vi.fn().mockResolvedValue([hit(entities[2])]);
+      manager.setHybridSearch({ search });
+
+      const result = await manager.retrieveForContext({ maxTokens: 1000 });
+
+      expect(search).not.toHaveBeenCalled();
+      expect(result.memories).toHaveLength(4);
+    });
+
+    it('keeps the salience path when no hybrid search is set', async () => {
+      const manager = createQueryManager(createQueryEntities());
+
+      const result = await manager.retrieveForContext({
+        maxTokens: 1000,
+        context: { queryText: 'alpha' },
+      });
+
+      expect(result.memories).toHaveLength(4);
+    });
+
+    it('treats whitespace-only queryText as absent', async () => {
+      const manager = createQueryManager(createQueryEntities());
+      const search = vi.fn().mockResolvedValue([]);
+      manager.setHybridSearch({ search });
+
+      await manager.retrieveForContext({
+        maxTokens: 1000,
+        context: { queryText: '   ' },
+      });
+
+      expect(search).not.toHaveBeenCalled();
+    });
+
+    it('puts must-include entities first in query mode', async () => {
+      const entities = createQueryEntities();
+      const manager = createQueryManager(entities);
+      const search = vi.fn().mockResolvedValue([hit(entities[2]), hit(entities[0])]);
+      manager.setHybridSearch({ search });
+
+      const result = await manager.retrieveForContext({
+        maxTokens: 1000,
+        context: { queryText: 'alpha' },
+        mustInclude: ['e4'],
+      });
+
+      expect(namesOf(result.memories)).toEqual(['e4', 'e3', 'e1']);
+    });
+
+    it('passes expandNeighbors and lookFor when composeHops is 1', async () => {
+      const entities = createQueryEntities();
+      const manager = createQueryManager(entities);
+      const search = vi.fn().mockResolvedValue([hit(entities[0])]);
+      manager.setHybridSearch({ search });
+
+      await manager.retrieveForContext({
+        maxTokens: 1000,
+        context: { queryText: 'alpha' },
+        composeHops: 1,
+      });
+
+      const [, , options] = search.mock.calls[0];
+      expect(options).toEqual({ limit: 1000, expandNeighbors: { hops: 1 }, lookFor: 'alpha' });
+    });
+
+    it('adds one-hop neighbors through HybridSearchManager', async () => {
+      const entities = createQueryEntities(['A', 'B', 'C']);
+      const neighbors: Record<string, string[]> = { A: ['B'], B: ['A', 'C'], C: ['B'] };
+      const prior = {
+        getScores: vi.fn(async (names: string[]) => new Map(names.map((n) => [n, 0]))),
+        neighbors: vi.fn((name: string) => neighbors[name] ?? []),
+      } as unknown as GraphRankPrior;
+      const rankedSearch = {
+        searchNodesRanked: vi.fn().mockResolvedValue([{ entity: entities[0], score: 5 }]),
+      };
+      const manager = createQueryManager(entities);
+      manager.setHybridSearch(new HybridSearchManager(null, rankedSearch as never, prior));
+
+      const withHops = await manager.retrieveForContext({
+        maxTokens: 1000,
+        context: { queryText: 'alpha' },
+        composeHops: 1,
+      });
+      const withoutHops = await manager.retrieveForContext({
+        maxTokens: 1000,
+        context: { queryText: 'alpha' },
+      });
+
+      expect(namesOf(withHops.memories)).toEqual(['A', 'B']);
+      expect(namesOf(withoutHops.memories)).toEqual(['A']);
+    });
+
+    it('falls back to the salience path when hybrid search throws', async () => {
+      const manager = createQueryManager(createQueryEntities());
+      const search = vi.fn().mockRejectedValue(new Error('embedding service down'));
+      manager.setHybridSearch({ search });
+
+      const result = await manager.retrieveForContext({
+        maxTokens: 1000,
+        context: { queryText: 'alpha' },
+      });
+
+      expect(search).toHaveBeenCalledTimes(1);
+      expect(result.memories).toHaveLength(4);
+    });
+
+    it('uses the salience order after a hybrid search failure', async () => {
+      // Graph order is the reverse of salience order, so only the salience path gives e4 first.
+      const entities = createQueryEntities().reverse();
+      const manager = createQueryManager(entities);
+      manager.setHybridSearch({ search: vi.fn().mockRejectedValue(new Error('down')) });
+
+      const result = await manager.retrieveForContext({
+        maxTokens: 1000,
+        context: { queryText: 'alpha' },
+      });
+
+      expect(namesOf(result.memories)).toEqual(['e1', 'e2', 'e3', 'e4']);
+    });
+
+    it('returns must-include entities when hybrid search returns no hits', async () => {
+      const manager = createQueryManager(createQueryEntities());
+      const search = vi.fn().mockResolvedValue([]);
+      manager.setHybridSearch({ search });
+
+      const result = await manager.retrieveForContext({
+        maxTokens: 1000,
+        context: { queryText: 'alpha' },
+        mustInclude: ['e4'],
+      });
+
+      expect(namesOf(result.memories)).toEqual(['e4']);
+    });
+
+    it('lists an entity once when hybrid search returns it twice', async () => {
+      const entities = createQueryEntities();
+      const manager = createQueryManager(entities);
+      const search = vi.fn().mockResolvedValue([hit(entities[1]), hit(entities[1]), hit(entities[0])]);
+      manager.setHybridSearch({ search });
+
+      const result = await manager.retrieveForContext({
+        maxTokens: 1000,
+        context: { queryText: 'alpha' },
+      });
+
+      expect(namesOf(result.memories)).toEqual(['e2', 'e1']);
+    });
+
+    it('drops hybrid hits outside the candidate set', async () => {
+      const entities = createQueryEntities();
+      const manager = createQueryManager(entities);
+      const outside = createQueryEntities(['outside'])[0];
+      const search = vi.fn().mockResolvedValue([hit(outside), hit(entities[0])]);
+      manager.setHybridSearch({ search });
+
+      const result = await manager.retrieveForContext({
+        maxTokens: 1000,
+        context: { queryText: 'alpha' },
+      });
+
+      expect(namesOf(result.memories)).toEqual(['e1']);
+    });
+  });
+
+  describe('maxSlots', () => {
+    it('caps the number of memories', async () => {
+      const manager = createBudgetManager(createNamedEntities(sixteenNames()));
+
+      for (const cap of [1, 2, 4, 8, 16]) {
+        const result = await manager.retrieveForContext({ maxTokens: 1000, maxSlots: cap });
+        expect(result.memories).toHaveLength(cap);
+      }
+    });
+
+    it('returns nested selections as maxSlots grows', async () => {
+      const manager = createBudgetManager(createNamedEntities(sixteenNames()));
+
+      let previous: string[] = [];
+      for (const cap of [1, 2, 4, 8, 16]) {
+        const result = await manager.retrieveForContext({ maxTokens: 1000, maxSlots: cap });
+        const names = result.memories.map((m) => m.name);
+        expect(names).toHaveLength(cap);
+        for (const name of previous) {
+          expect(names).toContain(name);
+        }
+        previous = names;
+      }
+    });
+
+    it('marks slot-cut entities with reason slot_limit', async () => {
+      const manager = createBudgetManager(createNamedEntities(sixteenNames()));
+
+      const result = await manager.retrieveForContext({ maxTokens: 1000, maxSlots: 4 });
+
+      expect(result.excluded).toHaveLength(12);
+      expect(result.excluded.every((e) => e.reason === 'slot_limit')).toBe(true);
+    });
+
+    it('returns only must-include entities when maxSlots is 0', async () => {
+      const manager = createBudgetManager(createNamedEntities(sixteenNames()));
+
+      const result = await manager.retrieveForContext({
+        maxTokens: 1000,
+        maxSlots: 0,
+        mustInclude: ['e05'],
+      });
+
+      expect(result.memories.map((m) => m.name)).toEqual(['e05']);
+    });
+
+    it('keeps every must-include entity when maxSlots is smaller', async () => {
+      const manager = createBudgetManager(createNamedEntities(sixteenNames()));
+
+      const result = await manager.retrieveForContext({
+        maxTokens: 1000,
+        maxSlots: 1,
+        mustInclude: ['e01', 'e02'],
+      });
+
+      const names = result.memories.map((m) => m.name);
+      expect(names).toContain('e01');
+      expect(names).toContain('e02');
+      expect(names).toHaveLength(2);
+    });
+
+    it('ignores a negative or non-finite maxSlots', async () => {
+      const manager = createBudgetManager(createNamedEntities(sixteenNames()));
+
+      for (const cap of [-1, Number.NaN, Number.POSITIVE_INFINITY]) {
+        const result = await manager.retrieveForContext({ maxTokens: 1000, maxSlots: cap });
+        expect(result.memories).toHaveLength(16);
+        const allocated = await manager.retrieveWithBudgetAllocation({ maxTokens: 1000, maxSlots: cap });
+        expect(allocated.excluded.filter((e) => e.reason === 'slot_limit')).toEqual([]);
+      }
+    });
+
+    it('ignores maxSlots when unset', async () => {
+      const manager = createBudgetManager(createNamedEntities(sixteenNames()));
+
+      const result = await manager.retrieveForContext({ maxTokens: 1000 });
+
+      expect(result.memories).toHaveLength(16);
+    });
+
+    it('counts low-salience exclusions in sourceTokens of retrieveWithBudgetAllocation', async () => {
+      const manager = createBudgetManager(createNamedEntities(['e1', 'e2', 'e3', 'e4']));
+
+      const result = await manager.retrieveWithBudgetAllocation({ maxTokens: 1000, minSalience: 2 });
+
+      expect(result.totalTokens).toBe(0);
+      expect(result.excluded.every((e) => e.reason === 'low_salience')).toBe(true);
+      expect(result.sourceTokens).toBe(result.excluded.reduce((sum, e) => sum + e.tokens, 0));
+      expect(result.sourceTokens).toBeGreaterThan(0);
+      expect(result.compressionRatio).toBe(result.sourceTokens);
+    });
+
+    it('caps the memories in retrieveWithBudgetAllocation', async () => {
+      const manager = createBudgetManager(createNamedEntities(sixteenNames()));
+
+      const result = await manager.retrieveWithBudgetAllocation({
+        maxTokens: 1000,
+        maxSlots: 4,
+        mustInclude: ['e16'],
+      });
+
+      const names = result.memories.map((m) => m.name);
+      expect(names).toHaveLength(4);
+      expect(names).toContain('e16');
+      const slotCut = result.excluded.filter((e) => e.reason === 'slot_limit');
+      expect(slotCut.length).toBeGreaterThan(0);
+      const excludedTokens = result.excluded.reduce((sum, e) => sum + e.tokens, 0);
+      expect(result.sourceTokens).toBe(result.totalTokens + excludedTokens);
+    });
+
+    it('prioritize accepts maxSlots', async () => {
+      const manager = createBudgetManager([]);
+      const entities = createNamedEntities(sixteenNames());
+
+      const { selected } = await manager.prioritize(entities, 1000, {}, [], { maxSlots: 3 });
+
+      expect(selected).toHaveLength(3);
     });
   });
 });

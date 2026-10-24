@@ -15,7 +15,9 @@ import type {
 import type { SemanticSearch } from './SemanticSearch.js';
 import type { RankedSearch } from './RankedSearch.js';
 import { SymbolicSearch } from './SymbolicSearch.js';
+import { addNormalizedLexicalScores, addSimilarityScores, addSymbolicScores } from './hybridLayers.js';
 import { SEMANTIC_SEARCH_LIMITS } from '../utils/constants.js';
+import { createTimeout } from '../utils/timing.js';
 
 /**
  * Timing information for a search layer.
@@ -230,7 +232,7 @@ export class ParallelSearchExecutor {
       };
     }
 
-    const timeout = this.createTimeout<never>(_timeoutMs, 'Semantic search timeout');
+    const timeout = createTimeout<never>(_timeoutMs, 'Semantic search timeout');
     try {
       // Execute semantic search with timeout
       const semanticResults = await Promise.race([
@@ -243,9 +245,7 @@ export class ParallelSearchExecutor {
         timeout.promise,
       ]);
 
-      for (const result of semanticResults) {
-        results.set(result.entity.name, result.similarity);
-      }
+      addSimilarityScores(results, semanticResults);
     } catch (err) {
       success = false;
       error = err instanceof Error ? err.message : String(err);
@@ -283,7 +283,7 @@ export class ParallelSearchExecutor {
     let success = true;
     let error: string | undefined;
 
-    const timeout = this.createTimeout<never>(_timeoutMs, 'Lexical search timeout');
+    const timeout = createTimeout<never>(_timeoutMs, 'Lexical search timeout');
     try {
       // Execute lexical search with timeout
       const lexicalResults = await Promise.race([
@@ -297,11 +297,7 @@ export class ParallelSearchExecutor {
         timeout.promise,
       ]);
 
-      // Normalize scores to 0-1 range
-      const maxScore = Math.max(...lexicalResults.map(r => r.score), 1);
-      for (const result of lexicalResults) {
-        results.set(result.entity.name, result.score / maxScore);
-      }
+      addNormalizedLexicalScores(results, lexicalResults);
     } catch (err) {
       success = false;
       error = err instanceof Error ? err.message : String(err);
@@ -344,9 +340,7 @@ export class ParallelSearchExecutor {
         // No filters - return empty (no symbolic signal)
       } else {
         const symbolicResults = this.symbolicSearch.search(entities, filters);
-        for (const result of symbolicResults) {
-          results.set(result.entity.name, result.score);
-        }
+        addSymbolicScores(results, symbolicResults);
       }
     } catch (err) {
       success = false;
@@ -366,17 +360,6 @@ export class ParallelSearchExecutor {
         resultCount: results.size,
       },
     };
-  }
-
-  /**
-   * Create a timeout promise.
-   */
-  private createTimeout<T>(ms: number, message: string): { promise: Promise<T>; clear: () => void } {
-    let timer: ReturnType<typeof setTimeout>;
-    const promise = new Promise<T>((_, reject) => {
-      timer = setTimeout(() => reject(new Error(message)), ms);
-    });
-    return { promise, clear: () => clearTimeout(timer!) };
   }
 
   /**

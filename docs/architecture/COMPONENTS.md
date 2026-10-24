@@ -227,6 +227,8 @@ export class ContextWindowManager {
   constructor(config?: ContextWindowConfig)
 
   async retrieveForContext(options: ContextRetrievalOptions): Promise<ContextPackage>
+  setHybridSearch(search: Pick<HybridSearchManager, 'search'> | undefined): void  // Enables query-ranked retrieval; ctx.contextWindowManager calls it when MEMORY_CONTEXT_HYBRID_RANKING is true
+  setSummarizer(summarizer: Pick<SummarizationService, 'summarize'> | undefined): void  // Enables excludedSummary when summarizeExcluded is set
   estimateTokens(entity: AgentEntity): number
   prioritize(entities: AgentEntity[], maxTokens: number): AgentEntity[]
 }
@@ -336,12 +338,21 @@ export class EpisodicMemoryManager {
 
 ```typescript
 export class SummarizationService {
-  constructor(config?: SummarizationConfig)
+  constructor(config?: SummarizationConfig, options?: SummarizationServiceOptions)
 
-  async summarizeObservations(observations: string[]): Promise<string>
-  async summarizeEntities(entities: AgentEntity[]): Promise<string>
+  async summarize(texts: string[], query?: string): Promise<string>
+  async groupSimilarObservations(observations: string[], threshold?: number): Promise<GroupingResult>
+  async summarizeGroups(groups: string[][]): Promise<string[]>
+}
+
+interface SummarizationServiceOptions {
+  llmProvider?: LLMProvider;   // Passed in code by the caller. No environment variable selects it.
 }
 ```
+
+`summarize` uses the provider when one is available. When no provider is available, or the provider call fails, the service returns the algorithmic summary. With a `query`, a single text is not returned unchanged. Without a `query`, a single text is returned unchanged.
+
+`LLMSummarizationProvider(llm, maxTokens)` implements `ISummarizationProvider`. It sends the texts and the optional query to the `LLMProvider`. It clips the reply to a word limit derived from `maxTokens`.
 
 ---
 
@@ -1259,17 +1270,25 @@ export class MockEmbeddingService implements EmbeddingService { }
 **Purpose**: Vector storage and similarity search
 
 ```typescript
-export interface VectorStore {
-  add(id: string, vector: number[]): Promise<void>
-  search(vector: number[], limit: number): Promise<VectorSearchResult[]>
-  delete(id: string): Promise<void>
+export interface IVectorStore {
+  add(entityName: string, vector: number[], contentHash?: string): void
+  initialize?(): Promise<void>                       // load persisted vectors
+  getContentHash?(entityName: string): string | undefined
+  search(queryVector: number[], k: number): VectorSearchResult[]
+  remove(entityName: string): boolean
+  size(): number
+  clear(): void
+  has(entityName: string): boolean
+  get(entityName: string): number[] | undefined
 }
 
 // Implementations
-export class InMemoryVectorStore implements VectorStore { }
-export class SQLiteVectorStore implements VectorStore { }
-export class QuantizedVectorStore implements VectorStore { }  // Compressed
+export class InMemoryVectorStore implements IVectorStore { }   // JSONL storage
+export class SQLiteVectorStore implements IVectorStore { }     // SQLite embeddings table
+export class QuantizedVectorStore { }                          // Compressed
 ```
+
+`SQLiteVectorStore.initialize()` loads the stored vectors. It skips rows of another embedding model. Each vector can keep a content hash. `SemanticSearch.indexAll` re-embeds an entity when its hash changes. An entity without a `contentHash` gets a SHA-256 of its embedding text.
 
 ---
 
@@ -1918,9 +1937,20 @@ interface SalienceContext {
 interface ContextPackage {
   memories: AgentEntity[];
   totalTokens: number;
-  excluded: string[];
+  sourceTokens: number;        // totalTokens plus the tokens of every excluded entity
+  compressionRatio: number;    // sourceTokens / totalTokens; 1 when nothing is excluded
+  breakdown: TokenBreakdown;   // working, episodic, semantic, procedural, mustInclude
+  excluded: ExcludedEntity[];  // reason: budget_exceeded | low_salience | filtered | slot_limit
+  suggestions: string[];
+  excludedSummary?: string;    // One summary of the excluded entities. Set only with summarizeExcluded. Not counted in totalTokens.
 }
 ```
+
+`ContextRetrievalOptions` also accepts these options:
+
+- `maxSlots?: number`. Caps the number of memories. Must-include entities count and are never cut.
+- `composeHops?: 0 | 1`. Adds one-hop neighbor expansion in query mode.
+- `summarizeExcluded?: boolean`. Summarizes the excluded entities. Off by default.
 
 ### Artifact Types (`types/artifact.ts`)
 
@@ -2079,10 +2109,10 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 
 | Claim | Value | Source |
 |---|---|---|
-| totalSourceFiles | 698 | repo-tools map |
-| totalLinesOfCode | 237595 | repo-tools map |
-| totalExports | 2874 | repo-tools map |
-| reachableFiles | 291 | repo-tools map |
+| totalSourceFiles | 733 | repo-tools map |
+| totalLinesOfCode | 252580 | repo-tools map |
+| totalExports | 2920 | repo-tools map |
+| reachableFiles | 303 | repo-tools map |
 | runtimeCircularDeps | 0 | repo-tools map |
 | typeOnlyCircularDeps | 24 | repo-tools map |
 

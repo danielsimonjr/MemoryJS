@@ -290,34 +290,40 @@ export class PlanManager {
 
   // ==================== Plan-level lifecycle ====================
 
-  async markPlanComplete(
+  markPlanComplete(
     planId: PlanId | string,
     note?: string
   ): Promise<MarkResolvedResult> {
-    const plan = this.loadPlanMutable(planId);
-    if (!plan) return 'not-found';
-    if (plan.lifecycle.status === 'complete') return 'already-resolved';
-    const nowIso = toIsoDateTime(new Date());
-    plan.lifecycle = note
-      ? { status: 'complete', completedAt: nowIso, completionNote: note }
-      : { status: 'complete', completedAt: nowIso };
-    plan.lastModified = nowIso;
-    this.runInvariantCheck(plan);
-    const ok = await this.persistPlan(plan);
-    return ok ? 'resolved' : 'vanished-mid-update';
+    return this.finishPlan(planId, 'complete', note);
   }
 
-  async abandonPlan(
+  abandonPlan(
     planId: PlanId | string,
     reason?: string
   ): Promise<MarkResolvedResult> {
+    return this.finishPlan(planId, 'abandoned', reason);
+  }
+
+  /**
+   * Moves a plan to a terminal status. The note or reason is stored only
+   * when it is a non-empty string, under the field name of the status.
+   * markPlanComplete and abandonPlan return the promise of this method and
+   * are not async themselves, so they settle in the same number of
+   * microtask turns as a method that holds the whole body.
+   */
+  private async finishPlan(
+    planId: PlanId | string,
+    status: 'complete' | 'abandoned',
+    note: string | undefined
+  ): Promise<MarkResolvedResult> {
     const plan = this.loadPlanMutable(planId);
     if (!plan) return 'not-found';
-    if (plan.lifecycle.status === 'abandoned') return 'already-resolved';
+    if (plan.lifecycle.status === status) return 'already-resolved';
     const nowIso = toIsoDateTime(new Date());
-    plan.lifecycle = reason
-      ? { status: 'abandoned', abandonedAt: nowIso, abandonedReason: reason }
-      : { status: 'abandoned', abandonedAt: nowIso };
+    const fields = PLAN_END_FIELDS[status];
+    const lifecycle: Record<string, string> = { status, [fields.at]: nowIso };
+    if (note) lifecycle[fields.note] = note;
+    plan.lifecycle = lifecycle as PlanLifecycle;
     plan.lastModified = nowIso;
     this.runInvariantCheck(plan);
     const ok = await this.persistPlan(plan);
@@ -439,6 +445,12 @@ function mintPlanId(): PlanId {
 function mintGoalNodeId(): GoalNodeId {
   return `node-${randomUUID()}` as GoalNodeId;
 }
+
+/** Lifecycle field names for each terminal plan status. */
+const PLAN_END_FIELDS = {
+  complete: { at: 'completedAt', note: 'completionNote' },
+  abandoned: { at: 'abandonedAt', note: 'abandonedReason' },
+} as const;
 
 /**
  * DFS for a node by id. Cycle-protected via a visited set — defense

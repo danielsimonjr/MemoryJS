@@ -318,6 +318,9 @@ interface ContextRetrievalOptions {
   includeEpisodicRecent?: boolean;
   includeSemanticRelevant?: boolean;
   mustInclude?: string[];
+  maxSlots?: number;      // Cap on the number of memories. Must-include entities count and are never cut.
+  composeHops?: 0 | 1;    // 1 adds one-hop neighbors of the top hybrid hits. Needs a query and an attached hybrid search.
+  summarizeExcluded?: boolean;  // Summarize the excluded entities into excludedSummary. Needs a summarizer from setSummarizer(). Off by default.
 }
 
 interface SalienceContext {
@@ -334,14 +337,20 @@ interface SalienceContext {
 interface ContextPackage {
   memories: AgentEntity[];
   totalTokens: number;
-  breakdown: {
-    workingMemory: number;
-    episodic: number;
-    semantic: number;
-  };
-  excluded: string[];
+  sourceTokens: number;        // totalTokens plus the tokens of every excluded entity
+  compressionRatio: number;    // sourceTokens / totalTokens; 1 when nothing is excluded
+  breakdown: TokenBreakdown;   // working, episodic, semantic, procedural, mustInclude
+  excluded: ExcludedEntity[];  // reason: budget_exceeded | low_salience | filtered | slot_limit
+  suggestions: string[];
+  excludedSummary?: string;    // One summary of the excluded entities. Set only with summarizeExcluded. Not counted in totalTokens.
 }
 ```
+
+`sourceTokens` and `compressionRatio` are required. Code that builds a `ContextPackage` by hand must set both.
+
+**Excluded summary:** `excludedSummary` is set only when `summarizeExcluded` is `true`, a summarizer is attached with `setSummarizer()`, and at least one excluded entity has observation text. `retrieveWithBudgetAllocation` ignores the option. If the summarizer throws, retrieval logs a warning and leaves `excludedSummary` unset.
+
+**Query-ranked retrieval:** call `setHybridSearch(search)` on the `ContextWindowManager` to attach a hybrid search. When `context.queryText` is non-blank, `retrieveForContext` orders candidates by hybrid rank before the salience cut. Only candidates that the hybrid search returns, plus must-include entities, enter the result. If the hybrid search throws, retrieval logs a warning and uses the salience order. Without an attached search, retrieval is unchanged. `ctx.contextWindowManager` attaches the hybrid search only when `MEMORY_CONTEXT_HYBRID_RANKING` is `true`. `AgentMemoryManager` is not covered by this switch.
 
 **Example:**
 ```typescript
@@ -1798,14 +1807,22 @@ Chronological turns for a session.
 async getSessionTurns(
   sessionId: string,
   opts?: { role?: 'user' | 'assistant' | 'system' | 'tool'; limit?: number }
-): Promise<TurnEntity[]>
+): Promise<AgentEntity[]>
+```
+
+### getRepeatedTurnCount
+
+Number of turns that the dedup chain rejected for a session in this process. The count is not persisted. `deleteSession` resets it. Exclusion-manager rejections are not counted.
+
+```typescript
+getRepeatedTurnCount(sessionId: string): number
 ```
 
 ### deleteSession / listSessions
 
 ```typescript
-async deleteSession(sessionId: string): Promise<{ deletedCount: number }>
-async listSessions(): Promise<SessionEntity[]>
+async deleteSession(sessionId: string): Promise<{ deleted: number }>
+async listSessions(): Promise<string[]>
 ```
 
 ### Events
@@ -2260,8 +2277,8 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 
 | Claim | Value | Source |
 |---|---|---|
-| totalExports | 2874 | repo-tools map |
-| totalSourceFiles | 698 | repo-tools map |
+| totalExports | 2920 | repo-tools map |
+| totalSourceFiles | 733 | repo-tools map |
 
 The figures below come from `bun run tools:deps` and `bun run tools:deps:full`. These generators read `src/` only. The gate does not check these figures. Read them in `dependency-summary.compact.json` and `TEST_COVERAGE.md`.
 

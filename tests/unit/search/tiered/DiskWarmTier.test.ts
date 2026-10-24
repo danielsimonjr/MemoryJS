@@ -361,4 +361,176 @@ describe('DiskWarmTier', () => {
       expect(await reloaded.get('alice')).toEqual({ docIds: [1, 2, 3], tf: 0.42 });
     });
   });
+
+  describe('file format and order (pins)', () => {
+    it('writes one {"k","v"} line per entry, in insertion order', async () => {
+      const tier = new DiskWarmTier<unknown>({ filePath: sidecar });
+      await tier.put('a', 1);
+      await tier.put('b', { x: 2 });
+      expect(await fs.readFile(sidecar, 'utf-8')).toBe('{"k":"a","v":1}\n{"k":"b","v":{"x":2}}\n');
+    });
+
+    it('writes an empty file after clear()', async () => {
+      const tier = new DiskWarmTier<number>({ filePath: sidecar });
+      await tier.put('a', 1);
+      await tier.clear();
+      expect(await fs.readFile(sidecar, 'utf-8')).toBe('');
+    });
+
+    it('moves a re-written key to the end of the file', async () => {
+      const tier = new DiskWarmTier<number>({ filePath: sidecar });
+      await tier.put('a', 1);
+      await tier.put('b', 2);
+      await tier.put('c', 3);
+      await tier.put('a', 9);
+      expect(await fs.readFile(sidecar, 'utf-8')).toBe(
+        '{"k":"b","v":2}\n{"k":"c","v":3}\n{"k":"a","v":9}\n',
+      );
+    });
+
+    it('returns every key after reload()', async () => {
+      const tier = new DiskWarmTier<number>({ filePath: sidecar });
+      await tier.put('a', 1);
+      await tier.put('b', 2);
+      await tier.put('c', 3);
+      await tier.reload();
+      expect([await tier.get('a'), await tier.get('b'), await tier.get('c')]).toEqual([1, 2, 3]);
+    });
+
+    it('restores the file and the entry order after a failed delete', async () => {
+      const tier = new DiskWarmTier<number>({ filePath: sidecar });
+      await tier.put('a', 1);
+      await tier.put('b', 2);
+      await tier.put('c', 3);
+      const before = await fs.readFile(sidecar, 'utf-8');
+      injectFlushFailure(sidecar);
+      await expect(tier.delete('b')).rejects.toThrow(/synthetic/);
+      vi.restoreAllMocks();
+      expect(await fs.readFile(sidecar, 'utf-8')).toBe(before);
+      expect(await tier.get('b')).toBe(2);
+      await tier.put('d', 4);
+      expect(await fs.readFile(sidecar, 'utf-8')).toBe(`${before}{"k":"d","v":4}\n`);
+    });
+
+    it('loads the good line, skips a bad line and a numeric key, and warns with the exact texts', async () => {
+      await fs.writeFile(sidecar, '{"k":"a","v":1}\n{not json\n{"k":5,"v":2}\n', 'utf-8');
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const tier = new DiskWarmTier<number>({ filePath: sidecar });
+      expect(await tier.get('a')).toBe(1);
+      expect(await tier.size()).toBe(1);
+      expect(warnSpy).toHaveBeenCalledTimes(2);
+      const warnText = warnSpy.mock.calls.flat().join('\n');
+      expect(warnText).toContain(`DiskWarmTier(warm): skipping malformed line in ${sidecar}`);
+      expect(warnText).toContain(`DiskWarmTier(warm): skipping line with non-string key in ${sidecar}`);
+    });
+  });
+
+  describe('lock, read errors, text encoding and names (pins)', () => {
+    it('keeps has(), size() and reload() behind a write that fails', async () => {
+      const tier = new DiskWarmTier<number>({ filePath: sidecar });
+      await tier.put('old', 1);
+      let release!: () => void;
+      let entered!: () => void;
+      const blocked = new Promise<void>(resolve => { release = resolve; });
+      const started = new Promise<void>(resolve => { entered = resolve; });
+      vi.spyOn(fs, 'rename').mockImplementationOnce(async () => {
+        entered();
+        await blocked;
+        throw new Error('injected write failure');
+      });
+
+      const order: string[] = [];
+      const failed = tier.put('new', 2).catch(() => { order.push('put'); });
+      await started;
+      const hasNew = tier.has('new').then(found => { order.push('has'); return found; });
+      const size = tier.size().then(count => { order.push('size'); return count; });
+      const reloaded = tier.reload().then(() => { order.push('reload'); });
+      release();
+      await Promise.all([failed, hasNew, size, reloaded]);
+
+      expect(await hasNew).toBe(false);
+      expect(await size).toBe(1);
+      expect(order).toEqual(['put', 'has', 'size', 'reload']);
+    });
+
+    it('writes no file for clear() on an empty tier', async () => {
+      const tier = new DiskWarmTier<number>({ filePath: sidecar });
+      await tier.clear();
+      await expect(fs.access(sidecar)).rejects.toThrow();
+    });
+
+    it('rejects a read when the sidecar path is a directory', async () => {
+      const tier = new DiskWarmTier<number>({ filePath: dir });
+      await expect(tier.size()).rejects.toThrow();
+    });
+
+    it('names the tier in the warning text', async () => {
+      await fs.writeFile(sidecar, '{not json\n', 'utf-8');
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const tier = new DiskWarmTier<number>({ filePath: sidecar, name: 'mine' });
+      expect(await tier.size()).toBe(0);
+      expect(warnSpy.mock.calls.flat().join('\n')).toContain(
+        `DiskWarmTier(mine): skipping malformed line in ${sidecar}`,
+      );
+    });
+
+    it('stores non-ASCII text as UTF-8 and reads it back', async () => {
+      const value = { text: 'ünï€𝄞' };
+      const tier = new DiskWarmTier<typeof value>({ filePath: sidecar });
+      await tier.put('ü€', value);
+
+      const expected = `${JSON.stringify({ k: 'ü€', v: value })}\n`;
+      expect((await fs.readFile(sidecar)).equals(Buffer.from(expected, 'utf-8'))).toBe(true);
+      const second = new DiskWarmTier<typeof value>({ filePath: sidecar });
+      expect(await second.get('ü€')).toEqual(value);
+    });
+
+    it('writes no value field for an undefined value and reads the key back', async () => {
+      const tier = new DiskWarmTier<number | undefined>({ filePath: sidecar });
+      await tier.put('a', undefined);
+      expect(await fs.readFile(sidecar, 'utf-8')).toBe('{"k":"a"}\n');
+
+      const second = new DiskWarmTier<number | undefined>({ filePath: sidecar });
+      expect(await second.has('a')).toBe(true);
+      expect(await second.get('a')).toBeUndefined();
+    });
+
+    it('warns once per line that is the value null or has no string key', async () => {
+      await fs.writeFile(sidecar, 'null\n5\n"str"\n[]\ntrue\n{"k":"a","v":1}\n', 'utf-8');
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const tier = new DiskWarmTier<number>({ filePath: sidecar });
+      expect(await tier.size()).toBe(1);
+      const warnings = warnSpy.mock.calls.map(call => call.join(' '));
+      expect(warnings).toEqual([
+        `[WARN] DiskWarmTier(warm): skipping malformed line in ${sidecar}`,
+        `[WARN] DiskWarmTier(warm): skipping line with non-string key in ${sidecar}`,
+        `[WARN] DiskWarmTier(warm): skipping line with non-string key in ${sidecar}`,
+        `[WARN] DiskWarmTier(warm): skipping line with non-string key in ${sidecar}`,
+        `[WARN] DiskWarmTier(warm): skipping line with non-string key in ${sidecar}`,
+      ]);
+    });
+
+    it('keeps an empty-string key across a reload', async () => {
+      const tier = new DiskWarmTier<number>({ filePath: sidecar });
+      await tier.put('', 7);
+      expect(await fs.readFile(sidecar, 'utf-8')).toBe('{"k":"","v":7}\n');
+
+      const second = new DiskWarmTier<number>({ filePath: sidecar });
+      expect(await second.get('')).toBe(7);
+    });
+
+    it('loads CRLF line ends and whitespace-only lines without a warning', async () => {
+      await fs.writeFile(sidecar, '{"k":"a","v":1}\r\n   \r\n\r\n{"k":"b","v":2}\r\n', 'utf-8');
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const tier = new DiskWarmTier<number>({ filePath: sidecar });
+      expect(await tier.size()).toBe(2);
+      expect(await tier.get('a')).toBe(1);
+      expect(await tier.get('b')).toBe(2);
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+  });
 });

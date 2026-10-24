@@ -43,6 +43,7 @@ import { serializeGraphJson } from './ProceduralGraphSerializer.js';
 import type { PGSerializerStyle } from './ProceduralGraphSerializer.js';
 import { proposeEdits, serializeRejections } from './ProceduralGraphRefiner.js';
 import type { PGSessionOptions } from './ProceduralGraphSession.js';
+import { chunkArray } from '../../../utils/BatchProcessor.js';
 
 const PROMPTS_VERSION = 'paper-B.5-v1';
 const DEFAULT_SUCCESS_THRESHOLD = 1.0;
@@ -789,12 +790,7 @@ function trainingBatches(
   if (isOnetime(mode)) {
     return [[...tasks]];
   }
-  const size = Math.max(1, batchSize);
-  const batches: PGTask[][] = [];
-  for (let i = 0; i < tasks.length; i += size) {
-    batches.push(tasks.slice(i, i + size));
-  }
-  return batches;
+  return chunkArray(tasks, Math.max(1, batchSize));
 }
 
 function restoreDeterministicBatchOrder(

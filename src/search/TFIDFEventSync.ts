@@ -10,6 +10,7 @@
 import type { GraphEventEmitter } from '../core/GraphEventEmitter.js';
 import type { TFIDFIndexManager } from './TFIDFIndexManager.js';
 import type { IGraphStorage } from '../types/index.js';
+import { CoalescingTimer } from '../utils/timing.js';
 import type {
   EntityCreatedEvent,
   EntityUpdatedEvent,
@@ -87,11 +88,11 @@ export class TFIDFEventSync {
   /** Pending op per entity name. Last op wins. */
   private pendingOps: Map<string, PendingOp> = new Map();
 
-  /** Timer ref for the next scheduled flush, or null when no flush pending. */
-  private flushTimer: NodeJS.Timeout | null = null;
+  /** Coalescing timer for the next scheduled flush. */
+  private readonly flushTimer = new CoalescingTimer();
 
-  /** Timer ref for the next scheduled full rebuild, or null when none pending. */
-  private rebuildTimer: NodeJS.Timeout | null = null;
+  /** Coalescing timer for the next scheduled full rebuild. */
+  private readonly rebuildTimer = new CoalescingTimer();
 
   /** In-flight full rebuild, or null. Exposed to tests via rebuildNow(). */
   private rebuildInFlight: Promise<void> | null = null;
@@ -202,9 +203,7 @@ export class TFIDFEventSync {
     // A rebuild scheduled by graph:saved cannot run synchronously here
     // (it awaits storage). Cancel the timer and kick it off best-effort so
     // the index is not left stale after disable().
-    if (this.rebuildTimer !== null) {
-      clearTimeout(this.rebuildTimer);
-      this.rebuildTimer = null;
+    if (this.rebuildTimer.cancel()) {
       void this.runRebuild();
     }
   }
@@ -224,10 +223,7 @@ export class TFIDFEventSync {
    * on demand.
    */
   flushNow(): void {
-    if (this.flushTimer !== null) {
-      clearTimeout(this.flushTimer);
-      this.flushTimer = null;
-    }
+    this.flushTimer.cancel();
     if (this.pendingOps.size === 0) return;
     if (!this.indexManager.isInitialized()) {
       // Nothing useful to do — drop the queue silently rather than try to
@@ -301,18 +297,7 @@ export class TFIDFEventSync {
    * the flush runs synchronously here and the queue is drained immediately.
    */
   private scheduleFlush(): void {
-    if (this.coalesceMs === 0) {
-      this.flushNow();
-      return;
-    }
-    if (this.flushTimer !== null) return; // a flush is already pending
-    this.flushTimer = setTimeout(() => {
-      this.flushTimer = null;
-      this.flushNow();
-    }, this.coalesceMs);
-    // Don't keep the event loop alive for a coalesce timer — schedulers
-    // and CLI processes should exit cleanly when their work is done.
-    this.flushTimer.unref?.();
+    this.flushTimer.schedule(this.coalesceMs, () => this.flushNow(), this.coalesceMs === 0);
   }
 
   /**
@@ -382,17 +367,11 @@ export class TFIDFEventSync {
     if (!this.indexManager.isInitialized()) {
       return;
     }
-    if (this.rebuildDebounceMs === 0) {
-      void this.runRebuild();
-      return;
-    }
-    if (this.rebuildTimer !== null) return; // a rebuild is already pending
-    this.rebuildTimer = setTimeout(() => {
-      this.rebuildTimer = null;
-      void this.runRebuild();
-    }, this.rebuildDebounceMs);
-    // Don't keep the event loop alive for a debounce timer.
-    this.rebuildTimer.unref?.();
+    this.rebuildTimer.schedule(
+      this.rebuildDebounceMs,
+      () => void this.runRebuild(),
+      this.rebuildDebounceMs === 0
+    );
   }
 
   /**
@@ -430,9 +409,7 @@ export class TFIDFEventSync {
    * Useful for tests and shutdown paths.
    */
   async rebuildNow(): Promise<void> {
-    if (this.rebuildTimer !== null) {
-      clearTimeout(this.rebuildTimer);
-      this.rebuildTimer = null;
+    if (this.rebuildTimer.cancel()) {
       await this.runRebuild();
       return;
     }

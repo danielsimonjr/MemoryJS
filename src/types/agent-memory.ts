@@ -24,9 +24,19 @@ import type { Entity } from './types.js';
  * - incident: Optimizes for recency and errors/failures
  * - handoff: Optimizes for session continuity and context
  * - review: Balanced with high context weight for retrospectives
+ * - lookup: For short factual questions (who, which, when, where)
+ * - synthesis: For why and how questions
  * - auto: Automatically inferred from query text
  */
-export type ContextProfile = 'default' | 'planning' | 'incident' | 'handoff' | 'review' | 'auto';
+export type ContextProfile =
+  | 'default'
+  | 'planning'
+  | 'incident'
+  | 'handoff'
+  | 'review'
+  | 'lookup'
+  | 'synthesis'
+  | 'auto';
 
 // ==================== Role Profiles (S10 — relocated from src/agent) ====================
 // Definitions live here because `AgentMetadata.roleProfile` (this module)
@@ -1046,6 +1056,43 @@ export function isProceduralMemory(entity: unknown): entity is AgentEntity & { m
   return isAgentEntity(entity) && entity.memoryType === 'procedural';
 }
 
+/** Kinds of record field that a record guard checks. */
+type RecordFieldKind = 'string' | 'number' | 'object' | 'array';
+
+/**
+ * Checks one field of a record against each record field kind.
+ * Each check reads the field itself, so an `object` kind reads it twice:
+ * once for the type test and once for the null test.
+ */
+const RECORD_FIELD_KIND_CHECK: Readonly<
+  Record<RecordFieldKind, (record: Record<string, unknown>, field: string) => boolean>
+> = {
+  string: (record, field) => typeof record[field] === 'string',
+  number: (record, field) => typeof record[field] === 'number',
+  object: (record, field) => typeof record[field] === 'object' && record[field] !== null,
+  array: (record, field) => Array.isArray(record[field]),
+};
+
+/**
+ * Returns a type guard for agent entities that hold a memory record.
+ * The value must pass `isAgentEntity` and have the given `memoryType`.
+ * The record property `recordKey` must be a non-null object.
+ * Each field in `fields` must match its declared kind. An `object` kind also accepts arrays.
+ */
+function recordGuard(
+  memoryType: string,
+  recordKey: string,
+  fields: Readonly<Record<string, RecordFieldKind>>,
+): (entity: unknown) => boolean {
+  const checks = Object.entries(fields);
+  return (entity: unknown): boolean => {
+    if (!isAgentEntity(entity) || entity.memoryType !== memoryType) return false;
+    const record: unknown = (entity as unknown as Record<string, unknown>)[recordKey];
+    if (typeof record !== 'object' || record === null) return false;
+    return checks.every(([field, kind]) => RECORD_FIELD_KIND_CHECK[kind](record as Record<string, unknown>, field));
+  };
+}
+
 // ==================== Prospective Memory Types ====================
 
 // ---- Branded primitives ----
@@ -1330,19 +1377,11 @@ export interface FailureEntity extends AgentEntity {
   failureRecord: FailureRecord;
 }
 
+const failureGuard = recordGuard('failure', 'failureRecord', { id: 'string', lifecycle: 'object' });
+
 /** Type guard for failure-memory entities. */
 export function isFailureMemory(entity: unknown): entity is FailureEntity {
-  if (!isAgentEntity(entity) || entity.memoryType !== 'failure') return false;
-  const fr = (entity as FailureEntity).failureRecord as
-    | { id?: unknown; lifecycle?: unknown }
-    | undefined;
-  return (
-    typeof fr === 'object' &&
-    fr !== null &&
-    typeof fr.id === 'string' &&
-    typeof fr.lifecycle === 'object' &&
-    fr.lifecycle !== null
-  );
+  return failureGuard(entity);
 }
 
 /**
@@ -1452,21 +1491,11 @@ export interface PlanEntity extends AgentEntity {
   planRecord: PlanRecord;
 }
 
+const planGuard = recordGuard('plan', 'planRecord', { id: 'string', rootGoal: 'object', lifecycle: 'object' });
+
 /** Type guard for plan-memory entities. */
 export function isPlanMemory(entity: unknown): entity is PlanEntity {
-  if (!isAgentEntity(entity) || entity.memoryType !== 'plan') return false;
-  const pr = (entity as PlanEntity).planRecord as
-    | { id?: unknown; rootGoal?: unknown; lifecycle?: unknown }
-    | undefined;
-  return (
-    typeof pr === 'object' &&
-    pr !== null &&
-    typeof pr.id === 'string' &&
-    typeof pr.rootGoal === 'object' &&
-    pr.rootGoal !== null &&
-    typeof pr.lifecycle === 'object' &&
-    pr.lifecycle !== null
-  );
+  return planGuard(entity);
 }
 
 // ==================== Reflection Memory Types (Phase 2 Sprint 8) ====================
@@ -1532,20 +1561,16 @@ export interface ReflectionEntity extends AgentEntity {
   reflectionRecord: ReflectionRecord;
 }
 
+const reflectionGuard = recordGuard('reflection', 'reflectionRecord', {
+  id: 'string',
+  scope: 'string',
+  evidenceHash: 'string',
+  evidence: 'array',
+});
+
 /** Type guard for reflection-memory entities. */
 export function isReflectionMemory(entity: unknown): entity is ReflectionEntity {
-  if (!isAgentEntity(entity) || entity.memoryType !== 'reflection') return false;
-  const rr = (entity as ReflectionEntity).reflectionRecord as
-    | { id?: unknown; scope?: unknown; evidenceHash?: unknown; evidence?: unknown }
-    | undefined;
-  return (
-    typeof rr === 'object' &&
-    rr !== null &&
-    typeof rr.id === 'string' &&
-    typeof rr.scope === 'string' &&
-    typeof rr.evidenceHash === 'string' &&
-    Array.isArray(rr.evidence)
-  );
+  return reflectionGuard(entity);
 }
 
 // ==================== Heuristic Memory (Phase 3B.8) ====================
@@ -1591,20 +1616,16 @@ export interface HeuristicEntity extends AgentEntity {
   heuristicRecord: Heuristic;
 }
 
+const heuristicGuard = recordGuard('heuristic', 'heuristicRecord', {
+  id: 'string',
+  condition: 'string',
+  action: 'string',
+  confidence: 'number',
+});
+
 /** Type guard for heuristic-memory entities. */
 export function isHeuristicMemory(entity: unknown): entity is HeuristicEntity {
-  if (!isAgentEntity(entity) || entity.memoryType !== 'heuristic') return false;
-  const hr = (entity as HeuristicEntity).heuristicRecord as
-    | { id?: unknown; condition?: unknown; action?: unknown; confidence?: unknown }
-    | undefined;
-  return (
-    typeof hr === 'object' &&
-    hr !== null &&
-    typeof hr.id === 'string' &&
-    typeof hr.condition === 'string' &&
-    typeof hr.action === 'string' &&
-    typeof hr.confidence === 'number'
-  );
+  return heuristicGuard(entity);
 }
 
 // ==================== Exclusion Memory (Phase 3 — do_not_remember) ====================
@@ -1660,20 +1681,16 @@ export interface ExclusionEntity extends AgentEntity {
   exclusionRule: ExclusionRule;
 }
 
+const exclusionGuard = recordGuard('exclusion', 'exclusionRule', {
+  id: 'string',
+  pattern: 'string',
+  mode: 'string',
+  scope: 'string',
+});
+
 /** Type guard for exclusion-memory entities. */
 export function isExclusionMemory(entity: unknown): entity is ExclusionEntity {
-  if (!isAgentEntity(entity) || entity.memoryType !== 'exclusion') return false;
-  const er = (entity as ExclusionEntity).exclusionRule as
-    | { id?: unknown; pattern?: unknown; mode?: unknown; scope?: unknown }
-    | undefined;
-  return (
-    typeof er === 'object' &&
-    er !== null &&
-    typeof er.id === 'string' &&
-    typeof er.pattern === 'string' &&
-    typeof er.mode === 'string' &&
-    typeof er.scope === 'string'
-  );
+  return exclusionGuard(entity);
 }
 
 // ==================== Decision Memory (Phase 3 — Decision Rationale) ====================
@@ -1733,22 +1750,17 @@ export interface DecisionEntity extends AgentEntity {
   decisionRecord: DecisionRecord;
 }
 
+const decisionGuard = recordGuard('decision', 'decisionRecord', {
+  id: 'string',
+  status: 'string',
+  context: 'string',
+  decision: 'string',
+  lifecycle: 'object',
+});
+
 /** Type guard for decision-memory entities. */
 export function isDecisionMemory(entity: unknown): entity is DecisionEntity {
-  if (!isAgentEntity(entity) || entity.memoryType !== 'decision') return false;
-  const dr = (entity as DecisionEntity).decisionRecord as
-    | { id?: unknown; status?: unknown; context?: unknown; decision?: unknown; lifecycle?: unknown }
-    | undefined;
-  return (
-    typeof dr === 'object' &&
-    dr !== null &&
-    typeof dr.id === 'string' &&
-    typeof dr.status === 'string' &&
-    typeof dr.context === 'string' &&
-    typeof dr.decision === 'string' &&
-    typeof dr.lifecycle === 'object' &&
-    dr.lifecycle !== null
-  );
+  return decisionGuard(entity);
 }
 
 // ==================== Project Context Memory (Phase 3 — Type 2) ====================
@@ -1800,22 +1812,18 @@ export interface ProjectContextEntity extends AgentEntity {
   projectContextRecord: ProjectContextRecord;
 }
 
+const projectContextGuard = recordGuard('project_context', 'projectContextRecord', {
+  id: 'string',
+  projectId: 'string',
+  facts: 'array',
+  conventions: 'array',
+  commands: 'array',
+  glossary: 'array',
+});
+
 /** Type guard for project-context-memory entities. */
 export function isProjectContextMemory(entity: unknown): entity is ProjectContextEntity {
-  if (!isAgentEntity(entity) || entity.memoryType !== 'project_context') return false;
-  const pcr = (entity as ProjectContextEntity).projectContextRecord as
-    | { id?: unknown; projectId?: unknown; facts?: unknown; conventions?: unknown; commands?: unknown; glossary?: unknown }
-    | undefined;
-  return (
-    typeof pcr === 'object' &&
-    pcr !== null &&
-    typeof pcr.id === 'string' &&
-    typeof pcr.projectId === 'string' &&
-    Array.isArray(pcr.facts) &&
-    Array.isArray(pcr.conventions) &&
-    Array.isArray(pcr.commands) &&
-    Array.isArray(pcr.glossary)
-  );
+  return projectContextGuard(entity);
 }
 
 // ==================== Tool Affordance Memory (Phase Tool A) ====================
@@ -1863,21 +1871,17 @@ export interface ToolAffordanceEntity extends AgentEntity {
   toolAffordanceRecord: ToolAffordanceRecord;
 }
 
+const toolAffordanceGuard = recordGuard('tool_affordance', 'toolAffordanceRecord', {
+  id: 'string',
+  toolName: 'string',
+  outcomes: 'array',
+  successRate: 'number',
+  totalCalls: 'number',
+});
+
 /** Type guard for tool-affordance entities. */
 export function isToolAffordanceMemory(entity: unknown): entity is ToolAffordanceEntity {
-  if (!isAgentEntity(entity) || entity.memoryType !== 'tool_affordance') return false;
-  const tar = (entity as ToolAffordanceEntity).toolAffordanceRecord as
-    | { id?: unknown; toolName?: unknown; outcomes?: unknown; successRate?: unknown; totalCalls?: unknown }
-    | undefined;
-  return (
-    typeof tar === 'object' &&
-    tar !== null &&
-    typeof tar.id === 'string' &&
-    typeof tar.toolName === 'string' &&
-    Array.isArray(tar.outcomes) &&
-    typeof tar.successRate === 'number' &&
-    typeof tar.totalCalls === 'number'
-  );
+  return toolAffordanceGuard(entity);
 }
 
 // ==================== Utility Types ====================
@@ -2244,6 +2248,22 @@ export interface ContextRetrievalOptions {
   minSalience?: number;
   /** Context profile to tune retrieval strategy. Use 'auto' to infer from query text. */
   profile?: ContextProfile;
+  /**
+   * Maximum number of memories, or no cap when unset. Must-include entities count
+   * against the cap but are never cut.
+   */
+  maxSlots?: number;
+  /**
+   * Hybrid search hop count. `1` adds the one-hop neighbors of the top hybrid results.
+   * Needs `context.queryText`, an attached hybrid search and a `GraphRankPrior`.
+   */
+  composeHops?: 0 | 1;
+  /**
+   * Summarize the memories retrieval excluded (budget, slot and low-salience cuts) into
+   * `ContextPackage.excludedSummary`. Off by default. Needs a summarizer attached with
+   * `ContextWindowManager.setSummarizer()`.
+   */
+  summarizeExcluded?: boolean;
 }
 
 /**
@@ -2270,6 +2290,8 @@ export interface TokenBreakdown {
  * const result: ContextPackage = {
  *   memories: [entity1, entity2],
  *   totalTokens: 3500,
+ *   sourceTokens: 4300,
+ *   compressionRatio: 1.23,
  *   breakdown: { working: 1000, episodic: 2000, semantic: 500, procedural: 0, mustInclude: 0 },
  *   excluded: [{ entity: entity3, reason: 'budget_exceeded', tokens: 800 }],
  *   suggestions: ['Consider retrieving user_history if more space available'],
@@ -2281,12 +2303,21 @@ export interface ContextPackage {
   memories: AgentEntity[];
   /** Total tokens used */
   totalTokens: number;
+  /** `totalTokens` plus the tokens of every excluded entity */
+  sourceTokens: number;
+  /** `sourceTokens / totalTokens`; 1 when nothing is excluded */
+  compressionRatio: number;
   /** Token breakdown by memory type */
   breakdown: TokenBreakdown;
   /** Entities that didn't fit in budget */
   excluded: ExcludedEntity[];
   /** Suggestions for additional retrieval if budget increases */
   suggestions: string[];
+  /**
+   * One summary of the excluded entities. Set only when `summarizeExcluded` is on, a
+   * summarizer is attached and at least one excluded entity has observation text. Not counted in `totalTokens`.
+   */
+  excludedSummary?: string;
 }
 
 /**
@@ -2296,7 +2327,7 @@ export interface ExcludedEntity {
   /** The excluded entity */
   entity: AgentEntity;
   /** Why it was excluded */
-  reason: 'budget_exceeded' | 'low_salience' | 'filtered';
+  reason: 'budget_exceeded' | 'low_salience' | 'filtered' | 'slot_limit';
   /** Estimated tokens for this entity */
   tokens: number;
   /** Salience score at time of exclusion */

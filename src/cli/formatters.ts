@@ -9,7 +9,7 @@
 import Table from 'cli-table3';
 import chalk from 'chalk';
 import type { Entity, Relation, PathResult, CentralityResult, ConnectedComponentsResult, ValidationReport } from '../types/types.js';
-import { escapeCsvFormula } from '../utils/entityUtils.js';
+import { escapeCsvCell } from '../utils/entityUtils.js';
 
 /**
  * Output format for CLI results.
@@ -357,13 +357,5 @@ function calculateColWidths(totalWidth: number, ratios: number[]): number[] {
  * @returns The safe CSV cell text.
  */
 export function escapeCSV(value: string): string {
-  const escapedValue = escapeCsvFormula(value);
-  if (
-    escapedValue.includes(',') ||
-    escapedValue.includes('"') ||
-    escapedValue.includes('\n')
-  ) {
-    return `"${escapedValue.replace(/"/g, '""')}"`;
-  }
-  return escapedValue;
+  return escapeCsvCell(value);
 }

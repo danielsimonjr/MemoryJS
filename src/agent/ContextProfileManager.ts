@@ -56,6 +56,11 @@ export interface ProfileConfig {
   preferredEntityTypes?: string[];
   /** Override max tokens for this profile */
   maxTokens?: number;
+  /**
+   * Retrieval settings that the context window manager applies when the
+   * caller does not set them.
+   */
+  retrieval?: { composeHops?: 0 | 1; summarizeExcluded?: boolean };
 }
 
 // ==================== Auto-Detection Patterns ====================
@@ -64,6 +69,8 @@ const INCIDENT_PATTERN = /outage|sev[0-4]|broken|down|emergency|incident|alert|p
 const PLANNING_PATTERN = /plan|architect|design|roadmap|strategy|proposal/i;
 const HANDOFF_PATTERN = /resume|continue|where.*left|pick.*up|hand.*off|catch.*up/i;
 const REVIEW_PATTERN = /review|retrospect|recap|summary|what.*happened/i;
+const LOOKUP_PATTERN = /^\s*(who|which|when|where)\b/i;
+const SYNTHESIS_PATTERN = /^\s*(why|how)\b/i;
 
 // ==================== Preset Profiles ====================
 
@@ -129,6 +136,30 @@ function createPresetProfiles(): Map<string, ProfileConfig> {
     },
     temporalFocus: 'balanced',
     budgetAllocation: { working: 20, episodic: 50, semantic: 30 },
+  });
+
+  profiles.set('lookup', {
+    salienceWeights: {
+      importanceWeight: 0.25,
+      recencyWeight: 0.25,
+      frequencyWeight: 0.20,
+      contextWeight: 0.20,
+      noveltyWeight: 0.10,
+    },
+    temporalFocus: 'balanced',
+    budgetAllocation: { working: 34, episodic: 33, semantic: 33 },
+  });
+
+  profiles.set('synthesis', {
+    salienceWeights: {
+      importanceWeight: 0.25,
+      recencyWeight: 0.25,
+      frequencyWeight: 0.20,
+      contextWeight: 0.20,
+      noveltyWeight: 0.10,
+    },
+    temporalFocus: 'balanced',
+    budgetAllocation: { working: 34, episodic: 33, semantic: 33 },
   });
 
   return profiles;
@@ -208,7 +239,9 @@ export class ContextProfileManager {
    * 2. planning (plan, architect, design, roadmap, etc.)
    * 3. handoff (resume, continue, where left off, etc.)
    * 4. review (review, retrospect, recap, summary, etc.)
-   * 5. default (fallback)
+   * 5. lookup (who, which, when, where at the start of the query)
+   * 6. synthesis (why, how at the start of the query)
+   * 7. default (fallback)
    *
    * @param query - Query text to analyze
    * @returns Inferred profile name
@@ -220,6 +253,8 @@ export class ContextProfileManager {
     if (PLANNING_PATTERN.test(query)) return 'planning';
     if (HANDOFF_PATTERN.test(query)) return 'handoff';
     if (REVIEW_PATTERN.test(query)) return 'review';
+    if (LOOKUP_PATTERN.test(query)) return 'lookup';
+    if (SYNTHESIS_PATTERN.test(query)) return 'synthesis';
 
     return 'default';
   }

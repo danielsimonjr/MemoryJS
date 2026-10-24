@@ -10,6 +10,7 @@
 import type { EmbeddingService, EmbeddingMode } from '../types/index.js';
 import type { IVectorStore } from '../types/index.js';
 import type { EmbeddingProgressCallback } from './EmbeddingService.js';
+import { sleep } from '../utils/timing.js';
 
 /**
  * Types of index operations.
@@ -393,7 +394,7 @@ export class IncrementalIndexer {
 
     // Wait for any in-progress flush to complete
     while (this.isFlushing) {
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await sleep(10);
     }
 
     // Final flush

@@ -14,9 +14,9 @@ import {
   checkCancellation,
   createProgressReporter,
   createProgress,
-  escapeCsvFormula,
   validateFilePath,
 } from '../utils/index.js';
+import { escapeCsvCell } from '../utils/entityUtils.js';
 import { PiiRedactor } from '../security/PiiRedactor.js';
 import { restrictSensitiveFilePermissions } from '../utils/durableWriteFile.js';
 
@@ -322,8 +322,7 @@ export class StreamingExporter {
    * @private
    */
   private entityToCSVRow(entity: Entity): string {
-    const escape = (s: string) =>
-      `"${escapeCsvFormula(s).replace(/"/g, '""')}"`;
+    const escape = (s: string) => escapeCsvCell(s, { alwaysQuote: true });
 
     return [
       escape(entity.name),

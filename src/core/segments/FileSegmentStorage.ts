@@ -33,7 +33,6 @@
  */
 
 import { promises as fs } from 'fs';
-import { randomBytes } from 'crypto';
 import {
   basename,
   dirname,
@@ -46,12 +45,18 @@ import {
 import type { Entity, KnowledgeGraph, Relation } from '../../types/types.js';
 import { logger } from '../../utils/logger.js';
 import { sanitizeObject } from '../../utils/entityUtils.js';
-import { durableWriteFile, renameOver, syncParentDirectory } from '../../utils/durableWriteFile.js';
+import {
+  durableWriteFile,
+  renameOver,
+  syncParentDirectory,
+  writeSyncedTmp,
+} from '../../utils/durableWriteFile.js';
 import {
   type ISegmentStorage,
   type Segment,
   type SegmentId,
   type SegmentRouter,
+  assertSegmentOwnership,
   mergeSegmentsIntoGraph,
   splitGraphIntoSegments,
 } from './ISegmentStorage.js';
@@ -288,7 +293,7 @@ export class FileSegmentStorage implements ISegmentStorage {
         }
 
         const content = serializeSegment(seg);
-        const tmp = await writeTmpFile(target, content);
+        const tmp = await writeSyncedTmp(target, content, 'w');
         staged.push({ tmp, target });
       }
     } catch (err) {
@@ -310,7 +315,7 @@ export class FileSegmentStorage implements ISegmentStorage {
           target: basename(target),
         })),
       });
-      const manifestTmp = await writeTmpFile(manifestPath, manifestContent);
+      const manifestTmp = await writeSyncedTmp(manifestPath, manifestContent, 'w');
       await renameOver(manifestTmp, manifestPath);
       await syncParentDirectory(manifestPath);
     } catch (err) {
@@ -394,22 +399,7 @@ export class FileSegmentStorage implements ISegmentStorage {
   }
 
   private assertOwnership(segment: Segment): void {
-    for (const e of segment.entities) {
-      const expected = this.router.route(e.name);
-      if (expected !== segment.id) {
-        throw new Error(
-          `FileSegmentStorage.saveSegment: entity '${e.name}' routes to segment ${expected}, not ${segment.id}`,
-        );
-      }
-    }
-    for (const r of segment.relations) {
-      const expected = this.router.route(r.from);
-      if (expected !== segment.id) {
-        throw new Error(
-          `FileSegmentStorage.saveSegment: relation from='${r.from}' routes to segment ${expected}, not ${segment.id}`,
-        );
-      }
-    }
+    assertSegmentOwnership.call(this, segment, 'FileSegmentStorage.saveSegment');
   }
 }
 
@@ -633,24 +623,10 @@ function isENOENT(err: unknown): boolean {
   );
 }
 
-// Note: per-segment writes go through `durableWriteFile` imported
-// from `src/utils/durableWriteFile.ts`. The local `writeTmpFile` +
-// the shared `renameOver` / `syncParentDirectory` helpers are used
-// standalone because the two-phase crash-atomic `saveAll` (stage every
-// tmp, then commit every rename, then drop the manifest) is a different
-// pattern than "one durable write to one target."
-
-async function writeTmpFile(target: string, content: string): Promise<string> {
-  const tmpPath = `${target}.tmp.${process.pid}.${randomBytes(6).toString('hex')}`;
-  const fd = await fs.open(tmpPath, 'w');
-  try {
-    await fd.writeFile(content);
-    await fd.sync();
-  } finally {
-    await fd.close();
-  }
-  return tmpPath;
-}
+// Staged segment files are written with `writeSyncedTmp` and committed by
+// renaming them. `saveAll` does not use `durableWriteFile`: its two-phase
+// commit stages every temp file, then commits every rename, then drops the
+// manifest. One durable write to one target is a different pattern.
 
 /**
  * Thrown when `saveAll` published its manifest but could not finish the

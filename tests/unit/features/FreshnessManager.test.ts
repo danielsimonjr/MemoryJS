@@ -504,3 +504,24 @@ describe('FreshnessManager', () => {
     });
   });
 });
+
+describe('FreshnessManager half-life score (pins)', () => {
+  it('calculateFreshness without a TTL at 24 hours with a 168 hour half-life', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-01-02T00:00:00.000Z'));
+    try {
+      const fm = new FreshnessManager({} as unknown as IGraphStorage);
+      const entity: Entity = {
+        name: 'fresh',
+        entityType: 'note',
+        observations: ['x'],
+        createdAt: '2026-01-01T00:00:00.000Z',
+        lastModified: '2026-01-01T00:00:00.000Z',
+        confidence: 1,
+      };
+      expect(fm.calculateFreshness(entity)).toBe(0.943434198558344);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

@@ -416,3 +416,50 @@ describe('ConflictResolver', () => {
     });
   });
 });
+
+describe('ConflictResolver.calculateSimilarity (pins)', () => {
+  function similarity(a: AgentEntity, b: AgentEntity): number {
+    const resolver = new ConflictResolver() as unknown as {
+      calculateSimilarity(m1: AgentEntity, m2: AgentEntity): number;
+    };
+    return resolver.calculateSimilarity(a, b);
+  }
+
+  function memory(name: string, entityType: string, observations: string[]): AgentEntity {
+    return { name, entityType, observations } as unknown as AgentEntity;
+  }
+
+  it('returns 1 for memories with the same words', () => {
+    const a = memory('alpha', 'fact', ['shared words here']);
+    expect(similarity(a, memory('alpha', 'fact', ['shared words here']))).toBe(1);
+  });
+
+  it('returns 0 for memories with no words in common', () => {
+    const a = memory('alpha', 'fact', ['shared words here']);
+    expect(similarity(a, memory('omega', 'event', ['zebra quartz']))).toBe(0);
+  });
+
+  it('compares words without regard to letter case', () => {
+    const a = memory('Alpha', 'Fact', ['Shared WORDS Here']);
+    expect(similarity(a, memory('alpha', 'fact', ['shared words here']))).toBe(1);
+  });
+
+  it('ignores words of two letters or fewer', () => {
+    const a = memory('ab', 'fact', ['red blue green']);
+    const b = memory('ab', 'fact', ['red blue cyan']);
+    expect(similarity(a, b)).toBe(0.6);
+  });
+});
+
+describe('ConflictResolver textSimilarity (pinned)', () => {
+  const resolver = new ConflictResolver() as unknown as { textSimilarity(t1: string, t2: string): number };
+
+  it('returns literal values for each text shape', () => {
+    expect(resolver.textSimilarity('alpha beta gamma', 'beta gamma delta epsilon')).toBe(0.4);
+    expect(resolver.textSimilarity('', '')).toBe(0);
+    expect(resolver.textSimilarity('alpha beta', '')).toBe(0);
+    expect(resolver.textSimilarity('a b c', 'alpha beta')).toBe(0);
+    expect(resolver.textSimilarity('alpha beta', 'alpha beta')).toBe(1);
+    expect(resolver.textSimilarity('alpha beta', 'gamma delta')).toBe(0);
+  });
+});

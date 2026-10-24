@@ -17,6 +17,10 @@ import {
 } from '../../../src/agent/WorkingMemoryManager.js';
 import type { IGraphStorage, Entity, KnowledgeGraph } from '../../../src/types/types.js';
 import type { AgentEntity } from '../../../src/types/agent-memory.js';
+import { GraphStorage } from '../../../src/core/GraphStorage.js';
+import { promises as fs } from 'fs';
+import { join } from 'path';
+import { tmpdir } from 'os';
 
 // ==================== Mock Storage ====================
 
@@ -838,6 +842,149 @@ describe('WorkingMemoryManager.promoteMemory', () => {
   });
 });
 
+// ==================== Entity guard pins (pinned before the extraction) ====================
+
+describe('WorkingMemoryManager entity guard (pinned before the extraction)', () => {
+  const FIXED_NOW = '2026-01-01T00:00:00.000Z';
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(FIXED_NOW));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('promoteMemory returns the PromotionResult literal', async () => {
+    const storage = createMockStorage([
+      createAgentEntity('wm_1', 'session_1', { tags: ['promote_to_semantic', 'keep'], markedForPromotion: true }),
+    ]);
+    const wmm = new WorkingMemoryManager(storage);
+    const result = await wmm.promoteMemory('wm_1', 'semantic');
+    expect(result).toStrictEqual({
+      entityName: 'wm_1',
+      fromType: 'working',
+      toType: 'semantic',
+      promotedAt: FIXED_NOW,
+    });
+  });
+
+  it('promoteMemory writes the update literal with its key order', async () => {
+    const storage = createMockStorage([
+      createAgentEntity('wm_1', 'session_1', { tags: ['promote_to_semantic', 'keep'], markedForPromotion: true }),
+    ]);
+    const wmm = new WorkingMemoryManager(storage);
+    await wmm.promoteMemory('wm_1', 'semantic');
+    const updates = vi.mocked(storage.updateEntity).mock.calls[0][1] as Record<string, unknown>;
+    expect(Object.keys(updates)).toEqual([
+      'memoryType',
+      'expiresAt',
+      'isWorkingMemory',
+      'markedForPromotion',
+      'promotedAt',
+      'promotedFrom',
+      'lastModified',
+      'tags',
+    ]);
+    expect(updates).toStrictEqual({
+      memoryType: 'semantic',
+      expiresAt: undefined,
+      isWorkingMemory: undefined,
+      markedForPromotion: undefined,
+      promotedAt: FIXED_NOW,
+      promotedFrom: 'session_1',
+      lastModified: FIXED_NOW,
+      tags: ['keep'],
+    });
+  });
+
+  it('promoteMemory reads the entity exactly once', async () => {
+    const storage = createMockStorage([createAgentEntity('wm_1', 'session_1')]);
+    const wmm = new WorkingMemoryManager(storage);
+    vi.mocked(storage.getEntityByName).mockClear();
+    await wmm.promoteMemory('wm_1', 'semantic');
+    expect(storage.getEntityByName).toHaveBeenCalledTimes(1);
+    expect(storage.getEntityByName).toHaveBeenCalledWith('wm_1');
+  });
+
+  it('extendTTL writes the entries before a bad name, then throws', async () => {
+    const storage = createMockStorage([createAgentEntity('ok', 'session_1')]);
+    const wmm = new WorkingMemoryManager(storage);
+    vi.mocked(storage.updateEntity).mockClear();
+    await expect(wmm.extendTTL(['ok', 'bad'], 1)).rejects.toThrow(/^Entity not found: bad$/);
+    expect(storage.updateEntity).toHaveBeenCalledTimes(1);
+  });
+
+  const guardSites: Array<[string, (wmm: WorkingMemoryManager, name: string) => Promise<unknown>]> = [
+    ['promoteMemory', (wmm, name) => wmm.promoteMemory(name)],
+    ['markForPromotion', (wmm, name) => wmm.markForPromotion(name)],
+    ['confirmMemory', (wmm, name) => wmm.confirmMemory(name)],
+    ['extendTTL', (wmm, name) => wmm.extendTTL([name], 1)],
+  ];
+
+  for (const [site, call] of guardSites) {
+    it(`${site} reports a missing entity with the exact text`, async () => {
+      const wmm = new WorkingMemoryManager(createMockStorage());
+      await expect(call(wmm, 'nope')).rejects.toThrow(/^Entity not found: nope$/);
+    });
+
+    it(`${site} reports a plain entity with the exact text`, async () => {
+      const plain = { name: 'plain', entityType: 'note', observations: [] } as unknown as AgentEntity;
+      const wmm = new WorkingMemoryManager(createMockStorage([plain]));
+      await expect(call(wmm, 'plain')).rejects.toThrow(/^Entity is not an AgentEntity: plain$/);
+    });
+
+    it(`${site} reports an episodic entity with the exact text`, async () => {
+      const wmm = new WorkingMemoryManager(
+        createMockStorage([createAgentEntity('bad', 'session_1', { memoryType: 'episodic' })])
+      );
+      await expect(call(wmm, 'bad')).rejects.toThrow(/^Entity is not working memory: bad$/);
+    });
+
+    it(`${site} looks the entity up by the name it was given, spaces included`, async () => {
+      const storage = createMockStorage([createAgentEntity(' wm 1 ', 'session_1')]);
+      const wmm = new WorkingMemoryManager(storage);
+      vi.mocked(storage.getEntityByName).mockClear();
+      await call(wmm, ' wm 1 ');
+      expect(storage.getEntityByName).toHaveBeenCalledTimes(1);
+      expect(storage.getEntityByName).toHaveBeenCalledWith(' wm 1 ');
+      await expect(call(wmm, 'wm 1')).rejects.toThrow(/^Entity not found: wm 1$/);
+    });
+  }
+
+  describe('stored line on disk', () => {
+    let testDir: string;
+
+    beforeEach(() => {
+      testDir = join(tmpdir(), `wmm-guard-${Date.now()}-${Math.random()}`);
+    });
+
+    afterEach(async () => {
+      try {
+        await fs.rm(testDir, { recursive: true, force: true });
+      } catch {
+        /* cleanup best-effort */
+      }
+    });
+
+    it('the WMM route writes the promoted entity line', async () => {
+      await fs.mkdir(testDir, { recursive: true });
+      const file = join(testDir, 'memory.jsonl');
+      const storage = new GraphStorage(file);
+      await storage.appendEntity(
+        createAgentEntity('wm_1', 'session_1', { tags: ['promote_to_semantic', 'keep'], markedForPromotion: true }) as unknown as Entity
+      );
+      const wmm = new WorkingMemoryManager(storage);
+      await wmm.promoteMemory('wm_1', 'semantic');
+      const line = (await fs.readFile(file, 'utf8')).split('\n').filter((l) => l.includes('"name":"wm_1"')).pop();
+      expect(line).toBe(
+        '{"type":"entity","name":"wm_1","entityType":"working_memory","observations":["Test content"],"createdAt":"2026-01-01T00:00:00.000Z","lastModified":"2026-01-01T00:00:00.000Z","tags":["keep"],"importance":5,"confidence":0.5,"memoryType":"semantic","sessionId":"session_1","promotedAt":"2026-01-01T00:00:00.000Z","promotedFrom":"session_1","accessCount":0,"lastAccessedAt":"2026-01-01T00:00:00.000Z","confirmationCount":0,"visibility":"private"}'
+      );
+    });
+  });
+});
+
 // ==================== confirmMemory Tests ====================
 
 describe('WorkingMemoryManager.confirmMemory', () => {
@@ -1097,5 +1244,25 @@ describe('WorkingMemoryManager Helpers', () => {
     expect(wmm.getSessionMemoryCount('session_1')).toBe(2);
     expect(wmm.getSessionMemoryCount('session_2')).toBe(1);
     expect(wmm.getSessionMemoryCount('unknown')).toBe(0);
+  });
+});
+
+describe('WorkingMemoryManager.hashContent (R16 pins)', () => {
+  // hashContent reads no instance state, so the prototype is enough.
+  const probe = Object.create(WorkingMemoryManager.prototype) as unknown as { hashContent(content: string): string };
+
+  it('returns the recorded hex value for each content string', () => {
+    const golden: Array<[string, string]> = [
+      ['', '0'],
+      ['a', '61'],
+      ['hello world', '6aefe2c4'],
+      ['ü€😀', '1084093'],
+      ['x'.repeat(1000), '663f3400'],
+      ['Entity_42', '4b4df83a'],
+      ['hello', '5e918d2'],
+    ];
+    for (const [input, expected] of golden) {
+      expect(probe.hashContent(input)).toBe(expected);
+    }
   });
 });

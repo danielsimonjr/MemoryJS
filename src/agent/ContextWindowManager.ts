@@ -25,6 +25,8 @@ import { isAgentEntity } from '../types/agent-memory.js';
 import { SalienceEngine } from './SalienceEngine.js';
 import type { IDistillationPolicy } from './DistillationPolicy.js';
 import { ContextProfileManager, type ProfileConfig } from './ContextProfileManager.js';
+import type { HybridSearchManager } from '../search/HybridSearchManager.js';
+import type { SummarizationService } from './SummarizationService.js';
 
 // S10: `ContextWindowManagerConfig` moved to src/types/agent-memory.ts (the
 // types layer references it via `RoleProfile` and must stay a leaf).
@@ -110,6 +112,14 @@ export interface SpilloverResult {
   nextPageCursor?: string;
 }
 
+/** Options for {@link ContextWindowManager.prioritize}. */
+export interface PrioritizeOptions {
+  /** Maximum number of selected entities, must-include entities included. Unset = no cap. */
+  maxSlots?: number;
+  /** Keep the input order of optional entities instead of the efficiency order. */
+  preserveOrder?: boolean;
+}
+
 /**
  * Manages memory retrieval within LLM token budget constraints.
  *
@@ -136,6 +146,9 @@ export class ContextWindowManager {
   private readonly config: Required<ContextWindowManagerConfig>;
   /** Optional distillation policy applied before salience scoring */
   private distillationPolicy?: IDistillationPolicy;
+  /** Optional hybrid search used to order candidates when `context.queryText` is set */
+  private hybridSearch?: Pick<HybridSearchManager, 'search'>;
+  private summarizer?: Pick<SummarizationService, 'summarize'>;
   private readonly contextProfileManager: ContextProfileManager;
 
   constructor(
@@ -181,6 +194,34 @@ export class ContextWindowManager {
    */
   getDistillationPolicy(): IDistillationPolicy | undefined {
     return this.distillationPolicy;
+  }
+
+  /**
+   * Set an optional hybrid search for query-ranked retrieval.
+   *
+   * When set and `context.queryText` is non-blank, `retrieveForContext` orders the
+   * candidates by hybrid rank before the salience cut. Only entities that hybrid
+   * search returns enter the result, plus must-include entities. An entity with no
+   * lexical or semantic match drops out. If the search throws, retrieval logs a warning and
+   * uses the salience order. Without a set search, retrieval is unchanged.
+   *
+   * @param search - A hybrid search manager, or undefined to disable query ranking.
+   */
+  setHybridSearch(search: Pick<HybridSearchManager, 'search'> | undefined): void {
+    this.hybridSearch = search;
+  }
+
+  /**
+   * Set an optional summarizer for the excluded memories.
+   *
+   * When set and a retrieval passes `summarizeExcluded: true`, `retrieveForContext`
+   * summarizes the entities the budget or slot cut excluded. A failing summarizer
+   * logs a warning and leaves `excludedSummary` unset.
+   *
+   * @param summarizer - A summarization service, or undefined to disable the summary.
+   */
+  setSummarizer(summarizer: Pick<SummarizationService, 'summarize'> | undefined): void {
+    this.summarizer = summarizer;
   }
 
   // ==================== Token Estimation ====================
@@ -234,15 +275,21 @@ export class ContextWindowManager {
    * @param budget - Maximum tokens allowed
    * @param context - Salience context for scoring
    * @param mustInclude - Entity names that must be included
+   * @param options - Prioritization options (`maxSlots` caps the number of selected entities)
    * @returns Prioritized entities and excluded entities
    */
   async prioritize(
     entities: AgentEntity[],
     budget: number,
     context: SalienceContext = {},
-    mustInclude: string[] = []
+    mustInclude: string[] = [],
+    options: PrioritizeOptions = {}
   ): Promise<{ selected: ScoredEntity[]; excluded: ExcludedEntity[] }> {
     const mustIncludeSet = new Set(mustInclude);
+    const slotCap =
+      options.maxSlots !== undefined && Number.isFinite(options.maxSlots) && options.maxSlots >= 0
+        ? Math.floor(options.maxSlots)
+        : Infinity;
 
     // Score all entities
     const scored = await this.salienceEngine.rankEntitiesBySalience(entities, context);
@@ -263,8 +310,16 @@ export class ContextWindowManager {
       efficiency: s.tokens > 0 ? s.salienceScore / s.tokens : 0,
     }));
 
-    // Sort by efficiency (descending) for greedy selection
-    withEfficiency.sort((a, b) => b.efficiency - a.efficiency);
+    if (options.preserveOrder) {
+      // Keep the input order (for example, hybrid rank) for greedy selection
+      const inputIndex = new Map(entities.map((e, index) => [e.name, index]));
+      withEfficiency.sort(
+        (a, b) => (inputIndex.get(a.entity.name) ?? 0) - (inputIndex.get(b.entity.name) ?? 0)
+      );
+    } else {
+      // Sort by efficiency (descending) for greedy selection
+      withEfficiency.sort((a, b) => b.efficiency - a.efficiency);
+    }
 
     // Start with must-include entities
     const selected: ScoredEntity[] = required.map((r) => ({
@@ -284,7 +339,14 @@ export class ContextWindowManager {
 
     // Greedily add optional entities by efficiency
     for (const candidate of withEfficiency) {
-      if (usedTokens + candidate.tokens <= budget) {
+      if (selected.length >= slotCap) {
+        excluded.push({
+          entity: candidate.entity,
+          reason: 'slot_limit',
+          tokens: candidate.tokens,
+          salience: candidate.salienceScore,
+        });
+      } else if (usedTokens + candidate.tokens <= budget) {
         selected.push({
           entity: candidate.entity,
           salienceScore: candidate.salienceScore,
@@ -326,6 +388,9 @@ export class ContextWindowManager {
       includeSemanticRelevant = true,
       mustInclude = [],
       minSalience = 0,
+      maxSlots,
+      composeHops,
+      summarizeExcluded,
     } = resolvedOptions;
 
     // Effective budget after reserve
@@ -360,8 +425,28 @@ export class ContextWindowManager {
       candidates = candidates.filter((e) => keptNames.has(e.name));
     }
 
-    // Limit candidates for performance
-    if (candidates.length > this.config.maxEntitiesToConsider) {
+    const queryText = context.queryText?.trim();
+    let queryMode = !!queryText && !!this.hybridSearch;
+
+    if (queryMode) {
+      // Query mode: hybrid search orders the candidates before the salience cut.
+      // A failing search must not fail retrieval: fall back to the salience path.
+      try {
+        candidates = await this.rankByQuery(
+          candidates,
+          graph,
+          queryText!,
+          mustInclude,
+          composeHops
+        );
+      } catch (err) {
+        logger.warn('[ContextWindowManager.retrieveForContext] hybrid search failed, using salience order:', err);
+        queryMode = false;
+      }
+    }
+
+    if (!queryMode && candidates.length > this.config.maxEntitiesToConsider) {
+      // Limit candidates for performance
       // Cheap metadata-only prefilter before the comparatively expensive
       // context-aware salience pass. Must-includes bypass the cap.
       candidates = this.prefilterCandidates(candidates, mustInclude);
@@ -372,7 +457,8 @@ export class ContextWindowManager {
       candidates,
       effectiveBudget,
       context,
-      mustInclude
+      mustInclude,
+      { maxSlots, preserveOrder: queryMode }
     );
 
     // Filter by minimum salience
@@ -392,13 +478,73 @@ export class ContextWindowManager {
     // Generate suggestions for excluded high-salience entities
     const suggestions = this.generateSuggestions(excluded);
 
-    return {
+    const allExcluded = [...excluded, ...lowSalienceExcluded];
+    const excludedSummary = await this.summarizeExcluded(
+      allExcluded,
+      summarizeExcluded,
+      queryText || undefined
+    );
+
+    return this.withBudgetReport({
       memories: filtered.map((s) => s.entity),
       totalTokens: this.estimateTotalTokens(filtered.map((s) => s.entity)),
       breakdown,
-      excluded: [...excluded, ...lowSalienceExcluded],
+      excluded: allExcluded,
       suggestions,
-    };
+      excludedSummary,
+    });
+  }
+
+  /**
+   * Summarize the entities that retrieval excluded.
+   *
+   * Runs only when the flag is set, a summarizer is attached and at least one excluded entity
+   * has observation text. A failing summarizer must not fail retrieval: it logs a warning and returns
+   * undefined.
+   *
+   * @param excluded - Every excluded entity (budget, slot and salience cuts)
+   * @param enabled - The `summarizeExcluded` option after profile resolution
+   * @param query - Trimmed query text, passed to the summarizer as its focus
+   * @returns The summary, or undefined when no summary was made
+   */
+  private async summarizeExcluded(
+    excluded: ExcludedEntity[],
+    enabled: boolean | undefined,
+    query: string | undefined
+  ): Promise<string | undefined> {
+    if (!enabled || !this.summarizer || excluded.length === 0) return undefined;
+
+    // An entity without observations has no text to summarize.
+    const texts = excluded
+      .map((e) => (e.entity.observations ?? []).join(' '))
+      .filter((text) => text.trim().length > 0);
+    if (texts.length === 0) return undefined;
+
+    try {
+      return await this.summarizer.summarize(texts, query);
+    } catch (err) {
+      logger.warn('[ContextWindowManager.retrieveForContext] excluded summary failed, continuing without it:', err);
+      return undefined;
+    }
+  }
+
+  /**
+   * Add the budget-cut report to a context package.
+   *
+   * `sourceTokens` is `totalTokens` plus the tokens of every excluded entity.
+   * `compressionRatio` is `sourceTokens / totalTokens`, or 1 when nothing is excluded.
+   *
+   * @param pkg - Context package without the budget-cut report
+   * @returns Context package with `sourceTokens` and `compressionRatio` set
+   */
+  private withBudgetReport(
+    pkg: Omit<ContextPackage, 'sourceTokens' | 'compressionRatio'>
+  ): ContextPackage {
+    const sourceTokens =
+      pkg.totalTokens + pkg.excluded.reduce((sum, e) => sum + e.tokens, 0);
+    const compressionRatio =
+      sourceTokens === pkg.totalTokens ? 1 : sourceTokens / Math.max(pkg.totalTokens, 1);
+    return { ...pkg, sourceTokens, compressionRatio };
   }
 
   private prefilterCandidates(
@@ -438,6 +584,50 @@ export class ContextWindowManager {
     ];
   }
 
+  /**
+   * Order candidates by hybrid search rank for query mode.
+   *
+   * Hybrid search runs over a graph scoped to the candidates, so hits outside the
+   * candidate set never enter the result. Must-include candidates come first, in
+   * candidate order, even when hybrid search does not return them.
+   *
+   * @param candidates - Candidates after distillation
+   * @param graph - Loaded graph, used for the relations between candidates
+   * @param queryText - Trimmed, non-empty query text
+   * @param mustInclude - Entity names that must be included
+   * @param composeHops - 1 adds the one-hop neighbors of the top hybrid results
+   * @returns Candidates in query order
+   */
+  private async rankByQuery(
+    candidates: AgentEntity[],
+    graph: ReadonlyKnowledgeGraph,
+    queryText: string,
+    mustInclude: string[],
+    composeHops: 0 | 1 | undefined
+  ): Promise<AgentEntity[]> {
+    const byName = new Map(candidates.map((e) => [e.name, e]));
+    const scopedGraph = {
+      entities: candidates,
+      relations: graph.relations.filter((r) => byName.has(r.from) && byName.has(r.to)),
+    };
+    const hits = await this.hybridSearch!.search(scopedGraph, queryText, {
+      limit: this.config.maxEntitiesToConsider,
+      ...(composeHops === 1 ? { expandNeighbors: { hops: 1 }, lookFor: queryText } : {}),
+    });
+
+    const requiredNames = new Set(mustInclude);
+    const ranked = candidates.filter((e) => requiredNames.has(e.name));
+    const seen = new Set(ranked.map((e) => e.name));
+    for (const hit of hits) {
+      const entity = byName.get(hit.entity.name);
+      if (entity && !seen.has(entity.name)) {
+        seen.add(entity.name);
+        ranked.push(entity);
+      }
+    }
+    return ranked;
+  }
+
   // ==================== Type-Specific Retrieval ====================
 
   /**
@@ -465,19 +655,7 @@ export class ContextWindowManager {
     }
 
     // Score and select within budget
-    const scored = await this.salienceEngine.rankEntitiesBySalience(candidates, context);
-    const selected: AgentEntity[] = [];
-    let usedTokens = 0;
-
-    for (const s of scored) {
-      const tokens = this.estimateTokens(s.entity);
-      if (usedTokens + tokens <= budget) {
-        selected.push(s.entity);
-        usedTokens += tokens;
-      }
-    }
-
-    return { entities: selected, tokens: usedTokens };
+    return this.selectWithinBudget(candidates, budget, context);
   }
 
   /**
@@ -519,19 +697,7 @@ export class ContextWindowManager {
       : sorted;
 
     // Score and select within budget
-    const scored = await this.salienceEngine.rankEntitiesBySalience(candidates, context);
-    const selected: AgentEntity[] = [];
-    let usedTokens = 0;
-
-    for (const s of scored) {
-      const tokens = this.estimateTokens(s.entity);
-      if (usedTokens + tokens <= budget) {
-        selected.push(s.entity);
-        usedTokens += tokens;
-      }
-    }
-
-    return { entities: selected, tokens: usedTokens };
+    return this.selectWithinBudget(candidates, budget, context);
   }
 
   /**
@@ -552,7 +718,22 @@ export class ContextWindowManager {
       .filter((e) => (e as AgentEntity).memoryType === 'semantic') as AgentEntity[];
 
     // Score by salience (which includes context relevance)
-    const scored = await this.salienceEngine.rankEntitiesBySalience(semantic, context);
+    return this.selectWithinBudget(semantic, budget, context);
+  }
+
+  /**
+   * Rank candidates by salience and keep them in that order while they fit
+   * the token budget. A candidate that does not fit is skipped. Selection
+   * goes on with the next candidate.
+   *
+   * @internal
+   */
+  private async selectWithinBudget(
+    candidates: AgentEntity[],
+    budget: number,
+    context: SalienceContext
+  ): Promise<{ entities: AgentEntity[]; tokens: number }> {
+    const scored = await this.salienceEngine.rankEntitiesBySalience(candidates, context);
     const selected: AgentEntity[] = [];
     let usedTokens = 0;
 
@@ -613,6 +794,11 @@ export class ContextWindowManager {
    *
    * Must-include entities are subtracted from total first.
    *
+   * `maxSlots` caps the combined result; must-include entities are never cut.
+   *
+   * `sourceTokens` is a lower bound. Only low-salience and slot-limit exclusions are
+   * tracked here, because the per-type retrievals do not report their budget cuts.
+   *
    * @param options - Retrieval options
    * @returns Context package with allocated retrieval
    */
@@ -632,6 +818,7 @@ export class ContextWindowManager {
       includeSemanticRelevant = true,
       mustInclude = [],
       minSalience = 0,
+      maxSlots,
     } = resolvedOptions;
 
     const effectiveBudget = maxTokens - this.config.reserveBuffer;
@@ -692,8 +879,15 @@ export class ContextWindowManager {
     // Filter by minimum salience
     const scored = await this.salienceEngine.rankEntitiesBySalience(deduped, context);
     const mustIncludeSet = new Set(mustInclude);
-    const filtered = scored.filter(
+    const aboveMinSalience = scored.filter(
       (s) => s.salienceScore >= minSalience || mustIncludeSet.has(s.entity.name)
+    );
+
+    // Apply the slot cap: must-include entities stay, the rest keep salience order
+    const { kept: filtered, slotExcluded } = this.applySlotCap(
+      aboveMinSalience,
+      mustIncludeSet,
+      maxSlots
     );
 
     // Track low salience exclusions
@@ -705,7 +899,7 @@ export class ContextWindowManager {
         tokens: this.estimateTokens(s.entity),
         salience: s.salienceScore,
       }));
-    allExcluded.push(...lowSalienceExcluded);
+    allExcluded.push(...lowSalienceExcluded, ...slotExcluded);
 
     // Calculate breakdown
     const breakdown: TokenBreakdown = {
@@ -716,16 +910,54 @@ export class ContextWindowManager {
       mustInclude: mustIncludeResult.tokens,
     };
 
-    return {
+    return this.withBudgetReport({
       memories: filtered.map((s) => s.entity),
       totalTokens: this.estimateTotalTokens(filtered.map((s) => s.entity)),
       breakdown,
       excluded: allExcluded,
       suggestions: allSuggestions,
-    };
+    });
   }
 
   // ==================== Helper Methods ====================
+
+  /**
+   * Cap a salience-ordered list at `maxSlots` entities.
+   *
+   * Must-include entities count against the cap and are never cut.
+   * The other entities keep their order until the cap is full.
+   *
+   * @param scored - Entities in descending salience order
+   * @param mustIncludeSet - Names that are never cut
+   * @param maxSlots - Maximum number of entities, or unset for no cap
+   * @returns Kept entities in the input order, and the entities cut with reason `slot_limit`
+   */
+  private applySlotCap(
+    scored: ScoredEntity[],
+    mustIncludeSet: Set<string>,
+    maxSlots: number | undefined
+  ): { kept: ScoredEntity[]; slotExcluded: ExcludedEntity[] } {
+    if (maxSlots === undefined || !Number.isFinite(maxSlots) || maxSlots < 0) {
+      return { kept: scored, slotExcluded: [] };
+    }
+
+    let free = Math.floor(maxSlots) - scored.filter((s) => mustIncludeSet.has(s.entity.name)).length;
+    const kept: ScoredEntity[] = [];
+    const slotExcluded: ExcludedEntity[] = [];
+    for (const s of scored) {
+      if (mustIncludeSet.has(s.entity.name) || free-- > 0) {
+        kept.push(s);
+      } else {
+        slotExcluded.push({
+          entity: s.entity,
+          reason: 'slot_limit',
+          tokens: this.estimateTokens(s.entity),
+          salience: s.salienceScore,
+        });
+      }
+    }
+    return { kept, slotExcluded };
+  }
 
   /**
    * Calculate token breakdown by memory type.
@@ -1126,6 +1358,9 @@ export class ContextWindowManager {
       ...options,
       context: profileContext,
       maxTokens: options.maxTokens ?? profileConfig.maxTokens ?? this.config.defaultMaxTokens,
+      composeHops: options.composeHops ?? profileConfig.retrieval?.composeHops,
+      summarizeExcluded:
+        options.summarizeExcluded ?? profileConfig.retrieval?.summarizeExcluded,
     };
 
     return result;

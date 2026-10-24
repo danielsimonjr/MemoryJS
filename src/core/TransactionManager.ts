@@ -80,6 +80,107 @@ export interface TransactionResult {
   rollbackBackup?: string;
 }
 
+/** The entity and relation subset of {@link BatchOperation}. */
+type GraphOperation = Extract<
+  BatchOperation,
+  { type: 'createEntity' | 'updateEntity' | 'deleteEntity' | 'createRelation' | 'deleteRelation' }
+>;
+
+/** Batch result counter that one {@link GraphOperation} increments. */
+type GraphEffect = 'entitiesCreated' | 'entitiesUpdated' | 'entitiesDeleted' | 'relationsCreated' | 'relationsDeleted';
+
+/**
+ * Apply one entity or relation operation to an in-memory graph.
+ * The transaction path and the batch path both call this function.
+ * The function throws a KnowledgeGraphError when the operation cannot apply.
+ * The batch path counts the returned GraphEffect. The transaction path ignores it.
+ *
+ * A create rejects an existing name, or an existing from, to and relationType triple.
+ * A create sets createdAt and lastModified to the timestamp.
+ * An update merges sanitized updates into the entity and sets lastModified.
+ * A delete removes the entity and every relation that touches it.
+ * A relation delete removes the first relation that matches from, to and relationType.
+ *
+ * @param graph - Graph to change in place.
+ * @param operation - Operation to apply.
+ * @param timestamp - Time to write into the changed records.
+ * @returns Counter name that the operation increments.
+ */
+function applyGraphOperation(graph: KnowledgeGraph, operation: GraphOperation, timestamp: string): GraphEffect {
+  switch (operation.type) {
+    case 'createEntity': {
+      const entity: Entity = {
+        ...operation.data,
+        createdAt: timestamp,
+        lastModified: timestamp,
+      };
+      if (graph.entities.some(e => e.name === entity.name)) {
+        throw new KnowledgeGraphError(`Entity "${entity.name}" already exists`, 'DUPLICATE_ENTITY');
+      }
+      graph.entities.push(entity);
+      return 'entitiesCreated';
+    }
+
+    case 'updateEntity': {
+      const { name, updates } = operation.data;
+      const entity = graph.entities.find(e => e.name === name);
+      if (!entity) {
+        throw new KnowledgeGraphError(`Entity "${name}" not found`, 'ENTITY_NOT_FOUND');
+      }
+      // Sanitize updates to prevent prototype pollution
+      Object.assign(entity, sanitizeObject(updates as Record<string, unknown>));
+      entity.lastModified = timestamp;
+      return 'entitiesUpdated';
+    }
+
+    case 'deleteEntity': {
+      const { name } = operation.data;
+      const index = graph.entities.findIndex(e => e.name === name);
+      if (index === -1) {
+        throw new KnowledgeGraphError(`Entity "${name}" not found`, 'ENTITY_NOT_FOUND');
+      }
+      graph.entities.splice(index, 1);
+      // Delete related relations
+      graph.relations = graph.relations.filter(r => r.from !== name && r.to !== name);
+      return 'entitiesDeleted';
+    }
+
+    case 'createRelation': {
+      const relation: Relation = {
+        ...operation.data,
+        createdAt: timestamp,
+        lastModified: timestamp,
+      };
+      const exists = graph.relations.some(
+        r => r.from === relation.from && r.to === relation.to && r.relationType === relation.relationType
+      );
+      if (exists) {
+        throw new KnowledgeGraphError(
+          `Relation "${relation.from}" -> "${relation.to}" (${relation.relationType}) already exists`,
+          'DUPLICATE_RELATION'
+        );
+      }
+      graph.relations.push(relation);
+      return 'relationsCreated';
+    }
+
+    case 'deleteRelation': {
+      const { from, to, relationType } = operation.data;
+      const index = graph.relations.findIndex(
+        r => r.from === from && r.to === to && r.relationType === relationType
+      );
+      if (index === -1) {
+        throw new KnowledgeGraphError(
+          `Relation "${from}" -> "${to}" (${relationType}) not found`,
+          'RELATION_NOT_FOUND'
+        );
+      }
+      graph.relations.splice(index, 1);
+      return 'relationsDeleted';
+    }
+  }
+}
+
 /** Manages atomic transactions with backup-based rollback. */
 export class TransactionManager {
   private operations: TransactionOperation[] = [];
@@ -300,78 +401,25 @@ export class TransactionManager {
   /** Apply one staged operation to the mutable graph copy; throws on conflict. */
   private applyOperation(graph: KnowledgeGraph, operation: TransactionOperation, timestamp: string): void {
     switch (operation.type) {
-      case OperationType.CREATE_ENTITY: {
-        const entity: Entity = {
-          ...operation.data,
-          createdAt: timestamp,
-          lastModified: timestamp,
-        };
-        // Check for duplicates
-        if (graph.entities.some(e => e.name === entity.name)) {
-          throw new KnowledgeGraphError(`Entity "${entity.name}" already exists`, 'DUPLICATE_ENTITY');
-        }
-        graph.entities.push(entity);
+      case OperationType.CREATE_ENTITY:
+        applyGraphOperation(graph, { type: 'createEntity', data: operation.data }, timestamp);
         break;
-      }
 
-      case OperationType.UPDATE_ENTITY: {
-        const { name, updates } = operation.data;
-        const entity = graph.entities.find(e => e.name === name);
-        if (!entity) {
-          throw new KnowledgeGraphError(`Entity "${name}" not found`, 'ENTITY_NOT_FOUND');
-        }
-        // Sanitize updates to prevent prototype pollution
-        Object.assign(entity, sanitizeObject(updates as Record<string, unknown>));
-        entity.lastModified = timestamp;
+      case OperationType.UPDATE_ENTITY:
+        applyGraphOperation(graph, { type: 'updateEntity', data: operation.data }, timestamp);
         break;
-      }
 
-      case OperationType.DELETE_ENTITY: {
-        const { name } = operation.data;
-        const index = graph.entities.findIndex(e => e.name === name);
-        if (index === -1) {
-          throw new KnowledgeGraphError(`Entity "${name}" not found`, 'ENTITY_NOT_FOUND');
-        }
-        graph.entities.splice(index, 1);
-        // Delete related relations
-        graph.relations = graph.relations.filter(r => r.from !== name && r.to !== name);
+      case OperationType.DELETE_ENTITY:
+        applyGraphOperation(graph, { type: 'deleteEntity', data: operation.data }, timestamp);
         break;
-      }
 
-      case OperationType.CREATE_RELATION: {
-        const relation: Relation = {
-          ...operation.data,
-          createdAt: timestamp,
-          lastModified: timestamp,
-        };
-        // Check for duplicates
-        const exists = graph.relations.some(
-          r => r.from === relation.from && r.to === relation.to && r.relationType === relation.relationType
-        );
-        if (exists) {
-          throw new KnowledgeGraphError(
-            `Relation "${relation.from}" -> "${relation.to}" (${relation.relationType}) already exists`,
-            'DUPLICATE_RELATION'
-          );
-        }
-        graph.relations.push(relation);
+      case OperationType.CREATE_RELATION:
+        applyGraphOperation(graph, { type: 'createRelation', data: operation.data }, timestamp);
         break;
-      }
 
-      case OperationType.DELETE_RELATION: {
-        const { from, to, relationType } = operation.data;
-        const index = graph.relations.findIndex(
-          r => r.from === from && r.to === to && r.relationType === relationType
-        );
-        if (index === -1) {
-          throw new KnowledgeGraphError(
-            `Relation "${from}" -> "${to}" (${relationType}) not found`,
-            'RELATION_NOT_FOUND'
-          );
-        }
-        graph.relations.splice(index, 1);
+      case OperationType.DELETE_RELATION:
+        applyGraphOperation(graph, { type: 'deleteRelation', data: operation.data }, timestamp);
         break;
-      }
 
       default: {
         // Exhaustiveness check - TypeScript will error if we miss a case
@@ -649,81 +697,27 @@ export class BatchTransaction {
     result: BatchResult
   ): void {
     switch (operation.type) {
-      case 'createEntity': {
-        const entity: Entity = {
-          ...operation.data,
-          createdAt: timestamp,
-          lastModified: timestamp,
-        };
-        if (graph.entities.some(e => e.name === entity.name)) {
-          throw new KnowledgeGraphError(`Entity "${entity.name}" already exists`, 'DUPLICATE_ENTITY');
-        }
-        graph.entities.push(entity);
-        result.entitiesCreated++;
+      // Each case builds the operation again, so that operation.type is read once
+      // (by this switch) and operation.data once, as before the shared function.
+      case 'createEntity':
+        result[applyGraphOperation(graph, { type: 'createEntity', data: operation.data }, timestamp)]++;
         break;
-      }
 
-      case 'updateEntity': {
-        const { name, updates } = operation.data;
-        const entity = graph.entities.find(e => e.name === name);
-        if (!entity) {
-          throw new KnowledgeGraphError(`Entity "${name}" not found`, 'ENTITY_NOT_FOUND');
-        }
-        // Sanitize updates to prevent prototype pollution
-        Object.assign(entity, sanitizeObject(updates as Record<string, unknown>));
-        entity.lastModified = timestamp;
-        result.entitiesUpdated++;
+      case 'updateEntity':
+        result[applyGraphOperation(graph, { type: 'updateEntity', data: operation.data }, timestamp)]++;
         break;
-      }
 
-      case 'deleteEntity': {
-        const { name } = operation.data;
-        const index = graph.entities.findIndex(e => e.name === name);
-        if (index === -1) {
-          throw new KnowledgeGraphError(`Entity "${name}" not found`, 'ENTITY_NOT_FOUND');
-        }
-        graph.entities.splice(index, 1);
-        // Delete related relations
-        graph.relations = graph.relations.filter(r => r.from !== name && r.to !== name);
-        result.entitiesDeleted++;
+      case 'deleteEntity':
+        result[applyGraphOperation(graph, { type: 'deleteEntity', data: operation.data }, timestamp)]++;
         break;
-      }
 
-      case 'createRelation': {
-        const relation: Relation = {
-          ...operation.data,
-          createdAt: timestamp,
-          lastModified: timestamp,
-        };
-        const exists = graph.relations.some(
-          r => r.from === relation.from && r.to === relation.to && r.relationType === relation.relationType
-        );
-        if (exists) {
-          throw new KnowledgeGraphError(
-            `Relation "${relation.from}" -> "${relation.to}" (${relation.relationType}) already exists`,
-            'DUPLICATE_RELATION'
-          );
-        }
-        graph.relations.push(relation);
-        result.relationsCreated++;
+      case 'createRelation':
+        result[applyGraphOperation(graph, { type: 'createRelation', data: operation.data }, timestamp)]++;
         break;
-      }
 
-      case 'deleteRelation': {
-        const { from, to, relationType } = operation.data;
-        const index = graph.relations.findIndex(
-          r => r.from === from && r.to === to && r.relationType === relationType
-        );
-        if (index === -1) {
-          throw new KnowledgeGraphError(
-            `Relation "${from}" -> "${to}" (${relationType}) not found`,
-            'RELATION_NOT_FOUND'
-          );
-        }
-        graph.relations.splice(index, 1);
-        result.relationsDeleted++;
+      case 'deleteRelation':
+        result[applyGraphOperation(graph, { type: 'deleteRelation', data: operation.data }, timestamp)]++;
         break;
-      }
 
       case 'addObservations': {
         const { name, observations } = operation.data;

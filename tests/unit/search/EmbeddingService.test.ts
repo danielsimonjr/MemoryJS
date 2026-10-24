@@ -813,3 +813,234 @@ describe('createEmbeddingService - Extended Tests', () => {
     expect((service as LocalEmbeddingService).model).toBe('custom/model');
   });
 });
+
+describe('embedBatch and embedBatchWithProgress (R22 pins)', () => {
+  const openAiKey = 'sk-test-api-key';
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  // Answers each request with one vector per input text, indexed by position.
+  const openAiAnswer = (body: string): Response => {
+    const { input } = JSON.parse(body) as { input: string[] };
+    return {
+      ok: true,
+      json: async () => ({
+        object: 'list',
+        data: input.map((_, index) => ({ object: 'embedding', embedding: [index], index })),
+        model: EMBEDDING_DEFAULTS.OPENAI_MODEL,
+        usage: { prompt_tokens: 0, total_tokens: 0 },
+      }),
+    } as Response;
+  };
+
+  const requestInputs = (spy: { mock: { calls: unknown[][] } }): string[][] =>
+    spy.mock.calls.map(([, init]) => (JSON.parse((init as RequestInit).body as string) as { input: string[] }).input);
+
+  it('OpenAI embedBatchWithProgress splits 2,100 texts into two requests with the document prefix', async () => {
+    const texts = Array.from({ length: 2100 }, (_, i) => `text ${i}`);
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url, init) =>
+      openAiAnswer((init as RequestInit).body as string)
+    );
+    const progress: Array<{ current: number; total: number; percentage: number }> = [];
+
+    const results = await new OpenAIEmbeddingService(openAiKey).embedBatchWithProgress(texts, 'document', (p) =>
+      progress.push({ ...p })
+    );
+
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    const inputs = requestInputs(fetchSpy);
+    expect(inputs.map((input) => input.length)).toEqual([2048, 52]);
+    expect(inputs.flat().every((text) => text.startsWith('passage: '))).toBe(true);
+    expect(progress).toEqual([
+      { current: 2048, total: 2100, percentage: 98 },
+      { current: 2100, total: 2100, percentage: 100 },
+    ]);
+    expect(results).toHaveLength(2100);
+  });
+
+  it('OpenAI embedBatch makes the same two requests as embedBatchWithProgress', async () => {
+    const texts = Array.from({ length: 2100 }, (_, i) => `text ${i}`);
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url, init) =>
+      openAiAnswer((init as RequestInit).body as string)
+    );
+
+    const results = await new OpenAIEmbeddingService(openAiKey).embedBatch(texts, 'document');
+
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    const inputs = requestInputs(fetchSpy);
+    expect(inputs.map((input) => input.length)).toEqual([2048, 52]);
+    expect(inputs.flat().every((text) => text.startsWith('passage: '))).toBe(true);
+    expect(results).toHaveLength(2100);
+  });
+
+  it('OpenAI embedBatch returns [] for no input and sends no request', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+    expect(await new OpenAIEmbeddingService(openAiKey).embedBatch([])).toEqual([]);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('Local embedBatch initializes once, before the first embed call', async () => {
+    const service = new LocalEmbeddingService();
+    const initialize = vi.spyOn(service, 'initialize').mockResolvedValue(undefined);
+    const embed = vi.spyOn(service, 'embed').mockImplementation(async (text) => [text.length]);
+
+    const results = await service.embedBatch(['a', 'bb', 'ccc'], 'document');
+
+    expect(initialize).toHaveBeenCalledTimes(1);
+    expect(initialize.mock.invocationCallOrder[0]).toBeLessThan(embed.mock.invocationCallOrder[0]);
+    expect(results).toEqual([[1], [2], [3]]);
+  });
+
+  it('Local embedBatch and embedBatchWithProgress pass the mode to every embed call', async () => {
+    const service = new LocalEmbeddingService();
+    vi.spyOn(service, 'initialize').mockResolvedValue(undefined);
+    const embed = vi.spyOn(service, 'embed').mockResolvedValue([0]);
+
+    await service.embedBatch(['a', 'b'], 'query');
+    await service.embedBatchWithProgress(['c'], 'query');
+    await service.embedBatch(['d']);
+
+    expect(embed.mock.calls).toEqual([
+      ['a', 'query'],
+      ['b', 'query'],
+      ['c', 'query'],
+      ['d', 'document'],
+    ]);
+  });
+
+  it('Local embedBatchWithProgress reports 33, 67 and 100 percent for three texts', async () => {
+    const service = new LocalEmbeddingService();
+    vi.spyOn(service, 'initialize').mockResolvedValue(undefined);
+    vi.spyOn(service, 'embed').mockResolvedValue([0]);
+    const progress: Array<{ current: number; total: number; percentage: number }> = [];
+
+    await service.embedBatchWithProgress(['a', 'b', 'c'], 'document', (p) => progress.push({ ...p }));
+
+    expect(progress).toEqual([
+      { current: 1, total: 3, percentage: 33 },
+      { current: 2, total: 3, percentage: 67 },
+      { current: 3, total: 3, percentage: 100 },
+    ]);
+  });
+
+  it('Local embedBatch returns [] for no input', async () => {
+    const service = new LocalEmbeddingService();
+    vi.spyOn(service, 'initialize').mockResolvedValue(undefined);
+
+    expect(await service.embedBatch([])).toEqual([]);
+  });
+
+  it('Mock embedBatchWithProgress reports 33, 67 and 100 percent for three texts', async () => {
+    const service = new MockEmbeddingService();
+    const progress: Array<{ current: number; total: number; percentage: number }> = [];
+
+    await service.embedBatchWithProgress(['a', 'b', 'c'], 'document', (p) => progress.push({ ...p }));
+
+    expect(progress).toEqual([
+      { current: 1, total: 3, percentage: 33 },
+      { current: 2, total: 3, percentage: 67 },
+      { current: 3, total: 3, percentage: 100 },
+    ]);
+  });
+
+  it('Mock embedBatchWithProgress embeds each text in the requested mode', async () => {
+    const service = new MockEmbeddingService();
+    const texts = ['alpha', 'beta'];
+
+    const documentVectors = await service.embedBatchWithProgress(texts, 'document');
+    const queryVectors = await service.embedBatchWithProgress(texts, 'query');
+
+    expect(documentVectors).toEqual(await Promise.all(texts.map((text) => service.embed(text, 'document'))));
+    expect(queryVectors).toEqual(await Promise.all(texts.map((text) => service.embed(text, 'query'))));
+    expect(documentVectors).not.toEqual(queryVectors);
+  });
+
+  it('Mock embedBatch returns the vectors of embedBatchWithProgress and [] for no input', async () => {
+    const service = new MockEmbeddingService();
+    const texts = ['alpha', 'beta', 'gamma'];
+
+    expect(await service.embedBatch([])).toEqual([]);
+    expect(await service.embedBatch(texts, 'query')).toEqual(await service.embedBatchWithProgress(texts, 'query'));
+  });
+});
+
+describe('MockEmbeddingService hash (R16 pins)', () => {
+  it('hashString returns the recorded signed 32-bit value for each input', () => {
+    const probe = new MockEmbeddingService() as unknown as { hashString(str: string): number };
+    const golden: Array<[string, number]> = [
+      ['', 0],
+      ['a', 97],
+      ['hello world', 1794106052],
+      ['ü€😀', 17318035],
+      ['x'.repeat(1000), -1715418112],
+      ['Entity_42', 1263401018],
+      ['hello', 99162322],
+    ];
+    for (const [input, expected] of golden) {
+      expect(probe.hashString(input)).toBe(expected);
+    }
+  });
+
+  it('embed("hello") returns the recorded first four components', async () => {
+    const vector = await new MockEmbeddingService().embed('hello');
+
+    expect(vector.slice(0, 4)).toEqual([
+      0.045492781193655615,
+      0.05082837528188116,
+      0.0556561091064084,
+      0.05992774673824215,
+    ]);
+  });
+});
+
+describe('OpenAIEmbeddingService retry delays (review pins)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  const okResponse = {
+    ok: true,
+    status: 200,
+    json: async () => ({ data: [{ index: 0, embedding: [1, 2] }] }),
+    text: async () => '',
+  };
+
+  it('waits 1000, 2000 and 4000 ms between rate-limited attempts', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const times: number[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation((async () => {
+      times.push(Date.now());
+      return times.length < 4
+        ? { ok: false, status: 429, text: async () => 'slow down', json: async () => ({}) }
+        : okResponse;
+    }) as unknown as typeof fetch);
+
+    const pending = new OpenAIEmbeddingService('sk-test').embed('hello');
+    await vi.advanceTimersByTimeAsync(7000);
+
+    expect(await pending).toEqual([1, 2]);
+    expect(times).toEqual([0, 1000, 3000, 7000]);
+  });
+
+  it('waits 1000, 2000 and 4000 ms between attempts that fail with a network error', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const times: number[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation((async () => {
+      times.push(Date.now());
+      if (times.length < 4) throw new Error('fetch failed');
+      return okResponse;
+    }) as unknown as typeof fetch);
+
+    const pending = new OpenAIEmbeddingService('sk-test').embed('hello');
+    await vi.advanceTimersByTimeAsync(7000);
+
+    expect(await pending).toEqual([1, 2]);
+    expect(times).toEqual([0, 1000, 3000, 7000]);
+  });
+});

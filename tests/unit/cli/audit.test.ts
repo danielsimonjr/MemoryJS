@@ -7,6 +7,7 @@
  * override, --file override) and --since/--until time-spec parsing.
  */
 
+import { createCliHarness, cleanupCliHarness, errorLines, type CliHarness } from './helpers/cliTestHarness.js';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Command } from 'commander';
 import { promises as fs } from 'node:fs';
@@ -399,5 +400,20 @@ describe('AuditLog additive query filters (text + limit)', () => {
     expect(await log.query({ limit: 0 })).toHaveLength(3);
     expect(await log.query({ limit: -5 })).toHaveLength(3);
     expect(await log.query({ limit: Number.NaN })).toHaveLength(3);
+  });
+});
+
+describe('audit stats error path', () => {
+  it('logs the error once, then exits 1 when the audit log is unreadable', async () => {
+    const h = await createCliHarness(registerAuditCommands);
+    try {
+      // The audit log sits beside the storage file. A directory there makes the read fail with EISDIR.
+      await fs.mkdir(join(h.testDir, 'graph-audit.jsonl'));
+      await expect(h.parse(['audit', 'stats'])).rejects.toThrow('process.exit called');
+      expect(errorLines(h.errorSpy)).toEqual(['[ERROR] ✗ EISDIR: illegal operation on a directory, read']);
+      expect(h.processExitSpy).toHaveBeenCalledWith(1);
+    } finally {
+      await cleanupCliHarness(h);
+    }
   });
 });

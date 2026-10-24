@@ -395,3 +395,18 @@ describe('3B.4 Procedural Memory', () => {
     });
   });
 });
+
+describe('ProcedureManager.matchProcedure scores (pinned)', () => {
+  // matchProcedure reads no instance field, so the prototype is enough.
+  const manager = Object.create(ProcedureManager.prototype) as unknown as {
+    matchProcedure(context: string, candidates: Procedure[], threshold?: number): Promise<Array<{ score: number }>>;
+  };
+  const procedure = (name: string) => ({ id: name, name, triggers: [], steps: [] }) as unknown as Procedure;
+
+  it('returns literal scores and skips empty sides', async () => {
+    const matches = await manager.matchProcedure('alpha beta gamma', [procedure('beta gamma delta epsilon')], 0);
+    expect(matches.map((m) => m.score)).toEqual([0.4]);
+    expect(await manager.matchProcedure('a b', [procedure('alpha beta')], 0)).toEqual([]);
+    expect(await manager.matchProcedure('alpha beta', [procedure('a')], 0)).toEqual([]);
+  });
+});

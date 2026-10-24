@@ -973,3 +973,39 @@ describe('ProceduralGraphEvolution', () => {
     expect(secondResult.rounds.some((r) => r.round === 0)).toBe(false);
   });
 });
+
+describe('ProceduralGraphEvolution training batch sizes', () => {
+  const threeTasks = [task('train-a'), task('train-b'), task('train-c')];
+  const queue = () => [editsJson(addActionEdits('lookup', 'alpha')), editsJson(addActionEdits('search', 'beta')), editsJson(addActionEdits('scan', 'gamma'))];
+
+  it('batch size 1 rolls out every training task once', async () => {
+    const h = await createHarness({ refinerQueue: queue(), scoreByDigest: new Map() });
+    await h.evolution.run(baseOptions({ batchSize: 1, trainingTasks: threeTasks, maxRounds: 5 }));
+    expect(h.rolloutCalls).toBe(3);
+  });
+
+  it('batch size 2 groups the training tasks into two batches', async () => {
+    const h = await createHarness({ refinerQueue: queue(), scoreByDigest: new Map() });
+    const result = await h.evolution.run(baseOptions({ batchSize: 2, trainingTasks: threeTasks, maxRounds: 5 }));
+    expect(result.rounds.filter((r) => r.round > 0)).toHaveLength(2);
+    expect(h.rolloutCalls).toBe(3);
+  });
+
+  it('a NaN batch size yields one empty batch, so no training task is rolled out', async () => {
+    const h = await createHarness({ refinerQueue: queue(), scoreByDigest: new Map() });
+    await h.evolution.run(baseOptions({ batchSize: Number.NaN, trainingTasks: threeTasks, maxRounds: 5 }));
+    expect(h.rolloutCalls).toBe(0);
+  });
+});
+
+describe('ProceduralGraphEvolution training batch size floor (review pins)', () => {
+  const threeTasks = [task('train-a'), task('train-b'), task('train-c')];
+  const queue = () => [editsJson(addActionEdits('lookup', 'alpha')), editsJson(addActionEdits('search', 'beta')), editsJson(addActionEdits('scan', 'gamma'))];
+
+  it.each([0, -3])('a batch size of %d groups the training tasks like a batch size of 1', async (batchSize) => {
+    const h = await createHarness({ refinerQueue: queue(), scoreByDigest: new Map() });
+    const result = await h.evolution.run(baseOptions({ batchSize, trainingTasks: threeTasks, maxRounds: 5 }));
+    expect(h.rolloutCalls).toBe(3);
+    expect(result.rounds.filter((r) => r.round > 0)).toHaveLength(3);
+  });
+});

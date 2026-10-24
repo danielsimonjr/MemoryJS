@@ -28,7 +28,9 @@ import {
   isReflectionMemory,
 } from '../types/agent-memory.js';
 import { tokenizeStripped } from '../utils/textSimilarity.js';
+import { hash31 } from '../utils/entityUtils.js';
 import type { WorkingMemoryManager } from './WorkingMemoryManager.js';
+import { requireWorkingMemoryEntity } from './workingMemoryGuard.js';
 import type { DecayEngine } from './DecayEngine.js';
 import { SummarizationService } from './SummarizationService.js';
 import { PatternDetector } from './PatternDetector.js';
@@ -318,19 +320,7 @@ export class ConsolidationPipeline {
     entityName: string,
     targetType: MemoryType
   ): Promise<AgentEntity> {
-    const entity = this.storage.getEntityByName(entityName);
-    if (!entity) {
-      throw new Error(`Entity not found: ${entityName}`);
-    }
-
-    if (!isAgentEntity(entity)) {
-      throw new Error(`Entity is not an AgentEntity: ${entityName}`);
-    }
-
-    const agentEntity = entity as AgentEntity;
-    if (agentEntity.memoryType !== 'working') {
-      throw new Error(`Entity is not working memory: ${entityName}`);
-    }
+    const agentEntity = requireWorkingMemoryEntity(this.storage, entityName);
 
     const now = new Date().toISOString();
     const updates: Partial<AgentEntity> = {
@@ -763,12 +753,7 @@ export class ConsolidationPipeline {
    * @internal
    */
   private hashPattern(pattern: string): string {
-    let hash = 0;
-    for (let i = 0; i < pattern.length; i++) {
-      hash = ((hash << 5) - hash) + pattern.charCodeAt(i);
-      hash = hash & hash;
-    }
-    return Math.abs(hash).toString(16).slice(0, 8);
+    return Math.abs(hash31(pattern)).toString(16).slice(0, 8);
   }
 
   // ==================== Memory Merging ====================

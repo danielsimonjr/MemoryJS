@@ -26,6 +26,7 @@ import type { IGraphStorage, Entity } from '../../../src/types/types.js';
 import type { FailureRecord, FailureEntity } from '../../../src/types/agent-memory.js';
 import { isFailureMemory } from '../../../src/types/agent-memory.js';
 import { VersionConflictError, EntityNotFoundError } from '../../../src/utils/errors.js';
+import { microtaskTicks } from '../../test-utils/microtask-ticks.js';
 
 /** FailureManager doesn't read relations; mock only the entity surface. */
 function createMockStorage(initialEntities: Entity[] = []): IGraphStorage {
@@ -306,6 +307,31 @@ describe('FailureManager', () => {
     });
   });
 
+  describe('markResolved (pinned before the extraction)', () => {
+    it('keeps the reason key only when a reason is given', async () => {
+      const withReason = await fm.record(validInput({ context: 'Failure with reason' }));
+      await fm.markResolved(withReason.id, 'fixed');
+      const lifecycleA = ((await storage.getEntityByName(withReason.id)) as FailureEntity).failureRecord.lifecycle;
+      expect(Object.keys(lifecycleA)).toEqual(['status', 'resolvedAt', 'resolvedReason']);
+
+      const noReason = await fm.record(validInput({ context: 'Failure without reason' }));
+      await fm.markResolved(noReason.id);
+      const lifecycleB = ((await storage.getEntityByName(noReason.id)) as FailureEntity).failureRecord.lifecycle;
+      expect(Object.keys(lifecycleB)).toEqual(['status', 'resolvedAt']);
+    });
+
+    it('sends the stored version as expectedVersion and two patch keys', async () => {
+      const rec = await fm.record(validInput({ context: 'Failure for the call shape' }));
+      await fm.markResolved(rec.id, 'fixed');
+      const update = entityManager.updateEntity as ReturnType<typeof vi.fn>;
+      expect(update).toHaveBeenCalledTimes(1);
+      const [name, patch, options] = update.mock.calls[0];
+      expect(name).toBe(rec.id);
+      expect(Object.keys(patch)).toEqual(['failureRecord', 'lastModified']);
+      expect(options).toStrictEqual({ expectedVersion: 1 });
+    });
+  });
+
   // ==================== getAll() ====================
 
   describe('getAll', () => {
@@ -375,6 +401,156 @@ describe('FailureManager', () => {
           // failureRecord missing
         })
       ).toBe(false);
+    });
+  });
+});
+
+/**
+ * Microtask turns until each result settles, counted by microtaskTicks on V8.
+ * A different count changes the order in which waiting callers resume.
+ */
+const FAILURE_TICKS = {
+  resolved: 2,
+  notFound: 1,
+  alreadyResolved: 1,
+  conflict: 2,
+  vanished: 2,
+  rejected: 2,
+};
+
+describe('FailureManager markResolved write errors', () => {
+  /** Seeds one failure, then builds a manager whose entity manager runs `write`. */
+  async function withWrite(write: (...args: unknown[]) => unknown) {
+    const storage = createMockStorage();
+    const rec = await new FailureManager(storage, createFakeEntityManager(storage)).record(validInput());
+    const calls: Array<{ self: unknown; args: unknown[] }> = [];
+    const entityManager: { updateEntity(...args: unknown[]): unknown } = {
+      updateEntity(this: unknown, ...args: unknown[]) {
+        calls.push({ self: this, args });
+        return write(...args);
+      },
+    };
+    const fm = new FailureManager(storage, entityManager as unknown as EntityManager);
+    return { fm, id: rec.id, storage, calls, entityManager };
+  }
+
+  it('rethrows an error that is not a conflict or a missing entity', async () => {
+    const boom = new Error('boom');
+    const { fm, id } = await withWrite(async () => {
+      throw boom;
+    });
+    await expect(fm.markResolved(id)).rejects.toBe(boom);
+  });
+
+  it('rethrows a rejection that is not an Error', async () => {
+    const { fm, id } = await withWrite(() => Promise.reject('plain text'));
+    await expect(fm.markResolved(id)).rejects.toBe('plain text');
+  });
+
+  it('maps errors that the entity manager throws before it returns a promise', async () => {
+    const conflict = await withWrite(() => {
+      throw new VersionConflictError('x', 1, 2);
+    });
+    expect(await conflict.fm.markResolved(conflict.id)).toBe('conflict');
+    const vanished = await withWrite(() => {
+      throw new EntityNotFoundError('x');
+    });
+    expect(await vanished.fm.markResolved(vanished.id)).toBe('vanished-mid-update');
+    const boom = new Error('sync boom');
+    const other = await withWrite(() => {
+      throw boom;
+    });
+    await expect(other.fm.markResolved(other.id)).rejects.toBe(boom);
+  });
+
+  it('maps a rejection with a subclass of the conflict error', async () => {
+    class LateConflict extends VersionConflictError {}
+    const { fm, id } = await withWrite(() => Promise.reject(new LateConflict('x', 1, 2)));
+    expect(await fm.markResolved(id)).toBe('conflict');
+  });
+
+  it('calls updateEntity as a method of the entity manager, with the id, the patch and the version', async () => {
+    const { fm, id, calls, entityManager, storage } = await withWrite(async () => ({}));
+    (storage.getEntityByName(id) as Entity).version = 4;
+    expect(await fm.markResolved(id, 'fixed')).toBe('resolved');
+    expect(calls).toHaveLength(1);
+    expect(calls[0].self).toBe(entityManager);
+    const [name, patch, options] = calls[0].args as [string, Record<string, unknown>, unknown];
+    expect(name).toBe(id);
+    expect(Object.keys(patch)).toEqual(['failureRecord', 'lastModified']);
+    expect(options).toStrictEqual({ expectedVersion: 4 });
+  });
+
+  it('sends version 1 when the entity has no version', async () => {
+    const { fm, id, calls } = await withWrite(async () => ({}));
+    await fm.markResolved(id);
+    expect(calls[0].args[2]).toStrictEqual({ expectedVersion: 1 });
+  });
+
+  it('stores one timestamp in the lifecycle and in lastModified', async () => {
+    const { fm, id, calls } = await withWrite(async () => ({}));
+    await fm.markResolved(id, 'fixed');
+    const patch = calls[0].args[1] as { failureRecord: FailureRecord; lastModified: string };
+    const lifecycle = patch.failureRecord.lifecycle as { resolvedAt: string };
+    expect(lifecycle.resolvedAt).toBe(patch.lastModified);
+  });
+
+  it('does not call updateEntity for an unknown id', async () => {
+    const { fm, calls } = await withWrite(async () => ({}));
+    expect(await fm.markResolved('failure-missing')).toBe('not-found');
+    expect(calls).toHaveLength(0);
+  });
+
+  describe('settle timing', () => {
+    it('resolved settles after the expected number of microtask turns', async () => {
+      const { fm, id } = await withWrite(async () => ({}));
+      const pending = fm.markResolved(id);
+      expect(await microtaskTicks(pending)).toBe(FAILURE_TICKS.resolved);
+      expect(await pending).toBe('resolved');
+    });
+
+    it('not-found settles after the expected number of turns', async () => {
+      const { fm } = await withWrite(async () => ({}));
+      const pending = fm.markResolved('failure-missing');
+      expect(await microtaskTicks(pending)).toBe(FAILURE_TICKS.notFound);
+      expect(await pending).toBe('not-found');
+    });
+
+    it('already-resolved settles after the expected number of turns', async () => {
+      const storage = createMockStorage();
+      const fm = new FailureManager(storage, createFakeEntityManager(storage));
+      const rec = await fm.record(validInput());
+      await fm.markResolved(rec.id);
+      const pending = fm.markResolved(rec.id);
+      expect(await microtaskTicks(pending)).toBe(FAILURE_TICKS.alreadyResolved);
+      expect(await pending).toBe('already-resolved');
+    });
+
+    it('conflict settles after the expected number of turns', async () => {
+      const { fm, id } = await withWrite(async () => {
+        throw new VersionConflictError('x', 1, 2);
+      });
+      const pending = fm.markResolved(id);
+      expect(await microtaskTicks(pending)).toBe(FAILURE_TICKS.conflict);
+      expect(await pending).toBe('conflict');
+    });
+
+    it('vanished-mid-update settles after the expected number of turns', async () => {
+      const { fm, id } = await withWrite(async () => {
+        throw new EntityNotFoundError('x');
+      });
+      const pending = fm.markResolved(id);
+      expect(await microtaskTicks(pending)).toBe(FAILURE_TICKS.vanished);
+      expect(await pending).toBe('vanished-mid-update');
+    });
+
+    it('a rethrown error rejects after the expected number of turns', async () => {
+      const { fm, id } = await withWrite(async () => {
+        throw new Error('boom');
+      });
+      const pending = fm.markResolved(id);
+      expect(await microtaskTicks(pending)).toBe(FAILURE_TICKS.rejected);
+      await expect(pending).rejects.toThrow('boom');
     });
   });
 });

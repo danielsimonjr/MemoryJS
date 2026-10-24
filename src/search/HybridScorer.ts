@@ -3,6 +3,7 @@
  * @module search/HybridScorer
  */
 
+import { minMaxNormalize } from '../utils/searchAlgorithms.js';
 import type { Entity } from '../types/index.js';
 
 /**
@@ -114,36 +115,7 @@ export class HybridScorer {
 
   /** Min-max normalize scores to 0-1 range. */
   minMaxNormalize(scores: Map<string, number>): Map<string, number> {
-    if (scores.size === 0) {
-      return new Map();
-    }
-
-    // Find min and max
-    let min = Infinity;
-    let max = -Infinity;
-    for (const score of scores.values()) {
-      if (score < min) min = score;
-      if (score > max) max = score;
-    }
-
-    // Handle edge case where all scores are the same
-    if (max === min) {
-      const normalized = new Map<string, number>();
-      for (const name of scores.keys()) {
-        // If all scores are zero, keep them zero; otherwise normalize to 1
-        normalized.set(name, max === 0 ? 0 : 1);
-      }
-      return normalized;
-    }
-
-    // Normalize
-    const range = max - min;
-    const normalized = new Map<string, number>();
-    for (const [name, score] of scores) {
-      normalized.set(name, (score - min) / range);
-    }
-
-    return normalized;
+    return minMaxNormalize(scores);
   }
 
   /**

@@ -15,6 +15,8 @@ import {
   OPENAI_API_CONFIG,
   getEmbeddingConfig,
 } from '../utils/constants.js';
+import { hash31 } from '../utils/entityUtils.js';
+import { sleep } from '../utils/timing.js';
 
 /**
  * Phase 12 Sprint 5: Prefixes for query-optimized embedding encoding.
@@ -60,6 +62,42 @@ export function l2Normalize(vector: number[]): number[] {
   }
 
   return vector.map(v => v / magnitude);
+}
+
+/**
+ * Embeds each text and reports progress after every text.
+ * It calls embed for each text in input order, one at a time.
+ *
+ * @param texts - The list of texts to embed.
+ * @param mode - The embedding mode to pass to each embed call.
+ * @param embed - The function that returns one embedding for one text.
+ * @param onProgress - Optional. Receives the current count, total, and percentage after each text.
+ * @returns The list of embeddings in the same order as the input.
+ */
+async function embedEachWithProgress(
+  texts: string[],
+  mode: EmbeddingMode,
+  embed: (text: string, mode: EmbeddingMode) => Promise<number[]>,
+  onProgress?: EmbeddingProgressCallback
+): Promise<number[][]> {
+  const results: number[][] = [];
+  const total = texts.length;
+
+  for (let i = 0; i < texts.length; i++) {
+    const embedding = await embed(texts[i], mode);
+    results.push(embedding);
+
+    // Report progress
+    if (onProgress) {
+      const current = i + 1;
+      onProgress({
+        current,
+        total,
+        percentage: Math.round((current / total) * 100),
+      });
+    }
+  }
+  return results;
 }
 
 /**
@@ -135,24 +173,7 @@ export class OpenAIEmbeddingService implements EmbeddingService {
    * @returns Array of embedding vectors
    */
   async embedBatch(texts: string[], mode: EmbeddingMode = 'document'): Promise<number[][]> {
-    if (texts.length === 0) {
-      return [];
-    }
-
-    // Apply prefix based on mode
-    const prefixedTexts = texts.map(text => this.applyPrefix(text, mode));
-
-    // Split into batches if needed
-    const maxBatchSize = EMBEDDING_DEFAULTS.OPENAI_MAX_BATCH_SIZE;
-    const results: number[][] = [];
-
-    for (let i = 0; i < prefixedTexts.length; i += maxBatchSize) {
-      const batch = prefixedTexts.slice(i, i + maxBatchSize);
-      const batchResults = await this.embedBatchInternal(batch);
-      results.push(...batchResults);
-    }
-
-    return results;
+    return this.embedBatchWithProgress(texts, mode);
   }
 
   /**
@@ -231,7 +252,7 @@ export class OpenAIEmbeddingService implements EmbeddingService {
           // Handle rate limiting
           if (response.status === 429) {
             if (attempt < OPENAI_API_CONFIG.MAX_RETRIES) {
-              await this.sleep(backoff);
+              await sleep(backoff);
               backoff = Math.min(backoff * 2, OPENAI_API_CONFIG.MAX_BACKOFF_MS);
               continue;
             }
@@ -250,7 +271,7 @@ export class OpenAIEmbeddingService implements EmbeddingService {
 
         // Retry on network errors
         if (attempt < OPENAI_API_CONFIG.MAX_RETRIES && this.isRetryableError(error)) {
-          await this.sleep(backoff);
+          await sleep(backoff);
           backoff = Math.min(backoff * 2, OPENAI_API_CONFIG.MAX_BACKOFF_MS);
           continue;
         }
@@ -273,13 +294,6 @@ export class OpenAIEmbeddingService implements EmbeddingService {
              error.message.includes('429');
     }
     return false;
-  }
-
-  /**
-   * Sleep for a given duration.
-   */
-  private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
   }
 }
 
@@ -706,14 +720,7 @@ export class LocalEmbeddingService implements EmbeddingService {
    * @returns Array of embedding vectors
    */
   async embedBatch(texts: string[], mode: EmbeddingMode = 'document'): Promise<number[][]> {
-    await this.ensureInitialized();
-
-    const results: number[][] = [];
-    for (const text of texts) {
-      const embedding = await this.embed(text, mode);
-      results.push(embedding);
-    }
-    return results;
+    return this.embedBatchWithProgress(texts, mode);
   }
 
   /**
@@ -732,25 +739,7 @@ export class LocalEmbeddingService implements EmbeddingService {
     onProgress?: EmbeddingProgressCallback
   ): Promise<number[][]> {
     await this.ensureInitialized();
-
-    const results: number[][] = [];
-    const total = texts.length;
-
-    for (let i = 0; i < texts.length; i++) {
-      const embedding = await this.embed(texts[i], mode);
-      results.push(embedding);
-
-      // Report progress
-      if (onProgress) {
-        const current = i + 1;
-        onProgress({
-          current,
-          total,
-          percentage: Math.round((current / total) * 100),
-        });
-      }
-    }
-    return results;
+    return embedEachWithProgress(texts, mode, (text, m) => this.embed(text, m), onProgress);
   }
 
   /**
@@ -853,37 +842,14 @@ export class MockEmbeddingService implements EmbeddingService {
     mode: EmbeddingMode = 'document',
     onProgress?: EmbeddingProgressCallback
   ): Promise<number[][]> {
-    const results: number[][] = [];
-    const total = texts.length;
-
-    for (let i = 0; i < texts.length; i++) {
-      const embedding = await this.embed(texts[i], mode);
-      results.push(embedding);
-
-      // Report progress
-      if (onProgress) {
-        const current = i + 1;
-        onProgress({
-          current,
-          total,
-          percentage: Math.round((current / total) * 100),
-        });
-      }
-    }
-    return results;
+    return embedEachWithProgress(texts, mode, (text, m) => this.embed(text, m), onProgress);
   }
 
   /**
    * Simple string hash function.
    */
   private hashString(str: string): number {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32bit integer
-    }
-    return hash;
+    return hash31(str);
   }
 
   /**

@@ -65,7 +65,7 @@ For a runnable CLI (`memory` / `memoryjs`): `bunx --package @danielsimonjr/memor
 | TF-IDF + BM25 ranked search (incremental indexing) | `ctx.rankedSearch`, `BM25Search` |
 | Boolean (AND / OR / NOT) with AST parser | `ctx.searchManager.booleanSearch()` |
 | Fuzzy matching (Levenshtein, N-gram pre-filtered) | `ctx.searchManager.fuzzySearch()` |
-| Semantic search with pluggable embedding provider | `ctx.semanticSearch` (set `MEMORY_EMBEDDING_PROVIDER`) |
+| Semantic search with pluggable embedding provider; SQLite keeps vectors in the `embeddings` table and reuses them across restarts | `ctx.semanticSearch` (set `MEMORY_EMBEDDING_PROVIDER`) |
 | Hybrid (semantic + lexical + symbolic + opt-in graph connectivity) | `ctx.hybridSearchManager.search(graph, query, options)` |
 | Graph-connectivity ranking signal (cached normalized PageRank) | `ctx.graphRankPrior` + `MEMORY_HYBRID_GRAPH_WEIGHT` / `MEMORY_RANKED_GRAPH_BOOST` |
 | Traceable evidence paths — *why* each result matched | `ctx.hybridSearchManager.search(graph, query, { explain: true })` → `evidencePaths` |
@@ -88,7 +88,7 @@ For a runnable CLI (`memory` / `memoryjs`): `bunx --package @danielsimonjr/memor
 | Capability | Entry point |
 |---|---|
 | Sessions, working memory, episodic memory | `ctx.agentMemory()` — `startSession` / `addWorkingMemory` / `retrieveForContext` |
-| Turn-aware conversation memory with 4-tier dedup (exact / prefix / Jaccard / semantic) | `ctx.memoryEngine.addTurn()` / `getSessionTurns()` |
+| Turn-aware conversation memory with 4-tier dedup (exact / prefix / Jaccard / semantic) | `ctx.memoryEngine.addTurn()` / `getSessionTurns()` / `getRepeatedTurnCount()` |
 | Decay, salience, freshness | `DecayEngine`, `SalienceEngine`, `ctx.freshnessManager` |
 | Role profiles — `researcher` / `planner` / `executor` / `reviewer` / `coordinator` | `MEMORY_AGENT_ROLE` or `RoleProfileManager.apply(role)` |
 | Memory consolidation, summarization, pattern detection | `ConsolidationPipeline`, `ConsolidationScheduler` |
@@ -520,7 +520,7 @@ When using JSONL, related files are automatically created:
 | `searchManager.fuzzySearch(query)` | Levenshtein + N-gram pre-filter | Typo tolerance |
 | `searchManager.searchByTime(query)` | Natural-language time ranges (`chrono-node`) | "last hour", "since 2024-01-01" |
 | `rankedSearch.searchNodesRanked(query, ...)` | TF-IDF / BM25 ranking | Most-relevant ordering |
-| `semanticSearch.search(query)` | Vector similarity (requires embedding provider) | Semantic queries |
+| `semanticSearch.search(query)` | Vector similarity (requires embedding provider); persistent on SQLite | Semantic queries |
 | `new HybridSearchManager(...).search(query)` | Semantic + lexical + symbolic | Multi-signal ranking |
 | `activeRetrieval.adaptiveRetrieve({ query })` | Iterative query rewriting + coverage check | Adaptive refinement |
 | `queryNaturalLanguage(query, llmProvider?)` | LLM-planned NL decomposition (fallback: keyword) | Free-text queries |

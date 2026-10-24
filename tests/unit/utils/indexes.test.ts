@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { NameIndex, TypeIndex, LowercaseCache, RelationIndex, ObservationIndex } from '../../../src/utils/indexes.js';
+import { NameIndex, TypeIndex, LowercaseCache, RelationIndex, ObservationIndex, computeLowercase } from '../../../src/utils/indexes.js';
 import type { Entity, Relation } from '../../../src/types/index.js';
 
 const createEntity = (name: string, type: string, observations: string[] = [], tags?: string[]): Entity => ({
@@ -280,6 +280,77 @@ describe('LowercaseCache', () => {
       cache.clear();
       expect(cache.size).toBe(0);
     });
+  });
+});
+
+describe('LowercaseCache output', () => {
+  let cache: LowercaseCache;
+
+  beforeEach(() => {
+    cache = new LowercaseCache();
+  });
+
+  it('lowercases the name, type, observations and tags of a mixed-case entity', () => {
+    cache.set(createEntity('Alice Smith', 'PERSON Type', ['Likes TEA', 'Works At ACME'], ['VIP', 'Team-A']));
+
+    expect(cache.get('Alice Smith')).toEqual({
+      name: 'alice smith',
+      entityType: 'person type',
+      observations: ['likes tea', 'works at acme'],
+      tags: ['vip', 'team-a'],
+    });
+  });
+
+  it('returns an empty tag list for an entity without tags', () => {
+    cache.set(createEntity('Bob', 'Dog', []));
+
+    expect(cache.get('Bob')).toEqual({
+      name: 'bob',
+      entityType: 'dog',
+      observations: [],
+      tags: [],
+    });
+  });
+
+  it('applies the JavaScript lowercase rule to U+0130 (two code units out)', () => {
+    cache.set(createEntity('İstanbul', 'City', []));
+
+    expect(cache.get('İstanbul')!.name).toBe('i̇stanbul');
+  });
+});
+
+describe('computeLowercase', () => {
+  it('lowercases the name, type, observations and tags of a mixed-case entity', () => {
+    const entity = createEntity('Alice Smith', 'PERSON Type', ['Likes TEA', 'Works At ACME'], ['VIP', 'Team-A']);
+
+    expect(computeLowercase(entity)).toEqual({
+      name: 'alice smith',
+      entityType: 'person type',
+      observations: ['likes tea', 'works at acme'],
+      tags: ['vip', 'team-a'],
+    });
+  });
+
+  it('returns an empty tag list for an entity without tags', () => {
+    expect(computeLowercase(createEntity('Bob', 'Dog', []))).toEqual({
+      name: 'bob',
+      entityType: 'dog',
+      observations: [],
+      tags: [],
+    });
+  });
+
+  it('applies the JavaScript lowercase rule to U+0130 (two code units out)', () => {
+    expect(computeLowercase(createEntity('İstanbul', 'City', [])).name).toBe('i̇stanbul');
+  });
+
+  it('returns the same value that LowercaseCache stores for the entity', () => {
+    const cache = new LowercaseCache();
+    const entity = createEntity('Carol', 'Person', ['Ships Fast'], ['Core']);
+
+    cache.set(entity);
+
+    expect(cache.get(entity.name)).toEqual(computeLowercase(entity));
   });
 });
 

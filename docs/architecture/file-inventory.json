@@ -1,12 +1,12 @@
 {
-  "generated": "2026-10-18",
-  "totalFiles": 687,
+  "generated": "2026-10-24",
+  "totalFiles": 722,
   "byDisposition": {
-    "reachable": 288,
+    "reachable": 299,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 379,
+    "test": 403,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -14,8 +14,8 @@
   },
   "byArea": {
     "benchmarks": 4,
-    "src": 292,
-    "tests": 379,
+    "src": 303,
+    "tests": 403,
     "tools": 10,
     "config": 2
   },
@@ -102,7 +102,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 435
+      "loc": 431
     },
     {
       "file": "src/agent/AgentMemoryConfig.ts",
@@ -123,7 +123,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 307
+      "loc": 305
     },
     {
       "file": "src/agent/ArtifactManager.ts",
@@ -137,7 +137,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 246
+      "loc": 254
     },
     {
       "file": "src/agent/causal/index.ts",
@@ -151,7 +151,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 336
+      "loc": 331
     },
     {
       "file": "src/agent/collaboration/CollaborationAuditEnforcer.ts",
@@ -172,7 +172,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 484
+      "loc": 467
     },
     {
       "file": "src/agent/connectivity.ts",
@@ -186,7 +186,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1899
+      "loc": 1884
     },
     {
       "file": "src/agent/ConsolidationScheduler.ts",
@@ -200,28 +200,28 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 266
+      "loc": 301
     },
     {
       "file": "src/agent/ContextWindowManager.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1698
+      "loc": 1933
     },
     {
       "file": "src/agent/DecayEngine.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 763
+      "loc": 757
     },
     {
       "file": "src/agent/DecayScheduler.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 229
+      "loc": 242
     },
     {
       "file": "src/agent/DecisionManager.ts",
@@ -263,7 +263,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 566
+      "loc": 535
     },
     {
       "file": "src/agent/events/EventManager.ts",
@@ -305,14 +305,14 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 312
+      "loc": 310
     },
     {
       "file": "src/agent/HeuristicManager.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 356
+      "loc": 354
     },
     {
       "file": "src/agent/ImportanceScorer.ts",
@@ -326,7 +326,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 605
+      "loc": 608
     },
     {
       "file": "src/agent/InMemoryBackend.ts",
@@ -334,6 +334,13 @@
       "area": "src",
       "disposition": "reachable",
       "loc": 125
+    },
+    {
+      "file": "src/agent/keyValueLine.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 63
     },
     {
       "file": "src/agent/MemoryBackend.ts",
@@ -347,7 +354,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 585
+      "loc": 598
     },
     {
       "file": "src/agent/MemoryFormatter.ts",
@@ -368,14 +375,14 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1164
+      "loc": 1149
     },
     {
       "file": "src/agent/ObservationDedupManager.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 264
+      "loc": 261
     },
     {
       "file": "src/agent/ObserverPipeline.ts",
@@ -396,7 +403,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 516
+      "loc": 528
     },
     {
       "file": "src/agent/procedural/graph/backing/index.ts",
@@ -480,7 +487,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 902
+      "loc": 898
     },
     {
       "file": "src/agent/procedural/graph/ProceduralGraphManager.ts",
@@ -564,14 +571,14 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 239
+      "loc": 236
     },
     {
       "file": "src/agent/procedural/ProcedureStore.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 472
+      "loc": 450
     },
     {
       "file": "src/agent/procedural/StepSequencer.ts",
@@ -739,7 +746,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 714
+      "loc": 692
     },
     {
       "file": "src/agent/SessionManager.ts",
@@ -767,7 +774,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 294
+      "loc": 341
     },
     {
       "file": "src/agent/ToolAffordanceManager.ts",
@@ -791,6 +798,13 @@
       "loc": 326
     },
     {
+      "file": "src/agent/versionedWriteFailure.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 26
+    },
+    {
       "file": "src/agent/VisibilityResolver.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
@@ -798,18 +812,25 @@
       "loc": 104
     },
     {
+      "file": "src/agent/workingMemoryGuard.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 39
+    },
+    {
       "file": "src/agent/WorkingMemoryManager.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 865
+      "loc": 813
     },
     {
       "file": "src/agent/WorkThreadManager.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 831
+      "loc": 812
     },
     {
       "file": "src/agent/world/index.ts",
@@ -851,21 +872,21 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 180
+      "loc": 172
     },
     {
       "file": "src/cli/commands/decision.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 239
+      "loc": 185
     },
     {
       "file": "src/cli/commands/diag.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 308
+      "loc": 294
     },
     {
       "file": "src/cli/commands/doctor.ts",
@@ -879,42 +900,42 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 165
+      "loc": 115
     },
     {
       "file": "src/cli/commands/exclusion.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 122
+      "loc": 113
     },
     {
       "file": "src/cli/commands/graph.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 106
+      "loc": 79
     },
     {
       "file": "src/cli/commands/helpers.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 32
+      "loc": 69
     },
     {
       "file": "src/cli/commands/heuristic.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 197
+      "loc": 125
     },
     {
       "file": "src/cli/commands/hierarchy.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 111
+      "loc": 66
     },
     {
       "file": "src/cli/commands/index.ts",
@@ -928,42 +949,42 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 292
+      "loc": 260
     },
     {
       "file": "src/cli/commands/io.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 89
+      "loc": 71
     },
     {
       "file": "src/cli/commands/maintenance.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 206
+      "loc": 188
     },
     {
       "file": "src/cli/commands/observation.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 107
+      "loc": 80
     },
     {
       "file": "src/cli/commands/observationDedup.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 99
+      "loc": 83
     },
     {
       "file": "src/cli/commands/projectContext.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 142
+      "loc": 102
     },
     {
       "file": "src/cli/commands/reindex.ts",
@@ -977,7 +998,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 88
+      "loc": 61
     },
     {
       "file": "src/cli/commands/search.ts",
@@ -998,14 +1019,14 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 79
+      "loc": 55
     },
     {
       "file": "src/cli/commands/tag.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 110
+      "loc": 74
     },
     {
       "file": "src/cli/commands/toolAffordance.ts",
@@ -1026,7 +1047,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 370
+      "loc": 362
     },
     {
       "file": "src/cli/index.ts",
@@ -1061,7 +1082,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 270
+      "loc": 251
     },
     {
       "file": "src/core/EntityManager.ts",
@@ -1089,21 +1110,21 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1968
+      "loc": 1875
     },
     {
       "file": "src/core/GraphTraversal.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1421
+      "loc": 1409
     },
     {
       "file": "src/core/HierarchyManager.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 301
+      "loc": 305
     },
     {
       "file": "src/core/index.ts",
@@ -1117,7 +1138,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1810
+      "loc": 1823
     },
     {
       "file": "src/core/mmap/FsReadMmapBackend.ts",
@@ -1159,7 +1180,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 624
+      "loc": 620
     },
     {
       "file": "src/core/RefIndex.ts",
@@ -1180,14 +1201,14 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 685
+      "loc": 661
     },
     {
       "file": "src/core/segments/ISegmentStorage.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 266
+      "loc": 279
     },
     {
       "file": "src/core/sqlite-register.ts",
@@ -1201,7 +1222,14 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 2492
+      "loc": 2520
+    },
+    {
+      "file": "src/core/storageCache.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 153
     },
     {
       "file": "src/core/StorageFactory.ts",
@@ -1215,7 +1243,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 766
+      "loc": 760
     },
     {
       "file": "src/core/TransitionLedger.ts",
@@ -1250,7 +1278,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 272
+      "loc": 263
     },
     {
       "file": "src/features/BackupManager.ts",
@@ -1264,7 +1292,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 689
+      "loc": 686
     },
     {
       "file": "src/features/ContradictionDetector.ts",
@@ -1292,7 +1320,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 694
+      "loc": 714
     },
     {
       "file": "src/features/index.ts",
@@ -1306,7 +1334,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 2125
+      "loc": 2106
     },
     {
       "file": "src/features/KeywordExtractor.ts",
@@ -1341,14 +1369,14 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 340
+      "loc": 339
     },
     {
       "file": "src/features/TagManager.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 260
+      "loc": 253
     },
     {
       "file": "src/index.ts",
@@ -1383,14 +1411,14 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 547
+      "loc": 536
     },
     {
       "file": "src/search/BooleanSearch.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 586
+      "loc": 572
     },
     {
       "file": "src/search/EarlyTerminationManager.ts",
@@ -1404,56 +1432,70 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 352
+      "loc": 347
     },
     {
       "file": "src/search/EmbeddingService.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 946
+      "loc": 912
     },
     {
       "file": "src/search/EvidencePathBuilder.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 234
+      "loc": 222
+    },
+    {
+      "file": "src/search/ftsCandidates.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 50
     },
     {
       "file": "src/search/FuzzySearch.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 657
+      "loc": 637
     },
     {
       "file": "src/search/GraphRankPrior.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 393
+      "loc": 361
+    },
+    {
+      "file": "src/search/hybridLayers.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 66
     },
     {
       "file": "src/search/HybridScorer.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 355
+      "loc": 327
     },
     {
       "file": "src/search/HybridSearchManager.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 609
+      "loc": 602
     },
     {
       "file": "src/search/IncrementalIndexer.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 439
+      "loc": 440
     },
     {
       "file": "src/search/index.ts",
@@ -1509,7 +1551,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 598
+      "loc": 581
     },
     {
       "file": "src/search/PartialIndexAdvisor.ts",
@@ -1544,7 +1586,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 792
+      "loc": 795
     },
     {
       "file": "src/search/QueryLogger.ts",
@@ -1565,7 +1607,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 515
+      "loc": 500
     },
     {
       "file": "src/search/QueryPlanFormatter.ts",
@@ -1586,7 +1628,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 548
+      "loc": 532
     },
     {
       "file": "src/search/ReflectionManager.ts",
@@ -1600,21 +1642,21 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 225
+      "loc": 218
     },
     {
       "file": "src/search/SearchFilterChain.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 285
+      "loc": 282
     },
     {
       "file": "src/search/SearchManager.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 545
+      "loc": 555
     },
     {
       "file": "src/search/SearchSuggestions.ts",
@@ -1628,7 +1670,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 512
+      "loc": 578
     },
     {
       "file": "src/search/SpellChecker.ts",
@@ -1663,7 +1705,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 444
+      "loc": 421
     },
     {
       "file": "src/search/TFIDFIndexManager.ts",
@@ -1677,14 +1719,14 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 307
+      "loc": 179
     },
     {
       "file": "src/search/tiered/DiskWarmTier.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 276
+      "loc": 168
     },
     {
       "file": "src/search/tiered/ITieredIndex.ts",
@@ -1701,6 +1743,13 @@
       "loc": 164
     },
     {
+      "file": "src/search/tiered/MapFileTier.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 153
+    },
+    {
       "file": "src/search/tiered/TieredIndex.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
@@ -1712,7 +1761,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 406
+      "loc": 473
     },
     {
       "file": "src/security/ABACPolicy.ts",
@@ -1761,7 +1810,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 2370
+      "loc": 2401
     },
     {
       "file": "src/types/artifact.ts",
@@ -1838,7 +1887,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 2492
+      "loc": 2506
     },
     {
       "file": "src/utils/AsyncMutex.ts",
@@ -1852,7 +1901,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 539
+      "loc": 526
     },
     {
       "file": "src/utils/CachePressureCoordinator.ts",
@@ -1908,21 +1957,21 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 247
+      "loc": 270
     },
     {
       "file": "src/utils/entityUtils.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 846
+      "loc": 889
     },
     {
       "file": "src/utils/EntityValidator.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 290
+      "loc": 275
     },
     {
       "file": "src/utils/errors.ts",
@@ -1939,6 +1988,13 @@
       "loc": 268
     },
     {
+      "file": "src/utils/fieldPath.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 35
+    },
+    {
       "file": "src/utils/formatters.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
@@ -1951,6 +2007,13 @@
       "area": "src",
       "disposition": "reachable",
       "loc": 93
+    },
+    {
+      "file": "src/utils/halfLife.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 24
     },
     {
       "file": "src/utils/IIndexHealth.ts",
@@ -1971,7 +2034,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 401
+      "loc": 407
     },
     {
       "file": "src/utils/IndexHealthMonitor.ts",
@@ -1979,6 +2042,13 @@
       "area": "src",
       "disposition": "reachable",
       "loc": 78
+    },
+    {
+      "file": "src/utils/jsonlMapFile.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 113
     },
     {
       "file": "src/utils/logger.ts",
@@ -2013,7 +2083,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 254
+      "loc": 286
     },
     {
       "file": "src/utils/relationValidation.ts",
@@ -2041,21 +2111,21 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 219
+      "loc": 249
     },
     {
       "file": "src/utils/searchCache.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 433
+      "loc": 496
     },
     {
       "file": "src/utils/taskScheduler.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 641
+      "loc": 642
     },
     {
       "file": "src/utils/textSimilarity.ts",
@@ -2065,11 +2135,18 @@
       "loc": 141
     },
     {
+      "file": "src/utils/timing.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 100
+    },
+    {
       "file": "src/utils/validators.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 349
+      "loc": 335
     },
     {
       "file": "src/utils/WorkerPoolManager.ts",
@@ -2217,6 +2294,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 287
+    },
+    {
+      "file": "tests/integration/storage-dedup-safety.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 1242
     },
     {
       "file": "tests/integration/storage/graph-storage-new-fields.test.ts",
@@ -2401,6 +2485,13 @@
       "loc": 68
     },
     {
+      "file": "tests/test-utils/microtask-ticks.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 47
+    },
+    {
       "file": "tests/unit/adapters/ApiKeyAuthMiddleware.test.ts",
       "package": "(root)",
       "area": "tests",
@@ -2475,7 +2566,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 646
+      "loc": 689
     },
     {
       "file": "tests/unit/agent/ActiveRetrieval.test.ts",
@@ -2496,14 +2587,14 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 667
+      "loc": 668
     },
     {
       "file": "tests/unit/agent/AgentReflectionManager.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 362
+      "loc": 554
     },
     {
       "file": "tests/unit/agent/ArtifactManager.test.ts",
@@ -2517,14 +2608,14 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 276
+      "loc": 339
     },
     {
       "file": "tests/unit/agent/CognitiveLoadAnalyzer.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 346
+      "loc": 362
     },
     {
       "file": "tests/unit/agent/CollaborationAuditEnforcer.test.ts",
@@ -2545,7 +2636,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 419
+      "loc": 466
     },
     {
       "file": "tests/unit/agent/ConnectivitySignals.test.ts",
@@ -2559,7 +2650,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 2135
+      "loc": 2292
     },
     {
       "file": "tests/unit/agent/ConsolidationScheduler.test.ts",
@@ -2587,28 +2678,28 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 400
+      "loc": 526
     },
     {
       "file": "tests/unit/agent/ContextWindowManager.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 953
+      "loc": 1717
     },
     {
       "file": "tests/unit/agent/DecayEngine.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 1164
+      "loc": 1227
     },
     {
       "file": "tests/unit/agent/DecayScheduler.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 382
+      "loc": 567
     },
     {
       "file": "tests/unit/agent/DecisionManager.test.ts",
@@ -2636,7 +2727,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 811
+      "loc": 850
     },
     {
       "file": "tests/unit/agent/DreamEngine.test.ts",
@@ -2657,7 +2748,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 625
+      "loc": 727
     },
     {
       "file": "tests/unit/agent/EventManager.test.ts",
@@ -2692,7 +2783,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 381
+      "loc": 557
     },
     {
       "file": "tests/unit/agent/HeuristicExtractionStage.test.ts",
@@ -2706,7 +2797,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 177
+      "loc": 206
     },
     {
       "file": "tests/unit/agent/IMemoryBackend.contract.test.ts",
@@ -2730,6 +2821,13 @@
       "loc": 99
     },
     {
+      "file": "tests/unit/agent/keyValueLine.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 60
+    },
+    {
       "file": "tests/unit/agent/memoryBackend-wiring.test.ts",
       "package": "(root)",
       "area": "tests",
@@ -2741,14 +2839,14 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 628
+      "loc": 776
     },
     {
       "file": "tests/unit/agent/MemoryFormatter.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 311
+      "loc": 313
     },
     {
       "file": "tests/unit/agent/MemoryFormatterSalience.test.ts",
@@ -2769,14 +2867,14 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 1030
+      "loc": 1045
     },
     {
       "file": "tests/unit/agent/ObservationDedupManager.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 200
+      "loc": 229
     },
     {
       "file": "tests/unit/agent/ObservationDedupReportStage.test.ts",
@@ -2804,7 +2902,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 363
+      "loc": 562
     },
     {
       "file": "tests/unit/agent/procedural/graph/appendixF.test.ts",
@@ -2895,7 +2993,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 976
+      "loc": 1012
     },
     {
       "file": "tests/unit/agent/procedural/graph/ProceduralGraphManager.test.ts",
@@ -2965,14 +3063,14 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 398
+      "loc": 413
     },
     {
       "file": "tests/unit/agent/ProcedureStore.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 446
+      "loc": 488
     },
     {
       "file": "tests/unit/agent/profile-manager-basics.test.ts",
@@ -3056,7 +3154,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 553
+      "loc": 670
     },
     {
       "file": "tests/unit/agent/RoleProfiles.test.ts",
@@ -3077,7 +3175,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 703
+      "loc": 749
     },
     {
       "file": "tests/unit/agent/SessionCheckpoint.test.ts",
@@ -3112,7 +3210,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 432
+      "loc": 531
     },
     {
       "file": "tests/unit/agent/ToolAffordanceManager.test.ts",
@@ -3126,7 +3224,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 187
+      "loc": 339
     },
     {
       "file": "tests/unit/agent/TrajectoryCompressor.test.ts",
@@ -3143,18 +3241,25 @@
       "loc": 462
     },
     {
+      "file": "tests/unit/agent/workingMemoryGuard.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 104
+    },
+    {
       "file": "tests/unit/agent/WorkingMemoryManager.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 1102
+      "loc": 1269
     },
     {
       "file": "tests/unit/agent/WorkThreadManager.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 989
+      "loc": 1197
     },
     {
       "file": "tests/unit/agent/WorldModel.test.ts",
@@ -3164,32 +3269,39 @@
       "loc": 176
     },
     {
+      "file": "tests/unit/cli/actionFrame.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 416
+    },
+    {
       "file": "tests/unit/cli/audit.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 404
+      "loc": 420
     },
     {
       "file": "tests/unit/cli/cache-reindex.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 121
+      "loc": 157
     },
     {
       "file": "tests/unit/cli/check.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 148
+      "loc": 165
     },
     {
       "file": "tests/unit/cli/commands.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 736
+      "loc": 814
     },
     {
       "file": "tests/unit/cli/config.test.ts",
@@ -3203,63 +3315,63 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 98
+      "loc": 114
     },
     {
       "file": "tests/unit/cli/diag.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 168
+      "loc": 185
     },
     {
       "file": "tests/unit/cli/doctor.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 399
+      "loc": 419
     },
     {
       "file": "tests/unit/cli/exclusion.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 54
+      "loc": 71
     },
     {
       "file": "tests/unit/cli/formatters.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 591
+      "loc": 617
     },
     {
       "file": "tests/unit/cli/graph.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 60
+      "loc": 77
     },
     {
       "file": "tests/unit/cli/helpers/cliTestHarness.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 91
+      "loc": 103
     },
     {
       "file": "tests/unit/cli/heuristic.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 53
+      "loc": 70
     },
     {
       "file": "tests/unit/cli/hierarchy.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 48
+      "loc": 65
     },
     {
       "file": "tests/unit/cli/index.test.ts",
@@ -3273,7 +3385,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 167
+      "loc": 184
     },
     {
       "file": "tests/unit/cli/interactive.test.ts",
@@ -3287,21 +3399,21 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 61
+      "loc": 78
     },
     {
       "file": "tests/unit/cli/observation.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 49
+      "loc": 66
     },
     {
       "file": "tests/unit/cli/observationDedup.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 43
+      "loc": 60
     },
     {
       "file": "tests/unit/cli/options.test.ts",
@@ -3315,49 +3427,49 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 48
+      "loc": 65
     },
     {
       "file": "tests/unit/cli/search-extended.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 49
+      "loc": 66
     },
     {
       "file": "tests/unit/cli/smoke.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 69
+      "loc": 83
     },
     {
       "file": "tests/unit/cli/spell.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 37
+      "loc": 72
     },
     {
       "file": "tests/unit/cli/tag.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 49
+      "loc": 66
     },
     {
       "file": "tests/unit/cli/toolAffordance.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 59
+      "loc": 76
     },
     {
       "file": "tests/unit/core/BatchTransaction.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 431
+      "loc": 695
     },
     {
       "file": "tests/unit/core/columns/columns-review-fixes.test.ts",
@@ -3378,7 +3490,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 253
+      "loc": 390
     },
     {
       "file": "tests/unit/core/columns/ObservationColumnStore-wiring.test.ts",
@@ -3490,7 +3602,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 353
+      "loc": 423
     },
     {
       "file": "tests/unit/core/known-issue-fixes.test.ts",
@@ -3528,11 +3640,25 @@
       "loc": 33
     },
     {
+      "file": "tests/unit/core/ManagerContext-hybridContext.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 127
+    },
+    {
       "file": "tests/unit/core/ManagerContext-proceduralGraph.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
       "loc": 76
+    },
+    {
+      "file": "tests/unit/core/ManagerContext-vectorStore.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 55
     },
     {
       "file": "tests/unit/core/ManagerContext.test.ts",
@@ -3553,7 +3679,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 250
+      "loc": 723
     },
     {
       "file": "tests/unit/core/mmap/IMmapBackend.test.ts",
@@ -3567,7 +3693,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 264
+      "loc": 272
     },
     {
       "file": "tests/unit/core/mutation-isolation.test.ts",
@@ -3672,7 +3798,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 498
+      "loc": 877
     },
     {
       "file": "tests/unit/core/segments/GraphStorage-segments.test.ts",
@@ -3686,7 +3812,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 230
+      "loc": 385
     },
     {
       "file": "tests/unit/core/segments/segments-review-fixes.test.ts",
@@ -3710,6 +3836,13 @@
       "loc": 72
     },
     {
+      "file": "tests/unit/core/sqlite-embeddings-content-hash.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 138
+    },
+    {
       "file": "tests/unit/core/sqlite-events.test.ts",
       "package": "(root)",
       "area": "tests",
@@ -3728,7 +3861,14 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 1383
+      "loc": 1690
+    },
+    {
+      "file": "tests/unit/core/storageCache.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 279
     },
     {
       "file": "tests/unit/core/StorageFactory.test.ts",
@@ -3756,7 +3896,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 525
+      "loc": 769
     },
     {
       "file": "tests/unit/core/TransitionLedger.test.ts",
@@ -3798,7 +3938,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 369
+      "loc": 383
     },
     {
       "file": "tests/unit/features/BackupManager.test.ts",
@@ -3826,7 +3966,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 436
+      "loc": 496
     },
     {
       "file": "tests/unit/features/contradiction-detector-detect.test.ts",
@@ -3847,14 +3987,14 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 507
+      "loc": 528
     },
     {
       "file": "tests/unit/features/GovernanceManager.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 640
+      "loc": 737
     },
     {
       "file": "tests/unit/features/ingest-provenance-modes.test.ts",
@@ -3896,7 +4036,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 1716
+      "loc": 1777
     },
     {
       "file": "tests/unit/features/ObservableDataModelAdapter.test.ts",
@@ -3934,11 +4074,25 @@
       "loc": 74
     },
     {
+      "file": "tests/unit/features/StreamingExporter-frame-pins.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 184
+    },
+    {
       "file": "tests/unit/features/StreamingExporter.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 332
+      "loc": 363
+    },
+    {
+      "file": "tests/unit/features/TagManager-loader-pins.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 253
     },
     {
       "file": "tests/unit/features/TagManager.test.ts",
@@ -3994,7 +4148,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 569
+      "loc": 653
     },
     {
       "file": "tests/unit/search/cache-isolation.test.ts",
@@ -4015,14 +4169,14 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 368
+      "loc": 455
     },
     {
       "file": "tests/unit/search/EmbeddingService.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 816
+      "loc": 1047
     },
     {
       "file": "tests/unit/search/EvidencePathBuilder.test.ts",
@@ -4036,7 +4190,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 1191
+      "loc": 1323
     },
     {
       "file": "tests/unit/search/FuzzySearchWorkerPath.test.ts",
@@ -4050,14 +4204,14 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 461
+      "loc": 612
     },
     {
       "file": "tests/unit/search/HybridScorer.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 328
+      "loc": 368
     },
     {
       "file": "tests/unit/search/HybridScorerGraphChannel.test.ts",
@@ -4092,7 +4246,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 456
+      "loc": 497
     },
     {
       "file": "tests/unit/search/IncrementalTFIDF.test.ts",
@@ -4162,7 +4316,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 491
+      "loc": 551
     },
     {
       "file": "tests/unit/search/PartialIndexAdvisor.test.ts",
@@ -4183,7 +4337,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 274
+      "loc": 358
     },
     {
       "file": "tests/unit/search/QueryAnalyzer.test.ts",
@@ -4197,7 +4351,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 566
+      "loc": 668
     },
     {
       "file": "tests/unit/search/QueryLogger.test.ts",
@@ -4218,7 +4372,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 542
+      "loc": 686
     },
     {
       "file": "tests/unit/search/QueryPlanFormatter.test.ts",
@@ -4239,7 +4393,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 765
+      "loc": 816
     },
     {
       "file": "tests/unit/search/RankedSearchGraphBoost.test.ts",
@@ -4261,6 +4415,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 476
+    },
+    {
+      "file": "tests/unit/search/SavedSearchManager-loader-pins.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 271
     },
     {
       "file": "tests/unit/search/SavedSearchManager.test.ts",
@@ -4288,7 +4449,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 381
+      "loc": 524
     },
     {
       "file": "tests/unit/search/SearchManager.test.ts",
@@ -4305,11 +4466,53 @@
       "loc": 304
     },
     {
+      "file": "tests/unit/search/searchTwinsFts.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 361
+    },
+    {
+      "file": "tests/unit/search/searchTwinsLayers.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 339
+    },
+    {
+      "file": "tests/unit/search/searchTwinsPaths.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 136
+    },
+    {
+      "file": "tests/unit/search/searchTwinsProximity.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 113
+    },
+    {
+      "file": "tests/unit/search/searchTwinsSemantic.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 248
+    },
+    {
+      "file": "tests/unit/search/searchTwinsTfidf.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 178
+    },
+    {
       "file": "tests/unit/search/SemanticSearch.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 372
+      "loc": 557
     },
     {
       "file": "tests/unit/search/SpellChecker.test.ts",
@@ -4358,7 +4561,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 503
+      "loc": 742
     },
     {
       "file": "tests/unit/search/TFIDFIndexManager.test.ts",
@@ -4372,7 +4575,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 395
+      "loc": 599
     },
     {
       "file": "tests/unit/search/tiered/disk-tier-concurrency.test.ts",
@@ -4386,7 +4589,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 365
+      "loc": 537
     },
     {
       "file": "tests/unit/search/tiered/ITieredIndex.test.ts",
@@ -4428,7 +4631,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 333
+      "loc": 505
     },
     {
       "file": "tests/unit/security/ABACPolicy.test.ts",
@@ -4491,7 +4694,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 564
+      "loc": 885
     },
     {
       "file": "tests/unit/types/entity-content-hash.test.ts",
@@ -4554,7 +4757,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 566
+      "loc": 672
     },
     {
       "file": "tests/unit/utils/CachePressureCoordinator.test.ts",
@@ -4603,21 +4806,21 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 199
+      "loc": 309
     },
     {
       "file": "tests/unit/utils/entityUtils.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 1020
+      "loc": 1097
     },
     {
       "file": "tests/unit/utils/EntityValidator.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 453
+      "loc": 492
     },
     {
       "file": "tests/unit/utils/errors.test.ts",
@@ -4634,6 +4837,13 @@
       "loc": 389
     },
     {
+      "file": "tests/unit/utils/fieldPath.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 50
+    },
+    {
       "file": "tests/unit/utils/formatters.test.ts",
       "package": "(root)",
       "area": "tests",
@@ -4641,11 +4851,25 @@
       "loc": 470
     },
     {
+      "file": "tests/unit/utils/halfLife.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 27
+    },
+    {
       "file": "tests/unit/utils/indexes.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 776
+      "loc": 847
+    },
+    {
+      "file": "tests/unit/utils/jsonlMapFile.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 162
     },
     {
       "file": "tests/unit/utils/logger.test.ts",
@@ -4708,21 +4932,35 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 726
+      "loc": 784
     },
     {
       "file": "tests/unit/utils/searchCache.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 744
+      "loc": 780
     },
     {
       "file": "tests/unit/utils/taskScheduler.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 1033
+      "loc": 1118
+    },
+    {
+      "file": "tests/unit/utils/textSimilarity.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 113
+    },
+    {
+      "file": "tests/unit/utils/timing.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 192
     },
     {
       "file": "tests/unit/utils/update-entity-schema-strip.test.ts",
@@ -4736,7 +4974,14 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 683
+      "loc": 1001
+    },
+    {
+      "file": "tests/unit/utils/walkParents.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 67
     },
     {
       "file": "tests/unit/utils/WorkerPoolManager.test.ts",

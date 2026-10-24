@@ -10,11 +10,12 @@
  * - WAL mode persistence
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SQLiteStorage } from '../../../src/core/SQLiteStorage.js';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
+import Database from 'better-sqlite3';
 
 describe('SQLiteStorage', () => {
   let storage: SQLiteStorage;
@@ -1377,6 +1378,312 @@ describe('SQLiteStorage', () => {
       } finally {
         enabled.close();
       }
+    });
+  });
+});
+
+describe('SQLiteStorage statement pins', () => {
+  let dir: string;
+  let dbFile: string;
+  const opened: SQLiteStorage[] = [];
+
+  beforeEach(async () => {
+    dir = join(tmpdir(), `sqlite-statement-pins-${Date.now()}-${Math.random()}`);
+    await fs.mkdir(dir, { recursive: true });
+    dbFile = join(dir, 'pins.db');
+  });
+
+  afterEach(async () => {
+    for (const store of opened.splice(0)) store.close();
+    await fs.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+  });
+
+  function open(): SQLiteStorage {
+    const store = new SQLiteStorage(dbFile);
+    opened.push(store);
+    return store;
+  }
+
+  /** A database that has the first version of the three tables and one row without an id. */
+  function createOldestSchema(): void {
+    const db = new Database(dbFile);
+    db.exec(`
+      CREATE TABLE entities (name TEXT PRIMARY KEY, entityType TEXT NOT NULL, observations TEXT, tags TEXT, importance REAL, parentId TEXT, createdAt TEXT, lastModified TEXT);
+      CREATE TABLE relations (fromEntity TEXT NOT NULL, toEntity TEXT NOT NULL, relationType TEXT NOT NULL, createdAt TEXT);
+      CREATE TABLE embeddings (entityName TEXT PRIMARY KEY, vector BLOB, embeddingModel TEXT);
+      INSERT INTO entities (name, entityType, observations) VALUES ('old-entity', 'person', '[]');
+    `);
+    db.close();
+  }
+
+  function columnNames(table: string): string[] {
+    const db = new Database(dbFile, { readonly: true });
+    try {
+      return (db.pragma(`table_info(${table})`) as Array<{ name: string }>).map(c => c.name);
+    } finally {
+      db.close();
+    }
+  }
+
+  /** One stored entity row, read through a separate connection so the columns show as stored. */
+  function rawEntityRow(name: string): Record<string, unknown> {
+    const db = new Database(dbFile, { readonly: true });
+    try {
+      return db.prepare('SELECT * FROM entities WHERE name = ?').get(name) as Record<string, unknown>;
+    } finally {
+      db.close();
+    }
+  }
+
+  it('adds the missing columns in a fixed order and keeps the existing rows', async () => {
+    createOldestSchema();
+    const first = open();
+    await first.ensureLoaded();
+    first.close();
+    const second = open();
+    await second.ensureLoaded();
+
+    expect(columnNames('entities')).toEqual([
+      'name', 'entityType', 'observations', 'tags', 'importance', 'parentId',
+      'createdAt', 'lastModified', 'projectId', 'version', 'parentEntityName',
+      'rootEntityName', 'isLatest', 'supersededBy', 'contentHash', 'agentMetadata', 'id',
+    ]);
+    expect(columnNames('relations')).toEqual([
+      'fromEntity', 'toEntity', 'relationType', 'createdAt', 'weight', 'confidence',
+      'properties', 'metadata',
+    ]);
+    expect(columnNames('embeddings')).toEqual(['entityName', 'vector', 'embeddingModel', 'contentHash']);
+    const db = new Database(dbFile, { readonly: true });
+    try {
+      const rows = db.prepare('SELECT id FROM entities').all() as Array<{ id: string | null }>;
+      expect(rows).toHaveLength(1);
+      expect(rows[0].id).not.toBeNull();
+    } finally {
+      db.close();
+    }
+  });
+
+  it('reads each table once and adds the missing columns in a fixed order', async () => {
+    createOldestSchema();
+    // Record the table reads and the ALTER statements, in call order.
+    const seen: string[] = [];
+    const realPragma = Database.prototype.pragma;
+    const realExec = Database.prototype.exec;
+    vi.spyOn(Database.prototype, 'pragma').mockImplementation(function (this: unknown, source: string, options?: unknown) {
+      if (/^table_info/.test(source)) seen.push(source);
+      return realPragma.call(this, source, options as never);
+    } as typeof Database.prototype.pragma);
+    vi.spyOn(Database.prototype, 'exec').mockImplementation(function (this: unknown, source: string) {
+      if (/^ALTER TABLE/.test(source)) seen.push(source);
+      return realExec.call(this, source);
+    } as typeof Database.prototype.exec);
+    try {
+      await open().ensureLoaded();
+    } finally {
+      vi.restoreAllMocks();
+    }
+
+    expect(seen).toEqual([
+      'table_info(relations)',
+      'ALTER TABLE relations ADD COLUMN weight REAL',
+      'ALTER TABLE relations ADD COLUMN confidence REAL',
+      'ALTER TABLE relations ADD COLUMN properties TEXT',
+      'ALTER TABLE relations ADD COLUMN metadata TEXT',
+      'table_info(entities)',
+      'ALTER TABLE entities ADD COLUMN projectId TEXT',
+      'ALTER TABLE entities ADD COLUMN version INTEGER DEFAULT 1',
+      'ALTER TABLE entities ADD COLUMN parentEntityName TEXT',
+      'ALTER TABLE entities ADD COLUMN rootEntityName TEXT',
+      'ALTER TABLE entities ADD COLUMN isLatest INTEGER DEFAULT 1',
+      'ALTER TABLE entities ADD COLUMN supersededBy TEXT',
+      'ALTER TABLE entities ADD COLUMN contentHash TEXT',
+      'ALTER TABLE entities ADD COLUMN agentMetadata TEXT',
+      'ALTER TABLE entities ADD COLUMN id TEXT',
+      'table_info(embeddings)',
+      'ALTER TABLE embeddings ADD COLUMN contentHash TEXT',
+    ]);
+  });
+
+  it('round-trips every optional entity field through an insert and an update', async () => {
+    const writer = open();
+    await writer.saveGraph({ entities: [], relations: [] });
+    await writer.appendEntity({ name: 'parent-x', entityType: 'project', observations: [] });
+    await writer.appendEntity({
+      name: 'full',
+      id: 'id-full',
+      entityType: 'project',
+      observations: ['first note', 'second note'],
+      tags: ['tag-a'],
+      importance: 7,
+      parentId: 'parent-x',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      lastModified: '2026-01-02T00:00:00.000Z',
+      projectId: 'proj-9',
+      version: 3,
+      parentEntityName: 'full-v2',
+      rootEntityName: 'full-root',
+      isLatest: false,
+      supersededBy: 'full-v4',
+      contentHash: 'hash-1',
+      ttl: 3600,
+      confidence: 0.5,
+    });
+    const inserted = (await open().loadGraph()).entities.find(e => e.name === 'full');
+    expect(inserted).toEqual({
+      name: 'full',
+      id: 'id-full',
+      entityType: 'project',
+      observations: ['first note', 'second note'],
+      tags: ['tag-a'],
+      importance: 7,
+      parentId: 'parent-x',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      lastModified: '2026-01-02T00:00:00.000Z',
+      projectId: 'proj-9',
+      version: 3,
+      parentEntityName: 'full-v2',
+      rootEntityName: 'full-root',
+      isLatest: false,
+      supersededBy: 'full-v4',
+      contentHash: 'hash-1',
+      ttl: 3600,
+      confidence: 0.5,
+    });
+
+    await writer.updateEntity('full', {
+      observations: ['third note'],
+      tags: ['tag-b'],
+      importance: 4,
+      lastModified: '2026-01-03T00:00:00.000Z',
+      projectId: 'proj-10',
+      version: 4,
+      isLatest: true,
+      contentHash: 'hash-2',
+      ttl: 60,
+    });
+    const updated = (await open().loadGraph()).entities.find(e => e.name === 'full');
+    // The update stamps the write time, so only the type of lastModified is fixed here.
+    expect(updated).toEqual({
+      name: 'full',
+      id: 'id-full',
+      entityType: 'project',
+      observations: ['third note'],
+      tags: ['tag-b'],
+      importance: 4,
+      parentId: 'parent-x',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      lastModified: expect.any(String),
+      projectId: 'proj-10',
+      version: 4,
+      parentEntityName: 'full-v2',
+      rootEntityName: 'full-root',
+      isLatest: true,
+      supersededBy: 'full-v4',
+      contentHash: 'hash-2',
+      ttl: 60,
+      confidence: 0.5,
+    });
+  });
+
+  it('returns no relations while the database is open but not initialized', async () => {
+    const store = open();
+    await store.saveGraph({
+      entities: ['a', 'b'].map(name => ({ name, entityType: 'node', observations: [] })),
+      relations: [{ from: 'a', to: 'b', relationType: 'knows' }],
+    });
+    await store.ensureLoaded();
+    const internals = store as unknown as { cache: unknown; initialized: boolean };
+    const savedCache = internals.cache;
+    internals.cache = null;
+    internals.initialized = false;
+    try {
+      expect(store.getRelationsFrom('a')).toEqual([]);
+      expect(store.getRelationsTo('b')).toEqual([]);
+      expect(store.getRelationsFor('a')).toEqual([]);
+    } finally {
+      internals.initialized = true;
+      internals.cache = savedCache;
+    }
+    expect(store.getRelationsFrom('a')).toHaveLength(1);
+  });
+
+  it('stores SQL NULL and the defaults for an entity without optional fields', async () => {
+    const writer = open();
+    await writer.saveGraph({ entities: [], relations: [] });
+    await writer.appendEntity({ name: 'bare', entityType: 'note', observations: [] });
+    const nullColumns = {
+      tags: null, importance: null, parentId: null, projectId: null,
+      parentEntityName: null, rootEntityName: null, supersededBy: null, contentHash: null,
+    };
+    const defaults = { version: 1, isLatest: 1, observations: '[]', entityType: 'note' };
+
+    expect(rawEntityRow('bare')).toMatchObject({ ...nullColumns, ...defaults });
+
+    await writer.updateEntity('bare', { entityType: 'memo' });
+    expect(rawEntityRow('bare')).toMatchObject({ ...nullColumns, ...defaults, entityType: 'memo' });
+  });
+
+  it('updates the row named by the argument when the updates carry another name', async () => {
+    const writer = open();
+    await writer.saveGraph({ entities: [], relations: [] });
+    await writer.appendEntity({ name: 'orig', entityType: 'note', observations: [] });
+
+    await writer.updateEntity('orig', { name: 'renamed', entityType: 'memo' });
+
+    expect(rawEntityRow('orig')).toMatchObject({ name: 'orig', entityType: 'memo' });
+    expect(rawEntityRow('renamed')).toBeUndefined();
+  });
+
+  it('writes the lastModified value that the cached entity keeps', async () => {
+    const writer = open();
+    await writer.saveGraph({ entities: [], relations: [] });
+    await writer.appendEntity({ name: 'stamped', entityType: 'note', observations: [] });
+    // Every clock read returns a new time, so a second read would store another value.
+    const realToISOString = Date.prototype.toISOString;
+    let tick = 0;
+    vi.spyOn(Date.prototype, 'toISOString').mockImplementation(function () {
+      return realToISOString.call(new Date(Date.UTC(2031, 0, 1) + tick++ * 1000));
+    });
+    try {
+      await writer.updateEntity('stamped', { importance: 3 });
+    } finally {
+      vi.restoreAllMocks();
+    }
+
+    const cached = (await writer.loadGraph()).entities.find(e => e.name === 'stamped');
+    expect(cached?.lastModified).toMatch(/^2031-01-01T/);
+    expect(rawEntityRow('stamped').lastModified).toBe(cached?.lastModified);
+  });
+
+  it('returns the same relations with the cache loaded and with the cache cleared', async () => {
+    const store = open();
+    await store.saveGraph({
+      entities: ['a', 'b', 'c'].map(name => ({ name, entityType: 'node', observations: [] })),
+      relations: [
+        { from: 'a', to: 'b', relationType: 'knows' },
+        { from: 'c', to: 'a', relationType: 'knows' },
+        { from: 'a', to: 'a', relationType: 'self' },
+      ],
+    });
+    await store.ensureLoaded();
+    const project = (relations: Array<{ from: string; to: string; relationType: string }>) =>
+      relations.map(r => [r.from, r.to, r.relationType]);
+    const readAll = () => ({
+      from: project(store.getRelationsFrom('a')),
+      to: project(store.getRelationsTo('a')),
+      either: project(store.getRelationsFor('a')),
+    });
+
+    const withCache = readAll();
+    // Drop the cache pointer and keep the store initialized, so that the SQL path runs.
+    (store as unknown as { cache: unknown }).cache = null;
+    const withoutCache = readAll();
+
+    expect(withoutCache).toEqual(withCache);
+    expect(withCache).toEqual({
+      from: [['a', 'b', 'knows'], ['a', 'a', 'self']],
+      to: [['c', 'a', 'knows'], ['a', 'a', 'self']],
+      either: [['a', 'b', 'knows'], ['a', 'a', 'self'], ['c', 'a', 'knows']],
     });
   });
 });

@@ -12,6 +12,7 @@ import type { GraphStorage } from '../core/GraphStorage.js';
 import type { CachePressureCoordinator } from '../utils/CachePressureCoordinator.js';
 import { levenshteinDistance } from '../utils/index.js';
 import { logger } from '../utils/logger.js';
+import { cleanupExpiredEntries, evictOldest } from '../utils/searchCache.js';
 import { FUZZY_SEARCH_LIMITS, SEARCH_LIMITS } from '../utils/constants.js';
 import { SearchFilterChain, type SearchFilters } from './SearchFilterChain.js';
 import { NGramIndex } from './NGramIndex.js';
@@ -289,13 +290,7 @@ export class FuzzySearch {
   /** Drop oldest cached results until at or below `targetEntries`. */
   evictTo(targetEntries: number): void {
     const target = Math.max(0, Math.floor(targetEntries));
-    if (this.fuzzyResultCache.size <= target) return;
-    const entries = [...this.fuzzyResultCache.entries()]
-      .sort((a, b) => a[1].timestamp - b[1].timestamp);
-    const removeCount = this.fuzzyResultCache.size - target;
-    for (let i = 0; i < removeCount; i++) {
-      this.fuzzyResultCache.delete(entries[i]![0]);
-    }
+    evictOldest(this.fuzzyResultCache, target, entry => entry.timestamp);
   }
 
   /**
@@ -318,27 +313,12 @@ export class FuzzySearch {
    * Phase 4 Sprint 3: Invalidate stale cache entries.
    */
   private cleanupCache(): void {
-    const now = Date.now();
-    const entries = Array.from(this.fuzzyResultCache.entries());
-
-    // Remove expired entries
-    for (const [key, entry] of entries) {
-      if (now - entry.timestamp > FUZZY_CACHE_TTL_MS) {
-        this.fuzzyResultCache.delete(key);
-      }
-    }
-
-    // If still over limit, remove oldest entries
-    if (this.fuzzyResultCache.size > FUZZY_CACHE_MAX_SIZE) {
-      const sortedEntries = entries
-        .filter(([k]) => this.fuzzyResultCache.has(k))
-        .sort((a, b) => a[1].timestamp - b[1].timestamp);
-
-      const toRemove = sortedEntries.slice(0, this.fuzzyResultCache.size - FUZZY_CACHE_MAX_SIZE);
-      for (const [key] of toRemove) {
-        this.fuzzyResultCache.delete(key);
-      }
-    }
+    cleanupExpiredEntries(
+      this.fuzzyResultCache,
+      FUZZY_CACHE_TTL_MS,
+      FUZZY_CACHE_MAX_SIZE,
+      entry => entry.timestamp
+    );
   }
 
   /**

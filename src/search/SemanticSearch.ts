@@ -13,9 +13,11 @@ import type {
   IVectorStore,
   SemanticSearchResult,
   SemanticIndexOptions,
+  VectorSearchResult,
   ReadonlyKnowledgeGraph,
   EmbeddingMode,
 } from '../types/index.js';
+import { createHash } from 'node:crypto';
 import { InMemoryVectorStore, cosineSimilarity } from './VectorStore.js';
 import { EmbeddingCache } from './EmbeddingCache.js';
 import { EMBEDDING_DEFAULTS, SEMANTIC_SEARCH_LIMITS } from '../utils/constants.js';
@@ -48,6 +50,54 @@ export function entityToText(entity: Entity): string {
   }
 
   return parts.join('\n');
+}
+
+/**
+ * Convert vector store hits into semantic results with entity lookup.
+ *
+ * Hits below the threshold are skipped. The excluded name is skipped when it is set.
+ * A hit whose name has no entity in the map is skipped. The list stops at the limit.
+ * The function does not use `this`, so a caller reads the entity map itself.
+ *
+ * @param entityMap - Entities by name
+ * @param vectorResults - Hits from the vector store, best first
+ * @param effectiveLimit - Maximum number of results
+ * @param minSimilarity - Minimum similarity threshold
+ * @param excludeName - Entity name to skip, such as the entity itself
+ * @returns Semantic results in the order of the hits
+ */
+function toSemanticResults(
+  entityMap: Map<string, Entity>,
+  vectorResults: VectorSearchResult[],
+  effectiveLimit: number,
+  minSimilarity: number,
+  excludeName?: string,
+): SemanticSearchResult[] {
+  const results: SemanticSearchResult[] = [];
+  for (const result of vectorResults) {
+    // Skip self
+    if (excludeName !== undefined && result.name === excludeName) {
+      continue;
+    }
+
+    if (result.score < minSimilarity) {
+      continue;
+    }
+
+    const entity = entityMap.get(result.name);
+    if (entity) {
+      results.push({
+        entity,
+        similarity: result.score,
+      });
+    }
+
+    if (results.length >= effectiveLimit) {
+      break;
+    }
+  }
+
+  return results;
 }
 
 /**
@@ -88,6 +138,9 @@ export class SemanticSearch {
   private indexedCount = 0;
   private embeddingCache?: EmbeddingCache;
   private onCacheInsert?: () => void;
+
+  /** Pending or completed load of the vector store */
+  private storeReady?: Promise<void>;
 
   /**
    * Create a semantic search manager.
@@ -164,10 +217,58 @@ export class SemanticSearch {
   }
 
   /**
+   * Load the vector store once before the first read or write.
+   *
+   * A rejected load is cleared, so a later call tries again.
+   *
+   * @returns Promise that resolves when the store is ready
+   */
+  private ensureStoreReady(): Promise<void> {
+    if (!this.storeReady) {
+      this.storeReady = this.vectorStore.initialize?.() ?? Promise.resolve();
+      this.storeReady.catch(() => {
+        this.storeReady = undefined;
+      });
+    }
+    return this.storeReady;
+  }
+
+  /**
+   * Get the hash that marks the content a vector was made from.
+   *
+   * Uses `entity.contentHash` when it is a string. Otherwise hashes the
+   * embedding text (`entityToText`: name, type, the first 10 observations and
+   * the tags) with SHA-256 in hex.
+   *
+   * @param entity - Entity to hash
+   * @returns The content hash for the entity
+   */
+  private hashFor(entity: Entity): string {
+    if (typeof entity.contentHash === 'string') return entity.contentHash;
+    return createHash('sha256').update(entityToText(entity)).digest('hex');
+  }
+
+  /**
+   * Check whether an entity's stored vector was built from different content.
+   *
+   * Compares the stored hash with `hashFor(entity)`: `entity.contentHash`, or a
+   * SHA-256 of `entityToText(entity)` when the entity has none. Always false
+   * for stores that do not track hashes.
+   *
+   * @param entity - Entity to check
+   * @returns True when the stored hash differs from the hash of the entity
+   */
+  private isStale(entity: Entity): boolean {
+    if (typeof this.vectorStore.getContentHash !== 'function') return false;
+    return this.vectorStore.getContentHash(entity.name) !== this.hashFor(entity);
+  }
+
+  /**
    * Index all entities in the knowledge graph.
    *
    * Generates embeddings for all entities and stores them in the vector store.
-   * Can be called incrementally - only indexes entities that aren't already indexed.
+   * Can be called incrementally - only indexes entities that aren't already indexed,
+   * or whose content hash differs from the stored hash (see `hashFor`).
    *
    * Phase 9B: Supports cancellation via AbortSignal in options.
    *
@@ -189,6 +290,7 @@ export class SemanticSearch {
 
     // Check for early cancellation
     checkCancellation(signal, 'indexAll');
+    await this.ensureStoreReady();
 
     let indexed = 0;
     let skipped = 0;
@@ -200,7 +302,7 @@ export class SemanticSearch {
     // Collect entities to index
     const toIndex: Entity[] = [];
     for (const entity of entities) {
-      if (forceReindex || !this.vectorStore.has(entity.name)) {
+      if (forceReindex || !this.vectorStore.has(entity.name) || this.isStale(entity)) {
         toIndex.push(entity);
       } else {
         skipped++;
@@ -213,16 +315,20 @@ export class SemanticSearch {
       checkCancellation(signal, 'indexAll');
 
       const batch = toIndex.slice(i, i + batchSize);
+      const added = new Set<string>();
       try {
         const embeddings = await this.embedEntityBatch(batch);
 
         for (let j = 0; j < batch.length; j++) {
-          this.vectorStore.add(batch[j].name, embeddings[j]);
+          this.vectorStore.add(batch[j].name, embeddings[j], this.hashFor(batch[j]));
+          added.add(batch[j].name);
           indexed++;
         }
       } catch {
         // Try individual embeddings on batch failure
         for (const entity of batch) {
+          // Skip entities the batch path already stored and counted
+          if (added.has(entity.name)) continue;
           // Check for cancellation during fallback
           checkCancellation(signal, 'indexAll');
 
@@ -232,7 +338,7 @@ export class SemanticSearch {
               `document:${entity.name}`,
               text,
             );
-            this.vectorStore.add(entity.name, embedding);
+            this.vectorStore.add(entity.name, embedding, this.hashFor(entity));
             indexed++;
           } catch {
             errors++;
@@ -260,9 +366,10 @@ export class SemanticSearch {
    */
   async indexEntity(entity: Entity): Promise<boolean> {
     try {
+      await this.ensureStoreReady();
       const text = entityToText(entity);
       const embedding = await this.embedCached(`document:${entity.name}`, text);
-      this.vectorStore.add(entity.name, embedding);
+      this.vectorStore.add(entity.name, embedding, this.hashFor(entity));
       this.indexedCount = this.vectorStore.size();
       return true;
     } catch {
@@ -317,6 +424,7 @@ export class SemanticSearch {
     limit: number = SEMANTIC_SEARCH_LIMITS.DEFAULT_LIMIT,
     minSimilarity: number = SEMANTIC_SEARCH_LIMITS.MIN_SIMILARITY
   ): Promise<SemanticSearchResult[]> {
+    await this.ensureStoreReady();
     // Ensure limit is within bounds
     const effectiveLimit = Math.min(limit, SEMANTIC_SEARCH_LIMITS.MAX_LIMIT);
 
@@ -326,29 +434,7 @@ export class SemanticSearch {
     // Search vector store
     const vectorResults = this.vectorStore.search(queryEmbedding, effectiveLimit * 2); // Get extra for filtering
 
-    // Convert to SemanticSearchResult with entity lookup
-    const entityMap = this.buildEntityMap(graph);
-
-    const results: SemanticSearchResult[] = [];
-    for (const result of vectorResults) {
-      if (result.score < minSimilarity) {
-        continue;
-      }
-
-      const entity = entityMap.get(result.name);
-      if (entity) {
-        results.push({
-          entity,
-          similarity: result.score,
-        });
-      }
-
-      if (results.length >= effectiveLimit) {
-        break;
-      }
-    }
-
-    return results;
+    return toSemanticResults(this.buildEntityMap(graph), vectorResults, effectiveLimit, minSimilarity);
   }
 
   /**
@@ -366,6 +452,7 @@ export class SemanticSearch {
     limit: number = SEMANTIC_SEARCH_LIMITS.DEFAULT_LIMIT,
     minSimilarity: number = SEMANTIC_SEARCH_LIMITS.MIN_SIMILARITY
   ): Promise<SemanticSearchResult[]> {
+    await this.ensureStoreReady();
     // Get the entity's embedding
     const embedding = this.vectorStore.get(entityName);
     if (!embedding) {
@@ -384,34 +471,13 @@ export class SemanticSearch {
     // Search vector store (request extra to filter out self)
     const vectorResults = this.vectorStore.search(embedding, effectiveLimit + 1);
 
-    // Convert to SemanticSearchResult with entity lookup
-    const entityMap = this.buildEntityMap(graph);
-
-    const results: SemanticSearchResult[] = [];
-    for (const result of vectorResults) {
-      // Skip self
-      if (result.name === entityName) {
-        continue;
-      }
-
-      if (result.score < minSimilarity) {
-        continue;
-      }
-
-      const entity = entityMap.get(result.name);
-      if (entity) {
-        results.push({
-          entity,
-          similarity: result.score,
-        });
-      }
-
-      if (results.length >= effectiveLimit) {
-        break;
-      }
-    }
-
-    return results;
+    return toSemanticResults(
+      this.buildEntityMap(graph),
+      vectorResults,
+      effectiveLimit,
+      minSimilarity,
+      entityName,
+    );
   }
 
   /**

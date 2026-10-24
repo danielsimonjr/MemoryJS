@@ -625,3 +625,151 @@ describe('MemoryEngine — ManagerContext wiring', () => {
     }
   });
 });
+
+describe('MemoryEngine — repeated turn count', () => {
+  const T1 = 'alpha beta gamma delta epsilon zeta eta theta iota kappa lambda extra';
+  const JACCARD_REPEAT = 'lambda kappa iota theta eta zeta epsilon delta gamma beta alpha other';
+
+  function mkEngine(ctx: ManagerContext): MemoryEngine {
+    const agent = ctx.agentMemory();
+    return new MemoryEngine(
+      ctx.storage, ctx.entityManager, agent.episodicMemory,
+      agent.workingMemory, new ImportanceScorer(),
+    );
+  }
+
+  it('counts exact and Jaccard repeats', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const engine = mkEngine(ctx);
+      await engine.addTurn(T1, { sessionId: 'sess-A', role: 'user' });
+      const exact = await engine.addTurn(T1, { sessionId: 'sess-A', role: 'user' });
+      const jaccard = await engine.addTurn(JACCARD_REPEAT, { sessionId: 'sess-A', role: 'user' });
+      expect(exact.duplicateTier).toBe('exact');
+      expect(jaccard.duplicateTier).toBe('jaccard');
+      expect(engine.getRepeatedTurnCount('sess-A')).toBe(2);
+    } finally { cleanup(); }
+  });
+
+  it('returns 0 for distinct turns', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const engine = mkEngine(ctx);
+      await engine.addTurn('alpha beta gamma', { sessionId: 'sess-A', role: 'user' });
+      await engine.addTurn('delta epsilon zeta', { sessionId: 'sess-A', role: 'user' });
+      expect(engine.getRepeatedTurnCount('sess-A')).toBe(0);
+    } finally { cleanup(); }
+  });
+
+  it('returns 0 for an unknown session', () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const engine = mkEngine(ctx);
+      expect(engine.getRepeatedTurnCount('nope')).toBe(0);
+    } finally { cleanup(); }
+  });
+
+  it('keeps counts per session', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const engine = mkEngine(ctx);
+      await engine.addTurn(T1, { sessionId: 'sess-A', role: 'user' });
+      await engine.addTurn(T1, { sessionId: 'sess-A', role: 'user' });
+      await engine.addTurn(T1, { sessionId: 'sess-B', role: 'user' });
+      expect(engine.getRepeatedTurnCount('sess-A')).toBe(1);
+      expect(engine.getRepeatedTurnCount('sess-B')).toBe(0);
+    } finally { cleanup(); }
+  });
+
+  it('resets the count on deleteSession', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const engine = mkEngine(ctx);
+      await engine.addTurn(T1, { sessionId: 'sess-A', role: 'user' });
+      await engine.addTurn(T1, { sessionId: 'sess-A', role: 'user' });
+      await engine.addTurn(JACCARD_REPEAT, { sessionId: 'sess-A', role: 'user' });
+      expect(engine.getRepeatedTurnCount('sess-A')).toBe(2);
+      await engine.deleteSession('sess-A');
+      expect(engine.getRepeatedTurnCount('sess-A')).toBe(0);
+    } finally { cleanup(); }
+  });
+  it('counts concurrent repeats in one session once each', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const engine = mkEngine(ctx);
+      const results = await Promise.all([
+        engine.addTurn(T1, { sessionId: 'sess-A', role: 'user' }),
+        engine.addTurn(T1, { sessionId: 'sess-A', role: 'user' }),
+        engine.addTurn(T1, { sessionId: 'sess-A', role: 'user' }),
+      ]);
+      expect(results.filter((r) => r.duplicateDetected)).toHaveLength(2);
+      expect(engine.getRepeatedTurnCount('sess-A')).toBe(2);
+    } finally { cleanup(); }
+  });
+
+  it('does not count turns that an exclusion rule blocks', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      await ctx.exclusionManager.add({ pattern: 'password' });
+      const engine = ctx.memoryEngine;
+      const first = await engine.addTurn('my password is hunter2', { sessionId: 'sess-A', role: 'user' });
+      const second = await engine.addTurn('my password is hunter2', { sessionId: 'sess-A', role: 'user' });
+      expect(first.blocked).toBe(true);
+      expect(second.blocked).toBe(true);
+      expect(engine.getRepeatedTurnCount('sess-A')).toBe(0);
+    } finally { cleanup(); }
+  });
+
+  it('resets the count on deleteSession when the session has no stored turns', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const engine = mkEngine(ctx);
+      await engine.addTurn(T1, { sessionId: 'sess-A', role: 'user' });
+      await engine.addTurn(T1, { sessionId: 'sess-A', role: 'user' });
+      expect(engine.getRepeatedTurnCount('sess-A')).toBe(1);
+      const turns = await engine.getSessionTurns('sess-A');
+      await ctx.entityManager.deleteEntities(turns.map((t) => t.name));
+      expect(await engine.getSessionTurns('sess-A')).toHaveLength(0);
+      const result = await engine.deleteSession('sess-A');
+      expect(result.deleted).toBe(0);
+      expect(engine.getRepeatedTurnCount('sess-A')).toBe(0);
+    } finally { cleanup(); }
+  });
+});
+
+describe('MemoryEngine Jaccard tier (pinned)', () => {
+  // checkTierJaccard reads only cfg and module helpers, so the prototype is enough.
+  const engine = Object.assign(Object.create(MemoryEngine.prototype), { cfg: { jaccardThreshold: 0.72 } }) as {
+    checkTierJaccard(content: string, candidates: unknown[]): { isDuplicate: boolean; tier?: string };
+  };
+  const candidate = (observation: string) => ({ name: 'c', entityType: 'turn', observations: [observation] });
+  const shared = Array.from({ length: 18 }, (_, i) => `token${String(i + 1).padStart(2, '0')}`);
+
+  it('rejects a pair below the threshold and skips empty sides', () => {
+    expect(engine.checkTierJaccard('alpha beta gamma', [candidate('beta gamma delta epsilon')]).isDuplicate).toBe(false);
+    expect(engine.checkTierJaccard('', [candidate('alpha beta')]).isDuplicate).toBe(false);
+    expect(engine.checkTierJaccard('alpha beta', [candidate('')]).isDuplicate).toBe(false);
+  });
+
+  it('accepts a pair exactly at the threshold (18 shared of 25 tokens = 0.72)', () => {
+    const content = [...shared, 'extraone', 'extratwo', 'extrathree'].join(' ');
+    const other = candidate([...shared, 'extrafour', 'extrafive', 'extrasix', 'extraseven'].join(' '));
+    expect(engine.checkTierJaccard(content, [other])).toMatchObject({ isDuplicate: true, tier: 'jaccard' });
+  });
+});
+
+describe('MemoryEngine Jaccard tier at threshold 0 (pinned)', () => {
+  // checkTierJaccard reads only cfg and module helpers, so the prototype is enough.
+  const engine = Object.assign(Object.create(MemoryEngine.prototype), { cfg: { jaccardThreshold: 0 } }) as {
+    checkTierJaccard(content: string, candidates: unknown[]): { isDuplicate: boolean; match?: { name: string } };
+  };
+  const candidate = (name: string, observation: string) => ({ name, entityType: 'turn', observations: [observation] });
+
+  it('skips empty content and empty candidates although a score of 0 would pass', () => {
+    expect(engine.checkTierJaccard('', [candidate('c1', 'alpha')])).toEqual({ isDuplicate: false });
+    expect(engine.checkTierJaccard('alpha', [candidate('c1', '')])).toEqual({ isDuplicate: false });
+    const result = engine.checkTierJaccard('alpha', [candidate('c1', ''), candidate('c2', 'beta')]);
+    expect(result.isDuplicate).toBe(true);
+    expect(result.match?.name).toBe('c2');
+  });
+});

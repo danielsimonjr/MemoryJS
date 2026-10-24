@@ -176,6 +176,56 @@ describe('ContextProfileManager', () => {
       expect(manager.inferProfile('')).toBe('default');
       expect(manager.inferProfile(undefined as unknown as string)).toBe('default');
     });
+
+    it('infers synthesis for why and how questions', () => {
+      expect(manager.inferProfile('why did the build fail')).toBe('synthesis');
+      expect(manager.inferProfile('How does the cache evict entries?')).toBe('synthesis');
+    });
+
+    it('infers lookup for who, which, when and where questions', () => {
+      expect(manager.inferProfile('who owns the build')).toBe('lookup');
+      expect(manager.inferProfile('Which module parses dates?')).toBe('lookup');
+      expect(manager.inferProfile('When was the release tagged?')).toBe('lookup');
+      expect(manager.inferProfile('where is the config file')).toBe('lookup');
+    });
+
+    it('keeps task profiles ahead of question types', () => {
+      expect(manager.inferProfile('why is the site down')).toBe('incident');
+      expect(manager.inferProfile('how should we plan the migration')).toBe('planning');
+    });
+
+    it('does not match a question word later in the query', () => {
+      expect(manager.inferProfile('the file I wonder where it lives')).toBe('default');
+      expect(manager.inferProfile('tell me how it works')).toBe('default');
+    });
+
+    it('does not match a question word inside another word', () => {
+      expect(manager.inferProfile('somehow it works')).toBe('default');
+    });
+  });
+
+  // ==================== Question-Type Presets ====================
+
+  describe('question-type presets', () => {
+    it('ships lookup and synthesis presets with no retrieval settings', () => {
+      const defaultProfile = manager.getProfile('default');
+
+      for (const name of ['lookup', 'synthesis']) {
+        const profile = manager.getProfile(name);
+        expect(profile.retrieval).toBeUndefined();
+        expect(profile.salienceWeights).toEqual(defaultProfile.salienceWeights);
+        expect(profile.temporalFocus).toBe(defaultProfile.temporalFocus);
+        expect(profile.budgetAllocation).toEqual(defaultProfile.budgetAllocation);
+        expect(profile.maxTokens).toBe(defaultProfile.maxTokens);
+        expect(profile.preferredEntityTypes).toEqual(defaultProfile.preferredEntityTypes);
+      }
+    });
+
+    it('lists the new profiles', () => {
+      const names = manager.getAvailableProfiles();
+      expect(names).toContain('lookup');
+      expect(names).toContain('synthesis');
+    });
   });
 
   // ==================== Custom Profiles ====================
@@ -394,6 +444,82 @@ describe('ContextProfileManager', () => {
       });
 
       expect(result).toBeDefined();
+    });
+
+    describe('composeHops from profiles', () => {
+      /** Hybrid stub that returns no hits; the test reads the options it was called with. */
+      function hybridStub() {
+        return { search: vi.fn().mockResolvedValue([]) };
+      }
+
+      it('applies retrieval.composeHops from a registered profile', async () => {
+        const profileManager = contextWindowManager.getContextProfileManager();
+        profileManager.registerProfile('synthesis', {
+          ...profileManager.getProfile('default'),
+          retrieval: { composeHops: 1 },
+        });
+        const hybrid = hybridStub();
+        contextWindowManager.setHybridSearch(hybrid);
+
+        await contextWindowManager.retrieveForContext({
+          maxTokens: 1000,
+          profile: 'synthesis',
+          context: { queryText: 'why does it fail' },
+        });
+
+        expect(hybrid.search.mock.calls[0][2].expandNeighbors).toEqual({ hops: 1 });
+      });
+
+      it('applies registered retrieval.composeHops when the profile is auto', async () => {
+        const profileManager = contextWindowManager.getContextProfileManager();
+        profileManager.registerProfile('synthesis', {
+          ...profileManager.getProfile('default'),
+          retrieval: { composeHops: 1 },
+        });
+        const hybrid = hybridStub();
+        contextWindowManager.setHybridSearch(hybrid);
+
+        await contextWindowManager.retrieveForContext({
+          maxTokens: 1000,
+          profile: 'auto',
+          context: { queryText: 'why does it fail' },
+        });
+
+        expect(hybrid.search.mock.calls[0][2].expandNeighbors).toEqual({ hops: 1 });
+      });
+
+      it('lets an explicit composeHops override the profile', async () => {
+        const profileManager = contextWindowManager.getContextProfileManager();
+        profileManager.registerProfile('synthesis', {
+          ...profileManager.getProfile('default'),
+          retrieval: { composeHops: 1 },
+        });
+        const hybrid = hybridStub();
+        contextWindowManager.setHybridSearch(hybrid);
+
+        await contextWindowManager.retrieveForContext({
+          maxTokens: 1000,
+          profile: 'synthesis',
+          composeHops: 0,
+          context: { queryText: 'why does it fail' },
+        });
+
+        expect(hybrid.search.mock.calls[0][2]).not.toHaveProperty('expandNeighbors');
+      });
+
+      it('uses the shipped synthesis preset without expansion', async () => {
+        const hybrid = hybridStub();
+        contextWindowManager.setHybridSearch(hybrid);
+
+        await contextWindowManager.retrieveForContext({
+          maxTokens: 1000,
+          profile: 'auto',
+          context: { queryText: 'why does it fail' },
+        });
+
+        expect(contextWindowManager.getContextProfileManager().inferProfile('why does it fail')).toBe('synthesis');
+        expect(hybrid.search.mock.calls[0][2]).toEqual({ limit: 1000 });
+      });
     });
   });
 });

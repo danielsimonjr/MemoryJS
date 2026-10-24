@@ -277,6 +277,21 @@ describe('MultiAgentMemoryManager', () => {
       await manager.createAgentMemory('agent_2', { name: 'private_2', visibility: 'private' });
     });
 
+    it('returns what filterByVisibility returns over the stored graph, with cross-agent access on and off', async () => {
+      await manager.createAgentMemory('agent_2', { name: 'shared_2', visibility: 'shared' });
+
+      for (const allowCrossAgent of [true, false]) {
+        const scoped = new MultiAgentMemoryManager(storage, { allowCrossAgent });
+        await scoped.registerAgent('agent_1', {});
+        await scoped.registerAgent('agent_2', {});
+        const graph = await storage.loadGraph();
+
+        expect(await scoped.getVisibleMemories('agent_1')).toStrictEqual(
+          scoped.filterByVisibility(graph.entities, 'agent_1')
+        );
+      }
+    });
+
     it('should return all own memories regardless of visibility', async () => {
       const memories = await manager.getVisibleMemories('agent_1');
 

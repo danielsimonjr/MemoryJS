@@ -28,14 +28,9 @@
 
 import { promises as fs } from 'fs';
 import { Mutex } from 'async-mutex';
-import { logger } from '../../utils/logger.js';
 import { durableWriteFile } from '../../utils/durableWriteFile.js';
+import { parseJsonlMapLines, serializeJsonlMap } from '../../utils/jsonlMapFile.js';
 import type { IColumnStore } from './IColumnStore.js';
-
-interface SidecarLine<T> {
-  name: string;
-  value: T;
-}
 
 /**
  * Durable JSONL-backed column store.
@@ -230,40 +225,26 @@ export class JsonlColumnStore<T> implements IColumnStore<T> {
   }
 
   private async loadFromDisk(): Promise<Map<string, T>> {
-    const map = new Map<string, T>();
     let raw: string;
     try {
       raw = await fs.readFile(this.sidecarPath, 'utf-8');
     } catch (error) {
       if (error instanceof Error && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
-        return map;
+        return new Map<string, T>();
       }
       throw error;
     }
-    const lines = raw.split('\n');
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (trimmed === '') continue;
-      try {
-        const parsed = JSON.parse(trimmed) as SidecarLine<T>;
-        if (typeof parsed.name !== 'string') {
-          logger.warn(`JsonlColumnStore: skipping line with non-string name in ${this.sidecarPath}`);
-          continue;
-        }
-        map.set(parsed.name, parsed.value);
-      } catch {
-        logger.warn(`JsonlColumnStore: skipping malformed line in ${this.sidecarPath}`);
-      }
-    }
-    return map;
+    return parseJsonlMapLines<T>(raw, {
+      keyField: 'name',
+      valueField: 'value',
+      warnPrefix: 'JsonlColumnStore',
+      keyLabel: 'name',
+      filePath: this.sidecarPath,
+    });
   }
 
   private async flush(cache: Map<string, T>): Promise<void> {
-    const lines: string[] = [];
-    for (const [name, value] of cache) {
-      lines.push(JSON.stringify({ name, value }));
-    }
-    const content = lines.length === 0 ? '' : lines.join('\n') + '\n';
+    const content = serializeJsonlMap(cache, { keyField: 'name', valueField: 'value' });
     await durableWriteFile(this.sidecarPath, content);
   }
 }

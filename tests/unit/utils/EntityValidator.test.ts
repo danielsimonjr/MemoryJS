@@ -449,4 +449,43 @@ describe('EntityValidator', () => {
       expect(result.errors[0].value).toBeUndefined();
     });
   });
+
+  describe('issue value from a field path (pinned before the extraction)', () => {
+    it('reports the value at a dotted path', async () => {
+      validator.addRule(minLength('meta.title', 5));
+      const entity = { ...createEntity(), meta: { title: 'abc' } } as Entity;
+      const result = await validator.validate(entity);
+      expect(result.errors[0].value).toBe('abc');
+    });
+
+    it('reports the value at an array index', async () => {
+      validator.addRule(maxLength('tags.1', 1));
+      const entity = { ...createEntity(), tags: ['a', 'bb'] } as Entity;
+      const result = await validator.validate(entity);
+      expect(result.errors[0].value).toBe('bb');
+    });
+
+    it('reports the value at a segment that is not all digits', async () => {
+      validator.addRule(maxLength('a.0b', 1));
+      const entity = { ...createEntity(), a: { '0b': 'xy' } } as Entity;
+      const result = await validator.validate(entity);
+      expect(result.errors[0].value).toBe('xy');
+    });
+  });
+});
+
+describe('EntityValidator with a field that is not a string', () => {
+  it('reports the TypeError text from validate', async () => {
+    const validator = new EntityValidator({ rules: [required(5 as unknown as string)] });
+    const result = await validator.validate(createEntity());
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].message).toMatch(/^Validation error: field\.split is not a function/);
+  });
+
+  it('reports the TypeError text from validateSync', () => {
+    const validator = new EntityValidator({ rules: [minLength({} as unknown as string, 1)] });
+    const result = validator.validateSync(createEntity());
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].message).toMatch(/^Validation error: field\.split is not a function/);
+  });
 });

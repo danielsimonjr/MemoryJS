@@ -9,6 +9,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   EpisodicMemoryManager,
   EpisodicRelations,
+  type TimelineOptions,
 } from '../../../src/agent/EpisodicMemoryManager.js';
 import type { IGraphStorage, Entity, Relation } from '../../../src/types/types.js';
 import type { AgentEntity } from '../../../src/types/agent-memory.js';
@@ -620,5 +621,106 @@ describe('EpisodicMemoryManager', () => {
 
       expect(count).toBe(2);
     });
+  });
+});
+
+describe('EpisodicMemoryManager shared helpers (pins)', () => {
+  const t1 = '2026-01-01T00:00:01.000Z';
+  const t2 = '2026-01-01T00:00:02.000Z';
+  const t3 = '2026-01-01T00:00:03.000Z';
+  const t4 = '2026-01-01T00:00:04.000Z';
+  const t5 = '2026-01-01T00:00:05.000Z';
+
+  function timelineEntities(): Entity[] {
+    return [
+      createTestEpisode('a1', 's1', t1),
+      createTestEpisode('a2', 's1', t2),
+      createTestEpisode('a3', 's1', t3),
+      createTestEpisode('b1', 's2', t4),
+      { ...createTestEpisode('n1', 's1', t5), sessionId: undefined },
+      { ...createTestEpisode('sess-s1', 's1', t1), entityType: 'session' },
+    ];
+  }
+
+  it('getTimeline with an undefined session id keeps only the episodes that have no session id', async () => {
+    const m = new EpisodicMemoryManager(createMockStorage(timelineEntities()));
+    const names = async (o?: TimelineOptions) =>
+      (await m.getTimeline(undefined as unknown as string, o)).map((e) => e.name);
+
+    expect(await names()).toStrictEqual(['n1']);
+    expect(await names({ order: 'desc' })).toStrictEqual(['n1']);
+    expect(await names({ startTime: t5 })).toStrictEqual(['n1']);
+    expect(await names({ startTime: '2026-01-01T00:00:06.000Z' })).toStrictEqual([]);
+  });
+
+  it('getAllEpisodes returns every episode across sessions and skips session entities', async () => {
+    const m = new EpisodicMemoryManager(createMockStorage(timelineEntities()));
+    const names = async (o?: TimelineOptions) => (await m.getAllEpisodes(o)).map((e) => e.name);
+
+    expect(await names()).toStrictEqual(['a1', 'a2', 'a3', 'b1', 'n1']);
+    expect(await names({ order: 'desc' })).toStrictEqual(['n1', 'b1', 'a3', 'a2', 'a1']);
+    expect(await names({ offset: 1, limit: 2 })).toStrictEqual(['a2', 'a3']);
+    expect(await names({ startTime: t2 })).toStrictEqual(['a2', 'a3', 'b1', 'n1']);
+  });
+
+  it('getTimeline returns only the episodes of one session with the same options', async () => {
+    const m = new EpisodicMemoryManager(createMockStorage(timelineEntities()));
+    const names = async (o?: TimelineOptions) => (await m.getTimeline('s1', o)).map((e) => e.name);
+
+    expect(await names()).toStrictEqual(['a1', 'a2', 'a3']);
+    expect(await names({ order: 'desc' })).toStrictEqual(['a3', 'a2', 'a1']);
+    expect(await names({ offset: 1, limit: 1 })).toStrictEqual(['a2']);
+    expect(await names({ startTime: t2 })).toStrictEqual(['a2', 'a3']);
+  });
+
+  it('getDirectCauses and getDirectEffects follow CAUSES relations only', async () => {
+    const entities = [
+      createTestEpisode('x', 's1', t1),
+      createTestEpisode('y', 's1', t2),
+      createTestEpisode('z', 's1', t3),
+    ];
+    const relations: Relation[] = [
+      { from: 'x', to: 'y', relationType: EpisodicRelations.CAUSES, createdAt: t1 },
+      { from: 'y', to: 'z', relationType: EpisodicRelations.CAUSES, createdAt: t1 },
+      { from: 'x', to: 'z', relationType: EpisodicRelations.PRECEDES, createdAt: t1 },
+    ];
+    const m = new EpisodicMemoryManager(createMockStorage(entities, relations));
+    const names = (list: AgentEntity[]) => list.map((e) => e.name);
+
+    expect(names(await m.getDirectCauses('z'))).toStrictEqual(['y']);
+    expect(names(await m.getDirectCauses('y'))).toStrictEqual(['x']);
+    expect(names(await m.getDirectCauses('x'))).toStrictEqual([]);
+    expect(names(await m.getDirectEffects('x'))).toStrictEqual(['y']);
+    expect(names(await m.getDirectEffects('y'))).toStrictEqual(['z']);
+    expect(names(await m.getDirectEffects('z'))).toStrictEqual([]);
+  });
+
+  it('addCausalLink throws for a missing cause and appends nothing', async () => {
+    const storage = createMockStorage([createTestEpisode('effect', 's1', t1)]);
+    const m = new EpisodicMemoryManager(storage);
+
+    await expect(m.addCausalLink('x', 'effect')).rejects.toThrow('Cause entity not found: x');
+    expect(storage.appendRelation).not.toHaveBeenCalled();
+  });
+
+  it('addCausalLink and linkSequence append a forward and a reverse relation with one timestamp', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(t1));
+    try {
+      const storage = createMockStorage([createTestEpisode('a', 's1', t1), createTestEpisode('b', 's1', t1)]);
+      const m = new EpisodicMemoryManager(storage);
+
+      await m.addCausalLink('a', 'b');
+      await m.linkSequence(['a', 'b']);
+
+      expect(vi.mocked(storage.appendRelation).mock.calls.map((c) => c[0])).toStrictEqual([
+        { from: 'a', to: 'b', relationType: EpisodicRelations.CAUSES, createdAt: t1 },
+        { from: 'b', to: 'a', relationType: EpisodicRelations.CAUSED_BY, createdAt: t1 },
+        { from: 'a', to: 'b', relationType: EpisodicRelations.PRECEDES, createdAt: t1 },
+        { from: 'b', to: 'a', relationType: EpisodicRelations.FOLLOWS, createdAt: t1 },
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

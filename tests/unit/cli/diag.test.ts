@@ -7,6 +7,7 @@
  * paths are caught.
  */
 
+import { createCliHarness, cleanupCliHarness, errorLines, type CliHarness } from './helpers/cliTestHarness.js';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Command } from 'commander';
 import { promises as fs } from 'node:fs';
@@ -163,5 +164,21 @@ describe('diag CLI commands', () => {
     expect(out.checks.some((c) => c.name === 'relations:no-orphans' && !c.ok)).toBe(true);
     // process.exit(1) was called by the action — exitOverride converted it to a throw.
     expect(exited).toBe(true);
+  });
+});
+
+describe('diag error path', () => {
+  it('logs the error once, then exits 1', async () => {
+    const h = await createCliHarness(registerDiagCommand);
+    try {
+      // A directory at the storage path makes every read fail with EISDIR.
+      await fs.mkdir(h.storagePath);
+      await expect(h.parse(['diag'])).rejects.toThrow('process.exit called');
+      expect(errorLines(h.errorSpy)).toEqual(['[ERROR] ✗ EISDIR: illegal operation on a directory, read']);
+      expect(h.errorSpy.mock.invocationCallOrder[0]).toBeLessThan(h.processExitSpy.mock.invocationCallOrder[0]!);
+      expect(h.processExitSpy).toHaveBeenCalledWith(1);
+    } finally {
+      await cleanupCliHarness(h);
+    }
   });
 });

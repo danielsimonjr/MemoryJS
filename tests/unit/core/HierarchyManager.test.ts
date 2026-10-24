@@ -7,6 +7,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { HierarchyManager } from '../../../src/core/HierarchyManager.js';
 import { GraphStorage } from '../../../src/core/GraphStorage.js';
+import type { Entity } from '../../../src/types/index.js';
 import { EntityNotFoundError, CycleDetectedError } from '../../../src/utils/errors.js';
 import { promises as fs } from 'fs';
 import { join } from 'path';
@@ -184,6 +185,11 @@ describe('HierarchyManager', () => {
       expect(descendants).toHaveLength(1);
       expect(descendants[0].name).toBe('Grandchild1');
     });
+
+    it('should list a three-level tree in breadth-first order', async () => {
+      const descendants = await hierarchyManager.getDescendants('Root1');
+      expect(descendants.map(d => d.name)).toEqual(['Child1', 'Child2', 'Grandchild1']);
+    });
   });
 
   describe('getSubtree', () => {
@@ -347,6 +353,70 @@ describe('HierarchyManager', () => {
 
       const parent = await hierarchyManager.getParent('Orphan');
       expect(parent).toBeNull(); // Should return null, not throw
+    });
+  });
+
+  describe('parent cycles in stored data', () => {
+    // setEntityParent rejects a cycle, so these states come from a stub
+    // storage that returns the raw entities.
+    function managerOver(entities: Entity[]): HierarchyManager {
+      const stub = { loadGraph: async () => ({ entities, relations: [] }) };
+      return new HierarchyManager(stub as unknown as GraphStorage);
+    }
+
+    it('should not loop when two entities name each other as parent', async () => {
+      const manager = managerOver([
+        { name: 'A', entityType: 'folder', observations: [], parentId: 'B' },
+        { name: 'B', entityType: 'folder', observations: [], parentId: 'A' },
+      ]);
+
+      const descendants = await manager.getDescendants('A');
+      expect(descendants.map(d => d.name)).toEqual(['B']);
+    });
+
+    it('should return no descendants for an entity that is its own parent', async () => {
+      const manager = managerOver([
+        { name: 'A', entityType: 'folder', observations: [], parentId: 'A' },
+      ]);
+
+      expect(await manager.getDescendants('A')).toEqual([]);
+    });
+
+    it('should list the root once in a subtree that contains a cycle', async () => {
+      const manager = managerOver([
+        { name: 'A', entityType: 'folder', observations: [], parentId: 'B' },
+        { name: 'B', entityType: 'folder', observations: [], parentId: 'A' },
+      ]);
+
+      const subtree = await manager.getSubtree('A');
+      expect(subtree.entities.map(e => e.name)).toEqual(['A', 'B']);
+    });
+
+    it('should keep listing the siblings that follow the root in a cycle', async () => {
+      // A is a child of P and P is a child of A. S is a second child of P and
+      // comes after A in storage order, so the walk meets A before S.
+      const manager = managerOver([
+        { name: 'A', entityType: 'folder', observations: [], parentId: 'P' },
+        { name: 'P', entityType: 'folder', observations: [], parentId: 'A' },
+        { name: 'S', entityType: 'folder', observations: [], parentId: 'P' },
+      ]);
+
+      const descendants = await manager.getDescendants('A');
+      expect(descendants.map(d => d.name)).toEqual(['P', 'S']);
+    });
+
+    it('should list a name once when stored data repeats it', async () => {
+      // Storage keys entities by name, so setEntityParent cannot produce this.
+      // The walk lists the first entity of the name and then its children once.
+      const manager = managerOver([
+        { name: 'R', entityType: 'folder', observations: [] },
+        { name: 'X', entityType: 'folder', observations: [], parentId: 'R' },
+        { name: 'X', entityType: 'folder', observations: [], parentId: 'R' },
+        { name: 'Y', entityType: 'folder', observations: [], parentId: 'X' },
+      ]);
+
+      const descendants = await manager.getDescendants('R');
+      expect(descendants.map(d => d.name)).toEqual(['X', 'Y']);
     });
   });
 });

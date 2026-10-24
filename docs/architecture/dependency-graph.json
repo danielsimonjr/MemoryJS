@@ -1,11 +1,11 @@
 {
   "metadata": {
     "name": "@danielsimonjr/memoryjs",
-    "version": "4.2.0",
-    "lastUpdated": "2026-10-18",
-    "totalFiles": 292,
+    "version": "4.3.0",
+    "lastUpdated": "2026-10-24",
+    "totalFiles": 303,
     "totalModules": 12,
-    "totalExports": 2030
+    "totalExports": 2070
   },
   "entryPoints": [
     {
@@ -393,6 +393,12 @@
               "AccessPattern"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../utils/halfLife.js",
+            "imports": [
+              "halfLifeFactor"
+            ]
           },
           {
             "file": "../types/agent-memory.js",
@@ -818,10 +824,9 @@
             "typeOnly": true
           },
           {
-            "file": "../utils/errors.js",
+            "file": "./versionedWriteFailure.js",
             "imports": [
-              "VersionConflictError",
-              "EntityNotFoundError"
+              "versionedWriteFailure"
             ]
           },
           {
@@ -987,6 +992,12 @@
         "nodeDependencies": [],
         "internalDependencies": [
           {
+            "file": "../utils/textSimilarity.js",
+            "imports": [
+              "jaccard"
+            ]
+          },
+          {
             "file": "../types/agent-memory.js",
             "imports": [
               "AgentEntity",
@@ -1117,6 +1128,12 @@
         ],
         "internalDependencies": [
           {
+            "file": "../utils/textSimilarity.js",
+            "imports": [
+              "jaccard"
+            ]
+          },
+          {
             "file": "../types/agent-memory.js",
             "imports": [
               "AgentEntity",
@@ -1223,11 +1240,23 @@
             ]
           },
           {
+            "file": "../utils/entityUtils.js",
+            "imports": [
+              "hash31"
+            ]
+          },
+          {
             "file": "./WorkingMemoryManager.js",
             "imports": [
               "WorkingMemoryManager"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "./workingMemoryGuard.js",
+            "imports": [
+              "requireWorkingMemoryEntity"
+            ]
           },
           {
             "file": "./DecayEngine.js",
@@ -1475,6 +1504,20 @@
             ]
           },
           {
+            "file": "../search/HybridSearchManager.js",
+            "imports": [
+              "HybridSearchManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./SummarizationService.js",
+            "imports": [
+              "SummarizationService"
+            ],
+            "typeOnly": true
+          },
+          {
             "file": "../types/agent-memory.js",
             "imports": [
               "ContextWindowManagerConfig"
@@ -1532,7 +1575,8 @@
           "ContextCompressionResult",
           "WakeUpOptions",
           "WakeUpResult",
-          "SpilloverResult"
+          "SpilloverResult",
+          "PrioritizeOptions"
         ]
       },
       "src/agent/DecayEngine.ts": {
@@ -1580,6 +1624,12 @@
             "file": "../utils/textSimilarity.js",
             "imports": [
               "tokenizeToSet"
+            ]
+          },
+          {
+            "file": "../utils/halfLife.js",
+            "imports": [
+              "halfLifeFactor"
             ]
           },
           {
@@ -1785,6 +1835,12 @@
         "nodeDependencies": [],
         "internalDependencies": [
           {
+            "file": "../utils/textSimilarity.js",
+            "imports": [
+              "jaccard"
+            ]
+          },
+          {
             "file": "../types/types.js",
             "imports": [
               "Entity"
@@ -1802,6 +1858,12 @@
             "file": "../features/FreshnessManager.js",
             "imports": [
               "FreshnessManager"
+            ]
+          },
+          {
+            "file": "../utils/halfLife.js",
+            "imports": [
+              "halfLifeFactor"
             ]
           }
         ],
@@ -2342,10 +2404,9 @@
             "typeOnly": true
           },
           {
-            "file": "../utils/errors.js",
+            "file": "./versionedWriteFailure.js",
             "imports": [
-              "VersionConflictError",
-              "EntityNotFoundError"
+              "versionedWriteFailure"
             ]
           },
           {
@@ -2380,6 +2441,12 @@
           }
         ],
         "internalDependencies": [
+          {
+            "file": "../utils/textSimilarity.js",
+            "imports": [
+              "jaccard"
+            ]
+          },
           {
             "file": "../types/types.js",
             "imports": [
@@ -2593,8 +2660,10 @@
             "file": "./SummarizationService.js",
             "imports": [
               "SummarizationService",
+              "LLMSummarizationProvider",
               "ISummarizationProvider",
               "SummarizationConfig",
+              "SummarizationServiceOptions",
               "GroupingResult"
             ],
             "reExport": true
@@ -2627,6 +2696,7 @@
             "imports": [
               "ContextWindowManager",
               "ContextWindowManagerConfig",
+              "PrioritizeOptions",
               "SpilloverResult",
               "WakeUpOptions",
               "WakeUpResult"
@@ -3298,8 +3368,10 @@
           "ReflectionStageConfig",
           "StageResult",
           "SummarizationService",
+          "LLMSummarizationProvider",
           "ISummarizationProvider",
           "SummarizationConfig",
+          "SummarizationServiceOptions",
           "GroupingResult",
           "PatternDetector",
           "RuleEvaluator",
@@ -3308,6 +3380,7 @@
           "SalienceEngineConfig",
           "ContextWindowManager",
           "ContextWindowManagerConfig",
+          "PrioritizeOptions",
           "SpilloverResult",
           "WakeUpOptions",
           "WakeUpResult",
@@ -3692,8 +3765,10 @@
           "ReflectionStageConfig",
           "StageResult",
           "SummarizationService",
+          "LLMSummarizationProvider",
           "ISummarizationProvider",
           "SummarizationConfig",
+          "SummarizationServiceOptions",
           "GroupingResult",
           "PatternDetector",
           "RuleEvaluator",
@@ -3702,6 +3777,7 @@
           "SalienceEngineConfig",
           "ContextWindowManager",
           "ContextWindowManagerConfig",
+          "PrioritizeOptions",
           "SpilloverResult",
           "WakeUpOptions",
           "WakeUpResult",
@@ -4050,6 +4126,22 @@
           "InMemoryBackend"
         ]
       },
+      "src/agent/keyValueLine.ts": {
+        "description": "Encodes and decodes one observation line of the form",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "encodeKeyValueBody",
+          "decodeKeyValueBody"
+        ],
+        "functions": [
+          "encodeKeyValueBody",
+          "encodeKeyValueBody",
+          "encodeKeyValueBody",
+          "decodeKeyValueBody"
+        ]
+      },
       "src/agent/MemoryBackend.ts": {
         "description": "Memory Backend Interface (`IMemoryBackend`)",
         "externalDependencies": [],
@@ -4081,6 +4173,12 @@
           }
         ],
         "internalDependencies": [
+          {
+            "file": "../utils/textSimilarity.js",
+            "imports": [
+              "jaccard"
+            ]
+          },
           {
             "file": "../types/types.js",
             "imports": [
@@ -4307,6 +4405,12 @@
           }
         ],
         "internalDependencies": [
+          {
+            "file": "../utils/textSimilarity.js",
+            "imports": [
+              "jaccard"
+            ]
+          },
           {
             "file": "../types/types.js",
             "imports": [
@@ -5423,6 +5527,12 @@
               "PGSessionOptions"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../../../utils/BatchProcessor.js",
+            "imports": [
+              "chunkArray"
+            ]
           }
         ],
         "exports": [
@@ -6087,6 +6197,7 @@
           {
             "file": "../../utils/textSimilarity.js",
             "imports": [
+              "jaccard",
               "tokenizeToSet"
             ]
           }
@@ -6135,6 +6246,13 @@
               "ProcedureStep"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../keyValueLine.js",
+            "imports": [
+              "decodeKeyValueBody",
+              "encodeKeyValueBody"
+            ]
           }
         ],
         "exports": [
@@ -7336,6 +7454,13 @@
               "DecayEngine"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "./keyValueLine.js",
+            "imports": [
+              "decodeKeyValueBody",
+              "encodeKeyValueBody"
+            ]
           }
         ],
         "exports": [
@@ -7538,16 +7663,26 @@
             "imports": [
               "calculateTextSimilarity"
             ]
+          },
+          {
+            "file": "../search/LLMQueryPlanner.js",
+            "imports": [
+              "LLMProvider"
+            ],
+            "typeOnly": true
           }
         ],
         "exports": [
+          "LLMSummarizationProvider",
           "SummarizationService"
         ],
         "classes": [
+          "LLMSummarizationProvider",
           "SummarizationService"
         ],
         "interfaces": [
           "ISummarizationProvider",
+          "SummarizationServiceOptions",
           "SummarizationConfig",
           "GroupingResult"
         ]
@@ -7631,6 +7766,7 @@
           {
             "file": "./ToolAffordanceManager.js",
             "imports": [
+              "RecordOutcomeInput",
               "ToolAffordanceManager"
             ],
             "typeOnly": true
@@ -7683,6 +7819,26 @@
           "TrajectoryCompressorConfig"
         ]
       },
+      "src/agent/versionedWriteFailure.ts": {
+        "description": "Versioned Write Failure",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../utils/errors.js",
+            "imports": [
+              "VersionConflictError",
+              "EntityNotFoundError"
+            ]
+          }
+        ],
+        "exports": [
+          "versionedWriteFailure"
+        ],
+        "functions": [
+          "versionedWriteFailure"
+        ]
+      },
       "src/agent/VisibilityResolver.ts": {
         "description": "Visibility Resolver",
         "externalDependencies": [],
@@ -7702,6 +7858,39 @@
         ],
         "classes": [
           "VisibilityResolver"
+        ]
+      },
+      "src/agent/workingMemoryGuard.ts": {
+        "description": "Working Memory Guard",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "IGraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "AgentEntity"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "isAgentEntity"
+            ]
+          }
+        ],
+        "exports": [
+          "requireWorkingMemoryEntity"
+        ],
+        "functions": [
+          "requireWorkingMemoryEntity"
         ]
       },
       "src/agent/WorkingMemoryManager.ts": {
@@ -7746,11 +7935,23 @@
             ]
           },
           {
+            "file": "../utils/entityUtils.js",
+            "imports": [
+              "hash31"
+            ]
+          },
+          {
             "file": "./ExclusionManager.js",
             "imports": [
               "ExclusionManager"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "./workingMemoryGuard.js",
+            "imports": [
+              "requireWorkingMemoryEntity"
+            ]
           }
         ],
         "exports": [
@@ -7788,6 +7989,13 @@
               "Relation"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "./keyValueLine.js",
+            "imports": [
+              "decodeKeyValueBody",
+              "encodeKeyValueBody"
+            ]
           }
         ],
         "exports": [
@@ -8061,15 +8269,7 @@
           {
             "file": "./helpers.js",
             "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
-            ]
-          },
-          {
-            "file": "../formatters.js",
-            "imports": [
-              "formatError"
+              "runAction"
             ]
           }
         ],
@@ -8124,6 +8324,7 @@
           {
             "file": "./helpers.js",
             "imports": [
+              "runAction",
               "getOptions",
               "createContext",
               "createLogger"
@@ -8210,15 +8411,7 @@
           {
             "file": "./helpers.js",
             "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
-            ]
-          },
-          {
-            "file": "../formatters.js",
-            "imports": [
-              "formatError"
+              "runAction"
             ]
           }
         ],
@@ -8351,9 +8544,7 @@
           {
             "file": "./helpers.js",
             "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
+              "runAction"
             ]
           },
           {
@@ -8388,6 +8579,7 @@
           {
             "file": "./helpers.js",
             "imports": [
+              "runAction",
               "getOptions",
               "createContext",
               "createLogger"
@@ -8423,9 +8615,7 @@
           {
             "file": "./helpers.js",
             "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
+              "runAction"
             ]
           },
           {
@@ -8478,17 +8668,25 @@
               "loadConfig",
               "mergeCliConfig"
             ]
+          },
+          {
+            "file": "../formatters.js",
+            "imports": [
+              "formatError"
+            ]
           }
         ],
         "exports": [
           "createLogger",
           "GlobalOptions",
           "getOptions",
-          "createContext"
+          "createContext",
+          "runAction"
         ],
         "functions": [
           "getOptions",
-          "createContext"
+          "createContext",
+          "runAction"
         ]
       },
       "src/cli/commands/heuristic.ts": {
@@ -8506,6 +8704,7 @@
           {
             "file": "./helpers.js",
             "imports": [
+              "runAction",
               "getOptions",
               "createContext",
               "createLogger"
@@ -8540,17 +8739,14 @@
           {
             "file": "./helpers.js",
             "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
+              "runAction"
             ]
           },
           {
             "file": "../formatters.js",
             "imports": [
               "formatEntities",
-              "formatSuccess",
-              "formatError"
+              "formatSuccess"
             ]
           }
         ],
@@ -8761,15 +8957,7 @@
           {
             "file": "./helpers.js",
             "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
-            ]
-          },
-          {
-            "file": "../formatters.js",
-            "imports": [
-              "formatError"
+              "runAction"
             ]
           }
         ],
@@ -8815,16 +9003,13 @@
           {
             "file": "./helpers.js",
             "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
+              "runAction"
             ]
           },
           {
             "file": "../formatters.js",
             "imports": [
-              "formatSuccess",
-              "formatError"
+              "formatSuccess"
             ]
           },
           {
@@ -8857,6 +9042,7 @@
           {
             "file": "./helpers.js",
             "imports": [
+              "runAction",
               "getOptions",
               "createContext",
               "createLogger"
@@ -8907,9 +9093,7 @@
           {
             "file": "./helpers.js",
             "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
+              "runAction"
             ]
           },
           {
@@ -8943,15 +9127,7 @@
           {
             "file": "./helpers.js",
             "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
-            ]
-          },
-          {
-            "file": "../formatters.js",
-            "imports": [
-              "formatError"
+              "runAction"
             ]
           }
         ],
@@ -8977,6 +9153,7 @@
           {
             "file": "./helpers.js",
             "imports": [
+              "runAction",
               "getOptions",
               "createContext",
               "createLogger"
@@ -9072,17 +9249,14 @@
           {
             "file": "./helpers.js",
             "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
+              "runAction"
             ]
           },
           {
             "file": "../formatters.js",
             "imports": [
               "formatRelations",
-              "formatSuccess",
-              "formatError"
+              "formatSuccess"
             ]
           }
         ],
@@ -9208,15 +9382,7 @@
           {
             "file": "./helpers.js",
             "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
-            ]
-          },
-          {
-            "file": "../formatters.js",
-            "imports": [
-              "formatError"
+              "runAction"
             ]
           }
         ],
@@ -9242,16 +9408,13 @@
           {
             "file": "./helpers.js",
             "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
+              "runAction"
             ]
           },
           {
             "file": "../formatters.js",
             "imports": [
               "formatSuccess",
-              "formatError",
               "escapeCSV"
             ]
           }
@@ -9369,7 +9532,7 @@
           {
             "file": "../utils/entityUtils.js",
             "imports": [
-              "escapeCsvFormula"
+              "escapeCsvCell"
             ]
           }
         ],
@@ -9581,15 +9744,16 @@
         ],
         "internalDependencies": [
           {
-            "file": "../../utils/logger.js",
-            "imports": [
-              "logger"
-            ]
-          },
-          {
             "file": "../../utils/durableWriteFile.js",
             "imports": [
               "durableWriteFile"
+            ]
+          },
+          {
+            "file": "../../utils/jsonlMapFile.js",
+            "imports": [
+              "parseJsonlMapLines",
+              "serializeJsonlMap"
             ]
           },
           {
@@ -9883,6 +10047,12 @@
             ]
           },
           {
+            "file": "../utils/logger.js",
+            "imports": [
+              "logger"
+            ]
+          },
+          {
             "file": "./TransactionManager.js",
             "imports": [
               "BatchTransaction"
@@ -9916,6 +10086,16 @@
             "file": "./mmap/IMmapBackend.js",
             "imports": [
               "streamLines"
+            ]
+          },
+          {
+            "file": "./storageCache.js",
+            "imports": [
+              "relationKeyOf",
+              "removeEntitiesFromIndexes",
+              "upsertEntityInCache",
+              "upsertRelationInCache",
+              "StorageCacheState"
             ]
           }
         ],
@@ -9970,6 +10150,12 @@
             "imports": [
               "jaccard",
               "tokenizeToSet"
+            ]
+          },
+          {
+            "file": "../utils/relationHelpers.js",
+            "imports": [
+              "walkParents"
             ]
           }
         ],
@@ -10455,7 +10641,8 @@
           {
             "file": "../search/VectorStore.js",
             "imports": [
-              "createVectorStore"
+              "createVectorStore",
+              "isEmbeddingStorage"
             ]
           },
           {
@@ -11035,6 +11222,12 @@
             ]
           },
           {
+            "file": "../utils/indexes.js",
+            "imports": [
+              "computeLowercase"
+            ]
+          },
+          {
             "file": "../utils/logger.js",
             "imports": [
               "logger"
@@ -11166,12 +11359,6 @@
             ]
           },
           {
-            "module": "crypto",
-            "imports": [
-              "randomBytes"
-            ]
-          },
-          {
             "module": "path",
             "imports": [
               "basename",
@@ -11211,7 +11398,8 @@
             "imports": [
               "durableWriteFile",
               "renameOver",
-              "syncParentDirectory"
+              "syncParentDirectory",
+              "writeSyncedTmp"
             ]
           },
           {
@@ -11221,6 +11409,7 @@
               "Segment",
               "SegmentId",
               "SegmentRouter",
+              "assertSegmentOwnership",
               "mergeSegmentsIntoGraph",
               "splitGraphIntoSegments"
             ]
@@ -11248,14 +11437,32 @@
               "KnowledgeGraph"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../../utils/entityUtils.js",
+            "imports": [
+              "fnv1aHash"
+            ]
+          },
+          {
+            "file": "../../utils/entityUtils.js",
+            "imports": [
+              "fnv1aHash"
+            ],
+            "reExport": true
           }
         ],
         "exports": [
           "fnv1a32",
           "splitGraphIntoSegments",
           "mergeSegmentsIntoGraph",
+          "assertSegmentOwnership",
           "FnvSegmentRouter",
-          "InMemorySegmentStorage"
+          "InMemorySegmentStorage",
+          "fnv1aHash"
+        ],
+        "reExported": [
+          "fnv1aHash"
         ],
         "classes": [
           "FnvSegmentRouter",
@@ -11267,9 +11474,9 @@
           "ISegmentStorage"
         ],
         "functions": [
-          "fnv1a32",
           "splitGraphIntoSegments",
-          "mergeSegmentsIntoGraph"
+          "mergeSegmentsIntoGraph",
+          "assertSegmentOwnership"
         ]
       },
       "src/core/sqlite-register.ts": {
@@ -11385,7 +11592,8 @@
             "imports": [
               "NameIndex",
               "RelationIndex",
-              "TypeIndex"
+              "TypeIndex",
+              "computeLowercase"
             ]
           },
           {
@@ -11421,6 +11629,16 @@
             "imports": [
               "GraphEventEmitter"
             ]
+          },
+          {
+            "file": "./storageCache.js",
+            "imports": [
+              "relationKeyOf",
+              "removeEntitiesFromIndexes",
+              "upsertEntityInCache",
+              "upsertRelationInCache",
+              "StorageCacheState"
+            ]
           }
         ],
         "exports": [
@@ -11436,6 +11654,47 @@
           "__resetDatabaseCtorForTests",
           "resolveSQLiteDatabaseCtor",
           "resolveSQLiteSynchronousMode"
+        ]
+      },
+      "src/core/storageCache.ts": {
+        "description": "Cache and index steps shared by the storage backends.",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "KnowledgeGraph",
+              "Entity",
+              "Relation"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../utils/indexes.js",
+            "imports": [
+              "NameIndex",
+              "TypeIndex",
+              "RelationIndex",
+              "ObservationIndex"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "relationKeyOf",
+          "upsertEntityInCache",
+          "upsertRelationInCache",
+          "removeEntitiesFromIndexes"
+        ],
+        "interfaces": [
+          "StorageCacheState"
+        ],
+        "functions": [
+          "relationKeyOf",
+          "upsertEntityInCache",
+          "upsertRelationInCache",
+          "removeEntitiesFromIndexes"
         ]
       },
       "src/core/StorageFactory.ts": {
@@ -11764,6 +12023,12 @@
               "RelationManager"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../utils/entityUtils.js",
+            "imports": [
+              "escapeRegExp"
+            ]
           }
         ],
         "exports": [
@@ -11900,6 +12165,12 @@
         "externalDependencies": [],
         "nodeDependencies": [],
         "internalDependencies": [
+          {
+            "file": "../utils/textSimilarity.js",
+            "imports": [
+              "jaccard"
+            ]
+          },
           {
             "file": "../types/index.js",
             "imports": [
@@ -12047,6 +12318,12 @@
               "IGraphStorage"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../utils/halfLife.js",
+            "imports": [
+              "halfLifeFactor"
+            ]
           }
         ],
         "exports": [
@@ -12492,8 +12769,14 @@
               "createProgress",
               "validateFilePath",
               "sanitizeObject",
-              "escapeCsvFormula",
               "formatZodErrors"
+            ]
+          },
+          {
+            "file": "../utils/entityUtils.js",
+            "imports": [
+              "escapeCsvCell",
+              "escapeRegExp"
             ]
           },
           {
@@ -12741,8 +13024,13 @@
               "checkCancellation",
               "createProgressReporter",
               "createProgress",
-              "escapeCsvFormula",
               "validateFilePath"
+            ]
+          },
+          {
+            "file": "../utils/entityUtils.js",
+            "imports": [
+              "escapeCsvCell"
             ]
           },
           {
@@ -12786,6 +13074,12 @@
               "TagAlias"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../utils/jsonlMapFile.js",
+            "imports": [
+              "parseJsonlRecords"
+            ]
           }
         ],
         "exports": [
@@ -13016,6 +13310,13 @@
             "imports": [
               "borrowGraphView"
             ]
+          },
+          {
+            "file": "./ftsCandidates.js",
+            "imports": [
+              "getFtsCandidateNames",
+              "FtsOwner"
+            ]
           }
         ],
         "exports": [
@@ -13075,6 +13376,12 @@
             "file": "../utils/errors.js",
             "imports": [
               "ValidationError"
+            ]
+          },
+          {
+            "file": "../utils/searchCache.js",
+            "imports": [
+              "cleanupExpiredEntries"
             ]
           },
           {
@@ -13156,7 +13463,14 @@
             ]
           }
         ],
-        "internalDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../utils/searchCache.js",
+            "imports": [
+              "evictOldest"
+            ]
+          }
+        ],
         "exports": [
           "DEFAULT_EMBEDDING_CACHE_OPTIONS",
           "EmbeddingCache"
@@ -13192,6 +13506,18 @@
               "EMBEDDING_DEFAULTS",
               "OPENAI_API_CONFIG",
               "getEmbeddingConfig"
+            ]
+          },
+          {
+            "file": "../utils/entityUtils.js",
+            "imports": [
+              "hash31"
+            ]
+          },
+          {
+            "file": "../utils/timing.js",
+            "imports": [
+              "sleep"
             ]
           }
         ],
@@ -13244,6 +13570,12 @@
               "EvidencePathRelation"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../utils/relationHelpers.js",
+            "imports": [
+              "walkParents"
+            ]
           }
         ],
         "exports": [
@@ -13261,6 +13593,29 @@
         "constants": [
           "DEFAULT_EVIDENCE_MAX_DEPTH",
           "DEFAULT_EVIDENCE_MAX_PATHS_PER_RESULT"
+        ]
+      },
+      "src/search/ftsCandidates.ts": {
+        "description": "Full-text candidate lookup shared by the BM25 and ranked search paths.",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "IGraphStorage"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "getFtsCandidateNames"
+        ],
+        "interfaces": [
+          "FtsOwner"
+        ],
+        "functions": [
+          "getFtsCandidateNames"
         ]
       },
       "src/search/FuzzySearch.ts": {
@@ -13332,6 +13687,13 @@
             ]
           },
           {
+            "file": "../utils/searchCache.js",
+            "imports": [
+              "cleanupExpiredEntries",
+              "evictOldest"
+            ]
+          },
+          {
             "file": "../utils/constants.js",
             "imports": [
               "FUZZY_SEARCH_LIMITS",
@@ -13385,9 +13747,21 @@
         "nodeDependencies": [],
         "internalDependencies": [
           {
+            "file": "../utils/searchAlgorithms.js",
+            "imports": [
+              "minMaxNormalize"
+            ]
+          },
+          {
             "file": "../core/GraphTraversal.js",
             "imports": [
               "GraphTraversal"
+            ]
+          },
+          {
+            "file": "../utils/timing.js",
+            "imports": [
+              "CoalescingTimer"
             ]
           },
           {
@@ -13426,11 +13800,49 @@
           "DEFAULT_MAX_PAGERANK_ENTITIES"
         ]
       },
+      "src/search/hybridLayers.ts": {
+        "description": "Score mapping for the semantic, lexical and symbolic search layers.",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "SearchResult",
+              "SemanticSearchResult"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./SymbolicSearch.js",
+            "imports": [
+              "SymbolicResult"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "addSimilarityScores",
+          "addNormalizedLexicalScores",
+          "addSymbolicScores"
+        ],
+        "functions": [
+          "addSimilarityScores",
+          "addNormalizedLexicalScores",
+          "addSymbolicScores"
+        ]
+      },
       "src/search/HybridScorer.ts": {
         "description": "Hybrid Scorer - combines search scores with min-max normalization and configurable weights.",
         "externalDependencies": [],
         "nodeDependencies": [],
         "internalDependencies": [
+          {
+            "file": "../utils/searchAlgorithms.js",
+            "imports": [
+              "minMaxNormalize"
+            ]
+          },
           {
             "file": "../types/index.js",
             "imports": [
@@ -13499,6 +13911,14 @@
             "file": "./SymbolicSearch.js",
             "imports": [
               "SymbolicSearch"
+            ]
+          },
+          {
+            "file": "./hybridLayers.js",
+            "imports": [
+              "addNormalizedLexicalScores",
+              "addSimilarityScores",
+              "addSymbolicScores"
             ]
           },
           {
@@ -13578,6 +13998,12 @@
               "EmbeddingProgressCallback"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../utils/timing.js",
+            "imports": [
+              "sleep"
+            ]
           }
         ],
         "exports": [
@@ -14495,9 +14921,23 @@
             ]
           },
           {
+            "file": "./hybridLayers.js",
+            "imports": [
+              "addNormalizedLexicalScores",
+              "addSimilarityScores",
+              "addSymbolicScores"
+            ]
+          },
+          {
             "file": "../utils/constants.js",
             "imports": [
               "SEMANTIC_SEARCH_LIMITS"
+            ]
+          },
+          {
+            "file": "../utils/timing.js",
+            "imports": [
+              "createTimeout"
             ]
           }
         ],
@@ -14715,6 +15155,12 @@
               "QueryPlan"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../utils/searchCache.js",
+            "imports": [
+              "evictOldest"
+            ]
           }
         ],
         "exports": [
@@ -14822,9 +15268,22 @@
             ]
           },
           {
+            "file": "../utils/searchCache.js",
+            "imports": [
+              "evictInsertionOrder"
+            ]
+          },
+          {
             "file": "./TFIDFIndexManager.js",
             "imports": [
               "TFIDFIndexManager"
+            ]
+          },
+          {
+            "file": "./ftsCandidates.js",
+            "imports": [
+              "getFtsCandidateNames",
+              "FtsOwner"
             ]
           },
           {
@@ -14930,6 +15389,12 @@
             "imports": [
               "sanitizeObject"
             ]
+          },
+          {
+            "file": "../utils/jsonlMapFile.js",
+            "imports": [
+              "parseJsonlRecords"
+            ]
           }
         ],
         "exports": [
@@ -14964,6 +15429,7 @@
               "normalizeTags",
               "hasMatchingTag",
               "isWithinImportanceRange",
+              "entityPassesFilters",
               "validatePagination",
               "applyPagination",
               "ValidatedPagination"
@@ -15144,7 +15610,14 @@
       "src/search/SemanticSearch.ts": {
         "description": "Semantic Search Manager",
         "externalDependencies": [],
-        "nodeDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "crypto",
+            "imports": [
+              "createHash"
+            ]
+          }
+        ],
         "internalDependencies": [
           {
             "file": "../types/index.js",
@@ -15154,6 +15627,7 @@
               "IVectorStore",
               "SemanticSearchResult",
               "SemanticIndexOptions",
+              "VectorSearchResult",
               "ReadonlyKnowledgeGraph",
               "EmbeddingMode"
             ],
@@ -15353,6 +15827,12 @@
             "typeOnly": true
           },
           {
+            "file": "../utils/timing.js",
+            "imports": [
+              "CoalescingTimer"
+            ]
+          },
+          {
             "file": "../types/types.js",
             "imports": [
               "EntityCreatedEvent",
@@ -15421,14 +15901,7 @@
       },
       "src/search/tiered/BrotliColdTier.ts": {
         "description": "BrotliColdTier — Brotli-compressed JSONL shard `IIndexTier<string, V>`",
-        "externalDependencies": [
-          {
-            "package": "async-mutex",
-            "imports": [
-              "Mutex"
-            ]
-          }
-        ],
+        "externalDependencies": [],
         "nodeDependencies": [
           {
             "module": "fs",
@@ -15438,12 +15911,6 @@
           }
         ],
         "internalDependencies": [
-          {
-            "file": "../../utils/logger.js",
-            "imports": [
-              "logger"
-            ]
-          },
           {
             "file": "../../utils/compressionUtil.js",
             "imports": [
@@ -15458,11 +15925,10 @@
             ]
           },
           {
-            "file": "./ITieredIndex.js",
+            "file": "./MapFileTier.js",
             "imports": [
-              "IIndexTier"
-            ],
-            "typeOnly": true
+              "MapFileTier"
+            ]
           }
         ],
         "exports": [
@@ -15477,14 +15943,7 @@
       },
       "src/search/tiered/DiskWarmTier.ts": {
         "description": "DiskWarmTier — JSONL-sidecar-backed `IIndexTier<string, V>`",
-        "externalDependencies": [
-          {
-            "package": "async-mutex",
-            "imports": [
-              "Mutex"
-            ]
-          }
-        ],
+        "externalDependencies": [],
         "nodeDependencies": [
           {
             "module": "fs",
@@ -15507,11 +15966,10 @@
             ]
           },
           {
-            "file": "./ITieredIndex.js",
+            "file": "./MapFileTier.js",
             "imports": [
-              "IIndexTier"
-            ],
-            "typeOnly": true
+              "MapFileTier"
+            ]
           }
         ],
         "exports": [
@@ -15568,6 +16026,41 @@
         ],
         "interfaces": [
           "LRUHotTierOptions"
+        ]
+      },
+      "src/search/tiered/MapFileTier.ts": {
+        "description": "MapFileTier — shared base of the file-backed index tiers",
+        "externalDependencies": [
+          {
+            "package": "async-mutex",
+            "imports": [
+              "Mutex"
+            ]
+          }
+        ],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../utils/jsonlMapFile.js",
+            "imports": [
+              "parseJsonlMapLines",
+              "serializeJsonlMap",
+              "JsonlMapFormat"
+            ]
+          },
+          {
+            "file": "./ITieredIndex.js",
+            "imports": [
+              "IIndexTier"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "MapFileTier"
+        ],
+        "classes": [
+          "MapFileTier"
         ]
       },
       "src/search/tiered/TieredIndex.ts": {
@@ -15635,6 +16128,7 @@
         ],
         "exports": [
           "cosineSimilarity",
+          "isEmbeddingStorage",
           "createVectorStore",
           "InMemoryVectorStore",
           "SQLiteVectorStore"
@@ -15650,6 +16144,7 @@
           "SQLiteStorageWithEmbeddings"
         ],
         "functions": [
+          "isEmbeddingStorage",
           "createVectorStore"
         ]
       }
@@ -17153,7 +17648,15 @@
         "description": "Batch Processor",
         "externalDependencies": [],
         "nodeDependencies": [],
-        "internalDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./timing.js",
+            "imports": [
+              "sleep",
+              "withTimeout"
+            ]
+          }
+        ],
         "exports": [
           "processBatch",
           "processWithRetry",
@@ -17456,6 +17959,7 @@
         ],
         "internalDependencies": [],
         "exports": [
+          "writeSyncedTmp",
           "durableWriteFile",
           "renameOver",
           "syncParentDirectory",
@@ -17467,6 +17971,7 @@
           "DurableReplaceError"
         ],
         "functions": [
+          "writeSyncedTmp",
           "durableWriteFile",
           "renameOver",
           "syncParentDirectory",
@@ -17517,6 +18022,7 @@
         "exports": [
           "defaultMemoryPath",
           "fnv1aHash",
+          "hash31",
           "findEntityByName",
           "findEntitiesByNames",
           "entityExists",
@@ -17544,6 +18050,8 @@
           "entityPassesFilters",
           "sanitizeObject",
           "escapeCsvFormula",
+          "escapeCsvCell",
+          "escapeRegExp",
           "validateFilePath",
           "ensureMemoryFilePath"
         ],
@@ -17552,6 +18060,7 @@
         ],
         "functions": [
           "fnv1aHash",
+          "hash31",
           "findEntityByName",
           "findEntityByName",
           "findEntityByName",
@@ -17582,6 +18091,8 @@
           "entityPassesFilters",
           "sanitizeObject",
           "escapeCsvFormula",
+          "escapeCsvCell",
+          "escapeRegExp",
           "validateFilePath",
           "ensureMemoryFilePath"
         ],
@@ -17600,6 +18111,12 @@
               "Entity"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "./fieldPath.js",
+            "imports": [
+              "getFieldByDotPath"
+            ]
           }
         ],
         "exports": [
@@ -17690,6 +18207,18 @@
           "getQuickHint"
         ]
       },
+      "src/utils/fieldPath.ts": {
+        "description": "Field Path",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "getFieldByDotPath"
+        ],
+        "functions": [
+          "getFieldByDotPath"
+        ]
+      },
       "src/utils/formatters.ts": {
         "description": "Response and Pagination Formatters",
         "externalDependencies": [],
@@ -17742,6 +18271,18 @@
           "deepFreeze",
           "isReadViewGuardEnabled",
           "borrowGraphView"
+        ]
+      },
+      "src/utils/halfLife.ts": {
+        "description": "Half-Life Utilities",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "halfLifeFactor"
+        ],
+        "functions": [
+          "halfLifeFactor"
         ]
       },
       "src/utils/IIndexHealth.ts": {
@@ -18745,6 +19286,7 @@
           }
         ],
         "exports": [
+          "computeLowercase",
           "NameIndex",
           "TypeIndex",
           "LowercaseCache",
@@ -18757,6 +19299,9 @@
           "LowercaseCache",
           "RelationIndex",
           "ObservationIndex"
+        ],
+        "functions": [
+          "computeLowercase"
         ]
       },
       "src/utils/IndexHealthMonitor.ts": {
@@ -18781,6 +19326,33 @@
         "interfaces": [
           "IndexHealthReport",
           "IndexHealthSources"
+        ]
+      },
+      "src/utils/jsonlMapFile.ts": {
+        "description": "JSONL map file codec",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./logger.js",
+            "imports": [
+              "logger"
+            ]
+          }
+        ],
+        "exports": [
+          "parseJsonlMapLines",
+          "serializeJsonlMap",
+          "parseJsonlRecords"
+        ],
+        "interfaces": [
+          "JsonlMapFormat",
+          "JsonlMapParseOptions"
+        ],
+        "functions": [
+          "parseJsonlMapLines",
+          "serializeJsonlMap",
+          "parseJsonlRecords"
         ]
       },
       "src/utils/logger.ts": {
@@ -18902,6 +19474,7 @@
           "isBidirectionalRelation",
           "hasConfidence",
           "isCurrentlyValid",
+          "walkParents",
           "RelationBuilder"
         ],
         "classes": [
@@ -18912,7 +19485,8 @@
           "isTemporalRelation",
           "isBidirectionalRelation",
           "hasConfidence",
-          "isCurrentlyValid"
+          "isCurrentlyValid",
+          "walkParents"
         ]
       },
       "src/utils/relationValidation.ts": {
@@ -19102,7 +19676,8 @@
           "calculateIDF",
           "calculateIDFFromTokenSets",
           "calculateTFIDF",
-          "tokenize"
+          "tokenize",
+          "minMaxNormalize"
         ],
         "functions": [
           "levenshteinDistance",
@@ -19111,7 +19686,8 @@
           "calculateIDF",
           "calculateIDFFromTokenSets",
           "calculateTFIDF",
-          "tokenize"
+          "tokenize",
+          "minMaxNormalize"
         ]
       },
       "src/utils/searchCache.ts": {
@@ -19143,6 +19719,9 @@
           "clearAllSearchCaches",
           "getAllCacheStats",
           "cleanupAllCaches",
+          "evictOldest",
+          "evictInsertionOrder",
+          "cleanupExpiredEntries",
           "SearchCache"
         ],
         "classes": [
@@ -19158,7 +19737,10 @@
           "getGraphGenerations",
           "clearAllSearchCaches",
           "getAllCacheStats",
-          "cleanupAllCaches"
+          "cleanupAllCaches",
+          "evictOldest",
+          "evictInsertionOrder",
+          "cleanupExpiredEntries"
         ],
         "constants": [
           "searchCaches"
@@ -19180,6 +19762,12 @@
             "file": "./logger.js",
             "imports": [
               "logger"
+            ]
+          },
+          {
+            "file": "./timing.js",
+            "imports": [
+              "sleep"
             ]
           },
           {
@@ -19250,6 +19838,26 @@
           "jaccard"
         ]
       },
+      "src/utils/timing.ts": {
+        "description": "Timing Helpers",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "sleep",
+          "createTimeout",
+          "withTimeout",
+          "CoalescingTimer"
+        ],
+        "classes": [
+          "CoalescingTimer"
+        ],
+        "functions": [
+          "sleep",
+          "createTimeout",
+          "withTimeout"
+        ]
+      },
       "src/utils/validators.ts": {
         "description": "Built-in Validators",
         "externalDependencies": [],
@@ -19269,6 +19877,12 @@
               "EntityRuleResult"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "./fieldPath.js",
+            "imports": [
+              "getFieldByDotPath"
+            ]
           }
         ],
         "exports": [
@@ -19562,6 +20176,7 @@
           "src/agent/ImportanceScorer.ts",
           "src/agent/index.ts",
           "src/agent/InMemoryBackend.ts",
+          "src/agent/keyValueLine.ts",
           "src/agent/MemoryBackend.ts",
           "src/agent/MemoryEngine.ts",
           "src/agent/MemoryFormatter.ts",
@@ -19627,7 +20242,9 @@
           "src/agent/ToolAffordanceManager.ts",
           "src/agent/ToolCallObserver.ts",
           "src/agent/TrajectoryCompressor.ts",
+          "src/agent/versionedWriteFailure.ts",
           "src/agent/VisibilityResolver.ts",
+          "src/agent/workingMemoryGuard.ts",
           "src/agent/WorkingMemoryManager.ts",
           "src/agent/WorkThreadManager.ts",
           "src/agent/world/index.ts",
@@ -19696,6 +20313,7 @@
           "src/core/segments/ISegmentStorage.ts",
           "src/core/sqlite-register.ts",
           "src/core/SQLiteStorage.ts",
+          "src/core/storageCache.ts",
           "src/core/StorageFactory.ts",
           "src/core/TransactionManager.ts",
           "src/core/TransitionLedger.ts"
@@ -19742,8 +20360,10 @@
           "src/search/EmbeddingCache.ts",
           "src/search/EmbeddingService.ts",
           "src/search/EvidencePathBuilder.ts",
+          "src/search/ftsCandidates.ts",
           "src/search/FuzzySearch.ts",
           "src/search/GraphRankPrior.ts",
+          "src/search/hybridLayers.ts",
           "src/search/HybridScorer.ts",
           "src/search/HybridSearchManager.ts",
           "src/search/IncrementalIndexer.ts",
@@ -19782,6 +20402,7 @@
           "src/search/tiered/DiskWarmTier.ts",
           "src/search/tiered/ITieredIndex.ts",
           "src/search/tiered/LRUHotTier.ts",
+          "src/search/tiered/MapFileTier.ts",
           "src/search/tiered/TieredIndex.ts",
           "src/search/VectorStore.ts"
         ]
@@ -19836,12 +20457,15 @@
           "src/utils/EntityValidator.ts",
           "src/utils/errors.ts",
           "src/utils/errorSuggestions.ts",
+          "src/utils/fieldPath.ts",
           "src/utils/formatters.ts",
           "src/utils/graphCopy.ts",
+          "src/utils/halfLife.ts",
           "src/utils/IIndexHealth.ts",
           "src/utils/index.ts",
           "src/utils/indexes.ts",
           "src/utils/IndexHealthMonitor.ts",
+          "src/utils/jsonlMapFile.ts",
           "src/utils/logger.ts",
           "src/utils/MemoryMonitor.ts",
           "src/utils/operationUtils.ts",
@@ -19854,6 +20478,7 @@
           "src/utils/searchCache.ts",
           "src/utils/taskScheduler.ts",
           "src/utils/textSimilarity.ts",
+          "src/utils/timing.ts",
           "src/utils/validators.ts",
           "src/utils/WorkerPoolManager.ts",
           "src/utils/WorkerTaskManager.ts"
@@ -19874,32 +20499,32 @@
       "src/sqlite.ts",
       "src/workers/levenshteinWorker.ts"
     ],
-    "reachableCount": 292,
+    "reachableCount": 303,
     "dormantCount": 0,
     "orphaned": [],
     "testOnly": []
   },
   "statistics": {
-    "totalTypeScriptFiles": 292,
+    "totalTypeScriptFiles": 303,
     "totalModules": 12,
-    "totalLinesOfCode": 103701,
-    "totalExports": 2030,
-    "totalClasses": 233,
-    "totalInterfaces": 620,
-    "totalFunctions": 322,
-    "totalTypeGuards": 30,
+    "totalLinesOfCode": 103926,
+    "totalExports": 2070,
+    "totalClasses": 236,
+    "totalInterfaces": 626,
+    "totalFunctions": 356,
+    "totalTypeGuards": 31,
     "totalEnums": 4,
     "totalConstants": 123,
-    "totalReExports": 1336,
-    "totalTypeOnlyImports": 476,
+    "totalReExports": 1340,
+    "totalTypeOnlyImports": 485,
     "runtimeCircularDeps": 0,
     "typeOnlyCircularDeps": 8,
     "entryRoots": 4,
-    "reachableFiles": 292,
+    "reachableFiles": 303,
     "dormantFiles": 0,
     "orphanedFiles": 0,
     "testOnlyFiles": 0,
     "unusedFilesCount": 0,
-    "unusedExportsCount": 71
+    "unusedExportsCount": 72
   }
 }

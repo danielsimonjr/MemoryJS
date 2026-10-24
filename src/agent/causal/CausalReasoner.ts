@@ -107,23 +107,11 @@ export class CausalReasoner {
     candidateCauses: string[],
     maxDepth?: number,
   ): Promise<CausalChain[]> {
-    const depth = maxDepth ?? this.maxDepth;
-    const chains: CausalChain[] = [];
-    for (const cause of candidateCauses) {
-      const paths = await this.traversal.findAllPaths(cause, effectEntityName, depth, {
-        relationTypes: this.causalTypes as string[],
-      });
-      for (const p of paths) {
-        chains.push({
-          path: p.path,
-          relations: p.relations,
-          score: chainScore(p.relations),
-          length: p.relations.length,
-        });
-      }
-    }
-    chains.sort((a, b) => b.score - a.score);
-    return chains;
+    return this.collectChains(
+      candidateCauses,
+      (cause) => [cause, effectEntityName],
+      maxDepth ?? this.maxDepth,
+    );
   }
 
   /**
@@ -135,10 +123,30 @@ export class CausalReasoner {
     candidateEffects: string[],
     maxDepth?: number,
   ): Promise<CausalChain[]> {
-    const depth = maxDepth ?? this.maxDepth;
+    return this.collectChains(
+      candidateEffects,
+      (effect) => [causeEntityName, effect],
+      maxDepth ?? this.maxDepth,
+    );
+  }
+
+  /**
+   * Find the causal paths for each candidate, in candidate order. `toPair`
+   * gives the `[from, to]` pair of one candidate. The loop reads
+   * `candidates` as it goes, so a candidate that the caller appends during
+   * the search is searched too. Sort the chains by score, highest first.
+   *
+   * @internal
+   */
+  private async collectChains(
+    candidates: string[],
+    toPair: (candidate: string) => [from: string, to: string],
+    depth: number,
+  ): Promise<CausalChain[]> {
     const chains: CausalChain[] = [];
-    for (const effect of candidateEffects) {
-      const paths = await this.traversal.findAllPaths(causeEntityName, effect, depth, {
+    for (const candidate of candidates) {
+      const [from, to] = toPair(candidate);
+      const paths = await this.traversal.findAllPaths(from, to, depth, {
         relationTypes: this.causalTypes as string[],
       });
       for (const p of paths) {

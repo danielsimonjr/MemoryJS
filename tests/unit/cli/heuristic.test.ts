@@ -2,9 +2,10 @@
  * Heuristic CLI command coverage.
  */
 
+import { promises as fs } from 'node:fs';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { registerHeuristicCommands } from '../../../src/cli/commands/heuristic.js';
-import { createCliHarness, cleanupCliHarness, type CliHarness } from './helpers/cliTestHarness.js';
+import { createCliHarness, cleanupCliHarness, errorLines, type CliHarness } from './helpers/cliTestHarness.js';
 
 describe('heuristic CLI', () => {
   let h: CliHarness;
@@ -48,5 +49,21 @@ describe('heuristic CLI', () => {
 
     await h.parse(['heuristic', 'clear']);
     expect(h.lastJson<{ cleared: boolean }>().cleared).toBe(true);
+  });
+});
+
+describe('heuristic error path', () => {
+  it('logs the error once, then exits 1', async () => {
+    const h = await createCliHarness(registerHeuristicCommands);
+    try {
+      // A directory at the storage path makes every read fail with EISDIR.
+      await fs.mkdir(h.storagePath);
+      await expect(h.parse(['heuristic', 'list'])).rejects.toThrow('process.exit called');
+      expect(errorLines(h.errorSpy)).toEqual(['[ERROR] ✗ EISDIR: illegal operation on a directory, read']);
+      expect(h.errorSpy.mock.invocationCallOrder[0]).toBeLessThan(h.processExitSpy.mock.invocationCallOrder[0]!);
+      expect(h.processExitSpy).toHaveBeenCalledWith(1);
+    } finally {
+      await cleanupCliHarness(h);
+    }
   });
 });

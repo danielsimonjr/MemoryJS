@@ -643,3 +643,46 @@ describe('AccessTracker Average Access Interval', () => {
     expect(stats.averageAccessInterval).toBe(1500);
   });
 });
+
+describe('AccessTracker top-N ordering (pins)', () => {
+  it('keeps insertion order for entities with the same access frequency', async () => {
+    const storage = createMockStorage({
+      entity_a: createAgentEntity('entity_a'),
+      entity_b: createAgentEntity('entity_b'),
+      entity_c: createAgentEntity('entity_c'),
+    });
+    const tracker = new AccessTracker(storage);
+    await tracker.recordAccess('entity_b');
+    await tracker.recordAccess('entity_a');
+    await tracker.recordAccess('entity_c');
+
+    const names = (await tracker.getFrequentlyAccessed(3)).map((e) => e.name);
+    expect(names).toStrictEqual(['entity_b', 'entity_a', 'entity_c']);
+  });
+});
+
+describe('AccessTracker half-life scores (pins)', () => {
+  const now = '2026-01-02T00:00:00.000Z';
+  const hoursBefore = (hours: number) => new Date(Date.parse(now) - hours * 60 * 60 * 1000).toISOString();
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(now));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('calculateRecencyScoreFromTimestamp at 10 hours with a 24 hour half-life', () => {
+    expect(AccessTracker.calculateRecencyScoreFromTimestamp(hoursBefore(10), 24)).toBe(0.7491535384383408);
+  });
+
+  it('calculateRecencyScore for a record touched 10 hours ago with a 24 hour half-life', async () => {
+    const tracker = new AccessTracker(createMockStorage({}));
+    vi.setSystemTime(new Date(hoursBefore(10)));
+    await tracker.recordAccess('entity_a');
+    vi.setSystemTime(new Date(now));
+    expect(tracker.calculateRecencyScore('entity_a', 24)).toBe(0.7491535384383408);
+  });
+});

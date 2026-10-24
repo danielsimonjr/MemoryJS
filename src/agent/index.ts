@@ -113,8 +113,10 @@ export {
 
 export {
   SummarizationService,
+  LLMSummarizationProvider,
   type ISummarizationProvider,
   type SummarizationConfig,
+  type SummarizationServiceOptions,
   type GroupingResult,
 } from './SummarizationService.js';
 
@@ -134,6 +136,7 @@ export {
 export {
   ContextWindowManager,
   type ContextWindowManagerConfig,
+  type PrioritizeOptions,
   type SpilloverResult,
   type WakeUpOptions,
   type WakeUpResult,

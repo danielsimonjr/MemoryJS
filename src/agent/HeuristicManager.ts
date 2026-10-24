@@ -18,6 +18,7 @@
  *   semantic-similarity matching.
  */
 
+import { jaccard } from '../utils/textSimilarity.js';
 import { randomUUID } from 'crypto';
 import type { Entity, IGraphStorage } from '../types/types.js';
 import type {
@@ -189,10 +190,7 @@ export class HeuristicManager {
     for (const h of all) {
       const condTokens = tokenSet(h.condition);
       if (condTokens.size === 0) continue;
-      let intersect = 0;
-      for (const t of inputTokens) if (condTokens.has(t)) intersect++;
-      const unionSize = inputTokens.size + condTokens.size - intersect;
-      const overlap = unionSize === 0 ? 0 : intersect / unionSize;
+      const overlap = jaccard(inputTokens, condTokens);
       const score = overlap * h.confidence;
       if (score >= minScore) matches.push({ heuristic: h, score });
     }

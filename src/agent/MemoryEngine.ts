@@ -1,3 +1,4 @@
+import { jaccard } from '../utils/textSimilarity.js';
 import { EventEmitter } from 'node:events';
 import { createHash } from 'node:crypto';
 import type { IGraphStorage, ReadonlyKnowledgeGraph } from '../types/types.js';
@@ -146,6 +147,7 @@ interface Deps {
 export class MemoryEngine {
   public readonly events = new EventEmitter();
   private readonly sessionWriteQueues = new Map<string, Promise<void>>();
+  private readonly repeatedTurnCounts = new Map<string, number>();
 
   /** Dependencies bundle — populated in constructor, consumed in T5–T10. */
   protected readonly deps: Deps;
@@ -250,6 +252,10 @@ export class MemoryEngine {
         sessionId: options.sessionId,
         tier: dup.tier,
       });
+      this.repeatedTurnCounts.set(
+        options.sessionId,
+        (this.repeatedTurnCounts.get(options.sessionId) ?? 0) + 1,
+      );
       return {
         entity: dup.match,
         duplicateDetected: true,
@@ -396,6 +402,17 @@ export class MemoryEngine {
     return turns;
   }
 
+  /**
+   * Number of turns the dedup chain rejected for a session in this process.
+   * The count is not persisted and resets on deleteSession.
+   *
+   * @param sessionId - Session identifier
+   * @returns Number of rejected repeat turns (0 when none)
+   */
+  getRepeatedTurnCount(sessionId: string): number {
+    return this.repeatedTurnCounts.get(sessionId) ?? 0;
+  }
+
   private async countSessionTurns(sessionId: string): Promise<number> {
     if (this.deps.storage.countSessionEntities) {
       await this.deps.storage.ensureLoaded();
@@ -538,13 +555,8 @@ export class MemoryEngine {
       const candidateTokens = tokeniseForDedup(candidateContent);
       if (candidateTokens.size === 0) continue;
 
-      let intersection = 0;
-      for (const token of contentTokens) {
-        if (candidateTokens.has(token)) intersection += 1;
-      }
-      const union = contentTokens.size + candidateTokens.size - intersection;
-      const jaccard = union === 0 ? 0 : intersection / union;
-      if (jaccard >= this.cfg.jaccardThreshold) {
+      const score = jaccard(contentTokens, candidateTokens);
+      if (score >= this.cfg.jaccardThreshold) {
         return { isDuplicate: true, match: candidate, tier: 'jaccard' };
       }
     }
@@ -552,6 +564,7 @@ export class MemoryEngine {
   }
 
   async deleteSession(sessionId: string): Promise<{ deleted: number }> {
+    this.repeatedTurnCounts.delete(sessionId);
     const turns = await this.getSessionTurns(sessionId);
     if (turns.length === 0) return { deleted: 0 };
 

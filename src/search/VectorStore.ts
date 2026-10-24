@@ -216,6 +216,9 @@ export class SQLiteVectorStore implements IVectorStore {
   /** Model name used for embeddings */
   private embeddingModel: string = '';
 
+  /** Content hash per entity, for vectors that carry one */
+  private contentHashes = new Map<string, string>();
+
   /**
    * Create a SQLite vector store.
    *
@@ -234,9 +237,23 @@ export class SQLiteVectorStore implements IVectorStore {
     if (this.initialized) return;
 
     if (this.storage) {
+      await this.storage.ensureLoaded?.();
+
       // Load all embeddings from SQLite
       const embeddings = await this.storage.loadAllEmbeddings();
-      this.memoryStore.loadFrom(embeddings);
+      const metadata = await this.storage.loadEmbeddingMetadata?.();
+      const modelByName = new Map((metadata ?? []).map((m): [string, typeof m] => [m.entityName, m]));
+
+      for (const [name, vector] of embeddings) {
+        const row = modelByName.get(name);
+        // Skip rows that another embedding model wrote; keep them in SQLite
+        if (row && row.embeddingModel !== this.embeddingModel) continue;
+
+        this.memoryStore.add(name, vector);
+        if (row?.contentHash != null) {
+          this.contentHashes.set(name, row.contentHash);
+        }
+      }
     }
 
     this.initialized = true;
@@ -248,14 +265,20 @@ export class SQLiteVectorStore implements IVectorStore {
    *
    * @param entityName - Name of the entity
    * @param vector - Embedding vector
+   * @param contentHash - Optional hash of the source content; replaces any earlier hash for the entity
    */
-  add(entityName: string, vector: number[]): void {
-    // Add to in-memory cache
+  add(entityName: string, vector: number[], contentHash?: string): void {
+    // Persist first: a failed write leaves no vector or hash in memory
+    if (this.storage) {
+      this.storage.storeEmbedding(entityName, vector, this.embeddingModel, contentHash);
+    }
+
     this.memoryStore.add(entityName, vector);
 
-    // Persist to SQLite if available
-    if (this.storage) {
-      this.storage.storeEmbedding(entityName, vector, this.embeddingModel);
+    if (contentHash === undefined) {
+      this.contentHashes.delete(entityName);
+    } else {
+      this.contentHashes.set(entityName, contentHash);
     }
   }
 
@@ -278,9 +301,10 @@ export class SQLiteVectorStore implements IVectorStore {
    */
   remove(entityName: string): boolean {
     const removed = this.memoryStore.remove(entityName);
+    this.contentHashes.delete(entityName);
 
-    // Remove from SQLite if available
-    if (this.storage && removed) {
+    // Remove from SQLite even when the store is not initialized yet
+    if (this.storage) {
       this.storage.removeEmbedding(entityName);
     }
 
@@ -301,6 +325,7 @@ export class SQLiteVectorStore implements IVectorStore {
    */
   clear(): void {
     this.memoryStore.clear();
+    this.contentHashes.clear();
 
     if (this.storage) {
       this.storage.clearAllEmbeddings();
@@ -325,6 +350,16 @@ export class SQLiteVectorStore implements IVectorStore {
    */
   get(entityName: string): number[] | undefined {
     return this.memoryStore.get(entityName);
+  }
+
+  /**
+   * Get the content hash stored with the vector for an entity.
+   *
+   * @param entityName - Name of the entity
+   * @returns The stored hash, or `undefined` when none is stored
+   */
+  getContentHash(entityName: string): string | undefined {
+    return this.contentHashes.get(entityName);
   }
 
   /**
@@ -359,8 +394,9 @@ export interface SQLiteStorageWithEmbeddings {
    * @param entityName - Name of the entity
    * @param vector - Embedding vector
    * @param model - Model name used for the embedding
+   * @param contentHash - Optional hash of the source content
    */
-  storeEmbedding(entityName: string, vector: number[], model: string): void;
+  storeEmbedding(entityName: string, vector: number[], model: string, contentHash?: string): void;
 
   /**
    * Load all embeddings from storage.
@@ -380,6 +416,37 @@ export interface SQLiteStorageWithEmbeddings {
    * Clear all embeddings from storage.
    */
   clearAllEmbeddings(): void;
+
+  /**
+   * Load the model name and content hash stored with each embedding.
+   *
+   * @returns One metadata row per stored embedding
+   */
+  loadEmbeddingMetadata?(): Promise<Array<{ entityName: string; embeddingModel: string; contentHash: string | null }>>;
+
+  /**
+   * Load storage that is not loaded yet.
+   */
+  ensureLoaded?(): Promise<void>;
+}
+
+/**
+ * Check whether a storage object exposes the embedding methods that
+ * SQLiteVectorStore needs.
+ *
+ * @param storage - Any storage object
+ * @returns True when the four embedding methods exist
+ * @internal
+ */
+export function isEmbeddingStorage(storage: unknown): storage is SQLiteStorageWithEmbeddings {
+  if (typeof storage !== 'object' || storage === null) return false;
+  const candidate = storage as Record<string, unknown>;
+  return (
+    typeof candidate.storeEmbedding === 'function' &&
+    typeof candidate.loadAllEmbeddings === 'function' &&
+    typeof candidate.removeEmbedding === 'function' &&
+    typeof candidate.clearAllEmbeddings === 'function'
+  );
 }
 
 /**

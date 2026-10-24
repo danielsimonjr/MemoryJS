@@ -6,7 +6,7 @@
  * findAllPaths and getNeighborsWithRelations with relationType filtering.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import type { GraphTraversal, PathResult } from '../../../src/core/GraphTraversal.js';
 import type { Relation } from '../../../src/types/index.js';
 import { CausalReasoner } from '../../../src/agent/causal/CausalReasoner.js';
@@ -271,5 +271,68 @@ describe('3B.6 CausalReasoner', () => {
       expect(chains).toHaveLength(1);
       expect(chains[0].score).toBeCloseTo(0.8);
     });
+  });
+});
+
+describe('CausalReasoner findCauses and findEffects (pins)', () => {
+  it('findCauses returns the chains into the effect, best score first', async () => {
+    const traversal = makeMockTraversal([
+      { from: 'a', to: 'b', relationType: 'causes', causalStrength: 0.8 },
+      { from: 'b', to: 'c', relationType: 'causes', causalStrength: 0.5 },
+      { from: 'x', to: 'c', relationType: 'causes', causalStrength: 0.9 },
+    ]);
+    const chains = await new CausalReasoner(traversal).findCauses('c', ['a', 'x']);
+
+    expect(chains.map((c) => c.path)).toStrictEqual([['x', 'c'], ['a', 'b', 'c']]);
+    expect(chains.map((c) => c.length)).toStrictEqual([1, 2]);
+    expect(chains[0].score).toBeCloseTo(0.9);
+    expect(chains[1].score).toBeCloseTo(0.4);
+  });
+
+  it('findEffects returns the chains out of the cause, best score first', async () => {
+    const traversal = makeMockTraversal([
+      { from: 'a', to: 'b', relationType: 'causes', causalStrength: 0.8 },
+      { from: 'b', to: 'c', relationType: 'causes', causalStrength: 0.5 },
+    ]);
+    const chains = await new CausalReasoner(traversal).findEffects('a', ['c', 'b']);
+
+    expect(chains.map((c) => c.path)).toStrictEqual([['a', 'b'], ['a', 'b', 'c']]);
+    expect(chains[0].score).toBeCloseTo(0.8);
+    expect(chains[1].score).toBeCloseTo(0.4);
+  });
+
+  it('findCauses searches a candidate that is appended while it runs', async () => {
+    const traversal = makeMockTraversal([
+      { from: 'a', to: 'b', relationType: 'causes', causalStrength: 0.8 },
+      { from: 'b', to: 'c', relationType: 'causes', causalStrength: 0.5 },
+      { from: 'x', to: 'c', relationType: 'causes', causalStrength: 0.9 },
+    ]);
+    const candidates = ['a'];
+    const search = traversal.findAllPaths.bind(traversal);
+    vi.spyOn(traversal, 'findAllPaths').mockImplementation(async (...args) => {
+      if (candidates.length === 1) candidates.push('x');
+      return search(...args);
+    });
+
+    const chains = await new CausalReasoner(traversal).findCauses('c', candidates);
+
+    expect(chains.map((c) => c.path)).toStrictEqual([['x', 'c'], ['a', 'b', 'c']]);
+  });
+
+  it('findEffects searches a candidate that is appended while it runs', async () => {
+    const traversal = makeMockTraversal([
+      { from: 'a', to: 'b', relationType: 'causes', causalStrength: 0.8 },
+      { from: 'b', to: 'c', relationType: 'causes', causalStrength: 0.5 },
+    ]);
+    const candidates = ['c'];
+    const search = traversal.findAllPaths.bind(traversal);
+    vi.spyOn(traversal, 'findAllPaths').mockImplementation(async (...args) => {
+      if (candidates.length === 1) candidates.push('b');
+      return search(...args);
+    });
+
+    const chains = await new CausalReasoner(traversal).findEffects('a', candidates);
+
+    expect(chains.map((c) => c.path)).toStrictEqual([['a', 'b'], ['a', 'b', 'c']]);
   });
 });

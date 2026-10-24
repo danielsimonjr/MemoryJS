@@ -8,7 +8,7 @@
  * tested through the other utility functions and API validation.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   TaskQueue,
   TaskPriority,
@@ -20,6 +20,7 @@ import {
   throttle,
   type Task,
 } from '../../../src/utils/taskScheduler.js';
+import { microtaskTicks } from '../../test-utils/microtask-ticks.js';
 
 describe('Task Scheduler', () => {
   describe('TaskQueue', () => {
@@ -1028,5 +1029,89 @@ describe('Task Scheduler', () => {
       expect(second).toBeUndefined();
       expect(third).toBeUndefined();
     });
+  });
+});
+
+describe('sleep sites keep their delays and microtask timing (review pins)', () => {
+  const MICROTASK_TICKS_AFTER_SLEEP = 3;
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('withRetry waits baseDelay and then twice baseDelay between attempts', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const starts: number[] = [];
+
+    const pending = withRetry(
+      () => {
+        starts.push(Date.now());
+        if (starts.length < 3) throw new Error('again');
+        return 'ok';
+      },
+      { maxRetries: 2, baseDelay: 100 }
+    );
+    await vi.advanceTimersByTimeAsync(300);
+
+    expect(await pending).toBe('ok');
+    expect(starts).toEqual([0, 100, 300]);
+  });
+
+  it('withRetry settles in a fixed number of microtask turns after its sleep timer fires', async () => {
+    vi.useFakeTimers();
+    let calls = 0;
+    const pending = withRetry(
+      () => {
+        calls++;
+        if (calls < 2) throw new Error('again');
+        return 'ok';
+      },
+      { maxRetries: 1, baseDelay: 100 }
+    );
+
+    vi.advanceTimersByTime(100);
+
+    expect(await microtaskTicks(pending)).toBe(MICROTASK_TICKS_AFTER_SLEEP);
+  });
+
+  it('rateLimitedProcess sleeps only the rest of the interval', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_000_000);
+    const starts: number[] = [];
+
+    const pending = rateLimitedProcess(
+      [1, 2, 3],
+      x => {
+        starts.push(Date.now() - 1_000_000);
+        vi.setSystemTime(Date.now() + 30);
+        return x;
+      },
+      10
+    );
+    await vi.advanceTimersByTimeAsync(300);
+    await pending;
+
+    expect(starts).toEqual([0, 100, 200]);
+  });
+
+  it('drain polls every 10 ms until the queue is empty', async () => {
+    vi.useFakeTimers();
+    const queue = new TaskQueue({ concurrency: 1, timeout: 5000, useWorkerPool: false });
+    void queue.enqueue({
+      id: 'slow',
+      fn: () => new Promise<string>(resolve => setTimeout(() => resolve('done'), 25)),
+      input: undefined,
+    } as never);
+    let drained = false;
+
+    void queue.drain().then(() => {
+      drained = true;
+    });
+    await vi.advanceTimersByTimeAsync(29);
+    expect(drained).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(drained).toBe(true);
   });
 });

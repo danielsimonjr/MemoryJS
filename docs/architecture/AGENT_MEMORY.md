@@ -688,20 +688,42 @@ interface ContextRetrievalOptions {
   includeEpisodicRecent: boolean;
   includeSemanticRelevant: boolean;
   mustInclude?: string[];        // Entity names to always include
+  maxSlots?: number;             // Cap on the number of memories; unset = no cap
+  composeHops?: 0 | 1;           // 1 adds one-hop neighbors of the top hybrid hits (query mode only)
+  summarizeExcluded?: boolean;   // Summarize the excluded entities into excludedSummary. Off by default. Needs setSummarizer().
 }
 
 interface ContextPackage {
   memories: AgentEntity[];
   totalTokens: number;
-  breakdown: {
-    workingMemory: number;
-    episodic: number;
-    semantic: number;
-  };
-  excluded: string[];            // What didn't fit
+  sourceTokens: number;          // totalTokens plus the tokens of every excluded entity
+  compressionRatio: number;      // sourceTokens / totalTokens; 1 when nothing is excluded
+  breakdown: TokenBreakdown;     // working, episodic, semantic, procedural, mustInclude
+  excluded: ExcludedEntity[];    // What didn't fit; reason includes slot_limit
   suggestions: string[];         // What to retrieve if more space
+  excludedSummary?: string;      // One summary of the excluded entities. Not counted in totalTokens.
 }
 ```
+
+`setSummarizer(summarizer)` attaches a summarizer to the context window manager. Pass `undefined` to detach it. The summary is made only when `summarizeExcluded` is `true`, a summarizer is attached and at least one excluded entity has observation text. The excluded entities are every entity in `excluded`: budget, slot and low-salience cuts. The summarizer receives their observations (entities without observations are left out) and the trimmed query text, or no query when the text is blank. Only `retrieveForContext` reads `summarizeExcluded`; `retrieveWithBudgetAllocation` ignores it. If the summarizer throws, retrieval logs a warning and leaves `excludedSummary` unset. Retrieval does not fail. No production code calls `setSummarizer`.
+
+`setHybridSearch(search)` attaches a hybrid search to the manager. When `context.queryText` is non-blank, `retrieveForContext` orders the candidates by hybrid rank before the salience cut. Only candidates that the hybrid search returns, plus must-include entities, enter the result. If the hybrid search throws, retrieval logs a warning and uses the salience order. The default is off. `ctx.contextWindowManager` attaches it only when `MEMORY_CONTEXT_HYBRID_RANKING` is `true`. `AgentMemoryManager` is not covered. `composeHops: 1` requires an attached hybrid search and a query.
+
+`maxSlots` caps the result in `retrieveForContext` and `retrieveWithBudgetAllocation`. Must-include entities count against the cap and are never cut. Entities that the cap cuts have reason `slot_limit`.
+
+#### Context profiles
+
+A named profile sets the salience weights, the temporal focus and the budget split. The `profile` option selects it. `profile: 'auto'` infers the profile from the query text. The presets are `default`, `planning`, `incident`, `handoff`, `review`, `lookup` and `synthesis`.
+
+The inference checks the rules in this order. The first match wins. If no rule matches, the profile is `default`.
+
+1. `incident`, `planning`, `handoff` and `review`. These match anywhere in the query.
+2. `lookup`. The query starts with `who`, `which`, `when` or `where`.
+3. `synthesis`. The query starts with `why` or `how`.
+
+A profile can set `retrieval.composeHops` (`0 | 1`). `applyProfile` uses this value when the caller leaves `composeHops` unset. An explicit `composeHops` option wins. The shipped presets do not set `retrieval`. Only `retrieveForContext` reads `composeHops`; `retrieveWithBudgetAllocation` ignores it.
+
+A profile can also set `retrieval.summarizeExcluded`. `applyProfile` uses this value when the caller leaves `summarizeExcluded` unset. An explicit `summarizeExcluded` option wins.
 
 ### 6. Working Memory Manager
 
@@ -1351,10 +1373,10 @@ MEMORY_FORGET_THRESHOLD=0.05          # Below this = forget
 MEMORY_AUTO_CONSOLIDATE=true          # Enable auto-consolidation
 MEMORY_CONSOLIDATE_MIN_CONFIDENCE=0.7
 MEMORY_CONSOLIDATE_MIN_CONFIRMATIONS=2
-MEMORY_SUMMARIZATION_PROVIDER=openai  # For LLM summarization
 
 # Context window
 MEMORY_DEFAULT_TOKEN_BUDGET=4000
+MEMORY_CONTEXT_HYBRID_RANKING=false   # true: rank candidates with hybrid search when queryText is set
 MEMORY_TOKEN_ESTIMATOR=tiktoken       # Token counting method
 
 # Multi-agent
@@ -1500,5 +1522,5 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 
 | Claim | Value | Source |
 |---|---|---|
-| totalSourceFiles | 698 | repo-tools map |
+| totalSourceFiles | 733 | repo-tools map |
 | totalModules | 6 | repo-tools map |

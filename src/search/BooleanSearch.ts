@@ -11,6 +11,7 @@ import type { GraphStorage } from '../core/GraphStorage.js';
 import type { CachePressureCoordinator } from '../utils/CachePressureCoordinator.js';
 import { SEARCH_LIMITS, QUERY_LIMITS } from '../utils/constants.js';
 import { ValidationError } from '../utils/errors.js';
+import { cleanupExpiredEntries } from '../utils/searchCache.js';
 import { SearchFilterChain, type SearchFilters } from './SearchFilterChain.js';
 import { collectInducedRelations } from './inducedSubgraph.js';
 
@@ -126,27 +127,12 @@ export class BooleanSearch {
    * Phase 4 Sprint 4: Cleanup old cache entries.
    */
   private cleanupResultCache(): void {
-    const now = Date.now();
-    const entries = Array.from(this.resultCache.entries());
-
-    // Remove expired entries
-    for (const [key, entry] of entries) {
-      if (now - entry.timestamp > BOOLEAN_CACHE_TTL_MS) {
-        this.resultCache.delete(key);
-      }
-    }
-
-    // If still over limit, remove oldest entries
-    if (this.resultCache.size > RESULT_CACHE_MAX_SIZE) {
-      const sortedEntries = entries
-        .filter(([k]) => this.resultCache.has(k))
-        .sort((a, b) => a[1].timestamp - b[1].timestamp);
-
-      const toRemove = sortedEntries.slice(0, this.resultCache.size - RESULT_CACHE_MAX_SIZE);
-      for (const [key] of toRemove) {
-        this.resultCache.delete(key);
-      }
-    }
+    cleanupExpiredEntries(
+      this.resultCache,
+      BOOLEAN_CACHE_TTL_MS,
+      RESULT_CACHE_MAX_SIZE,
+      entry => entry.timestamp
+    );
   }
 
   /**

@@ -10,15 +10,58 @@
 import {
   calculateTextSimilarity,
 } from '../utils/textSimilarity.js';
+import type { LLMProvider } from '../search/LLMQueryPlanner.js';
 
 /**
  * Interface for summarization providers.
  */
 export interface ISummarizationProvider {
-  /** Summarize multiple texts into one */
-  summarize(texts: string[]): Promise<string>;
+  /** Summarize multiple texts into one, optionally focused on a query */
+  summarize(texts: string[], query?: string): Promise<string>;
   /** Check if provider is available */
   isAvailable(): boolean;
+}
+
+/**
+ * Options for SummarizationService (kept apart from SummarizationConfig).
+ */
+export interface SummarizationServiceOptions {
+  /** LLM used to build a query-aware summary */
+  llmProvider?: LLMProvider;
+}
+
+/**
+ * Summarization provider that asks an LLM for one summary.
+ *
+ * The prompt carries the optional query. The reply is clipped to the
+ * word limit derived from maxTokens. An empty reply throws, so the service
+ * falls back to the algorithmic summary.
+ */
+export class LLMSummarizationProvider implements ISummarizationProvider {
+  constructor(
+    private readonly llm: LLMProvider,
+    private readonly maxTokens: number,
+  ) {}
+
+  isAvailable(): boolean {
+    return true;
+  }
+
+  async summarize(texts: string[], query?: string): Promise<string> {
+    // Approximate 1 word per 1.3 tokens
+    const wordLimit = Math.max(1, Math.floor(this.maxTokens / 1.3));
+    const lines = [`Summarize the texts below in at most ${wordLimit} words.`];
+    if (query !== undefined) {
+      lines.push(`Focus on this question: ${query}`);
+    }
+    texts.forEach((text, i) => lines.push(`[${i + 1}] ${text}`));
+
+    const reply = await this.llm.complete(lines.join('\n'));
+    const summary = reply.trim().split(/\s+/).slice(0, wordLimit).join(' ');
+    // An empty reply is no summary: the throw makes the service use the algorithmic fallback.
+    if (summary.length === 0) throw new Error('LLM returned an empty summary');
+    return summary;
+  }
 }
 
 /**
@@ -86,7 +129,7 @@ export class SummarizationService {
   private provider?: ISummarizationProvider;
   private readonly config: Required<SummarizationConfig>;
 
-  constructor(config: SummarizationConfig = {}) {
+  constructor(config: SummarizationConfig = {}, options: SummarizationServiceOptions = {}) {
     this.config = {
       provider: config.provider ?? 'none',
       apiKey: config.apiKey ?? '',
@@ -95,6 +138,9 @@ export class SummarizationService {
       defaultSimilarityThreshold: config.defaultSimilarityThreshold ?? 0.8,
     };
     this.initProvider();
+    if (options.llmProvider) {
+      this.provider = new LLMSummarizationProvider(options.llmProvider, this.config.maxTokens);
+    }
   }
 
   /**
@@ -122,15 +168,16 @@ export class SummarizationService {
    * algorithmic summarization.
    *
    * @param texts - Array of texts to summarize
+   * @param query - Optional question the summary should answer
    * @returns Combined summary
    */
-  async summarize(texts: string[]): Promise<string> {
+  async summarize(texts: string[], query?: string): Promise<string> {
     if (texts.length === 0) return '';
-    if (texts.length === 1) return texts[0];
+    if (texts.length === 1 && query === undefined) return texts[0];
 
     if (this.provider?.isAvailable()) {
       try {
-        return await this.provider.summarize(texts);
+        return await this.provider.summarize(texts, query);
       } catch {
         // Fall through to fallback
       }

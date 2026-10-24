@@ -5,7 +5,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { TransactionManager, OperationType } from '../../../src/core/TransactionManager.js';
+import { TransactionManager, OperationType, type TransactionOperation } from '../../../src/core/TransactionManager.js';
+import type { KnowledgeGraph } from '../../../src/types/types.js';
 import { GraphStorage } from '../../../src/core/GraphStorage.js';
 import { KnowledgeGraphError } from '../../../src/utils/errors.js';
 import { promises as fs } from 'fs';
@@ -520,5 +521,248 @@ describe('TransactionManager', () => {
       expect(OperationType.CREATE_RELATION).toBe('CREATE_RELATION');
       expect(OperationType.DELETE_RELATION).toBe('DELETE_RELATION');
     });
+  });
+});
+
+describe('TransactionManager operation pins', () => {
+  const TS = '2026-01-01T00:00:00.000Z';
+
+  function applyOp(graph: KnowledgeGraph, operation: TransactionOperation): void {
+    const manager = new TransactionManager(new GraphStorage(join(tmpdir(), 'pin-unused.jsonl')));
+    (manager as unknown as {
+      applyOperation(g: KnowledgeGraph, o: TransactionOperation, ts: string): void;
+    }).applyOperation(graph, operation, TS);
+  }
+
+  function baseGraph(): KnowledgeGraph {
+    return {
+      entities: [
+        { name: 'a', entityType: 'node', observations: ['x'] },
+        { name: 'b', entityType: 'node', observations: [] },
+      ],
+      relations: [{ from: 'a', to: 'b', relationType: 'knows' }],
+    };
+  }
+
+  function errorOf(action: () => void): { code: string; message: string } {
+    try {
+      action();
+    } catch (error) {
+      const failure = error as KnowledgeGraphError;
+      return { code: failure.code, message: failure.message };
+    }
+    throw new Error('expected the operation to throw');
+  }
+
+  it('CREATE_ENTITY adds the entity with the transaction timestamp', () => {
+    const graph = baseGraph();
+    applyOp(graph, {
+      type: OperationType.CREATE_ENTITY,
+      data: { name: 'c', entityType: 'node', observations: ['y'] },
+    });
+    expect(graph).toEqual({
+      entities: [
+        { name: 'a', entityType: 'node', observations: ['x'] },
+        { name: 'b', entityType: 'node', observations: [] },
+        { name: 'c', entityType: 'node', observations: ['y'], createdAt: TS, lastModified: TS },
+      ],
+      relations: [{ from: 'a', to: 'b', relationType: 'knows' }],
+    });
+  });
+
+  it('UPDATE_ENTITY merges the updates and stamps lastModified', () => {
+    const graph = baseGraph();
+    applyOp(graph, {
+      type: OperationType.UPDATE_ENTITY,
+      data: { name: 'a', updates: { entityType: 'topic' } },
+    });
+    expect(graph).toEqual({
+      entities: [
+        { name: 'a', entityType: 'topic', observations: ['x'], lastModified: TS },
+        { name: 'b', entityType: 'node', observations: [] },
+      ],
+      relations: [{ from: 'a', to: 'b', relationType: 'knows' }],
+    });
+  });
+
+  it('DELETE_ENTITY removes the entity and every relation that touches it', () => {
+    const graph = baseGraph();
+    applyOp(graph, { type: OperationType.DELETE_ENTITY, data: { name: 'a' } });
+    expect(graph).toEqual({
+      entities: [{ name: 'b', entityType: 'node', observations: [] }],
+      relations: [],
+    });
+  });
+
+  it('CREATE_RELATION adds the relation with the transaction timestamp', () => {
+    const graph = baseGraph();
+    applyOp(graph, {
+      type: OperationType.CREATE_RELATION,
+      data: { from: 'b', to: 'a', relationType: 'knows' },
+    });
+    expect(graph.relations).toEqual([
+      { from: 'a', to: 'b', relationType: 'knows' },
+      { from: 'b', to: 'a', relationType: 'knows', createdAt: TS, lastModified: TS },
+    ]);
+  });
+
+  it('DELETE_RELATION removes the matching relation', () => {
+    const graph = baseGraph();
+    applyOp(graph, {
+      type: OperationType.DELETE_RELATION,
+      data: { from: 'a', to: 'b', relationType: 'knows' },
+    });
+    expect(graph.relations).toEqual([]);
+    expect(graph.entities).toHaveLength(2);
+  });
+
+  it('CREATE_ENTITY and CREATE_RELATION replace timestamps that the data carries', () => {
+    const graph = baseGraph();
+    const stale = { createdAt: 'stale-created', lastModified: 'stale-modified' };
+    applyOp(graph, {
+      type: OperationType.CREATE_ENTITY,
+      data: { name: 'c', entityType: 'node', observations: [], ...stale },
+    });
+    applyOp(graph, {
+      type: OperationType.CREATE_RELATION,
+      data: { from: 'b', to: 'a', relationType: 'knows', ...stale },
+    });
+    expect(graph.entities[2]).toMatchObject({ name: 'c', createdAt: TS, lastModified: TS });
+    expect(graph.relations[1]).toMatchObject({ from: 'b', createdAt: TS, lastModified: TS });
+  });
+
+  it('CREATE_RELATION accepts a different type or target and rejects an exact copy', () => {
+    const graph = baseGraph();
+    applyOp(graph, {
+      type: OperationType.CREATE_RELATION,
+      data: { from: 'a', to: 'b', relationType: 'likes' },
+    });
+    applyOp(graph, {
+      type: OperationType.CREATE_RELATION,
+      data: { from: 'a', to: 'a', relationType: 'knows' },
+    });
+    expect(graph.relations.map(r => `${r.from}>${r.to}:${r.relationType}`)).toEqual([
+      'a>b:knows',
+      'a>b:likes',
+      'a>a:knows',
+    ]);
+
+    const failure = errorOf(() =>
+      applyOp(graph, {
+        type: OperationType.CREATE_RELATION,
+        data: { from: 'a', to: 'a', relationType: 'knows' },
+      }),
+    );
+    expect(failure.code).toBe('DUPLICATE_RELATION');
+    expect(graph.relations).toHaveLength(3);
+  });
+
+  it('DELETE_RELATION matches the relation type and removes only the first match', () => {
+    const graph = baseGraph();
+    graph.relations = [
+      { from: 'a', to: 'b', relationType: 'likes' },
+      { from: 'a', to: 'b', relationType: 'knows' },
+      { from: 'a', to: 'b', relationType: 'knows', createdAt: 'second copy' },
+    ];
+    applyOp(graph, {
+      type: OperationType.DELETE_RELATION,
+      data: { from: 'a', to: 'b', relationType: 'knows' },
+    });
+    expect(graph.relations).toEqual([
+      { from: 'a', to: 'b', relationType: 'likes' },
+      { from: 'a', to: 'b', relationType: 'knows', createdAt: 'second copy' },
+    ]);
+  });
+
+  it('UPDATE_ENTITY drops the keys that would change the prototype', () => {
+    const graph = baseGraph();
+    const updates = JSON.parse('{"__proto__":{"polluted":"yes"},"constructor":{"x":1},"entityType":"topic"}');
+    applyOp(graph, { type: OperationType.UPDATE_ENTITY, data: { name: 'a', updates } });
+    const entity = graph.entities[0]!;
+    expect(Object.getPrototypeOf(entity)).toBe(Object.prototype);
+    expect(entity).toEqual({ name: 'a', entityType: 'topic', observations: ['x'], lastModified: TS });
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+  });
+
+  it('reports the error code and message of each failing operation', () => {
+    expect(
+      errorOf(() =>
+        applyOp(baseGraph(), {
+          type: OperationType.CREATE_ENTITY,
+          data: { name: 'a', entityType: 'node', observations: [] },
+        }),
+      ),
+    ).toEqual({ code: 'DUPLICATE_ENTITY', message: 'Entity "a" already exists' });
+    expect(
+      errorOf(() =>
+        applyOp(baseGraph(), { type: OperationType.UPDATE_ENTITY, data: { name: 'zz', updates: {} } }),
+      ),
+    ).toEqual({ code: 'ENTITY_NOT_FOUND', message: 'Entity "zz" not found' });
+    expect(
+      errorOf(() => applyOp(baseGraph(), { type: OperationType.DELETE_ENTITY, data: { name: 'zz' } })),
+    ).toEqual({ code: 'ENTITY_NOT_FOUND', message: 'Entity "zz" not found' });
+    expect(
+      errorOf(() =>
+        applyOp(baseGraph(), {
+          type: OperationType.CREATE_RELATION,
+          data: { from: 'a', to: 'b', relationType: 'knows' },
+        }),
+      ),
+    ).toEqual({
+      code: 'DUPLICATE_RELATION',
+      message: 'Relation "a" -> "b" (knows) already exists',
+    });
+    expect(
+      errorOf(() =>
+        applyOp(baseGraph(), {
+          type: OperationType.DELETE_RELATION,
+          data: { from: 'b', to: 'a', relationType: 'knows' },
+        }),
+      ),
+    ).toEqual({ code: 'RELATION_NOT_FOUND', message: 'Relation "b" -> "a" (knows) not found' });
+  });
+
+  it('reads operation.type once and operation.data once for every operation type', () => {
+    const data: Array<[OperationType, unknown]> = [
+      [OperationType.CREATE_ENTITY, { name: 'c', entityType: 'node', observations: [] }],
+      [OperationType.UPDATE_ENTITY, { name: 'a', updates: { entityType: 'topic' } }],
+      [OperationType.DELETE_ENTITY, { name: 'b' }],
+      [OperationType.CREATE_RELATION, { from: 'b', to: 'a', relationType: 'new' }],
+      [OperationType.DELETE_RELATION, { from: 'a', to: 'b', relationType: 'knows' }],
+    ];
+    const reads: Array<{ type: string; typeReads: number; dataReads: number }> = [];
+    for (const [type, payload] of data) {
+      let typeReads = 0;
+      let dataReads = 0;
+      const operation = {
+        get type() {
+          typeReads++;
+          return type;
+        },
+        get data() {
+          dataReads++;
+          return payload;
+        },
+      } as unknown as TransactionOperation;
+      applyOp(baseGraph(), operation);
+      reads.push({ type, typeReads, dataReads });
+    }
+    expect(reads).toEqual(data.map(([type]) => ({ type, typeReads: 1, dataReads: 1 })));
+  });
+
+  it('names the operation data in the error when the data of an operation is missing', () => {
+    const messages = [
+      OperationType.UPDATE_ENTITY,
+      OperationType.DELETE_ENTITY,
+      OperationType.DELETE_RELATION,
+    ].map(type => {
+      const operation = { type, data: undefined } as unknown as TransactionOperation;
+      return errorOf(() => applyOp(baseGraph(), operation)).message;
+    });
+    expect(messages).toEqual([
+      "Cannot destructure property 'name' of 'operation.data' as it is undefined.",
+      "Cannot destructure property 'name' of 'operation.data' as it is undefined.",
+      "Cannot destructure property 'from' of 'operation.data' as it is undefined.",
+    ]);
   });
 });

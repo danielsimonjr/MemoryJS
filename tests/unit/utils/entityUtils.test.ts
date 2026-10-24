@@ -40,6 +40,7 @@ import {
   EntityNotFoundError,
   FileOperationError,
 } from '../../../src/utils/index.js';
+import { escapeCsvCell, escapeRegExp, hash31 } from '../../../src/utils/entityUtils.js';
 import type { KnowledgeGraph, Entity } from '../../../src/types/index.js';
 
 describe('entityUtils', () => {
@@ -1014,6 +1015,82 @@ describe('entityUtils', () => {
       process.env.MEMORY_FILE_PATH = 'data/custom.jsonl';
       const result = await ensureMemoryFilePath();
       expect(result).toContain('custom.jsonl');
+    });
+  });
+
+  describe('escapeCsvCell (R19)', () => {
+    it.each([
+      ['', ''],
+      ['plain', 'plain'],
+      ['a,b', '"a,b"'],
+      ['say "hi"', '"say ""hi"""'],
+      ['line\nbreak', '"line\nbreak"'],
+      ['=SUM(A1)', "'=SUM(A1)"],
+      ['+1', "'+1"],
+      ['-1', "'-1"],
+      ['@x', "'@x"],
+      ['a\rb', 'a\rb'],
+      ['a\r\nb', '"a\r\nb"'],
+      [null, ''],
+      [undefined, ''],
+    ])('escapeCsvCell(%j) is %j', (input, expected) => {
+      expect(escapeCsvCell(input)).toBe(expected);
+    });
+
+    it('quotes every cell when alwaysQuote is set', () => {
+      expect(escapeCsvCell('plain', { alwaysQuote: true })).toBe('"plain"');
+      expect(escapeCsvCell('a,b', { alwaysQuote: true })).toBe('"a,b"');
+      expect(escapeCsvCell('=SUM(A1)', { alwaysQuote: true })).toBe(`"'=SUM(A1)"`);
+      expect(escapeCsvCell(null, { alwaysQuote: true })).toBe('""');
+    });
+  });
+
+  describe('hash31 (R16)', () => {
+    it('returns the signed 32-bit value recorded from the old hashString', () => {
+      expect(hash31('')).toBe(0);
+      expect(hash31('a')).toBe(97);
+      expect(hash31('hello world')).toBe(1794106052);
+      expect(hash31('x'.repeat(1000))).toBe(-1715418112);
+    });
+  });
+
+  describe('escapeRegExp (R19)', () => {
+    it('escapes every RegExp metacharacter with a backslash', () => {
+      expect(escapeRegExp('a.b*c(d)[e]{f}|g^h$i\\j')).toBe('a\\.b\\*c\\(d\\)\\[e\\]\\{f\\}\\|g\\^h\\$i\\\\j');
+    });
+
+    it('builds a RegExp that matches the original text literally', () => {
+      const text = 'Apollo.v2 (beta)?';
+      expect(new RegExp(escapeRegExp(text)).test(text)).toBe(true);
+      expect(new RegExp(escapeRegExp(text)).test('Apolloxv2 (beta)?')).toBe(false);
+    });
+  });
+
+  describe('filterByTags and entityPassesFilters with a bound that cannot be parsed', () => {
+    const tagged: Entity[] = [
+      { name: 'X', entityType: 'misc', observations: [], tags: ['Backend'] },
+      { name: 'Y', entityType: 'misc', observations: [], tags: [] },
+      { name: 'Z', entityType: 'misc', observations: [] },
+      { name: 'W', entityType: 'misc', observations: [], tags: ['frontend'] },
+    ];
+
+    it('matches tags regardless of case', () => {
+      expect(filterByTags(tagged, ['BACKEND']).map(e => e.name)).toEqual(['X']);
+      expect(filterByTags(tagged, ['Frontend', 'backend']).map(e => e.name)).toEqual(['X', 'W']);
+    });
+
+    it('returns the input array when the search tags are empty or undefined', () => {
+      expect(filterByTags(tagged, [])).toBe(tagged);
+      expect(filterByTags(tagged, undefined)).toBe(tagged);
+    });
+
+    it('drops entities without a matching tag', () => {
+      expect(filterByTags(tagged, ['infra'])).toEqual([]);
+    });
+
+    it('still fails an entity whose date is valid when the created bound is unparseable', () => {
+      const dated: Entity = { name: 'A', entityType: 'misc', observations: [], createdAt: '2020-06-01T00:00:00Z' };
+      expect(entityPassesFilters(dated, { createdAfter: 'garbage' })).toBe(false);
     });
   });
 });

@@ -5,7 +5,11 @@
  * promotion, and pipeline stages.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { promises as fs } from 'fs';
+import { join } from 'path';
+import { tmpdir } from 'os';
+import { GraphStorage } from '../../../src/core/GraphStorage.js';
 import {
   ConsolidationPipeline,
   ProspectivePromotionStage,
@@ -106,6 +110,26 @@ function createWorkingMemory(
     expiresAt: new Date(Date.now() + 3600000).toISOString(),
   };
 }
+
+describe('ConsolidationPipeline.hashPattern (R16 pins)', () => {
+  // hashPattern reads no instance state, so the prototype is enough.
+  const probe = Object.create(ConsolidationPipeline.prototype) as unknown as { hashPattern(pattern: string): string };
+
+  it('returns the recorded hex prefix for each pattern', () => {
+    const golden: Array<[string, string]> = [
+      ['', '0'],
+      ['a', '61'],
+      ['hello world', '6aefe2c4'],
+      ['ü€😀', '1084093'],
+      ['x'.repeat(1000), '663f3400'],
+      ['Entity_42', '4b4df83a'],
+      ['hello', '5e918d2'],
+    ];
+    for (const [input, expected] of golden) {
+      expect(probe.hashPattern(input)).toBe(expected);
+    }
+  });
+});
 
 describe('ConsolidationPipeline', () => {
   let storage: IGraphStorage;
@@ -391,6 +415,139 @@ describe('ConsolidationPipeline', () => {
       await expect(
         pipeline.promoteMemory('already_episodic', 'semantic')
       ).rejects.toThrow('not working memory');
+    });
+  });
+
+  // ==================== Entity guard pins (pinned before the extraction) ====================
+
+  describe('promoteMemory entity guard (pinned before the extraction)', () => {
+    const FIXED_NOW = '2026-01-01T00:00:00.000Z';
+
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date(FIXED_NOW));
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    function workingEntity(): AgentEntity {
+      return { ...createWorkingMemory('wm_test', 'session_1'), tags: ['promote_to_semantic'] };
+    }
+
+    it('returns the merged entity fields recorded from the old code', async () => {
+      storage = createMockStorage([workingEntity() as unknown as Entity]);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+      const promoted = await pipeline.promoteMemory('wm_test', 'episodic');
+      expect({
+        memoryType: promoted.memoryType,
+        isWorkingMemory: promoted.isWorkingMemory,
+        expiresAt: promoted.expiresAt,
+        markedForPromotion: promoted.markedForPromotion,
+        promotedAt: promoted.promotedAt,
+        promotedFrom: promoted.promotedFrom,
+        lastModified: promoted.lastModified,
+        tags: promoted.tags,
+      }).toStrictEqual({
+        memoryType: 'episodic',
+        isWorkingMemory: false,
+        expiresAt: undefined,
+        markedForPromotion: false,
+        promotedAt: FIXED_NOW,
+        promotedFrom: 'session_1',
+        lastModified: FIXED_NOW,
+        tags: ['promote_to_semantic'],
+      });
+    });
+
+    it('writes the update keys in the pipeline order and does not strip tags', async () => {
+      storage = createMockStorage([workingEntity() as unknown as Entity]);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+      await pipeline.promoteMemory('wm_test', 'episodic');
+      const updates = vi.mocked(storage.updateEntity).mock.calls[0][1] as Record<string, unknown>;
+      expect(Object.keys(updates)).toEqual([
+        'memoryType',
+        'isWorkingMemory',
+        'expiresAt',
+        'promotedAt',
+        'promotedFrom',
+        'markedForPromotion',
+        'lastModified',
+      ]);
+    });
+
+    it('reinforces after the write and touches no WorkingMemoryManager method', async () => {
+      storage = createMockStorage([workingEntity() as unknown as Entity]);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+      await pipeline.promoteMemory('wm_test', 'episodic');
+      const writeOrder = vi.mocked(storage.updateEntity).mock.invocationCallOrder[0];
+      const reinforceOrder = vi.mocked(decayEngine.reinforceMemory).mock.invocationCallOrder[0];
+      expect(decayEngine.reinforceMemory).toHaveBeenCalledWith('wm_test');
+      expect(reinforceOrder).toBeGreaterThan(writeOrder);
+      expect(workingMemory.getSessionMemories).not.toHaveBeenCalled();
+      expect(workingMemory.promoteMemory).not.toHaveBeenCalled();
+      expect(workingMemory.getPromotionCandidates).not.toHaveBeenCalled();
+    });
+
+    it('reads the entity exactly once', async () => {
+      storage = createMockStorage([workingEntity() as unknown as Entity]);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+      await pipeline.promoteMemory('wm_test', 'episodic');
+      expect(storage.getEntityByName).toHaveBeenCalledTimes(1);
+    });
+
+    it('reports a missing entity with the exact text', async () => {
+      storage = createMockStorage([]);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+      await expect(pipeline.promoteMemory('nope', 'episodic')).rejects.toThrow(/^Entity not found: nope$/);
+    });
+
+    it('reports a plain entity with the exact text', async () => {
+      const plain = { name: 'plain', entityType: 'note', observations: [] } as unknown as Entity;
+      storage = createMockStorage([plain]);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+      await expect(pipeline.promoteMemory('plain', 'episodic')).rejects.toThrow(
+        /^Entity is not an AgentEntity: plain$/
+      );
+    });
+
+    it('reports an episodic entity with the exact text', async () => {
+      const episodic = { ...createWorkingMemory('bad', 'session_1'), memoryType: 'episodic' } as AgentEntity;
+      storage = createMockStorage([episodic as unknown as Entity]);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+      await expect(pipeline.promoteMemory('bad', 'episodic')).rejects.toThrow(
+        /^Entity is not working memory: bad$/
+      );
+    });
+
+    describe('stored line on disk', () => {
+      let testDir: string;
+
+      beforeEach(() => {
+        testDir = join(tmpdir(), `pipeline-guard-${Date.now()}-${Math.random()}`);
+      });
+
+      afterEach(async () => {
+        try {
+          await fs.rm(testDir, { recursive: true, force: true });
+        } catch {
+          /* cleanup best-effort */
+        }
+      });
+
+      it('the pipeline route writes the promoted entity line', async () => {
+        await fs.mkdir(testDir, { recursive: true });
+        const file = join(testDir, 'memory.jsonl');
+        const onDisk = new GraphStorage(file);
+        await onDisk.appendEntity(workingEntity() as unknown as Entity);
+        const onDiskPipeline = new ConsolidationPipeline(onDisk, workingMemory, decayEngine);
+        await onDiskPipeline.promoteMemory('wm_test', 'episodic');
+        const line = (await fs.readFile(file, 'utf8')).split('\n').filter((l) => l.includes('"name":"wm_test"')).pop();
+        expect(line).toBe(
+          '{"type":"entity","name":"wm_test","entityType":"working_memory","observations":["Test observation"],"createdAt":"2026-01-01T00:00:00.000Z","lastModified":"2026-01-01T00:00:00.000Z","tags":["promote_to_semantic"],"importance":5,"confidence":0.8,"memoryType":"episodic","sessionId":"session_1","isWorkingMemory":false,"promotedAt":"2026-01-01T00:00:00.000Z","promotedFrom":"session_1","markedForPromotion":false,"accessCount":0,"confirmationCount":2,"visibility":"private"}'
+        );
+      });
     });
   });
 

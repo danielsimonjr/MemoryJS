@@ -28,6 +28,7 @@
 
 import { randomBytes } from 'crypto';
 import type { IGraphStorage, Entity, Relation } from '../types/types.js';
+import { decodeKeyValueBody, encodeKeyValueBody } from './keyValueLine.js';
 
 // ==================== Types ====================
 
@@ -359,21 +360,8 @@ export class WorkThreadManager {
    * @returns Updated work thread
    * @throws Error if thread not found or invalid transition
    */
-  async complete(threadId: string): Promise<WorkThread> {
-    const thread = this.threads.get(threadId);
-    if (!thread) {
-      throw new Error(`Thread not found: ${threadId}`);
-    }
-
-    if (!this.canTransition(threadId, 'done')) {
-      throw new Error(`Cannot complete thread ${threadId} from '${thread.status}' status`);
-    }
-
-    thread.status = 'done';
-    thread.updatedAt = new Date().toISOString();
-
-    await this.persistThread(thread);
-    return { ...thread };
+  complete(threadId: string): Promise<WorkThread> {
+    return this.finish(threadId, 'done', 'complete');
   }
 
   /**
@@ -383,21 +371,8 @@ export class WorkThreadManager {
    * @returns Updated work thread
    * @throws Error if thread not found or invalid transition
    */
-  async cancel(threadId: string): Promise<WorkThread> {
-    const thread = this.threads.get(threadId);
-    if (!thread) {
-      throw new Error(`Thread not found: ${threadId}`);
-    }
-
-    if (!this.canTransition(threadId, 'cancelled')) {
-      throw new Error(`Cannot cancel thread ${threadId} from '${thread.status}' status`);
-    }
-
-    thread.status = 'cancelled';
-    thread.updatedAt = new Date().toISOString();
-
-    await this.persistThread(thread);
-    return { ...thread };
+  cancel(threadId: string): Promise<WorkThread> {
+    return this.finish(threadId, 'cancelled', 'cancel');
   }
 
   /**
@@ -573,6 +548,35 @@ export class WorkThreadManager {
   // ==================== Private Methods ====================
 
   /**
+   * Moves a thread to a terminal status. The verb names the operation in the error text.
+   * complete and cancel return the promise of this method and are not async
+   * themselves, so they settle in the same number of microtask turns as a
+   * method that holds the whole body.
+   *
+   * @param threadId - Thread to move
+   * @param target - Terminal status to set
+   * @param verb - Operation name used in the error text
+   * @returns Updated work thread
+   * @throws Error if thread not found or invalid transition
+   */
+  private async finish(threadId: string, target: 'done' | 'cancelled', verb: 'complete' | 'cancel'): Promise<WorkThread> {
+    const thread = this.threads.get(threadId);
+    if (!thread) {
+      throw new Error(`Thread not found: ${threadId}`);
+    }
+
+    if (!this.canTransition(threadId, target)) {
+      throw new Error(`Cannot ${verb} thread ${threadId} from '${thread.status}' status`);
+    }
+
+    thread.status = target;
+    thread.updatedAt = new Date().toISOString();
+
+    await this.persistThread(thread);
+    return { ...thread };
+  }
+
+  /**
    * Detect cycles in blocker dependencies using BFS.
    *
    * @param threadId - The thread being blocked
@@ -704,9 +708,9 @@ function encodeThreadObservations(thread: WorkThread): string[] {
   observations.push(`${CREATED_AT_PREFIX}${thread.createdAt}`);
   observations.push(`${UPDATED_AT_PREFIX}${thread.updatedAt}`);
   for (const [key, value] of Object.entries(thread.metadata ?? {})) {
-    const encodedValue = JSON.stringify(value);
-    if (encodedValue === undefined) continue;
-    observations.push(`${META_PREFIX}${JSON.stringify(key)}=${encodedValue}`);
+    const body = encodeKeyValueBody(key, value, 'skip');
+    if (body === null) continue;
+    observations.push(`${META_PREFIX}${body}`);
   }
   return observations;
 }
@@ -747,7 +751,7 @@ function decodeThreadObservations(
     } else if (obs.startsWith(UPDATED_AT_PREFIX)) {
       updatedAt = obs.slice(UPDATED_AT_PREFIX.length);
     } else if (obs.startsWith(META_PREFIX)) {
-      const kv = decodeMetaLine(obs.slice(META_PREFIX.length));
+      const kv = decodeKeyValueBody(obs.slice(META_PREFIX.length));
       if (kv) (metadata ??= {})[kv[0]] = kv[1];
     } else {
       descriptionLines.push(obs);
@@ -770,29 +774,6 @@ function decodeThreadObservations(
     updatedAt: updatedAt ?? entity.lastModified ?? createdAt ?? fallbackTimestamp,
     metadata,
   };
-}
-
-/**
- * Split `<JSON-string>=<JSON-value>` at the `=` separating the key from
- * the value (never inside the key — `"` inside a JSON string is escaped,
- * so a simple escape-aware scan finds the key's closing quote). Returns
- * null on malformed input.
- */
-function decodeMetaLine(body: string): [string, unknown] | null {
-  if (!body.startsWith('"')) return null;
-  let i = 1;
-  while (i < body.length && body[i] !== '"') {
-    i += body[i] === '\\' ? 2 : 1;
-  }
-  if (i >= body.length || body[i + 1] !== '=') return null;
-  try {
-    const key: unknown = JSON.parse(body.slice(0, i + 1));
-    const value: unknown = JSON.parse(body.slice(i + 2));
-    if (typeof key !== 'string') return null;
-    return [key, value];
-  } catch {
-    return null;
-  }
 }
 
 /**

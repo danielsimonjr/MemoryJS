@@ -679,4 +679,322 @@ describe('validators', () => {
       expect(result.valid).toBe(false);
     });
   });
+
+  describe('field path getter (pinned before the extraction)', () => {
+    const withExtra = (extra: Record<string, unknown>): Entity => ({ ...createEntity(), ...extra }) as Entity;
+
+    it('reads a top-level field', () => {
+      expect(required('name').validate(createEntity()).valid).toBe(true);
+    });
+
+    it('reads a three-level path', () => {
+      expect(required('a.b.c').validate(withExtra({ a: { b: { c: 'x' } } })).valid).toBe(true);
+    });
+
+    it('reads an array index inside the range', () => {
+      expect(required('tags.0').validate(withExtra({ tags: ['t0', 't1'] })).valid).toBe(true);
+    });
+
+    it('returns undefined for an array index outside the range', () => {
+      expect(required('tags.10').validate(withExtra({ tags: ['t0', 't1'] })).valid).toBe(false);
+    });
+
+    it('reads a segment that is not all digits as an object key', () => {
+      expect(required('a.0b').validate(withExtra({ a: { '0b': 'x' } })).valid).toBe(true);
+    });
+
+    it('returns undefined when the path passes through a primitive', () => {
+      expect(required('name.length').validate(createEntity({ name: 'test' })).valid).toBe(false);
+    });
+
+    it('returns undefined for an empty path', () => {
+      expect(required('').validate(createEntity()).valid).toBe(false);
+    });
+  });
+
+  describe('rule builders (pinned before the extraction)', () => {
+    const withField = (value: unknown): Entity => ({ ...createEntity(), f: value }) as Entity;
+
+    it('names each of the seven builders', () => {
+      expect(minLength('f', 1).name).toBe('minLength');
+      expect(maxLength('f', 1).name).toBe('maxLength');
+      expect(pattern('f', /x/).name).toBe('pattern');
+      expect(range('f', 0, 1).name).toBe('range');
+      expect(minItems('f', 1).name).toBe('minItems');
+      expect(maxItems('f', 1).name).toBe('maxItems');
+      expect(email('f').name).toBe('email');
+    });
+
+    it('builds the default messages', () => {
+      expect(minLength('f', 3).message).toBe('f must be at least 3 characters');
+      expect(maxLength('f', 3).message).toBe('f must be at most 3 characters');
+      expect(pattern('f', /^x$/).message).toBe('f must match /^x$/');
+      expect(pattern('f', /^x$/, 'a single x').message).toBe('f must match a single x');
+      expect(pattern('f', /^x$/, '').message).toBe('f must match /^x$/');
+      expect(range('f', 1, 5).message).toBe('f must be between 1 and 5');
+      expect(minItems('f', 2).message).toBe('f must have at least 2 items');
+      expect(maxItems('f', 2).message).toBe('f must have at most 2 items');
+      expect(email('f').message).toBe('f must be a valid email address');
+    });
+
+    it('uses a given message instead of the default', () => {
+      expect(minLength('f', 3, 'too short').message).toBe('too short');
+      expect(email('f', 'bad mail').message).toBe('bad mail');
+    });
+
+    it('returns valid for a value of the wrong type', () => {
+      expect(minLength('f', 3).validate(withField(5)).valid).toBe(true);
+      expect(maxLength('f', 3).validate(withField(5)).valid).toBe(true);
+      expect(pattern('f', /^x$/).validate(withField(5)).valid).toBe(true);
+      expect(range('f', 1, 5).validate(withField('7')).valid).toBe(true);
+      expect(minItems('f', 2).validate(withField('abc')).valid).toBe(true);
+      expect(maxItems('f', 2).validate(withField({ length: 9 })).valid).toBe(true);
+      expect(email('f').validate(withField(5)).valid).toBe(true);
+    });
+
+    it('returns valid when the field is missing', () => {
+      const entity = createEntity();
+      expect(minLength('f', 3).validate(entity).valid).toBe(true);
+      expect(maxLength('f', 3).validate(entity).valid).toBe(true);
+      expect(pattern('f', /^x$/).validate(entity).valid).toBe(true);
+      expect(range('f', 1, 5).validate(entity).valid).toBe(true);
+      expect(minItems('f', 2).validate(entity).valid).toBe(true);
+      expect(maxItems('f', 2).validate(entity).valid).toBe(true);
+      expect(email('f').validate(entity).valid).toBe(true);
+    });
+
+    it('checks the boundary values', () => {
+      expect(minLength('f', 3).validate(withField('abc')).valid).toBe(true);
+      expect(minLength('f', 3).validate(withField('ab')).valid).toBe(false);
+      expect(maxLength('f', 3).validate(withField('abc')).valid).toBe(true);
+      expect(maxLength('f', 3).validate(withField('abcd')).valid).toBe(false);
+      expect(pattern('f', /^[A-Z]+$/).validate(withField('ABC')).valid).toBe(true);
+      expect(pattern('f', /^[A-Z]+$/).validate(withField('abc')).valid).toBe(false);
+      expect(range('f', 1, 5).validate(withField(1)).valid).toBe(true);
+      expect(range('f', 1, 5).validate(withField(5)).valid).toBe(true);
+      expect(range('f', 1, 5).validate(withField(0)).valid).toBe(false);
+      expect(range('f', 1, 5).validate(withField(6)).valid).toBe(false);
+      expect(minItems('f', 2).validate(withField(['a', 'b'])).valid).toBe(true);
+      expect(minItems('f', 2).validate(withField(['a'])).valid).toBe(false);
+      expect(maxItems('f', 2).validate(withField(['a', 'b'])).valid).toBe(true);
+      expect(maxItems('f', 2).validate(withField(['a', 'b', 'c'])).valid).toBe(false);
+      expect(email('f').validate(withField('a@b.co')).valid).toBe(true);
+      expect(email('f').validate(withField('nope')).valid).toBe(false);
+    });
+
+    it('keeps the lastIndex state of a global pattern between calls', () => {
+      const rule = pattern('f', /a/g);
+      expect(rule.validate(withField('a')).valid).toBe(true);
+      expect(rule.validate(withField('a')).valid).toBe(false);
+      expect(rule.validate(withField('a')).valid).toBe(true);
+    });
+  });
+});
+
+describe('field path and rule builders', () => {
+  const entityWith = (extra: Record<string, unknown>): Entity => ({ ...createEntity(), ...extra }) as Entity;
+
+  /** Returns the value that a rule sees at `path`. */
+  const read = (entity: Entity, path: string): unknown => {
+    let seen: unknown = 'unread';
+    customSync(
+      path,
+      (value) => {
+        seen = value;
+        return true;
+      },
+      'probe'
+    ).validate(entity);
+    return seen;
+  };
+
+  describe('path reading', () => {
+    it('reads the key named by the empty string for an empty path', () => {
+      expect(read(entityWith({ '': 'empty-key' }), '')).toBe('empty-key');
+    });
+
+    it('reads an empty segment as the key named by the empty string', () => {
+      expect(read(entityWith({ a: { '': 'inner' } }), 'a.')).toBe('inner');
+      expect(read(entityWith({ '': { a: 'after' } }), '.a')).toBe('after');
+      expect(read(entityWith({ a: { '': { b: 'between' } } }), 'a..b')).toBe('between');
+    });
+
+    it('reads a segment that starts with a letter and ends in a digit as an object key', () => {
+      expect(read(entityWith({ b0: 'letter-digit' }), 'b0')).toBe('letter-digit');
+      expect(read(entityWith({ a: { x1: 'nested' } }), 'a.x1')).toBe('nested');
+    });
+
+    it('turns a segment of digits into a number, so leading zeros select the same index', () => {
+      const tags = ['t0', 't1', 't2'];
+      expect(read(entityWith({ tags }), 'tags.01')).toBe('t1');
+      expect(read(entityWith({ tags }), 'tags.00')).toBe('t0');
+      expect(read(entityWith({ obj: { 1: 'one' } }), 'obj.01')).toBe('one');
+      expect(read(entityWith({ obj: { '01': 'raw' } }), 'obj.01')).toBeUndefined();
+    });
+
+    it('turns a long segment of digits into a number first', () => {
+      expect(read(entityWith({ obj: { '100000000000000000000': 'big' } }), 'obj.99999999999999999999')).toBe('big');
+    });
+
+    it('does not read a non-ASCII digit as an index', () => {
+      expect(read(entityWith({ tags: ['t0', 't1', 't2', 't3'] }), 'tags.٣')).toBeUndefined();
+    });
+
+    it('returns undefined for a path that goes through a function', () => {
+      expect(read(entityWith({ fn: () => 1 }), 'fn.length')).toBeUndefined();
+      expect(read(entityWith({ fn: () => 1 }), 'fn.name')).toBeUndefined();
+    });
+
+    it('returns a function that ends the path', () => {
+      const fn = () => 1;
+      expect(read(entityWith({ fn }), 'fn')).toBe(fn);
+    });
+
+    it('returns undefined for a path that goes through a falsy or primitive value', () => {
+      expect(read(entityWith({ v: null }), 'v.x')).toBeUndefined();
+      expect(read(entityWith({ v: 0 }), 'v.x')).toBeUndefined();
+      expect(read(entityWith({ v: '' }), 'v.length')).toBeUndefined();
+      expect(read(entityWith({ v: true }), 'v.x')).toBeUndefined();
+      expect(read(entityWith({ v: 'text' }), 'v.length')).toBeUndefined();
+    });
+
+    it('reads keys that the entity inherits', () => {
+      expect(read(entityWith({}), 'toString')).toBe(Object.prototype.toString);
+      expect(read(entityWith({}), 'constructor.name')).toBeUndefined();
+    });
+  });
+
+  describe('rule shape', () => {
+    const builders: Array<[string, () => ReturnType<typeof minLength>]> = [
+      ['minLength', () => minLength('f', 1)],
+      ['maxLength', () => maxLength('f', 1)],
+      ['pattern', () => pattern('f', /x/)],
+      ['range', () => range('f', 0, 1)],
+      ['minItems', () => minItems('f', 1)],
+      ['maxItems', () => maxItems('f', 1)],
+      ['email', () => email('f')],
+    ];
+
+    it.each(builders)('%s builds name, field, message and validate in that key order', (_name, build) => {
+      const rule = build();
+      expect(Object.keys(rule)).toStrictEqual(['name', 'field', 'message', 'validate']);
+      expect(rule.field).toBe('f');
+      expect(rule.validate.length).toBe(1);
+    });
+
+    it.each(builders)('%s returns a result object with the single key valid', (_name, build) => {
+      expect(Object.keys(build().validate(entityWith({ f: 5 })) as object)).toStrictEqual(['valid']);
+    });
+  });
+
+  describe('messages', () => {
+    it('uses a given message for pattern, range, minItems, maxItems and maxLength', () => {
+      expect(pattern('f', /x/, 'described', 'custom pattern').message).toBe('custom pattern');
+      expect(range('f', 0, 1, 'custom range').message).toBe('custom range');
+      expect(minItems('f', 1, 'custom min').message).toBe('custom min');
+      expect(maxItems('f', 1, 'custom max').message).toBe('custom max');
+      expect(maxLength('f', 1, 'custom length').message).toBe('custom length');
+    });
+  });
+
+  describe('type gates', () => {
+    it('treats an empty string as a string', () => {
+      expect(minLength('f', 1).validate(entityWith({ f: '' })).valid).toBe(false);
+      expect(maxLength('f', 0).validate(entityWith({ f: '' })).valid).toBe(true);
+      expect(email('f').validate(entityWith({ f: '' })).valid).toBe(false);
+      expect(pattern('f', /^$/).validate(entityWith({ f: '' })).valid).toBe(true);
+    });
+
+    it('treats NaN as a number', () => {
+      expect(range('f', 0, 1).validate(entityWith({ f: NaN })).valid).toBe(false);
+      expect(range('f', -Infinity, Infinity).validate(entityWith({ f: NaN })).valid).toBe(false);
+      expect(range('f', 0, 1).validate(entityWith({ f: Infinity })).valid).toBe(false);
+      expect(range('f', 0, Infinity).validate(entityWith({ f: Infinity })).valid).toBe(true);
+    });
+
+    it('does not read a string as an array', () => {
+      expect(minItems('f', 5).validate(entityWith({ f: 'abc' })).valid).toBe(true);
+      expect(maxItems('f', 0).validate(entityWith({ f: 'abc' })).valid).toBe(true);
+    });
+
+    it('does not read an array as a string', () => {
+      expect(minLength('f', 5).validate(entityWith({ f: ['a'] })).valid).toBe(true);
+      expect(maxLength('f', 0).validate(entityWith({ f: ['a'] })).valid).toBe(true);
+    });
+
+    it('does not read a numeric string as a number', () => {
+      expect(range('f', 0, 1).validate(entityWith({ f: '5' })).valid).toBe(true);
+    });
+  });
+
+  describe('email', () => {
+    it.each([
+      ['a@b.co', true],
+      ['first.last+tag@sub.example.org', true],
+      ['a@b', false],
+      ['a b@c.d', false],
+      ['a@b c.d', false],
+      ['@b.c', false],
+      ['a@@b.c', false],
+      ['a@b.', false],
+      ['a@.c', false],
+    ])('validates %s as %s', (value, valid) => {
+      expect(email('f').validate(entityWith({ f: value })).valid).toBe(valid);
+    });
+  });
+
+  describe('nested paths in the other builders', () => {
+    const nested = entityWith({ m: { n: 3, text: 'abc', when: 'garbage', list: ['a'] } });
+
+    it('min and max read the nested number', () => {
+      expect(min('m.n', 5).validate(nested).valid).toBe(false);
+      expect(min('m.n', 2).validate(nested).valid).toBe(true);
+      expect(max('m.n', 2).validate(nested).valid).toBe(false);
+      expect(max('m.n', 5).validate(nested).valid).toBe(true);
+    });
+
+    it('oneOf reads the nested value', () => {
+      expect(oneOf('m.text', ['abc']).validate(nested).valid).toBe(true);
+      expect(oneOf('m.text', ['x']).validate(nested).valid).toBe(false);
+    });
+
+    it('url and isoDate read the nested string', () => {
+      expect(url('m.text').validate(nested).valid).toBe(false);
+      expect(isoDate('m.when').validate(nested).valid).toBe(false);
+    });
+
+    it('typeOf reads the nested value', () => {
+      expect(typeOf('m.text', 'number').validate(nested).valid).toBe(false);
+      expect(typeOf('m.text', 'string').validate(nested).valid).toBe(true);
+      expect(typeOf('m.list', 'array').validate(nested).valid).toBe(true);
+    });
+
+    it('custom and customSync pass the nested value to the validator', async () => {
+      const seen: unknown[] = [];
+      await custom('m.text', (value) => { seen.push(value); return true; }, 'm').validate(nested);
+      customSync('m.list', (value) => { seen.push(value); return true; }, 'm').validate(nested);
+      expect(seen).toStrictEqual(['abc', ['a']]);
+    });
+
+    it('required reads the nested value', () => {
+      expect(required('m.n').validate(nested).valid).toBe(true);
+      expect(required('m.missing').validate(nested).valid).toBe(false);
+    });
+  });
+});
+
+describe('rule with a field that is not a string', () => {
+  it('throws a TypeError that names the field parameter', () => {
+    const entity = createEntity();
+    expect(() => required(5 as unknown as string).validate(entity)).toThrow(/^field\.split is not a function/);
+    expect(() => minLength(true as unknown as string, 1).validate(entity)).toThrow(/^field\.split is not a function/);
+    expect(() => range(['a'] as unknown as string, 0, 1).validate(entity)).toThrow(/^field\.split is not a function/);
+    expect(() => oneOf({} as unknown as string, ['a']).validate(entity)).toThrow(/^field\.split is not a function/);
+  });
+
+  it('throws a TypeError that reads a missing field', () => {
+    const entity = createEntity();
+    expect(() => required(undefined as unknown as string).validate(entity)).toThrow(TypeError);
+    expect(() => required(null as unknown as string).validate(entity)).toThrow(TypeError);
+  });
 });

@@ -19,7 +19,9 @@
  * @experimental
  */
 
+import { minMaxNormalize } from '../utils/searchAlgorithms.js';
 import { GraphTraversal } from '../core/GraphTraversal.js';
+import { CoalescingTimer } from '../utils/timing.js';
 import type { GraphStorage } from '../core/GraphStorage.js';
 import type { GraphEventEmitter } from '../core/GraphEventEmitter.js';
 import type { EntityUpdatedEvent } from '../types/types.js';
@@ -99,8 +101,8 @@ export class GraphRankPrior {
   private unsubscribers: Array<() => void> = [];
   /** Debounce window for event-driven invalidation (0 = immediate). */
   private readonly invalidationDebounceMs: number;
-  /** Pending deferred invalidation timer, or null when none is scheduled. */
-  private invalidateTimer: NodeJS.Timeout | null = null;
+  /** Coalescing timer for deferred invalidation. */
+  private readonly invalidateTimer = new CoalescingTimer();
 
   /**
    * Create a new GraphRankPrior.
@@ -186,19 +188,11 @@ export class GraphRankPrior {
    * @internal
    */
   private scheduleInvalidate(): void {
-    if (this.invalidationDebounceMs <= 0) {
-      this.invalidate();
-      return;
-    }
-    if (this.invalidateTimer !== null) {
-      return; // Window already open — this trigger coalesces into it.
-    }
-    this.invalidateTimer = setTimeout(() => {
-      this.invalidateTimer = null;
-      this.invalidate();
-    }, this.invalidationDebounceMs);
-    // Don't keep the event loop alive for a debounce timer.
-    this.invalidateTimer.unref?.();
+    this.invalidateTimer.schedule(
+      this.invalidationDebounceMs,
+      () => this.invalidate(),
+      this.invalidationDebounceMs <= 0
+    );
   }
 
   /**
@@ -280,10 +274,7 @@ export class GraphRankPrior {
       unsubscribe();
     }
     this.unsubscribers = [];
-    if (this.invalidateTimer !== null) {
-      clearTimeout(this.invalidateTimer);
-      this.invalidateTimer = null;
-    }
+    this.invalidateTimer.cancel();
     this.invalidate();
   }
 
@@ -364,29 +355,6 @@ export class GraphRankPrior {
    * @internal
    */
   private minMaxNormalize(scores: Map<string, number>): Map<string, number> {
-    const normalized = new Map<string, number>();
-    if (scores.size === 0) {
-      return normalized;
-    }
-
-    let min = Infinity;
-    let max = -Infinity;
-    for (const score of scores.values()) {
-      if (score < min) min = score;
-      if (score > max) max = score;
-    }
-
-    if (max === min) {
-      for (const name of scores.keys()) {
-        normalized.set(name, max === 0 ? 0 : 1);
-      }
-      return normalized;
-    }
-
-    const range = max - min;
-    for (const [name, score] of scores) {
-      normalized.set(name, (score - min) / range);
-    }
-    return normalized;
+    return minMaxNormalize(scores);
   }
 }

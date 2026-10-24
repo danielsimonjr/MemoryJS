@@ -1,12 +1,11 @@
 /**
  * DiskWarmTier — JSONL-sidecar-backed `IIndexTier<string, V>`
  *
- * Phase 9 task 71 (§1.5) — middle tier in the three-tier index chain.
- * Persists every (key, value) pair as a single JSONL line in a sidecar
- * file. The whole sidecar is rewritten on every mutation via temp-file
- * + fsync + rename — same correctness/efficiency trade-off as
- * `JsonlColumnStore` (Phase 8 task 65). Per-entry append + periodic
- * compaction is a follow-up if profiling demands it.
+ * Middle tier in the three-tier index chain. Persists every (key, value)
+ * pair as a single JSONL line in a sidecar file. The whole sidecar is
+ * rewritten on every mutation via temp-file + fsync + rename, the same
+ * trade-off as `JsonlColumnStore`. Per-entry append with periodic
+ * compaction is not implemented.
  *
  * Wire format (one JSON object per line):
  *
@@ -37,15 +36,9 @@
  */
 
 import { promises as fs } from 'fs';
-import { Mutex } from 'async-mutex';
 import { logger } from '../../utils/logger.js';
 import { durableWriteFile } from '../../utils/durableWriteFile.js';
-import type { IIndexTier } from './ITieredIndex.js';
-
-interface SidecarLine<V> {
-  k: string;
-  v: V;
-}
+import { MapFileTier } from './MapFileTier.js';
 
 /**
  * Options for `DiskWarmTier`: sidecar file path, name, entry bound and eviction callback.
@@ -79,18 +72,15 @@ export interface DiskWarmTierOptions<V> {
  * const posting = await warm.get('alice');
  * ```
  */
-export class DiskWarmTier<V> implements IIndexTier<string, V> {
+export class DiskWarmTier<V> extends MapFileTier<V> {
   readonly name: string;
-  private readonly filePath: string;
+  protected readonly filePath: string;
   private readonly maxEntries: number | undefined;
   private readonly onEvict: ((key: string, value: V) => void) | undefined;
-  private cache: Map<string, V> | null = null;
-  // A shard is one file: different keys must share the same operation lock.
-  // Reads and reloads wait too, so a failed flush never exposes uncommitted data.
-  private readonly mutex = new Mutex();
   private evictionCount = 0;
 
   constructor(options: DiskWarmTierOptions<V>) {
+    super();
     if (options.maxEntries !== undefined &&
         (!Number.isSafeInteger(options.maxEntries) || options.maxEntries < 0)) {
       throw new RangeError('DiskWarmTier: maxEntries must be a non-negative safe integer');
@@ -101,41 +91,21 @@ export class DiskWarmTier<V> implements IIndexTier<string, V> {
     this.onEvict = options.onEvict;
   }
 
-  async get(key: string): Promise<V | undefined> {
-    return this.mutex.runExclusive(async () => {
-      const cache = await this.ensureLoaded();
-      return cache.get(key);
-    });
-  }
-
-  async has(key: string): Promise<boolean> {
-    return this.mutex.runExclusive(async () => {
-      const cache = await this.ensureLoaded();
-      return cache.has(key);
-    });
-  }
-
   async put(key: string, value: V): Promise<void> {
     return this.mutex.runExclusive(async () => {
       const cache = await this.ensureLoaded();
-      // Snapshot the WHOLE map before mutating. Restoring entry-by-
-      // entry from collected diffs (the prior implementation) lost the
-      // original LRU position of `key` when `hadPrior` was true — a
-      // later eviction round would target the wrong oldest. A full
-      // snapshot preserves ordering on failure and
-      // guarantees byte-exact rollback including insertion order
-      // (review #2).
+      // The whole map is copied before any change. A copy restores the
+      // entries and their insertion order byte for byte when the flush fails.
       const snapshot = new Map(cache);
 
       const hadPrior = cache.has(key);
-      // Re-inserting refreshes Map insertion order so LRU eviction
-      // targets the genuinely-oldest key.
+      // Re-inserting moves the key to the end of the insertion order, so that
+      // LRU eviction targets the oldest key.
       if (hadPrior) cache.delete(key);
       cache.set(key, value);
 
-      // Collect evictees before flush so we can fire their callbacks
-      // post-flush (and so the snapshot rollback can leave them
-      // un-evicted on failure).
+      // Collect the evicted entries before the flush. Their callbacks run after
+      // the flush has landed. A failed flush then leaves them in the tier.
       const evicted: Array<{ k: string; v: V }> = [];
       if (this.maxEntries !== undefined) {
         while (cache.size > this.maxEntries) {
@@ -150,8 +120,6 @@ export class DiskWarmTier<V> implements IIndexTier<string, V> {
       try {
         await this.flush(cache);
       } catch (err) {
-        // Restore from the upfront snapshot — guarantees pre-mutation
-        // LRU order, no entry-by-entry reconstruction needed.
         cache.clear();
         for (const [k, v] of snapshot) cache.set(k, v);
         throw err;
@@ -173,103 +141,27 @@ export class DiskWarmTier<V> implements IIndexTier<string, V> {
     });
   }
 
-  async delete(key: string): Promise<boolean> {
-    return this.mutex.runExclusive(async () => {
-      const cache = await this.ensureLoaded();
-      if (!cache.has(key)) return false;
-      const snapshot = new Map(cache);
-      cache.delete(key);
-      try {
-        await this.flush(cache);
-      } catch (err) {
-        cache.clear();
-        for (const [k, v] of snapshot) cache.set(k, v);
-        throw err;
-      }
-      return true;
-    });
-  }
-
-  async size(): Promise<number> {
-    return this.mutex.runExclusive(async () => {
-      const cache = await this.ensureLoaded();
-      return cache.size;
-    });
-  }
-
-  async clear(): Promise<void> {
-    return this.mutex.runExclusive(async () => {
-      const cache = await this.ensureLoaded();
-      if (cache.size === 0) return;
-      const priorSnapshot = new Map(cache);
-      cache.clear();
-      try {
-        await this.flush(cache);
-      } catch (err) {
-        for (const [k, v] of priorSnapshot) cache.set(k, v);
-        throw err;
-      }
-    });
-  }
-
   /** Eviction count for diagnostics. */
   getEvictionCount(): number {
     return this.evictionCount;
   }
 
-  /**
-   * Drop the in-memory cache so the next read picks up external
-   * edits. Cheap — `ensureLoaded` re-parses the sidecar lazily.
-   */
-  async reload(): Promise<void> {
-    return this.mutex.runExclusive(async () => {
-      this.cache = null;
-    });
+  protected warnPrefix(): string {
+    return `DiskWarmTier(${this.name})`;
   }
 
-  private async ensureLoaded(): Promise<Map<string, V>> {
-    if (this.cache !== null) {
-      return this.cache;
-    }
-    this.cache = await this.loadFromDisk();
-    return this.cache;
-  }
-
-  private async loadFromDisk(): Promise<Map<string, V>> {
-    const map = new Map<string, V>();
-    let raw: string;
+  protected async readContent(): Promise<string | null> {
     try {
-      raw = await fs.readFile(this.filePath, 'utf-8');
+      return await fs.readFile(this.filePath, 'utf-8');
     } catch (error) {
       if (error instanceof Error && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
-        return map;
+        return null;
       }
       throw error;
     }
-    const lines = raw.split('\n');
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (trimmed === '') continue;
-      try {
-        const parsed = JSON.parse(trimmed) as SidecarLine<V>;
-        if (typeof parsed.k !== 'string') {
-          logger.warn(`DiskWarmTier(${this.name}): skipping line with non-string key in ${this.filePath}`);
-          continue;
-        }
-        map.set(parsed.k, parsed.v);
-      } catch {
-        logger.warn(`DiskWarmTier(${this.name}): skipping malformed line in ${this.filePath}`);
-      }
-    }
-    return map;
   }
 
-  private async flush(cache: Map<string, V>): Promise<void> {
-    const lines: string[] = [];
-    for (const [k, v] of cache) {
-      lines.push(JSON.stringify({ k, v }));
-    }
-    const content = lines.length === 0 ? '' : lines.join('\n') + '\n';
+  protected async writeContent(content: string): Promise<void> {
     await durableWriteFile(this.filePath, content);
   }
 }

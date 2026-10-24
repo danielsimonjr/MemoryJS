@@ -7,6 +7,8 @@
  * @module utils/BatchProcessor
  */
 
+import { sleep, withTimeout } from './timing.js';
+
 /**
  * Progress information for batch processing.
  */
@@ -274,10 +276,11 @@ export class BatchProcessor<TInput, TOutput> {
 
         if (this.options.itemTimeoutMs > 0) {
           // Process with timeout
-          result = await Promise.race([
+          result = await withTimeout(
             processor(item, index),
-            this.createTimeout<TOutput>(this.options.itemTimeoutMs),
-          ]);
+            this.options.itemTimeoutMs,
+            'Item processing timeout'
+          );
         } else {
           result = await processor(item, index);
         }
@@ -295,7 +298,7 @@ export class BatchProcessor<TInput, TOutput> {
         // Don't retry on last attempt
         if (attempt < this.options.maxRetries) {
           const delay = this.calculateRetryDelay(attempt);
-          await this.sleep(delay);
+          await sleep(delay);
         }
       }
     }
@@ -315,22 +318,6 @@ export class BatchProcessor<TInput, TOutput> {
   private calculateRetryDelay(attempt: number): number {
     const delay = this.options.retryDelayMs * Math.pow(this.options.retryBackoffMultiplier, attempt);
     return Math.min(delay, this.options.maxRetryDelayMs);
-  }
-
-  /**
-   * Create a timeout promise.
-   */
-  private createTimeout<T>(ms: number): Promise<T> {
-    return new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Item processing timeout')), ms);
-    });
-  }
-
-  /**
-   * Sleep for the specified duration.
-   */
-  private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   /**
@@ -413,7 +400,7 @@ export async function processWithRetry<TInput, TOutput>(
  * // [[1, 2], [3, 4], [5]]
  * ```
  */
-export function chunkArray<T>(array: T[], size: number): T[][] {
+export function chunkArray<T>(array: readonly T[], size: number): T[][] {
   if (size <= 0) {
     throw new Error('Chunk size must be greater than 0');
   }

@@ -141,6 +141,37 @@ describe('StreamingExporter', () => {
   });
 
   describe('streamCSV', () => {
+    it('writes every cell quoted, with the formula guard and doubled quotes (R19 pin)', async () => {
+      const graph = {
+        entities: [
+          {
+            name: 'Alice',
+            entityType: 'person',
+            observations: ['likes tea', 'from Paris, France'],
+            tags: ['vip', 'core'],
+            importance: 7,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            lastModified: '2026-01-02T00:00:00.000Z',
+          },
+          { name: 'Bob "B"', entityType: '=dog', observations: [] },
+        ],
+        relations: [],
+      };
+      const outputPath = join(testDir, 'pin-escapes.csv');
+
+      await new StreamingExporter(outputPath).streamCSV(graph);
+
+      const fileContent = await fs.readFile(outputPath, 'utf-8');
+      expect(fileContent).toBe(
+        [
+          'name,type,observations,tags,importance,createdAt,lastModified',
+          '"Alice","person","likes tea; from Paris, France","vip; core","7","2026-01-01T00:00:00.000Z","2026-01-02T00:00:00.000Z"',
+          '"Bob ""B""","\'=dog","","","","",""',
+          '',
+        ].join('\n')
+      );
+    });
+
     it('should export graph with CSV header', async () => {
       const graph = createTestGraph(5);
       const outputPath = join(testDir, 'export.csv');
