@@ -132,6 +132,22 @@ describe('TagManager alias loader (pins)', () => {
     expect(readFileSpy).toHaveBeenCalledTimes(2);
   });
 
+  it('parses each non-blank line once, untrimmed and with one argument', async () => {
+    const lines = [ALIAS_JS, '', '   ', '{"broken":', ALIAS_PY];
+    await fs.writeFile(filePath, `${lines.join('\r\n')}\r\n`);
+    const candidates = new Set([...lines.map((line) => `${line}\r`), '']);
+    const parseSpy = vi.spyOn(JSON, 'parse');
+
+    try {
+      await manager.listTagAliases();
+
+      const mine = parseSpy.mock.calls.filter(([text]) => candidates.has(text as string));
+      expect(mine).toEqual([[`${ALIAS_JS}\r`], ['{"broken":\r'], [`${ALIAS_PY}\r`]]);
+    } finally {
+      parseSpy.mockRestore();
+    }
+  });
+
   // The read is mocked to resolve at once, so each turn count is a microtask count.
   it('settles a cache miss in a fixed number of microtask turns', async () => {
     readFileSpy.mockResolvedValueOnce(`${ALIAS_JS}\n`);
