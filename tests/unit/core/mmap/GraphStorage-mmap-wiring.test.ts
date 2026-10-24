@@ -524,5 +524,66 @@ describe('GraphStorage mmap wiring (task 84)', () => {
         ]);
       }
     });
+
+    /** Writes `content`, loads it through one path and returns the loaded storage. */
+    async function loadStorage(useMmap: boolean, content: string, onLoaded?: (storage: GraphStorage) => void) {
+      await fs.writeFile(filePath, content, 'utf-8');
+      if (useMmap) {
+        process.env.MEMORY_USE_MMAP = 'true';
+        process.env.MEMORY_MMAP_THRESHOLD_BYTES = '0';
+      } else {
+        delete process.env.MEMORY_USE_MMAP;
+        delete process.env.MEMORY_MMAP_THRESHOLD_BYTES;
+      }
+      const storage = new GraphStorage(filePath);
+      if (onLoaded) storage.events.on('graph:loaded', () => onLoaded(storage));
+      await storage.loadGraph();
+      return storage;
+    }
+
+    const INDEX_CONTENT = [
+      '{"type":"entity","name":"alice","entityType":"Person","observations":["first obs of alice","Second"]}',
+      '{"type":"entity","name":"bob","entityType":"Tool","observations":["first obs of bob","Second"]}',
+      '{"type":"entity","name":"carol","entityType":"person","observations":["first obs of carol","Second"]}',
+      '{"type":"relation","from":"alice","to":"bob","relationType":"knows"}',
+      '{"type":"relation","from":"carol","to":"alice","relationType":"uses"}',
+    ].join('\n') + '\n';
+
+    it('builds the name, type, lowercase, relation and observation indexes on both paths', async () => {
+      for (const useMmap of [false, true]) {
+        const storage = await loadStorage(useMmap, INDEX_CONTENT);
+        expect(storage.getEntityByName('alice')?.entityType).toBe('Person');
+        expect(storage.hasEntity('bob')).toBe(true);
+        expect(storage.hasEntity('zed')).toBe(false);
+        expect(storage.getEntitiesByType('PERSON').map((e) => e.name)).toEqual(['alice', 'carol']);
+        expect(storage.getEntityTypes()).toEqual(['person', 'tool']);
+        expect(storage.getLowercased('alice')).toEqual({
+          name: 'alice',
+          entityType: 'person',
+          observations: ['first obs of alice', 'second'],
+          tags: [],
+        });
+        expect(storage.getRelationsFrom('alice').map((r) => r.relationType)).toEqual(['knows']);
+        expect(storage.getRelationsTo('alice').map((r) => r.relationType)).toEqual(['uses']);
+        expect(storage.getRelationsFor('alice').map((r) => r.relationType)).toEqual(['knows', 'uses']);
+        expect([storage.hasRelations('alice'), storage.hasRelations('bob'), storage.hasRelations('zed')]).toEqual([true, true, false]);
+        expect([...storage.getEntitiesByObservationWord('first')]).toEqual(['alice', 'bob', 'carol']);
+        expect([...storage.getEntitiesByObservationWord('second')]).toEqual(['alice', 'bob', 'carol']);
+      }
+    });
+
+    it('has every index ready when graph:loaded fires on both paths', async () => {
+      for (const useMmap of [false, true]) {
+        const seen: unknown[] = [];
+        await loadStorage(useMmap, INDEX_CONTENT, (storage) => {
+          seen.push({
+            entity: storage.getEntityByName('alice')?.name,
+            from: storage.getRelationsFrom('alice').length,
+            words: [...storage.getEntitiesByObservationWord('first')],
+          });
+        });
+        expect(seen).toEqual([{ entity: 'alice', from: 1, words: ['alice', 'bob', 'carol'] }]);
+      }
+    });
   });
 });
