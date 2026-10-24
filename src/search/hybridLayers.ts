@@ -50,7 +50,7 @@ export function addNormalizedLexicalScores(
  *
  * Each entity name maps to its score unchanged. An error stops the loop.
  * The map keeps the entries written before the error.
- * The caller calls this function only when at least one filter is set.
+ * The caller calls this function only when the filter object has a key.
  *
  * @param results - Map that receives the symbolic scores
  * @param symbolicResults - Symbolic search results

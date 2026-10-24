@@ -56,8 +56,8 @@ export function entityToText(entity: Entity): string {
  * Convert vector store hits into semantic results with entity lookup.
  *
  * Hits below the threshold are skipped. The excluded name is skipped when it is set.
- * The list stops at the limit. The function does not use `this`, so a caller reads
- * the entity map itself.
+ * A hit whose name has no entity in the map is skipped. The list stops at the limit.
+ * The function does not use `this`, so a caller reads the entity map itself.
  *
  * @param entityMap - Entities by name
  * @param vectorResults - Hits from the vector store, best first
