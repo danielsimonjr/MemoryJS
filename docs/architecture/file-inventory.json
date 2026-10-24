@@ -1,12 +1,12 @@
 {
   "generated": "2026-10-24",
-  "totalFiles": 710,
+  "totalFiles": 719,
   "byDisposition": {
-    "reachable": 297,
+    "reachable": 299,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 393,
+    "test": 400,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -14,8 +14,8 @@
   },
   "byArea": {
     "benchmarks": 4,
-    "src": 301,
-    "tests": 393,
+    "src": 303,
+    "tests": 400,
     "tools": 10,
     "config": 2
   },
@@ -1117,7 +1117,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1421
+      "loc": 1409
     },
     {
       "file": "src/core/HierarchyManager.ts",
@@ -1411,7 +1411,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 547
+      "loc": 536
     },
     {
       "file": "src/search/BooleanSearch.ts",
@@ -1446,7 +1446,14 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 234
+      "loc": 222
+    },
+    {
+      "file": "src/search/ftsCandidates.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 50
     },
     {
       "file": "src/search/FuzzySearch.ts",
@@ -1463,6 +1470,13 @@
       "loc": 361
     },
     {
+      "file": "src/search/hybridLayers.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 66
+    },
+    {
       "file": "src/search/HybridScorer.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
@@ -1474,7 +1488,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 609
+      "loc": 602
     },
     {
       "file": "src/search/IncrementalIndexer.ts",
@@ -1537,7 +1551,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 588
+      "loc": 581
     },
     {
       "file": "src/search/PartialIndexAdvisor.ts",
@@ -1614,7 +1628,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 544
+      "loc": 532
     },
     {
       "file": "src/search/ReflectionManager.ts",
@@ -1656,7 +1670,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 572
+      "loc": 578
     },
     {
       "file": "src/search/SpellChecker.ts",
@@ -2069,7 +2083,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 254
+      "loc": 286
     },
     {
       "file": "src/utils/relationValidation.ts",
@@ -4431,6 +4445,48 @@
       "loc": 304
     },
     {
+      "file": "tests/unit/search/searchTwinsFts.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 361
+    },
+    {
+      "file": "tests/unit/search/searchTwinsLayers.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 339
+    },
+    {
+      "file": "tests/unit/search/searchTwinsPaths.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 136
+    },
+    {
+      "file": "tests/unit/search/searchTwinsProximity.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 113
+    },
+    {
+      "file": "tests/unit/search/searchTwinsSemantic.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 248
+    },
+    {
+      "file": "tests/unit/search/searchTwinsTfidf.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 178
+    },
+    {
       "file": "tests/unit/search/SemanticSearch.test.ts",
       "package": "(root)",
       "area": "tests",
@@ -4898,6 +4954,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 1001
+    },
+    {
+      "file": "tests/unit/utils/walkParents.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 67
     },
     {
       "file": "tests/unit/utils/WorkerPoolManager.test.ts",

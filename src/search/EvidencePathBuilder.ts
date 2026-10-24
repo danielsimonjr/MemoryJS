@@ -23,6 +23,7 @@ import type {
   EvidencePathOptions,
   EvidencePathRelation,
 } from '../types/search.js';
+import { walkParents } from '../utils/relationHelpers.js';
 
 /** Default maximum path length in hops. */
 export const DEFAULT_EVIDENCE_MAX_DEPTH = 3;
@@ -213,20 +214,7 @@ export class EvidencePathBuilder {
     target: string,
     parents: Map<string, { parent: string; relation: EvidencePathRelation } | null>
   ): EvidencePath {
-    const nodes: string[] = [];
-    const relations: EvidencePathRelation[] = [];
-    let current: string | null = target;
-
-    while (current !== null) {
-      nodes.unshift(current);
-      const info = parents.get(current);
-      if (info) {
-        relations.unshift(info.relation);
-        current = info.parent;
-      } else {
-        current = null;
-      }
-    }
+    const { nodes, relations } = walkParents(target, parents);
 
     return { nodes, relations, anchor: source, viaLayer: 'lexical' };
   }

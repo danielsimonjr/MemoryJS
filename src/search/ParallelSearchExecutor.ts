@@ -15,6 +15,7 @@ import type {
 import type { SemanticSearch } from './SemanticSearch.js';
 import type { RankedSearch } from './RankedSearch.js';
 import { SymbolicSearch } from './SymbolicSearch.js';
+import { addNormalizedLexicalScores, addSimilarityScores, addSymbolicScores } from './hybridLayers.js';
 import { SEMANTIC_SEARCH_LIMITS } from '../utils/constants.js';
 import { createTimeout } from '../utils/timing.js';
 
@@ -244,9 +245,7 @@ export class ParallelSearchExecutor {
         timeout.promise,
       ]);
 
-      for (const result of semanticResults) {
-        results.set(result.entity.name, result.similarity);
-      }
+      addSimilarityScores(results, semanticResults);
     } catch (err) {
       success = false;
       error = err instanceof Error ? err.message : String(err);
@@ -298,11 +297,7 @@ export class ParallelSearchExecutor {
         timeout.promise,
       ]);
 
-      // Normalize scores to 0-1 range
-      const maxScore = Math.max(...lexicalResults.map(r => r.score), 1);
-      for (const result of lexicalResults) {
-        results.set(result.entity.name, result.score / maxScore);
-      }
+      addNormalizedLexicalScores(results, lexicalResults);
     } catch (err) {
       success = false;
       error = err instanceof Error ? err.message : String(err);
@@ -345,9 +340,7 @@ export class ParallelSearchExecutor {
         // No filters - return empty (no symbolic signal)
       } else {
         const symbolicResults = this.symbolicSearch.search(entities, filters);
-        for (const result of symbolicResults) {
-          results.set(result.entity.name, result.score);
-        }
+        addSymbolicScores(results, symbolicResults);
       }
     } catch (err) {
       success = false;

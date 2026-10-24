@@ -44,7 +44,7 @@ The codebase is organized into the following modules:
 - **core**: 26 files
 - **features**: 18 files
 - **entry**: 1 file
-- **search**: 52 files
+- **search**: 54 files
 - **security**: 5 files
 - **root**: 1 file
 - **types**: 12 files
@@ -63,7 +63,7 @@ Seeded build/entry roots (package `exports`, `bin` targets, tsup entries, script
 - `src/sqlite.ts`
 - `src/workers/levenshteinWorker.ts`
 
-Reachable from a root: **301** of 301 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
+Reachable from a root: **303** of 303 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
 
 ---
 
@@ -2974,6 +2974,7 @@ Reachable from a root: **301** of 301 files. Dormant: **0** (0 orphaned, 0 test-
 | `../agent/AccessTracker.js` | `AccessTracker` | Import (type-only) |
 | `../utils/index.js` | `checkCancellation` | Import |
 | `../utils/textSimilarity.js` | `jaccard, tokenizeToSet` | Import |
+| `../utils/relationHelpers.js` | `walkParents` | Import |
 
 **Exports:**
 - Classes: `GraphTraversal`
@@ -3838,6 +3839,7 @@ Reachable from a root: **301** of 301 files. Dormant: **0** (0 orphaned, 0 test-
 | `../types/index.js` | `Entity, IGraphStorage, SearchResult` | Import (type-only) |
 | `../utils/constants.js` | `SEARCH_LIMITS` | Import |
 | `../utils/graphCopy.js` | `borrowGraphView` | Import |
+| `./ftsCandidates.js` | `getFtsCandidateNames, FtsOwner` | Import |
 
 **Exports:**
 - Classes: `BM25Search`
@@ -3926,11 +3928,25 @@ Reachable from a root: **301** of 301 files. Dormant: **0** (0 orphaned, 0 test-
 |------|---------|------|
 | `../types/index.js` | `ReadonlyKnowledgeGraph` | Import (type-only) |
 | `../types/search.js` | `EvidenceLayer, EvidencePath, EvidencePathOptions, EvidencePathRelation` | Import (type-only) |
+| `../utils/relationHelpers.js` | `walkParents` | Import |
 
 **Exports:**
 - Classes: `EvidencePathBuilder`
 - Interfaces: `EvidenceAnchor`, `EvidencePathSet`
 - Constants: `DEFAULT_EVIDENCE_MAX_DEPTH`, `DEFAULT_EVIDENCE_MAX_PATHS_PER_RESULT`
+
+---
+
+### `src/search/ftsCandidates.ts` - Full-text candidate lookup shared by the BM25 and ranked search paths.
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../types/index.js` | `IGraphStorage` | Import (type-only) |
+
+**Exports:**
+- Interfaces: `FtsOwner`
+- Functions: `getFtsCandidateNames`
 
 ---
 
@@ -3989,6 +4005,19 @@ Reachable from a root: **301** of 301 files. Dormant: **0** (0 orphaned, 0 test-
 
 ---
 
+### `src/search/hybridLayers.ts` - Score mapping for the semantic, lexical and symbolic search layers.
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../types/index.js` | `SearchResult, SemanticSearchResult` | Import (type-only) |
+| `./SymbolicSearch.js` | `SymbolicResult` | Import (type-only) |
+
+**Exports:**
+- Functions: `addSimilarityScores`, `addNormalizedLexicalScores`, `addSymbolicScores`
+
+---
+
 ### `src/search/HybridScorer.ts` - Hybrid Scorer - combines search scores with min-max normalization and configurable weights.
 
 **Internal Dependencies:**
@@ -4015,6 +4044,7 @@ Reachable from a root: **301** of 301 files. Dormant: **0** (0 orphaned, 0 test-
 | `./RankedSearch.js` | `RankedSearch` | Import (type-only) |
 | `./GraphRankPrior.js` | `GraphRankPrior` | Import (type-only) |
 | `./SymbolicSearch.js` | `SymbolicSearch` | Import |
+| `./hybridLayers.js` | `addNormalizedLexicalScores, addSimilarityScores, addSymbolicScores` | Import |
 | `../utils/constants.js` | `SEMANTIC_SEARCH_LIMITS` | Import |
 | `../types/search.js` | `EvidencePath, EvidencePathOptions` | Import (type-only) |
 | `./EvidencePathBuilder.js` | `EvidencePathBuilder, EvidenceAnchor` | Import |
@@ -4182,6 +4212,7 @@ Reachable from a root: **301** of 301 files. Dormant: **0** (0 orphaned, 0 test-
 | `./SemanticSearch.js` | `SemanticSearch` | Import (type-only) |
 | `./RankedSearch.js` | `RankedSearch` | Import (type-only) |
 | `./SymbolicSearch.js` | `SymbolicSearch` | Import |
+| `./hybridLayers.js` | `addNormalizedLexicalScores, addSimilarityScores, addSymbolicScores` | Import |
 | `../utils/constants.js` | `SEMANTIC_SEARCH_LIMITS` | Import |
 | `../utils/timing.js` | `createTimeout` | Import |
 
@@ -4335,6 +4366,7 @@ Reachable from a root: **301** of 301 files. Dormant: **0** (0 orphaned, 0 test-
 | `../utils/constants.js` | `SEARCH_LIMITS` | Import |
 | `../utils/searchCache.js` | `evictInsertionOrder` | Import |
 | `./TFIDFIndexManager.js` | `TFIDFIndexManager` | Import |
+| `./ftsCandidates.js` | `getFtsCandidateNames, FtsOwner` | Import |
 | `./SearchFilterChain.js` | `SearchFilterChain, SearchFilters` | Import |
 | `../utils/IIndexHealth.js` | `IndexHealthSnapshot` | Import (type-only) |
 | `./GraphRankPrior.js` | `GraphRankPrior` | Import (type-only) |
@@ -4446,7 +4478,7 @@ Reachable from a root: **301** of 301 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `../types/index.js` | `Entity, EmbeddingService, IVectorStore, SemanticSearchResult, SemanticIndexOptions, ReadonlyKnowledgeGraph, EmbeddingMode` | Import (type-only) |
+| `../types/index.js` | `Entity, EmbeddingService, IVectorStore, SemanticSearchResult, SemanticIndexOptions, VectorSearchResult, ReadonlyKnowledgeGraph, EmbeddingMode` | Import (type-only) |
 | `./VectorStore.js` | `InMemoryVectorStore, cosineSimilarity` | Import |
 | `./EmbeddingCache.js` | `EmbeddingCache` | Import |
 | `../utils/constants.js` | `EMBEDDING_DEFAULTS, SEMANTIC_SEARCH_LIMITS` | Import |
@@ -5255,7 +5287,7 @@ Reachable from a root: **301** of 301 files. Dormant: **0** (0 orphaned, 0 test-
 
 **Exports:**
 - Classes: `RelationBuilder`
-- Functions: `isWeightedRelation`, `isTemporalRelation`, `isBidirectionalRelation`, `hasConfidence`, `isCurrentlyValid`
+- Functions: `isWeightedRelation`, `isTemporalRelation`, `isBidirectionalRelation`, `hasConfidence`, `isCurrentlyValid`, `walkParents`
 
 ---
 
@@ -5454,7 +5486,7 @@ Reachable from a root: **301** of 301 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports From | Exports To |
 |------|--------------|------------|
 | `src/core/ManagerContext` | 91 files | 9 files |
-| `src/types/index` | 10 files | 64 files |
+| `src/types/index` | 10 files | 66 files |
 | `src/types/types` | 1 file | 66 files |
 | `src/agent/index` | 62 files | 1 file |
 | `src/utils/index` | 27 files | 27 files |
@@ -5477,18 +5509,18 @@ Reachable from a root: **301** of 301 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/agent/AgentMemoryConfig` | 15 files | 3 files |
 | `src/agent/procedural/graph/index` | 16 files | 2 files |
 | `src/features/IOManager` | 14 files | 4 files |
+| `src/search/RankedSearch` | 11 files | 7 files |
 | `src/types/proceduralGraph` | 0 files | 18 files |
 | `src/agent/DecayEngine` | 7 files | 10 files |
 | `src/features/index` | 16 files | 1 file |
-| `src/search/RankedSearch` | 10 files | 7 files |
 | `src/core/ObservationManager` | 10 files | 6 files |
 | `src/core/RelationManager` | 6 files | 10 files |
+| `src/search/HybridSearchManager` | 10 files | 5 files |
 | `src/agent/MemoryEngine` | 10 files | 4 files |
 | `src/agent/SalienceEngine` | 7 files | 7 files |
 | `src/agent/WorkingMemoryManager` | 7 files | 7 files |
 | `src/core/index` | 13 files | 1 file |
 | `src/core/SQLiteStorage` | 11 files | 3 files |
-| `src/search/HybridSearchManager` | 9 files | 5 files |
 | `src/agent/procedural/graph/ProceduralGraphEvolution` | 11 files | 2 files |
 | `src/search/FuzzySearch` | 11 files | 2 files |
 | `src/utils/searchCache` | 2 files | 11 files |
@@ -5604,8 +5636,8 @@ graph TD
         N58[EmbeddingCache]
         N59[EmbeddingService]
         N60[EvidencePathBuilder]
-        N61[FuzzySearch]
-        N62[...42 more]
+        N61[ftsCandidates]
+        N62[...44 more]
     end
 
     subgraph Security
@@ -5736,21 +5768,21 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 301 |
+| Total TypeScript Files | 303 |
 | Total Modules | 12 |
-| Total Lines of Code | 103816 |
-| Total Exports | 2064 |
+| Total Lines of Code | 103909 |
+| Total Exports | 2069 |
 | Total Re-exports | 1340 |
 | Total Classes | 236 |
-| Total Interfaces | 625 |
-| Total Functions | 350 |
+| Total Interfaces | 626 |
+| Total Functions | 355 |
 | Total Type Guards | 31 |
 | Total Enums | 4 |
-| Type-only Imports | 482 |
+| Type-only Imports | 485 |
 | Runtime Circular Deps | 0 |
 | Type-only Circular Deps | 8 |
 | Entry/Build Roots | 4 |
-| Reachable Files | 301 |
+| Reachable Files | 303 |
 | Dormant Files (orphaned / test-only) | 0 (0 / 0) |
 
 ---

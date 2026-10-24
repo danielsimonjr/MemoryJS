@@ -31,6 +31,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `SemanticSearch.search` and `findSimilar` share the conversion of vector hits into results in one module function, `toSemanticResults` in `src/search/SemanticSearch.ts`. Each method keeps its own vector store fetch count. Behaviour is unchanged.
+- `GraphTraversal.reconstructPath` and `EvidencePathBuilder.reconstruct` share one parent walk, `walkParents` in `src/utils/relationHelpers.ts`. Each caller keeps its own return shape. Behaviour is unchanged.
+- `HybridSearchManager` and `ParallelSearchExecutor` share the score mapping of their semantic, lexical and symbolic layers in `src/search/hybridLayers.ts`. The layer calls stay in each caller, so the error messages do not change. Behaviour is unchanged.
+- The full-text candidate lookup of `BM25Search` and `RankedSearch` is one function, `getFtsCandidateNames` in `src/search/ftsCandidates.ts`. Behaviour is unchanged.
 - `GraphStorage` and `SQLiteStorage` share their append paths. `GraphStorage` runs all four append methods through `appendLocked`. `SQLiteStorage` runs its single forms through `appendOneLocked` and its batch forms through `appendManyLocked`. Both `SQLiteStorage` helpers serve entities and relations through a descriptor. Behaviour is unchanged. The pins are in `tests/integration/storage-dedup-safety.test.ts`.
 - `GraphStorage` and `SQLiteStorage` share their cache and index steps: `upsertEntityInCache`, `upsertRelationInCache` and `removeEntitiesFromIndexes` in `src/core/storageCache.ts`. Behaviour is unchanged. The pins are in `tests/integration/storage-dedup-safety.test.ts`.
 - The inline Jaccard similarity of `CompressionManager`, `ConflictResolver`, `DistillationPolicy`, `ObservationDedupManager`, `ProcedureManager`, `MemoryEngine`, `CognitiveLoadAnalyzer` and `HeuristicManager` calls `jaccard` in `src/utils/textSimilarity.ts`. Each site keeps its own empty-set rule. Behaviour is unchanged.
@@ -65,6 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `RankedSearch` reads its full-text candidates without the rank column, so the candidate query skips the scoring of the whole match set. Before, a stale full-text posting made `RankedSearch` return an empty list. One source of such a posting is `appendEntity` on an existing name, because the replace does not fire the delete trigger. `RankedSearch` now returns the live matches. `SQLiteStorage.fullTextSearch` with its default rank still returns an empty list in that state.
 - `GraphStorage` skips a malformed JSONL line and warns once per load on both read paths. Before, the mmap path (`MEMORY_USE_MMAP=true` and a file above `MEMORY_MMAP_THRESHOLD_BYTES`) threw `Failed to parse line <n>`. Before, the `fs.readFile` path skipped the line with no warning. Now both paths count each skipped line and write `[GraphStorage] <file>: skipped <n> malformed line(s)`. A line that parses but cannot be sanitized (for example, an object nested 100000 levels deep) also counts as malformed. Before, the mmap path threw a `RangeError` for such a line. The `fs.readFile` path skipped it with no warning.
 - `CompressionManager.calculateEntitySimilarity` measures the name length after lowercasing, as `calculatePreparedSimilarity` does. Before, a name whose lowercase form has another length (for example `İx`) could score differently on the two paths.
 - `BatchProcessor` clears the item timeout timer when the item settles. Before, the timer stayed pending until the timeout passed, even after the item finished. The timer is now owned by `withTimeout` in the internal module `src/utils/timing.ts`.
