@@ -149,7 +149,8 @@ export function calculateIDF(term: string, documents: string[]): number {
  * documents once and convert to Sets for O(1) lookup per document.
  *
  * @param term - The search term (should already be lowercase)
- * @param tokenSets - Array of Sets, each containing unique tokens for a document
+ * @param tokenSets - Array of Sets, each containing unique tokens for a document.
+ *   The array must have no holes. A hole throws a TypeError.
  * @returns Inverse document frequency
  *
  * @example
@@ -183,6 +184,8 @@ export function calculateIDFFromTokenSets(term: string, tokenSets: Set<string>[]
  * TF-IDF = TF * IDF
  *
  * Higher scores indicate more important/relevant terms.
+ * The IDF part is calculateIDF, so a hole in documents counts in the total
+ * and never holds the term.
  *
  * @param term - The search term
  * @param document - The document text
@@ -195,9 +198,9 @@ export function calculateTFIDF(
   documents: string[]
 ): number {
   const tf = calculateTF(term, document);
-  // Tokenize each document once rather than re-tokenizing per term lookup.
-  const tokenSets = documents.map(doc => new Set(tokenize(doc)));
-  const idf = calculateIDFFromTokenSets(term, tokenSets);
+  // One term tokenizes each document once in calculateIDF too. Token sets cost
+  // more here and throw on a hole.
+  const idf = calculateIDF(term, documents);
   return tf * idf;
 }
 

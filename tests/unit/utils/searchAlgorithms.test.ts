@@ -350,6 +350,28 @@ describe('searchAlgorithms', () => {
       const docs = ['hello world', 'foo bar'];
       expect(calculateTFIDF('hello', '', docs)).toBe(0);
     });
+
+    // calculateTFIDF uses the IDF rule of calculateIDF: a hole counts in the
+    // document total and never holds the term.
+    it('skips a hole in documents as calculateIDF does', () => {
+      const sparse = ['alpha beta', 'x', 'gamma'];
+      delete (sparse as unknown[])[1];
+      expect(calculateIDF('beta', sparse)).toBe(Math.log(3));
+      expect(calculateTFIDF('beta', 'alpha beta', sparse)).toBe(0.5 * Math.log(3));
+    });
+
+    it('equals calculateTF times calculateIDF for dense and sparse documents', () => {
+      const dense = ['alpha beta gamma', 'beta delta', 'alpha alpha epsilon', 'gamma zeta eta'];
+      const sparse = [...dense, 'beta theta'];
+      delete (sparse as unknown[])[0];
+      delete (sparse as unknown[])[3];
+      for (const docs of [dense, sparse]) {
+        for (const term of ['alpha', 'beta', 'gamma', 'absent']) {
+          const doc = 'alpha beta beta';
+          expect(calculateTFIDF(term, doc, docs)).toBe(calculateTF(term, doc) * calculateIDF(term, docs));
+        }
+      }
+    });
   });
 
   // =============================================================================

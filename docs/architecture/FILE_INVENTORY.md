@@ -339,7 +339,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/utils/relationValidation.ts` | src | reachable | 257 |
 | `src/utils/schemas.ts` | src | reachable | 772 |
 | `src/utils/SchemaValidator.ts` | src | reachable | 373 |
-| `src/utils/searchAlgorithms.ts` | src | reachable | 249 |
+| `src/utils/searchAlgorithms.ts` | src | reachable | 252 |
 | `src/utils/searchCache.ts` | src | reachable | 496 |
 | `src/utils/taskScheduler.ts` | src | reachable | 642 |
 | `src/utils/textSimilarity.ts` | src | reachable | 158 |
@@ -743,7 +743,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/utils/relationValidation.test.ts` | tests | test | 507 |
 | `tests/unit/utils/schemas.test.ts` | tests | test | 894 |
 | `tests/unit/utils/SchemaValidator.test.ts` | tests | test | 631 |
-| `tests/unit/utils/searchAlgorithms.test.ts` | tests | test | 834 |
+| `tests/unit/utils/searchAlgorithms.test.ts` | tests | test | 856 |
 | `tests/unit/utils/searchCache.test.ts` | tests | test | 780 |
 | `tests/unit/utils/taskScheduler.test.ts` | tests | test | 1118 |
 | `tests/unit/utils/textSimilarity.test.ts` | tests | test | 147 |
