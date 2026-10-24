@@ -152,6 +152,47 @@ describe('FTS candidate lookup pins', () => {
       new Set(['Haystack']),
     );
   });
+
+  // appendEntity replaces an existing name with INSERT OR REPLACE.
+  // The replace does not fire the delete trigger, so the old posting stays in the FTS table.
+  async function replaceThroughAppendEntity(): Promise<void> {
+    await storage.appendEntity({
+      name: 'Needle',
+      entityType: 'note',
+      observations: ['singular zephyr updated'],
+    });
+    const raw = new Database(dbFile, { readonly: true });
+    const stale = raw
+      .prepare(
+        'SELECT d.id FROM entities_fts_docsize d LEFT JOIN entities e ON e.rowid = d.id WHERE e.rowid IS NULL',
+      )
+      .all();
+    raw.close();
+    expect(stale).toHaveLength(1);
+  }
+
+  it('RankedSearch returns the live matches after appendEntity replaces an entity', async () => {
+    await replaceThroughAppendEntity();
+
+    const ranked = await new RankedSearch(storage).searchNodesRanked('zephyr');
+
+    expect(ranked.map(result => [result.entity.name, result.score])).toStrictEqual([
+      ['Haystack', 0.13515503603605478],
+      ['Needle', 0.08109302162163289],
+    ]);
+    expect(ranked[1].entity.observations).toStrictEqual(['singular zephyr updated']);
+  });
+
+  it('BM25Search returns the live matches after appendEntity replaces an entity', async () => {
+    await replaceThroughAppendEntity();
+
+    const bm25 = await new BM25Search(storage).search('zephyr');
+
+    expect(bm25.map(result => [result.entity.name, result.score])).toStrictEqual([
+      ['Haystack', 0.6118390439885316],
+      ['Needle', 0.4700036292457356],
+    ]);
+  });
 });
 
 describe('FTS lookup error text, read order and read counts', () => {
