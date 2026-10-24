@@ -1,12 +1,12 @@
 {
   "generated": "2026-10-24",
-  "totalFiles": 708,
+  "totalFiles": 710,
   "byDisposition": {
-    "reachable": 296,
+    "reachable": 297,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 392,
+    "test": 393,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -14,8 +14,8 @@
   },
   "byArea": {
     "benchmarks": 4,
-    "src": 300,
-    "tests": 392,
+    "src": 301,
+    "tests": 393,
     "tools": 10,
     "config": 2
   },
@@ -1110,7 +1110,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1968
+      "loc": 1869
     },
     {
       "file": "src/core/GraphTraversal.ts",
@@ -1222,7 +1222,14 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 2519
+      "loc": 2520
+    },
+    {
+      "file": "src/core/storageCache.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 153
     },
     {
       "file": "src/core/StorageFactory.ts",
@@ -2279,7 +2286,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 394
+      "loc": 1242
     },
     {
       "file": "tests/integration/storage/graph-storage-new-fields.test.ts",
@@ -3841,6 +3848,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 1690
+    },
+    {
+      "file": "tests/unit/core/storageCache.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 279
     },
     {
       "file": "tests/unit/core/StorageFactory.test.ts",

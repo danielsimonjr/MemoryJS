@@ -10,22 +10,22 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 708
+**Total files**: 710
 
 ## Disposition counts
 
 | Disposition | Count | Meaning |
 | --- | --: | --- |
-| `reachable` | 296 | A `src/` file in the module graph, reachable from a root. |
+| `reachable` | 297 | A `src/` file in the module graph, reachable from a root. |
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 392 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 393 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 4 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 0 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **708** | |
+| **Total** | **710** | |
 
 ## Per-area counts
 
@@ -33,8 +33,8 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | --- | --: |
 | `benchmarks` | 4 |
 | `config` | 2 |
-| `src` | 300 |
-| `tests` | 392 |
+| `src` | 301 |
+| `tests` | 393 |
 | `tools` | 10 |
 
 ## All files
@@ -196,7 +196,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/core/EntityManager.ts` | src | reachable | 1585 |
 | `src/core/EntityStateMachine.ts` | src | reachable | 104 |
 | `src/core/GraphEventEmitter.ts` | src | reachable | 463 |
-| `src/core/GraphStorage.ts` | src | reachable | 1968 |
+| `src/core/GraphStorage.ts` | src | reachable | 1869 |
 | `src/core/GraphTraversal.ts` | src | reachable | 1421 |
 | `src/core/HierarchyManager.ts` | src | reachable | 305 |
 | `src/core/index.ts` | src | reachable | 42 |
@@ -212,7 +212,8 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/core/segments/FileSegmentStorage.ts` | src | reachable | 661 |
 | `src/core/segments/ISegmentStorage.ts` | src | reachable | 279 |
 | `src/core/sqlite-register.ts` | src | reachable | 31 |
-| `src/core/SQLiteStorage.ts` | src | reachable | 2519 |
+| `src/core/SQLiteStorage.ts` | src | reachable | 2520 |
+| `src/core/storageCache.ts` | src | reachable | 153 |
 | `src/core/StorageFactory.ts` | src | reachable | 158 |
 | `src/core/TransactionManager.ts` | src | reachable | 760 |
 | `src/core/TransitionLedger.ts` | src | reachable | 450 |
@@ -363,7 +364,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/integration/procedural-graph-recovery.test.ts` | tests | test | 232 |
 | `tests/integration/search/project-scope-isolation.test.ts` | tests | test | 87 |
 | `tests/integration/smart-search.test.ts` | tests | test | 287 |
-| `tests/integration/storage-dedup-safety.test.ts` | tests | test | 394 |
+| `tests/integration/storage-dedup-safety.test.ts` | tests | test | 1242 |
 | `tests/integration/storage/graph-storage-new-fields.test.ts` | tests | test | 73 |
 | `tests/integration/storage/sqlite-storage-new-fields.test.ts` | tests | test | 65 |
 | `tests/integration/streaming-export.test.ts` | tests | test | 227 |
@@ -587,6 +588,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/sqlite-events.test.ts` | tests | test | 470 |
 | `tests/unit/core/sqlite-lazy-load.test.ts` | tests | test | 82 |
 | `tests/unit/core/SQLiteStorage.test.ts` | tests | test | 1690 |
+| `tests/unit/core/storageCache.test.ts` | tests | test | 279 |
 | `tests/unit/core/StorageFactory.test.ts` | tests | test | 220 |
 | `tests/unit/core/temporal-versioning.test.ts` | tests | test | 267 |
 | `tests/unit/core/TransactionBatching.test.ts` | tests | test | 440 |

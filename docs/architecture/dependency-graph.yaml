@@ -2,9 +2,9 @@ metadata:
   name: "@danielsimonjr/memoryjs"
   version: 4.3.0
   lastUpdated: "2026-10-24"
-  totalFiles: 300
+  totalFiles: 301
   totalModules: 12
-  totalExports: 2060
+  totalExports: 2064
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -6897,6 +6897,13 @@ modules:
         - file: ./mmap/IMmapBackend.js
           imports:
             - streamLines
+        - file: ./storageCache.js
+          imports:
+            - relationKeyOf
+            - removeEntitiesFromIndexes
+            - upsertEntityInCache
+            - upsertRelationInCache
+            - StorageCacheState
       exports:
         - GraphStorage
       classes:
@@ -7813,6 +7820,13 @@ modules:
         - file: ./GraphEventEmitter.js
           imports:
             - GraphEventEmitter
+        - file: ./storageCache.js
+          imports:
+            - relationKeyOf
+            - removeEntitiesFromIndexes
+            - upsertEntityInCache
+            - upsertRelationInCache
+            - StorageCacheState
       exports:
         - __resetDatabaseCtorForTests
         - resolveSQLiteDatabaseCtor
@@ -7824,6 +7838,36 @@ modules:
         - __resetDatabaseCtorForTests
         - resolveSQLiteDatabaseCtor
         - resolveSQLiteSynchronousMode
+    src/core/storageCache.ts:
+      description: Cache and index steps shared by the storage backends.
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../types/index.js
+          imports:
+            - KnowledgeGraph
+            - Entity
+            - Relation
+          typeOnly: true
+        - file: ../utils/indexes.js
+          imports:
+            - NameIndex
+            - TypeIndex
+            - RelationIndex
+            - ObservationIndex
+          typeOnly: true
+      exports:
+        - relationKeyOf
+        - upsertEntityInCache
+        - upsertRelationInCache
+        - removeEntitiesFromIndexes
+      interfaces:
+        - StorageCacheState
+      functions:
+        - relationKeyOf
+        - upsertEntityInCache
+        - upsertRelationInCache
+        - removeEntitiesFromIndexes
     src/core/StorageFactory.ts:
       description: Storage Factory
       externalDependencies: []
@@ -14277,6 +14321,7 @@ dependencyGraph:
         - src/core/segments/ISegmentStorage.ts
         - src/core/sqlite-register.ts
         - src/core/SQLiteStorage.ts
+        - src/core/storageCache.ts
         - src/core/StorageFactory.ts
         - src/core/TransactionManager.ts
         - src/core/TransitionLedger.ts
@@ -14431,27 +14476,27 @@ reachability:
     - src/index.ts
     - src/sqlite.ts
     - src/workers/levenshteinWorker.ts
-  reachableCount: 300
+  reachableCount: 301
   dormantCount: 0
   orphaned: []
   testOnly: []
 statistics:
-  totalTypeScriptFiles: 300
+  totalTypeScriptFiles: 301
   totalModules: 12
-  totalLinesOfCode: 103755
-  totalExports: 2060
+  totalLinesOfCode: 103810
+  totalExports: 2064
   totalClasses: 236
-  totalInterfaces: 624
-  totalFunctions: 346
+  totalInterfaces: 625
+  totalFunctions: 350
   totalTypeGuards: 31
   totalEnums: 4
   totalConstants: 123
   totalReExports: 1340
-  totalTypeOnlyImports: 480
+  totalTypeOnlyImports: 482
   runtimeCircularDeps: 0
   typeOnlyCircularDeps: 8
   entryRoots: 4
-  reachableFiles: 300
+  reachableFiles: 301
   dormantFiles: 0
   orphanedFiles: 0
   testOnlyFiles: 0
