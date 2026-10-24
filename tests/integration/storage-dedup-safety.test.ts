@@ -190,10 +190,10 @@ const LIVE_RELATION_FIELD_READS: Record<string, number> = {
   'SQLite': 1,
 };
 
-/** Entity names in file or row order after a reload of the batch order pins, recorded before the R01 refactor. */
+/** Entity names in file or row order after a reload of the batch order pins. A repeated name keeps the position of its first write on both backends. */
 const RELOAD_ORDER: Record<string, string[]> = {
   'JSONL': ['ord-1', 'ord-dup', 'ord-2', 'ord-3'],
-  'SQLite': ['ord-1', 'ord-2', 'ord-dup', 'ord-3'],
+  'SQLite': ['ord-1', 'ord-dup', 'ord-2', 'ord-3'],
 };
 
 /** Relations of the batch order pins in file or row order after a reload, recorded before the R01 refactor. */
