@@ -482,11 +482,15 @@ export class GraphStorage implements IGraphStorage {
    * (`NODE_ENV !== 'production'`) it is a deep-frozen copy, so a mutation
    * throws a TypeError. To change data, use getGraphForMutation().
    *
-   * A malformed JSONL line does not throw. The load skips the line
-   * and writes one warning with the number of skipped lines.
+   * A line that is not valid JSON, or that cannot be sanitized, does not
+   * stop the load. The load skips the line and counts it. The load then
+   * writes one warning with the number of skipped lines. In segment mode,
+   * `FileSegmentStorage` writes one warning for each segment that skipped lines.
    *
    * @returns Promise resolving to read-only knowledge graph view
    * @throws Error if the file exists but cannot be read
+   * @throws Error if one line exceeds the line limit of the mmap reader
+   * @throws TypeError if a record lacks a field that an index needs
    */
   async loadGraph(): Promise<ReadonlyKnowledgeGraph> {
     // Cache miss - load from disk via the shared in-flight
@@ -743,7 +747,7 @@ export class GraphStorage implements IGraphStorage {
    * Add one parsed entity or relation to the maps.
    * A later line with the same key replaces an earlier line.
    * This method ignores a line with an unknown `type`.
-   * It sets a missing `createdAt` or `lastModified`.
+   * The method sets a missing `createdAt` or `lastModified`.
    */
   private ingestRecord(
     rec: Record<string, unknown>,
