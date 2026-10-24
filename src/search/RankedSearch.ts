@@ -261,7 +261,7 @@ export class RankedSearch {
     // the projectId constraint as a post-score filter so rankings stay meaningful.
     const preFilters: SearchFilters = { tags, minImportance, maxImportance };
     const candidateEntities = SearchFilterChain.applyFilters(graph.entities, preFilters);
-    const ftsCandidateNames = await getFtsCandidateNames(this.storage, query, graph.entities.length, true);
+    const ftsCandidateNames = await getFtsCandidateNames(this.storage, query, graph.entities.length, false);
     const lexicalCandidates = ftsCandidateNames === null
       ? candidateEntities
       : candidateEntities.filter(entity => ftsCandidateNames.has(entity.name));

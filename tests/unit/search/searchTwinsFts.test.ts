@@ -97,15 +97,15 @@ describe('FTS candidate lookup pins', () => {
     expect(Object.keys(ftsSpy.mock.calls[0][1]!)).toEqual(['limit', 'rank']);
   });
 
-  it('RankedSearch asks the storage for ranked candidates with no rank key', async () => {
+  it('RankedSearch asks the storage for unranked candidates with the full corpus limit', async () => {
     const ftsSpy = vi.spyOn(storage, 'fullTextSearch');
 
     await new RankedSearch(storage).searchNodesRanked('zephyr');
 
     expect(ftsSpy).toHaveBeenCalledTimes(1);
     expect(ftsSpy.mock.calls[0][0]).toBe('zephyr');
-    expect(ftsSpy.mock.calls[0][1]).toStrictEqual({ limit: 3 });
-    expect(Object.keys(ftsSpy.mock.calls[0][1]!)).toEqual(['limit']);
+    expect(ftsSpy.mock.calls[0][1]).toStrictEqual({ limit: 3, rank: false });
+    expect(Object.keys(ftsSpy.mock.calls[0][1]!)).toEqual(['limit', 'rank']);
   });
 
   // Simulate a stale posting: drop the delete trigger, then delete the row.
@@ -117,17 +117,25 @@ describe('FTS candidate lookup pins', () => {
     raw.close();
   }
 
-  it('a stale FTS posting is excluded by BM25Search and wipes RankedSearch results', async () => {
+  it('a stale FTS posting is excluded by BM25Search and by RankedSearch', async () => {
     makeStalePosting();
 
     const bm25 = await new BM25Search(storage).search('zephyr');
     const ranked = await new RankedSearch(storage).searchNodesRanked('zephyr');
 
-    // BM25 uses unranked candidates: the stale posting is skipped, the live match stays.
+    // Both callers use unranked candidates: the stale posting is skipped, the live match stays.
     expect(bm25.map(result => result.entity.name)).toStrictEqual(['Haystack']);
-    // RankedSearch uses ranked FTS: the stale posting raises inside the query,
-    // the adapter catches it and returns no candidates at all.
-    expect(ranked).toStrictEqual([]);
+    expect(ranked).toStrictEqual([
+      {
+        entity: {
+          name: 'Haystack',
+          entityType: 'note',
+          observations: ['ordinary content zephyr zephyr'],
+        },
+        score: 0.13515503603605478,
+        matchedFields: { observations: ['ordinary content zephyr zephyr'] },
+      },
+    ]);
   });
 
   it('the FTS lookup on a stale posting returns no candidates when it ranks', async () => {
