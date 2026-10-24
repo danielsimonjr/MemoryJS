@@ -3,7 +3,7 @@
  *
  * Targets the substantive findings from the Phase 11 review:
  * - #1 streamLines unbounded line growth → maxLineBytes guard
- * - #2 loadViaMmap error context (line number + cause)
+ * - #2 loadViaMmap skips a malformed line and warns once per load
  * - #4 MEMORY_MMAP_THRESHOLD_BYTES=0 means "always use mmap"
  * - #5 FsReadMmapBackend short-read retry loop
  * - #7 segment-storage mode short-circuits MEMORY_USE_MMAP
@@ -11,13 +11,14 @@
  * - #12 FsReadMmapBackend.handle.id is the resolved absolute path
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { promises as fs } from 'fs';
 import { join, resolve } from 'path';
 import { tmpdir } from 'os';
 import { streamLines, type IMmapBackend, type MmapHandle } from '../../../../src/core/mmap/IMmapBackend.js';
 import { FsReadMmapBackend } from '../../../../src/core/mmap/FsReadMmapBackend.js';
 import { GraphStorage } from '../../../../src/core/GraphStorage.js';
+import { logger } from '../../../../src/utils/logger.js';
 
 async function makeDir(): Promise<string> {
   const dir = join(tmpdir(), `mmap-review-${Date.now()}-${Math.random()}`);
@@ -107,7 +108,7 @@ describe('Review #1: streamLines maxLineBytes guard', () => {
   });
 });
 
-describe('Review #2: loadViaMmap surfaces line number + cause', () => {
+describe('Review #2: loadViaMmap skips a malformed line and warns', () => {
   let dir: string;
 
   beforeEach(async () => {
@@ -123,7 +124,7 @@ describe('Review #2: loadViaMmap surfaces line number + cause', () => {
     try { await fs.rm(dir, { recursive: true, force: true }); } catch { /* */ }
   });
 
-  it('parse failure includes line number + SyntaxError cause', async () => {
+  it('skips the malformed line on line 2, loads the rest and warns with the count', async () => {
     const filePath = join(dir, 'memory.jsonl');
     // Write three lines: two valid, one bad on line 2.
     const content = [
@@ -133,8 +134,15 @@ describe('Review #2: loadViaMmap surfaces line number + cause', () => {
     ].join('\n') + '\n';
     await fs.writeFile(filePath, content, 'utf-8');
 
-    const storage = new GraphStorage(filePath);
-    await expect(storage.loadGraph()).rejects.toThrow(/line 2.*JSON|JSON.*line 2/i);
+    const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+    try {
+      const storage = new GraphStorage(filePath);
+      const back = await storage.loadGraph();
+      expect(back.entities.map((e) => e.name)).toEqual(['a', 'c']);
+      expect(warnSpy).toHaveBeenCalledWith(`[GraphStorage] ${filePath}: skipped 1 malformed line(s)`);
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 });
 

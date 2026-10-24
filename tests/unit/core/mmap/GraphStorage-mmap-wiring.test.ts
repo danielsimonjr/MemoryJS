@@ -205,12 +205,23 @@ describe('GraphStorage mmap wiring (task 84)', () => {
       expect(back.relations).toEqual([]);
     });
 
-    it('throws on malformed JSONL line (matches fs.readFile path behavior)', async () => {
-      // Inject a corrupt line; mmap path should surface the parse
-      // error rather than silently dropping it.
-      await fs.writeFile(filePath, 'not-json\n', 'utf-8');
-      const storage = new GraphStorage(filePath);
-      await expect(storage.loadGraph()).rejects.toThrow(/Failed to parse line/);
+    it('loads the good lines and warns on a malformed JSONL line', async () => {
+      // A torn line must not stop the load. The good lines load and
+      // the warning reports the one skipped line.
+      const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+      try {
+        await fs.writeFile(
+          filePath,
+          '{"type":"entity","name":"alice","entityType":"person","observations":[]}\nnot-json\n',
+          'utf-8',
+        );
+        const storage = new GraphStorage(filePath);
+        const back = await storage.loadGraph();
+        expect(back.entities.map((e) => e.name)).toEqual(['alice']);
+        expect(warnSpy).toHaveBeenCalledWith(`[GraphStorage] ${filePath}: skipped 1 malformed line(s)`);
+      } finally {
+        warnSpy.mockRestore();
+      }
     });
   });
 
@@ -379,6 +390,71 @@ describe('GraphStorage mmap wiring (task 84)', () => {
       await expect(
         (missing as unknown as { loadViaMmap(): Promise<void> }).loadViaMmap(),
       ).rejects.toThrow(/^FsReadMmapBackend: failed to open '.*': ENOENT/);
+    });
+
+    // Defect tests for the malformed-line policy (skip, count, warn once per load).
+    const ALICE_LINE = '{"type":"entity","name":"alice","entityType":"person","observations":[],"createdAt":"2026-05-11T00:00:00Z","lastModified":"2026-05-11T00:00:00Z"}';
+    const BOB_LINE = '{"type":"entity","name":"bob","entityType":"person","observations":[],"createdAt":"2026-05-11T00:00:00Z","lastModified":"2026-05-11T00:00:00Z"}';
+
+    it('loads the good lines around a torn line and warns once on both paths', async () => {
+      const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+      const content = [ALICE_LINE, '{"type":"entity","name":"torn', BOB_LINE].join('\n') + '\n';
+      try {
+        for (const useMmap of [false, true]) {
+          warnSpy.mockClear();
+          const result = await loadWith(useMmap, content);
+          expect(result.graph.entities.map((e) => e.name)).toEqual(['alice', 'bob']);
+          expect(warnSpy).toHaveBeenCalledTimes(1);
+          expect(warnSpy).toHaveBeenCalledWith(`[GraphStorage] ${filePath}: skipped 1 malformed line(s)`);
+        }
+      } finally {
+        warnSpy.mockRestore();
+      }
+    });
+
+    it('skips and counts a line that parses but cannot be sanitized', async () => {
+      // 100000 levels: JSON.parse accepts it, sanitizeObject overflows the stack.
+      const deep = '{"a":'.repeat(100000) + '1' + '}'.repeat(100000);
+      const content = [ALICE_LINE, deep, BOB_LINE].join('\n') + '\n';
+      const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+      try {
+        for (const useMmap of [false, true]) {
+          warnSpy.mockClear();
+          const result = await loadWith(useMmap, content);
+          expect(result.graph.entities.map((e) => e.name)).toEqual(['alice', 'bob']);
+          expect(warnSpy).toHaveBeenCalledTimes(1);
+          expect(warnSpy).toHaveBeenCalledWith(`[GraphStorage] ${filePath}: skipped 1 malformed line(s)`);
+        }
+      } finally {
+        warnSpy.mockRestore();
+      }
+    });
+
+    it('writes the malformed-line warning after graph:loaded on both paths', async () => {
+      await fs.writeFile(filePath, `not-json\n${ALICE_LINE}\n`, 'utf-8');
+      for (const useMmap of [false, true]) {
+        if (useMmap) {
+          process.env.MEMORY_USE_MMAP = 'true';
+          process.env.MEMORY_MMAP_THRESHOLD_BYTES = '0';
+        } else {
+          delete process.env.MEMORY_USE_MMAP;
+          delete process.env.MEMORY_MMAP_THRESHOLD_BYTES;
+        }
+        const order: string[] = [];
+        const storage = new GraphStorage(filePath);
+        storage.events.on('graph:loaded', () => {
+          order.push('graph:loaded');
+        });
+        const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {
+          order.push('warn');
+        });
+        try {
+          await storage.loadGraph();
+        } finally {
+          warnSpy.mockRestore();
+        }
+        expect(order).toEqual(['graph:loaded', 'warn']);
+      }
     });
   });
 });

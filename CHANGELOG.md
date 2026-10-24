@@ -65,6 +65,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A malformed JSONL line no longer stops a `GraphStorage` load. Above `MEMORY_MMAP_THRESHOLD_BYTES` the mmap path threw `Failed to parse line <n>`; it now skips the line, counts it and warns once per load. The `fs.readFile` path skipped such lines with no warning; it now warns too. The warning reads `[GraphStorage] <file>: skipped <n> malformed line(s)`. A line that parses but cannot be sanitized (for example, an object nested 100000 levels deep) counts as malformed on both paths.
+
 - `CompressionManager.calculateEntitySimilarity` measures the name length after lowercasing, as `calculatePreparedSimilarity` does. Before, a name whose lowercase form has another length (for example `İx`) could score differently on the two paths.
 - `BatchProcessor` clears the item timeout timer when the item settles. Before, the timer stayed pending until the timeout passed, even after the item finished. The timer is now owned by `withTimeout` in the internal module `src/utils/timing.ts`.
 - `FileSegmentStorage.saveAll` writes each staged segment file and the recovery manifest with the mode of `durableWriteFile`: `0o600`, or the tighter mode of the existing file. Before, these files got the default mode from the umask, usually `0o644`. `saveSegment` already wrote `0o600`.

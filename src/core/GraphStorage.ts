@@ -23,6 +23,7 @@ import {
 import { NameIndex, TypeIndex, LowercaseCache, RelationIndex, ObservationIndex } from '../utils/indexes.js';
 import { sanitizeObject, validateFilePath, AsyncMutex } from '../utils/index.js';
 import { EntityNotFoundError, DuplicateEntityError } from '../utils/errors.js';
+import { logger } from '../utils/logger.js';
 import { BatchTransaction } from './TransactionManager.js';
 import { GraphEventEmitter } from './GraphEventEmitter.js';
 import { dirname } from 'path';
@@ -559,6 +560,7 @@ export class GraphStorage implements IGraphStorage {
         | ({ type: 'entity' } & Entity)
         | ({ type: 'relation' } & Relation);
 
+      let malformedCount = 0;
       for (const line of lines) {
         let item: JsonlLine;
         try {
@@ -569,6 +571,7 @@ export class GraphStorage implements IGraphStorage {
           item = sanitizeObject(parsed as Record<string, unknown>) as unknown as JsonlLine;
         } catch {
           // Skip malformed JSON lines (e.g., from partial writes or corruption)
+          malformedCount++;
           continue;
         }
 
@@ -609,6 +612,10 @@ export class GraphStorage implements IGraphStorage {
 
       // Phase 10 Sprint 2: Emit graph:loaded event
       this.eventEmitter.emitGraphLoaded(graph.entities.length, graph.relations.length);
+
+      if (malformedCount > 0) {
+        logger.warn(`[GraphStorage] ${this.memoryFilePath}: skipped ${malformedCount} malformed line(s)`);
+      }
     } catch (error) {
       // File doesn't exist - create empty graph
       if (error instanceof Error && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
@@ -741,31 +748,23 @@ export class GraphStorage implements IGraphStorage {
     try {
       const entityMap = new Map<string, Entity>();
       const relationMap = new Map<string, Relation>();
-      // Track line number for debuggable parse errors (review #2).
-      // The fs.readFile path doesn't carry line numbers either, but
-      // mmap-mode targets huge files where "which line broke?" is
-      // exactly the information operators need.
-      let lineNumber = 0;
+      let malformedCount = 0;
 
       for await (const lineBuf of streamLines(backend, handle)) {
-        lineNumber++;
         const line = lineBuf.toString('utf-8').trim();
         if (line === '') continue;
-        let item: unknown;
+        let rec: Record<string, unknown>;
         try {
-          item = JSON.parse(line);
-        } catch (err) {
-          // Surface the underlying SyntaxError message + line
-          // number so a 1 GB file's bad row is locatable.
-          const cause = err instanceof Error ? err.message : String(err);
-          throw new Error(
-            `Failed to parse line ${lineNumber} of ${this.memoryFilePath}: ${cause} (preview: ${line.slice(0, 100)})`,
-          );
-        }
-        if (item === null || typeof item !== 'object' || Array.isArray(item)) {
+          const parsed: unknown = JSON.parse(line);
+          if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+            continue;
+          }
+          rec = sanitizeObject(parsed as Record<string, unknown>) as Record<string, unknown>;
+        } catch {
+          // Skip malformed JSON lines (e.g., from partial writes or corruption)
+          malformedCount++;
           continue;
         }
-        const rec = sanitizeObject(item as Record<string, unknown>) as Record<string, unknown>;
         if (rec.type === 'entity') {
           if (!rec.createdAt) rec.createdAt = new Date().toISOString();
           if (!rec.lastModified) rec.lastModified = rec.createdAt;
@@ -786,6 +785,9 @@ export class GraphStorage implements IGraphStorage {
       this.buildEntityIndexes(graph.entities);
       this.buildRelationIndex(graph.relations);
       this.eventEmitter.emitGraphLoaded(graph.entities.length, graph.relations.length);
+      if (malformedCount > 0) {
+        logger.warn(`[GraphStorage] ${this.memoryFilePath}: skipped ${malformedCount} malformed line(s)`);
+      }
     } finally {
       await backend.close(handle);
     }
