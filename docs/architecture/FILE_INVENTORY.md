@@ -222,7 +222,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/features/AuditLog.ts` | src | reachable | 552 |
 | `src/features/AutoLinker.ts` | src | reachable | 263 |
 | `src/features/BackupManager.ts` | src | reachable | 416 |
-| `src/features/CompressionManager.ts` | src | reachable | 686 |
+| `src/features/CompressionManager.ts` | src | reachable | 708 |
 | `src/features/ContradictionDetector.ts` | src | reachable | 130 |
 | `src/features/FactExtractor.ts` | src | reachable | 353 |
 | `src/features/FreshnessManager.ts` | src | reachable | 307 |
@@ -605,7 +605,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/features/BackupManager.test.ts` | tests | test | 201 |
 | `tests/unit/features/compression-manager-priority-dedup.test.ts` | tests | test | 47 |
 | `tests/unit/features/compression-manager-versioning-guard.test.ts` | tests | test | 48 |
-| `tests/unit/features/CompressionManager.test.ts` | tests | test | 496 |
+| `tests/unit/features/CompressionManager.test.ts` | tests | test | 574 |
 | `tests/unit/features/contradiction-detector-detect.test.ts` | tests | test | 63 |
 | `tests/unit/features/FactExtractor.test.ts` | tests | test | 320 |
 | `tests/unit/features/FreshnessManager.test.ts` | tests | test | 528 |
@@ -743,7 +743,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/utils/relationValidation.test.ts` | tests | test | 507 |
 | `tests/unit/utils/schemas.test.ts` | tests | test | 894 |
 | `tests/unit/utils/SchemaValidator.test.ts` | tests | test | 631 |
-| `tests/unit/utils/searchAlgorithms.test.ts` | tests | test | 784 |
+| `tests/unit/utils/searchAlgorithms.test.ts` | tests | test | 834 |
 | `tests/unit/utils/searchCache.test.ts` | tests | test | 780 |
 | `tests/unit/utils/taskScheduler.test.ts` | tests | test | 1118 |
 | `tests/unit/utils/textSimilarity.test.ts` | tests | test | 147 |

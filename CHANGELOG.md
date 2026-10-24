@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `CompressionManager.calculateEntitySimilarity` and the prepared comparison of `findDuplicates` share the weighted score in one module function, `weightedEntitySimilarity` in `src/features/CompressionManager.ts`. Each path keeps its own reads of the entity fields, in the same order as before. Behaviour is unchanged for every input that the types allow.
 - The cosine loop of `textSimilarity` and `RelationConsolidator` moves to `cosineParts` in `src/utils/textSimilarity.ts`. Each site keeps its own mismatch rule, zero rule and clamp. `QuantizedVectorStore` keeps its own loop. Its input is a `Float32Array`. When it shared `cosineParts`, a measurement showed a slower cosine at every site. Behaviour is unchanged.
 - `ProximitySearch.findProximity` and `ProximitySearch.getPositions` share one position scan, `scanTerm`. `findProximity` still stops at the first term that no word contains, so it never reads the later terms. Behaviour is unchanged.
 - The alias loader of `TagManager` and the saved-search loader of `SavedSearchManager` share one JSONL line parser, `parseJsonlRecords` in `src/utils/jsonlMapFile.ts`. Each loader keeps its own read and cache code. Behaviour is unchanged.
