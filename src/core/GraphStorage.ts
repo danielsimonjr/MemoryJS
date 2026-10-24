@@ -553,69 +553,18 @@ export class GraphStorage implements IGraphStorage {
       const entityMap = new Map<string, Entity>();
       const relationMap = new Map<string, Relation>();
 
-      // A JSONL line is a tagged entity or relation. `JSON.parse` returns
-      // `any`; narrowing on the `type` discriminator below gives us a
-      // properly-typed `Entity` / `Relation` without an explicit `any`.
-      type JsonlLine =
-        | ({ type: 'entity' } & Entity)
-        | ({ type: 'relation' } & Relation);
-
       let malformedCount = 0;
       for (const line of lines) {
-        let item: JsonlLine;
-        try {
-          const parsed: unknown = JSON.parse(line);
-          if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-            continue;
-          }
-          item = sanitizeObject(parsed as Record<string, unknown>) as unknown as JsonlLine;
-        } catch {
-          // Skip malformed JSON lines (e.g., from partial writes or corruption)
+        const rec = this.parseJsonlLine(line);
+        if (rec === 'malformed') {
           malformedCount++;
           continue;
         }
-
-        if (item.type === 'entity') {
-          // Add createdAt if missing for backward compatibility
-          if (!item.createdAt) item.createdAt = new Date().toISOString();
-          // Add lastModified if missing for backward compatibility
-          if (!item.lastModified) item.lastModified = item.createdAt;
-
-          // Use name as key - later entries override earlier ones
-          entityMap.set(item.name, item);
-        }
-
-        if (item.type === 'relation') {
-          // Add createdAt if missing for backward compatibility
-          if (!item.createdAt) item.createdAt = new Date().toISOString();
-          // Add lastModified if missing for backward compatibility
-          if (!item.lastModified) item.lastModified = item.createdAt;
-
-          // Use composite key for relations
-          const key = relationKeyOf(item);
-          relationMap.set(key, item);
-        }
+        if (rec === null) continue;
+        this.ingestRecord(rec, entityMap, relationMap);
       }
 
-      // Convert maps to arrays
-      const graph: KnowledgeGraph = {
-        entities: Array.from(entityMap.values()),
-        relations: Array.from(relationMap.values()),
-      };
-
-      // Populate cache
-      this.cache = graph;
-
-      // Build indexes from loaded data
-      this.buildEntityIndexes(graph.entities);
-      this.buildRelationIndex(graph.relations);
-
-      // Phase 10 Sprint 2: Emit graph:loaded event
-      this.eventEmitter.emitGraphLoaded(graph.entities.length, graph.relations.length);
-
-      if (malformedCount > 0) {
-        logger.warn(`[GraphStorage] ${this.memoryFilePath}: skipped ${malformedCount} malformed line(s)`);
-      }
+      this.commitLoadedGraph(entityMap, relationMap, malformedCount);
     } catch (error) {
       // File doesn't exist - create empty graph
       if (error instanceof Error && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
@@ -753,43 +702,90 @@ export class GraphStorage implements IGraphStorage {
       for await (const lineBuf of streamLines(backend, handle)) {
         const line = lineBuf.toString('utf-8').trim();
         if (line === '') continue;
-        let rec: Record<string, unknown>;
-        try {
-          const parsed: unknown = JSON.parse(line);
-          if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-            continue;
-          }
-          rec = sanitizeObject(parsed as Record<string, unknown>) as Record<string, unknown>;
-        } catch {
-          // Skip malformed JSON lines (e.g., from partial writes or corruption)
+        const rec = this.parseJsonlLine(line);
+        if (rec === 'malformed') {
           malformedCount++;
           continue;
         }
-        if (rec.type === 'entity') {
-          if (!rec.createdAt) rec.createdAt = new Date().toISOString();
-          if (!rec.lastModified) rec.lastModified = rec.createdAt;
-          entityMap.set(rec.name as string, rec as unknown as Entity);
-        } else if (rec.type === 'relation') {
-          if (!rec.createdAt) rec.createdAt = new Date().toISOString();
-          if (!rec.lastModified) rec.lastModified = rec.createdAt;
-          const relation = rec as unknown as Relation;
-          relationMap.set(relationKeyOf(relation), relation);
-        }
+        if (rec === null) continue;
+        this.ingestRecord(rec, entityMap, relationMap);
       }
 
-      const graph: KnowledgeGraph = {
-        entities: Array.from(entityMap.values()),
-        relations: Array.from(relationMap.values()),
-      };
-      this.cache = graph;
-      this.buildEntityIndexes(graph.entities);
-      this.buildRelationIndex(graph.relations);
-      this.eventEmitter.emitGraphLoaded(graph.entities.length, graph.relations.length);
-      if (malformedCount > 0) {
-        logger.warn(`[GraphStorage] ${this.memoryFilePath}: skipped ${malformedCount} malformed line(s)`);
-      }
+      this.commitLoadedGraph(entityMap, relationMap, malformedCount);
     } finally {
       await backend.close(handle);
+    }
+  }
+
+  /**
+   * Parse one line of the JSONL graph file.
+   *
+   * Returns `'malformed'` when the line is not valid JSON or cannot be
+   * sanitized. Returns `null` for a JSON value that is not an object.
+   * Otherwise returns the sanitized record.
+   */
+  private parseJsonlLine(line: string): Record<string, unknown> | 'malformed' | null {
+    try {
+      const parsed: unknown = JSON.parse(line);
+      if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        return null;
+      }
+      return sanitizeObject(parsed as Record<string, unknown>) as Record<string, unknown>;
+    } catch {
+      return 'malformed';
+    }
+  }
+
+  /**
+   * Add one parsed entity or relation to the maps. A later line with the
+   * same key replaces an earlier one. A line with an unknown `type` is ignored.
+   * A missing `createdAt` or `lastModified` is filled in.
+   */
+  private ingestRecord(
+    rec: Record<string, unknown>,
+    entityMap: Map<string, Entity>,
+    relationMap: Map<string, Relation>,
+  ): void {
+    if (rec.type === 'entity') {
+      // Add createdAt if missing for backward compatibility
+      if (!rec.createdAt) rec.createdAt = new Date().toISOString();
+      // Add lastModified if missing for backward compatibility
+      if (!rec.lastModified) rec.lastModified = rec.createdAt;
+
+      // Use name as key - later entries override earlier ones
+      entityMap.set(rec.name as string, rec as unknown as Entity);
+    } else if (rec.type === 'relation') {
+      // Add createdAt if missing for backward compatibility
+      if (!rec.createdAt) rec.createdAt = new Date().toISOString();
+      // Add lastModified if missing for backward compatibility
+      if (!rec.lastModified) rec.lastModified = rec.createdAt;
+
+      // Use composite key for relations
+      const relation = rec as unknown as Relation;
+      relationMap.set(relationKeyOf(relation), relation);
+    }
+  }
+
+  /**
+   * Store the loaded graph in the cache, build its indexes and emit
+   * `graph:loaded`. Writes one warning when the load skipped lines.
+   */
+  private commitLoadedGraph(
+    entityMap: Map<string, Entity>,
+    relationMap: Map<string, Relation>,
+    malformedCount: number,
+  ): void {
+    // Convert maps to arrays
+    const graph: KnowledgeGraph = {
+      entities: Array.from(entityMap.values()),
+      relations: Array.from(relationMap.values()),
+    };
+    this.cache = graph;
+    this.buildEntityIndexes(graph.entities);
+    this.buildRelationIndex(graph.relations);
+    this.eventEmitter.emitGraphLoaded(graph.entities.length, graph.relations.length);
+    if (malformedCount > 0) {
+      logger.warn(`[GraphStorage] ${this.memoryFilePath}: skipped ${malformedCount} malformed line(s)`);
     }
   }
 
