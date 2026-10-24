@@ -1,12 +1,12 @@
 {
   "generated": "2026-10-24",
-  "totalFiles": 726,
+  "totalFiles": 727,
   "byDisposition": {
     "reachable": 299,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 407,
+    "test": 408,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -15,7 +15,7 @@
   "byArea": {
     "benchmarks": 4,
     "src": 303,
-    "tests": 407,
+    "tests": 408,
     "tools": 10,
     "config": 2
   },
@@ -753,7 +753,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 678
+      "loc": 683
     },
     {
       "file": "src/agent/SessionQueryBuilder.ts",
@@ -1110,7 +1110,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1875
+      "loc": 1885
     },
     {
       "file": "src/core/GraphTraversal.ts",
@@ -1180,7 +1180,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 620
+      "loc": 636
     },
     {
       "file": "src/core/RefIndex.ts",
@@ -1222,14 +1222,14 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 2559
+      "loc": 2569
     },
     {
       "file": "src/core/storageCache.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 153
+      "loc": 152
     },
     {
       "file": "src/core/StorageFactory.ts",
@@ -1887,7 +1887,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 2506
+      "loc": 2516
     },
     {
       "file": "src/utils/AsyncMutex.ts",
@@ -2006,7 +2006,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 93
+      "loc": 96
     },
     {
       "file": "src/utils/halfLife.ts",
@@ -2034,7 +2034,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 407
+      "loc": 438
     },
     {
       "file": "src/utils/IndexHealthMonitor.ts",
@@ -2300,7 +2300,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 1242
+      "loc": 1251
     },
     {
       "file": "tests/integration/storage/graph-storage-new-fields.test.ts",
@@ -3756,7 +3756,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 395
+      "loc": 420
     },
     {
       "file": "tests/unit/core/rebuild-native.test.ts",
@@ -3878,11 +3878,18 @@
       "loc": 1690
     },
     {
+      "file": "tests/unit/core/storage-write-ownership.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 140
+    },
+    {
       "file": "tests/unit/core/storageCache.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 279
+      "loc": 288
     },
     {
       "file": "tests/unit/core/StorageFactory.test.ts",
@@ -4890,7 +4897,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 847
+      "loc": 885
     },
     {
       "file": "tests/unit/utils/jsonlMapFile.test.ts",

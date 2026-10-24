@@ -956,11 +956,14 @@ export class SQLiteStorage implements IGraphStorage {
    * Save the entire knowledge graph to storage.
    *
    * THREAD-SAFE: Uses mutex to prevent concurrent write operations.
+   * The storage saves and caches a copy of the graph, so a later change to
+   * the caller's graph does not reach the cache.
    *
-   * @param graph - The knowledge graph to save
+   * @param callerGraph - The knowledge graph to save
    * @returns Promise resolving when save is complete
    */
-  async saveGraph(graph: KnowledgeGraph): Promise<void> {
+  async saveGraph(callerGraph: KnowledgeGraph): Promise<void> {
+    const graph = deepCopyPlain(callerGraph);
     await this.ensureLoaded();
 
     return this.mutex.runExclusive(async () => {
@@ -1131,15 +1134,17 @@ export class SQLiteStorage implements IGraphStorage {
    * Append a single entity to storage.
    *
    * THREAD-SAFE: Uses mutex to prevent concurrent write operations.
+   * The cache keeps a copy of the entity, not the caller's object.
    *
    * @param entity - The entity to append
    * @returns Promise resolving when append is complete
    */
   async appendEntity(entity: Entity): Promise<void> {
+    const owned = deepCopyPlain(entity);
     await this.ensureLoaded();
 
     return this.mutex.runExclusive(async () => {
-      this.appendOneLocked(entity, SQLiteStorage.ENTITY_APPEND);
+      this.appendOneLocked(owned, SQLiteStorage.ENTITY_APPEND);
     });
   }
 
@@ -1149,15 +1154,17 @@ export class SQLiteStorage implements IGraphStorage {
    * O(changed) instead of the previous manager-level DELETE-all +
    * reinsert-all `saveGraph`. Emits `entity:created` exactly once per
    * entity; no `graph:saved` (reserved for true full-graph writes).
+   * The cache keeps copies of the entities, not the caller's objects.
    *
    * @param entities - Entities to append (no-op when empty)
    */
   async appendEntities(entities: Entity[]): Promise<void> {
     if (entities.length === 0) return;
+    const owned = deepCopyPlain(entities);
     await this.ensureLoaded();
 
     return this.mutex.runExclusive(async () => {
-      this.appendManyLocked(entities, SQLiteStorage.ENTITY_APPEND);
+      this.appendManyLocked(owned, SQLiteStorage.ENTITY_APPEND);
     });
   }
 
@@ -1165,15 +1172,17 @@ export class SQLiteStorage implements IGraphStorage {
    * Append a single relation to storage.
    *
    * THREAD-SAFE: Uses mutex to prevent concurrent write operations.
+   * The cache keeps a copy of the relation, not the caller's object.
    *
    * @param relation - The relation to append
    * @returns Promise resolving when append is complete
    */
   async appendRelation(relation: Relation): Promise<void> {
+    const owned = deepCopyPlain(relation);
     await this.ensureLoaded();
 
     return this.mutex.runExclusive(async () => {
-      this.appendOneLocked(relation, SQLiteStorage.RELATION_APPEND);
+      this.appendOneLocked(owned, SQLiteStorage.RELATION_APPEND);
     });
   }
 
@@ -1205,16 +1214,17 @@ export class SQLiteStorage implements IGraphStorage {
   /**
    * Append multiple relations in a single transaction (S2 delta
    * persistence). Emits `relation:created` exactly once per relation; no
-   * `graph:saved`.
+   * `graph:saved`. The cache keeps copies of the relations.
    *
    * @param relations - Relations to append (no-op when empty)
    */
   async appendRelations(relations: Relation[]): Promise<void> {
     if (relations.length === 0) return;
+    const owned = deepCopyPlain(relations);
     await this.ensureLoaded();
 
     return this.mutex.runExclusive(async () => {
-      this.appendManyLocked(relations, SQLiteStorage.RELATION_APPEND);
+      this.appendManyLocked(owned, SQLiteStorage.RELATION_APPEND);
     });
   }
 

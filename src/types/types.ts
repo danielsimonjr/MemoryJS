@@ -1241,6 +1241,10 @@ export interface IGraphStorage {
   /**
    * Save the entire knowledge graph to storage.
    *
+   * Ownership contract: the storage saves and caches a copy of `graph`. The
+   * caller keeps its objects. A later change to them does not reach the
+   * cache, and no later write changes them.
+   *
    * @param graph - The knowledge graph to save
    * @returns Promise resolving when save is complete
    */
@@ -1249,6 +1253,9 @@ export interface IGraphStorage {
   /**
    * Append a single entity to storage (O(1) write operation).
    *
+   * Ownership contract: the storage caches a copy of `entity`, as for
+   * `saveGraph`.
+   *
    * @param entity - The entity to append
    * @returns Promise resolving when append is complete
    */
@@ -1256,6 +1263,9 @@ export interface IGraphStorage {
 
   /**
    * Append a single relation to storage (O(1) write operation).
+   *
+   * Ownership contract: the storage caches a copy of `relation`, as for
+   * `saveGraph`.
    *
    * @param relation - The relation to append
    * @returns Promise resolving when append is complete

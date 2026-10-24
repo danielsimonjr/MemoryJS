@@ -182,11 +182,13 @@ const DELETE_READ_ORDER: Record<string, string[]> = {
 
 /**
  * Reads of a getter field of a live relation while that same object is appended again, one number
- * per variant, recorded before the R02 refactor. The write of the relation reads the field.
+ * per variant. The append reads the field once, to copy the object. The write and the cache update
+ * read the copy. Segment mode reads the field once more: it rewrites the segment from the cache, and
+ * the cache keeps the live object.
  */
 const LIVE_RELATION_FIELD_READS: Record<string, number> = {
-  'JSONL': 2,
-  'JSONL with 4 segments': 1,
+  'JSONL': 1,
+  'JSONL with 4 segments': 2,
   'SQLite': 1,
 };
 
@@ -741,6 +743,7 @@ describe.each(VARIANTS)('storage safety net - $label', (variant) => {
       expect((await store.loadGraph()).entities).toHaveLength(rows);
       expect(store.getEntityByName('ent-01')).toBe(live);
       expect(namesOfType(store, 'person')).toContain('ent-01');
+      expect(namesOfType(store, 'project')).not.toContain('ent-01');
       expect(observationHits(store, 'inplaceword')).toEqual(['ent-01']);
       expect(observationHits(store, 'fact')).not.toContain('ent-01');
       expect(store.getLowercased('ent-01')).toMatchObject({ observations: ['inplaceword'] });
@@ -763,17 +766,21 @@ describe.each(VARIANTS)('storage safety net - $label', (variant) => {
       expect(Object.keys(liveRelation)).toEqual(['from', 'to', 'relationType']);
     });
 
-    it('reads a field of a live relation only for the write when the same object is appended again', async () => {
+    it('reads a field of a live relation once, to copy it, when the same object is appended again', async () => {
       await seed();
       const store = openStore();
       await store.ensureLoaded();
       await store.appendRelation({ from: 'ent-00', to: 'ent-02', relationType: 'getter', weight: 1 });
       const live = store.getRelationsFrom('ent-00').find(r => r.relationType === 'getter') as Relation;
       let reads = 0;
+      let weight = 1;
       Object.defineProperty(live, 'weight', {
         get() {
           reads++;
-          return 1;
+          return weight;
+        },
+        set(value: number) {
+          weight = value;
         },
         enumerable: true,
         configurable: true,
@@ -781,8 +788,8 @@ describe.each(VARIANTS)('storage safety net - $label', (variant) => {
 
       await store.appendRelation(live);
 
-      // Only the write of the relation reads the field. A replace of the object by itself would read it again.
       expect(reads).toBe(LIVE_RELATION_FIELD_READS[variant.label]);
+      expect(store.getRelationsFrom('ent-00').filter(r => r.relationType === 'getter')).toHaveLength(1);
     });
 
     it('forgets the key of a deleted relation, so the same relation can be appended again', async () => {
@@ -815,7 +822,7 @@ describe.each(VARIANTS)('storage safety net - $label', (variant) => {
       expect((await store.loadGraph()).relations).toHaveLength(before + 4);
     });
 
-    it('sends the appended object itself in the created events', async () => {
+    it('sends the stored copy of the appended object in the created events', async () => {
       await seed();
       const store = openStore();
       await store.ensureLoaded();
@@ -835,15 +842,17 @@ describe.each(VARIANTS)('storage safety net - $label', (variant) => {
       await store.appendRelation(link);
       await store.appendRelations(links);
 
-      expect(entities).toHaveLength(4);
-      expect(entities[0]).toBe(single);
-      expect(entities[1]).toBe(batch[0]);
-      expect(entities[2]).toBe(batch[1]);
-      expect(entities[3]).toBe(replacement);
-      expect(relations).toHaveLength(3);
-      expect(relations[0]).toBe(link);
-      expect(relations[1]).toBe(links[0]);
-      expect(relations[2]).toBe(links[1]);
+      const sentEntities = [single, ...batch, replacement];
+      const sentRelations = [link, ...links];
+      expect(entities).toEqual(sentEntities);
+      expect(relations).toEqual(sentRelations);
+      sentEntities.forEach((sent, i) => expect(entities[i]).not.toBe(sent));
+      sentRelations.forEach((sent, i) => expect(relations[i]).not.toBe(sent));
+      // A new name sends the object that the cache holds. A replacement sends
+      // the copy, and the cache keeps its existing object with the new fields.
+      entities.slice(0, 3).forEach(sent => expect(sent).toBe(store.getEntityByName((sent as Entity).name)));
+      const storedLink = store.getRelationsFrom('ev-1').find(r => r.relationType === 'evented');
+      expect(relations[0]).toBe(storedLink);
     });
 
     it('moves neither the generation counters nor the pending counter when the cache update fails', async () => {

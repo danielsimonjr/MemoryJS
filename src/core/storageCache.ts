@@ -65,16 +65,15 @@ export function relationKeyOf(r: Pick<Relation, 'from' | 'to' | 'relationType'>)
 export function upsertEntityInCache(state: StorageCacheState, entity: Entity): Entity {
   const existing = state.nameIndex.get(entity.name);
   if (existing !== undefined && existing !== entity) {
-    const oldType = existing.entityType;
     const target = existing as unknown as Record<string, unknown>;
     const source = entity as unknown as Record<string, unknown>;
     for (const key of Object.keys(target)) {
       if (!(key in source)) delete target[key];
     }
     Object.assign(target, source);
-    if (oldType !== existing.entityType) {
-      state.typeIndex.updateType(existing.name, oldType, existing.entityType);
-    }
+    // The type index holds the indexed type of the name, so this also moves
+    // a name whose live object a caller changed in place before the append.
+    state.typeIndex.add(existing);
     state.setLowercase(existing);
     state.observationIndex?.remove(existing.name);
     state.observationIndex?.add(existing.name, existing.observations);

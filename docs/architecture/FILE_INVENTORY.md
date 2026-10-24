@@ -10,7 +10,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 726
+**Total files**: 727
 
 ## Disposition counts
 
@@ -20,12 +20,12 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 407 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 408 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 4 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 0 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **726** | |
+| **Total** | **727** | |
 
 ## Per-area counts
 
@@ -34,7 +34,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `benchmarks` | 4 |
 | `config` | 2 |
 | `src` | 303 |
-| `tests` | 407 |
+| `tests` | 408 |
 | `tools` | 10 |
 
 ## All files
@@ -145,7 +145,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/RuleEvaluator.ts` | src | reachable | 149 |
 | `src/agent/SalienceEngine.ts` | src | reachable | 747 |
 | `src/agent/SessionCheckpoint.ts` | src | reachable | 692 |
-| `src/agent/SessionManager.ts` | src | reachable | 678 |
+| `src/agent/SessionManager.ts` | src | reachable | 683 |
 | `src/agent/SessionQueryBuilder.ts` | src | reachable | 558 |
 | `src/agent/SQLiteBackend.ts` | src | reachable | 176 |
 | `src/agent/SummarizationService.ts` | src | reachable | 341 |
@@ -196,7 +196,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/core/EntityManager.ts` | src | reachable | 1585 |
 | `src/core/EntityStateMachine.ts` | src | reachable | 104 |
 | `src/core/GraphEventEmitter.ts` | src | reachable | 463 |
-| `src/core/GraphStorage.ts` | src | reachable | 1875 |
+| `src/core/GraphStorage.ts` | src | reachable | 1885 |
 | `src/core/GraphTraversal.ts` | src | reachable | 1409 |
 | `src/core/HierarchyManager.ts` | src | reachable | 305 |
 | `src/core/index.ts` | src | reachable | 42 |
@@ -206,14 +206,14 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/core/nodeSqliteAdapter.ts` | src | reachable | 181 |
 | `src/core/ObservationManager.ts` | src | reachable | 981 |
 | `src/core/ObservationStore.ts` | src | reachable | 195 |
-| `src/core/PostgreSQLStorage.ts` | src | reachable | 620 |
+| `src/core/PostgreSQLStorage.ts` | src | reachable | 636 |
 | `src/core/RefIndex.ts` | src | reachable | 372 |
 | `src/core/RelationManager.ts` | src | reachable | 491 |
 | `src/core/segments/FileSegmentStorage.ts` | src | reachable | 661 |
 | `src/core/segments/ISegmentStorage.ts` | src | reachable | 279 |
 | `src/core/sqlite-register.ts` | src | reachable | 31 |
-| `src/core/SQLiteStorage.ts` | src | reachable | 2559 |
-| `src/core/storageCache.ts` | src | reachable | 153 |
+| `src/core/SQLiteStorage.ts` | src | reachable | 2569 |
+| `src/core/storageCache.ts` | src | reachable | 152 |
 | `src/core/StorageFactory.ts` | src | reachable | 158 |
 | `src/core/TransactionManager.ts` | src | reachable | 760 |
 | `src/core/TransitionLedger.ts` | src | reachable | 450 |
@@ -307,7 +307,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/types/result.ts` | src | reachable | 97 |
 | `src/types/search.ts` | src | reachable | 345 |
 | `src/types/task-scheduler.ts` | src | reachable | 34 |
-| `src/types/types.ts` | src | reachable | 2506 |
+| `src/types/types.ts` | src | reachable | 2516 |
 | `src/utils/AsyncMutex.ts` | src | reachable | 174 |
 | `src/utils/BatchProcessor.ts` | src | reachable | 526 |
 | `src/utils/CachePressureCoordinator.ts` | src | reachable | 181 |
@@ -324,11 +324,11 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/utils/errorSuggestions.ts` | src | reachable | 268 |
 | `src/utils/fieldPath.ts` | src | reachable | 35 |
 | `src/utils/formatters.ts` | src | reachable | 197 |
-| `src/utils/graphCopy.ts` | src | reachable | 93 |
+| `src/utils/graphCopy.ts` | src | reachable | 96 |
 | `src/utils/halfLife.ts` | src | reachable | 24 |
 | `src/utils/IIndexHealth.ts` | src | reachable | 47 |
 | `src/utils/index.ts` | src | reachable | 391 |
-| `src/utils/indexes.ts` | src | reachable | 407 |
+| `src/utils/indexes.ts` | src | reachable | 438 |
 | `src/utils/IndexHealthMonitor.ts` | src | reachable | 78 |
 | `src/utils/jsonlMapFile.ts` | src | reachable | 113 |
 | `src/utils/logger.ts` | src | reachable | 45 |
@@ -366,7 +366,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/integration/procedural-graph-recovery.test.ts` | tests | test | 232 |
 | `tests/integration/search/project-scope-isolation.test.ts` | tests | test | 87 |
 | `tests/integration/smart-search.test.ts` | tests | test | 287 |
-| `tests/integration/storage-dedup-safety.test.ts` | tests | test | 1242 |
+| `tests/integration/storage-dedup-safety.test.ts` | tests | test | 1251 |
 | `tests/integration/storage/graph-storage-new-fields.test.ts` | tests | test | 73 |
 | `tests/integration/storage/sqlite-storage-new-fields.test.ts` | tests | test | 65 |
 | `tests/integration/streaming-export.test.ts` | tests | test | 227 |
@@ -574,7 +574,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/ObservationManager.test.ts` | tests | test | 386 |
 | `tests/unit/core/ObservationStore.test.ts` | tests | test | 95 |
 | `tests/unit/core/optimistic-concurrency.test.ts` | tests | test | 133 |
-| `tests/unit/core/PostgreSQLStorage.test.ts` | tests | test | 395 |
+| `tests/unit/core/PostgreSQLStorage.test.ts` | tests | test | 420 |
 | `tests/unit/core/rebuild-native.test.ts` | tests | test | 42 |
 | `tests/unit/core/RefIndex.test.ts` | tests | test | 561 |
 | `tests/unit/core/relation-manager-temporal.test.ts` | tests | test | 157 |
@@ -592,7 +592,8 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/sqlite-events.test.ts` | tests | test | 470 |
 | `tests/unit/core/sqlite-lazy-load.test.ts` | tests | test | 82 |
 | `tests/unit/core/SQLiteStorage.test.ts` | tests | test | 1690 |
-| `tests/unit/core/storageCache.test.ts` | tests | test | 279 |
+| `tests/unit/core/storage-write-ownership.test.ts` | tests | test | 140 |
+| `tests/unit/core/storageCache.test.ts` | tests | test | 288 |
 | `tests/unit/core/StorageFactory.test.ts` | tests | test | 220 |
 | `tests/unit/core/temporal-versioning.test.ts` | tests | test | 267 |
 | `tests/unit/core/TransactionBatching.test.ts` | tests | test | 440 |
@@ -736,7 +737,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/utils/fieldPath.test.ts` | tests | test | 50 |
 | `tests/unit/utils/formatters.test.ts` | tests | test | 470 |
 | `tests/unit/utils/halfLife.test.ts` | tests | test | 27 |
-| `tests/unit/utils/indexes.test.ts` | tests | test | 847 |
+| `tests/unit/utils/indexes.test.ts` | tests | test | 885 |
 | `tests/unit/utils/jsonlMapFile.test.ts` | tests | test | 162 |
 | `tests/unit/utils/logger.test.ts` | tests | test | 253 |
 | `tests/unit/utils/MemoryMonitor.test.ts` | tests | test | 413 |
