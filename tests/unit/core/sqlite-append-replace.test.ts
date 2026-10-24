@@ -125,8 +125,8 @@ describe('re-appending an existing entity name', () => {
     expect(ranked[0].score).toBeLessThan(0);
   });
 
-  it('replaces the entity with the highest rowid without a ghost posting', async () => {
-    // A replaced row got a new rowid, which equals the old one when the row held the highest rowid.
+  it('replaces the entity with the highest rowid and leaves a clean index', async () => {
+    // The last row of the table is the edge case of the rowid choice.
     await storage.appendEntity({ name: 'Gamma', entityType: 'note', observations: ['gamma changed'] });
 
     expect(indexIsExact(dbFile)).toBe(true);
