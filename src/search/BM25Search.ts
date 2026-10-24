@@ -12,6 +12,7 @@
 import type { Entity, IGraphStorage, SearchResult } from '../types/index.js';
 import { SEARCH_LIMITS } from '../utils/constants.js';
 import { borrowGraphView } from '../utils/graphCopy.js';
+import { getFtsCandidateNames } from './ftsCandidates.js';
 
 /**
  * Common English stopwords to filter from queries and documents.
@@ -233,7 +234,9 @@ export class BM25Search {
     }
     await this.storage.ensureLoaded();
     const corpusSize = this.storage.cachedGraph?.entities.length ?? this.index.totalDocs;
-    const candidateNames = await this.getFtsCandidateNames(query, corpusSize);
+    // Storage-native FTS supplies the candidate names; the in-memory BM25 index still scores them.
+    // Only the set of names is used, so the storage is asked for it unranked.
+    const candidateNames = await getFtsCandidateNames(this.storage, query, corpusSize, false);
     if (candidateNames?.size === 0) return [];
 
     const { k1, b } = this.config;
@@ -311,26 +314,6 @@ export class BM25Search {
       }
     }
     return matchedFields;
-  }
-
-  /**
-   * Use storage-native FTS for candidate retrieval when available.
-   * The in-memory BM25 index remains the scorer.
-   * This preserves the BM25 config and the matched-field behavior.
-   * This avoids a full document loop.
-   * The method uses only the set of matching names, so it asks the storage for the set unranked.
-   */
-  private async getFtsCandidateNames(
-    query: string,
-    corpusSize: number,
-  ): Promise<Set<string> | null> {
-    if (!this.storage.fullTextSearch) return null;
-    await this.storage.ensureLoaded();
-    const matches = await this.storage.fullTextSearch(query, {
-      limit: Math.max(corpusSize, 1),
-      rank: false,
-    });
-    return new Set(matches.map(match => match.name));
   }
 
   /**
