@@ -308,4 +308,53 @@ describe('FTS lookup error text, read order and read counts', () => {
       'fullTextSearch zephyr {"limit":2,"rank":false}',
     ]);
   });
+
+  /** Run both searches over a corpus of `size` entities and collect the limit of each lookup. */
+  const lookupLimits = async (size: number): Promise<unknown[]> => {
+    const asked: unknown[] = [];
+    const sized = {
+      entities: Array.from({ length: size }, (_, i) => ({
+        name: `E${i}`,
+        entityType: 'note',
+        observations: ['zephyr'],
+      })),
+      relations: [],
+    };
+    const storage = fakeStorage({
+      loadGraph: async () => sized,
+      cachedGraph: sized,
+      fullTextSearch: async (_query: string, options: { limit?: number }) => {
+        asked.push(options.limit);
+        return [];
+      },
+    });
+    const bm25 = new BM25Search(storage);
+    await bm25.buildIndex();
+    await bm25.search('zephyr');
+    await new RankedSearch(storage).searchNodesRanked('zephyr');
+    return asked;
+  };
+
+  it.each([
+    [1, 1],
+    [2, 2],
+    [5, 5],
+  ])('a corpus of %i entities asks both searches for the limit %i', async (size, limit) => {
+    expect(await lookupLimits(size)).toStrictEqual([limit, limit]);
+  });
+
+  it('the helper passes no rank key when it ranks', async () => {
+    const asked: unknown[] = [];
+    const storage = fakeStorage({
+      fullTextSearch: async (_query: string, options: unknown) => {
+        asked.push(options);
+        return [];
+      },
+    });
+
+    await getFtsCandidateNames.call({ storage }, 'zephyr', 3, true);
+
+    expect(asked).toStrictEqual([{ limit: 3 }]);
+    expect(Object.keys(asked[0] as object)).toStrictEqual(['limit']);
+  });
 });

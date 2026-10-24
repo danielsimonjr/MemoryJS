@@ -190,3 +190,58 @@ describe('SemanticSearch member lookups', () => {
     ]);
   });
 });
+
+describe('SemanticSearch result tail pins', () => {
+  it('search keeps a hit whose score equals minSimilarity', async () => {
+    const { store, semantic } = await createIndexed();
+    vi.spyOn(store, 'search').mockReturnValue([
+      { name: 'Alice', score: 0.5 },
+      { name: 'Bob', score: 0.4999999 },
+      { name: 'Carol', score: 0.5 },
+    ]);
+
+    const results = await semantic.search(graph, 'databases', 10, 0.5);
+
+    expect(results.map(result => [result.entity.name, result.similarity])).toStrictEqual([
+      ['Alice', 0.5],
+      ['Carol', 0.5],
+    ]);
+  });
+
+  it('findSimilar keeps a hit whose score equals minSimilarity', async () => {
+    const { store, semantic } = await createIndexed();
+    vi.spyOn(store, 'search').mockReturnValue([
+      { name: 'Bob', score: 0.5 },
+      { name: 'Carol', score: 0.4999999 },
+      { name: 'Dave', score: 0.5 },
+    ]);
+
+    const results = await semantic.findSimilar(graph, 'Alice', 10, 0.5);
+
+    expect(results.map(result => [result.entity.name, result.similarity])).toStrictEqual([
+      ['Bob', 0.5],
+      ['Dave', 0.5],
+    ]);
+  });
+
+  it('findSimilar excludes the exact name only, with no trimming', async () => {
+    const spaced: Entity[] = [
+      { name: ' Alice ', entityType: 'person', observations: ['spaced name'] },
+      { name: 'Alice', entityType: 'person', observations: ['plain name'] },
+      { name: 'Bob', entityType: 'person', observations: ['other name'] },
+    ];
+    const spacedGraph: KnowledgeGraph = { entities: spaced, relations: [] };
+    const store = new InMemoryVectorStore();
+    const semantic = new SemanticSearch(new MockEmbeddingService(), store);
+    await semantic.indexAll(spacedGraph);
+    vi.spyOn(store, 'search').mockReturnValue([
+      { name: ' Alice ', score: 0.9 },
+      { name: 'Alice', score: 0.8 },
+      { name: 'Bob', score: 0.7 },
+    ]);
+
+    const results = await semantic.findSimilar(spacedGraph, ' Alice ', 5, 0);
+
+    expect(results.map(result => result.entity.name)).toStrictEqual(['Alice', 'Bob']);
+  });
+});

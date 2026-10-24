@@ -120,4 +120,16 @@ describe('EvidencePathBuilder path reconstruction pins', () => {
       truncated: false,
     });
   });
+
+  it('returns the walked path with the source as anchor and the lexical layer', () => {
+    const builder = new EvidencePathBuilder(chain, { maxDepth: 3 });
+
+    const outcome = (builder as any).boundedBfs('A', 'D');
+
+    expect(Object.keys(outcome.path)).toStrictEqual(['nodes', 'relations', 'anchor', 'viaLayer']);
+    expect(outcome.path.nodes).toStrictEqual(['A', 'B', 'C', 'D']);
+    expect(outcome.path.anchor).toBe('A');
+    expect(outcome.path.viaLayer).toBe('lexical');
+    expect(outcome.depthLimited).toBe(false);
+  });
 });

@@ -260,3 +260,79 @@ describe('search layer TypeError text pins', () => {
     });
   });
 });
+
+describe('search layer score map pins', () => {
+  const entries = (map: Map<string, number>) => Array.from(map.entries());
+  const semanticHits = () => ({
+    search: vi.fn().mockResolvedValue([
+      { entity: beta, similarity: 0.75 },
+      { entity: alpha, similarity: 0.25 },
+    ]),
+  });
+  const symbolicHits = [
+    { entity: beta, score: 0.9 },
+    { entity: alpha, score: 0.3 },
+  ];
+  const symbolicFilters = { entityTypes: ['note'] };
+
+  it('hybrid maps each similarity to its entity name in result order', async () => {
+    const hybrid = new HybridSearchManager(semanticHits() as any, rankedWith([]) as any);
+
+    const scores = await (hybrid as any).executeSemanticSearch(graph, 'alpha', {}, 10);
+
+    expect(entries(scores)).toStrictEqual([['Beta', 0.75], ['Alpha', 0.25]]);
+  });
+
+  it('parallel maps each similarity to its entity name in result order', async () => {
+    const executor = new ParallelSearchExecutor(semanticHits() as any, rankedWith([]) as any);
+
+    const result = await executor.execute(graph, 'alpha', { semantic: {} });
+
+    expect(entries(result.semanticResults)).toStrictEqual([['Beta', 0.75], ['Alpha', 0.25]]);
+  });
+
+  it('hybrid keeps lexical scores raw when no score exceeds one', async () => {
+    const hybrid = new HybridSearchManager(null, rankedWith([[alpha, 0.5], [beta, 0.25]]) as any);
+
+    const scores = await (hybrid as any).executeLexicalSearch('alpha', {}, 10);
+
+    expect(entries(scores)).toStrictEqual([['Alpha', 0.5], ['Beta', 0.25]]);
+  });
+
+  it('parallel keeps lexical scores raw when no score exceeds one', async () => {
+    const executor = new ParallelSearchExecutor(null, rankedWith([[alpha, 0.5], [beta, 0.25]]) as any);
+
+    const result = await executor.execute(graph, 'alpha');
+
+    expect(entries(result.lexicalResults)).toStrictEqual([['Alpha', 0.5], ['Beta', 0.25]]);
+  });
+
+  it('both callers keep negative lexical scores raw', async () => {
+    const hybrid = new HybridSearchManager(null, rankedWith([[alpha, -1], [beta, -2]]) as any);
+    const executor = new ParallelSearchExecutor(null, rankedWith([[alpha, -1], [beta, -2]]) as any);
+
+    const hybridScores = await (hybrid as any).executeLexicalSearch('alpha', {}, 10);
+    const result = await executor.execute(graph, 'alpha');
+
+    expect(entries(hybridScores)).toStrictEqual([['Alpha', -1], ['Beta', -2]]);
+    expect(entries(result.lexicalResults)).toStrictEqual([['Alpha', -1], ['Beta', -2]]);
+  });
+
+  it('hybrid maps each symbolic score unchanged in result order', () => {
+    const hybrid = new HybridSearchManager(null, rankedWith([]) as any);
+    vi.spyOn((hybrid as any).symbolicSearch, 'search').mockReturnValue(symbolicHits);
+
+    const scores = (hybrid as any).executeSymbolicSearch(graph.entities, symbolicFilters);
+
+    expect(entries(scores)).toStrictEqual([['Beta', 0.9], ['Alpha', 0.3]]);
+  });
+
+  it('parallel maps each symbolic score unchanged in result order', async () => {
+    const executor = new ParallelSearchExecutor(null, rankedWith([]) as any);
+    vi.spyOn((executor as any).symbolicSearch, 'search').mockReturnValue(symbolicHits);
+
+    const result = await executor.execute(graph, 'alpha', { symbolic: symbolicFilters });
+
+    expect(entries(result.symbolicResults)).toStrictEqual([['Beta', 0.9], ['Alpha', 0.3]]);
+  });
+});

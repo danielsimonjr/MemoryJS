@@ -46,4 +46,21 @@ describe('walkParents', () => {
 
     expect(walkParents('B', parents).relations[0]).toBe(relation);
   });
+
+  it('does not stop on a cycle: the walk reads the map until the caller stops it', () => {
+    const parents = new Map<string, Link | null>([
+      ['A', { parent: 'B', relation: 'ab' }],
+      ['B', { parent: 'A', relation: 'ba' }],
+    ]);
+    let reads = 0;
+    const guarded = {
+      get: (key: string) => {
+        if (++reads > 20) throw new Error('GUARD');
+        return parents.get(key);
+      },
+    } as unknown as Map<string, Link | null>;
+
+    expect(() => walkParents('A', guarded)).toThrow('GUARD');
+    expect(reads).toBe(21);
+  });
 });
