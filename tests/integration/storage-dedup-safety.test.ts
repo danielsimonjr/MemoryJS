@@ -180,6 +180,16 @@ const DELETE_READ_ORDER: Record<string, string[]> = {
   'SQLite': ['name', 'name', 'name', 'name', 'lowercaseCache', 'name', 'name'],
 };
 
+/**
+ * Reads of a getter field of a live relation while that same object is appended again, one number
+ * per variant, recorded before the R02 refactor. The write of the relation reads the field.
+ */
+const LIVE_RELATION_FIELD_READS: Record<string, number> = {
+  'JSONL': 2,
+  'JSONL with 4 segments': 1,
+  'SQLite': 1,
+};
+
 describe.each(VARIANTS)('storage safety net - $label', (variant) => {
   /** True when the variant stores the graph in segment files. */
   const segmented = variant.env.MEMORY_STORAGE_SEGMENT_COUNT !== undefined;
@@ -712,6 +722,28 @@ describe.each(VARIANTS)('storage safety net - $label', (variant) => {
       await store.appendRelation({ from: 'ent-00', to: 'ent-02', relationType: 'keyed' });
       expect(store.getRelationsFrom('ent-00').filter(r => r.relationType === 'keyed')).toEqual([liveRelation]);
       expect(Object.keys(liveRelation)).toEqual(['from', 'to', 'relationType']);
+    });
+
+    it('reads a field of a live relation only for the write when the same object is appended again', async () => {
+      await seed();
+      const store = openStore();
+      await store.ensureLoaded();
+      await store.appendRelation({ from: 'ent-00', to: 'ent-02', relationType: 'getter', weight: 1 });
+      const live = store.getRelationsFrom('ent-00').find(r => r.relationType === 'getter') as Relation;
+      let reads = 0;
+      Object.defineProperty(live, 'weight', {
+        get() {
+          reads++;
+          return 1;
+        },
+        enumerable: true,
+        configurable: true,
+      });
+
+      await store.appendRelation(live);
+
+      // Only the write of the relation reads the field. A replace of the object by itself would read it again.
+      expect(reads).toBe(LIVE_RELATION_FIELD_READS[variant.label]);
     });
 
     it('forgets the key of a deleted relation, so the same relation can be appended again', async () => {
