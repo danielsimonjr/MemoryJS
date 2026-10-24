@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { SQLiteStorage } from '../../../src/core/SQLiteStorage.js';
+import { SQLiteStorage, resolveSQLiteDatabaseCtor } from '../../../src/core/SQLiteStorage.js';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -405,6 +405,30 @@ describe('SQLiteStorage', () => {
         const graph = await storage.loadGraph();
         expect(graph.relations).toHaveLength(1);
         expect(graph.relations[0].from).toBe('Alice');
+      });
+
+      it('updates a re-appended relation in its row, so a reload keeps its first position', async () => {
+        await storage.appendEntities(['a', 'b', 'c'].map(name => ({ name, entityType: 'node', observations: [] })));
+        await storage.appendRelation({ from: 'a', to: 'b', relationType: 'r', weight: 1, confidence: 0.5 });
+        await storage.appendRelation({ from: 'b', to: 'c', relationType: 'r' });
+        const rowidOfFirst = (): number => {
+          const db = new Database(testFilePath, { readonly: true });
+          try {
+            return (db.prepare("SELECT rowid FROM relations WHERE fromEntity = 'a'").get() as { rowid: number }).rowid;
+          } finally {
+            db.close();
+          }
+        };
+        const rowidBefore = rowidOfFirst();
+
+        await storage.appendRelation({ from: 'a', to: 'b', relationType: 'r', weight: 2 });
+
+        expect(rowidOfFirst()).toBe(rowidBefore);
+        storage.close();
+        storage = new SQLiteStorage(testFilePath);
+        const relations = (await storage.loadGraph()).relations;
+        expect(relations.map(r => `${r.from}>${r.to}:${r.weight}`)).toEqual(['a>b:2', 'b>c:undefined']);
+        expect(relations[0].confidence).toBeUndefined();
       });
     });
   });
@@ -1465,18 +1489,24 @@ describe('SQLiteStorage statement pins', () => {
 
   it('reads each table once and adds the missing columns in a fixed order', async () => {
     createOldestSchema();
-    // Record the table reads and the ALTER statements, in call order.
+    // Record the table reads and the ALTER statements, in call order. Spy on
+    // the driver that SQLiteStorage uses: better-sqlite3, or the node:sqlite
+    // adapter under MEMORY_SQLITE_DRIVER=node.
     const seen: string[] = [];
-    const realPragma = Database.prototype.pragma;
-    const realExec = Database.prototype.exec;
-    vi.spyOn(Database.prototype, 'pragma').mockImplementation(function (this: unknown, source: string, options?: unknown) {
+    const driver = resolveSQLiteDatabaseCtor().prototype as {
+      pragma(source: string, options?: unknown): unknown;
+      exec(source: string): unknown;
+    };
+    const realPragma = driver.pragma;
+    const realExec = driver.exec;
+    vi.spyOn(driver, 'pragma').mockImplementation(function (this: unknown, source: string, options?: unknown) {
       if (/^table_info/.test(source)) seen.push(source);
-      return realPragma.call(this, source, options as never);
-    } as typeof Database.prototype.pragma);
-    vi.spyOn(Database.prototype, 'exec').mockImplementation(function (this: unknown, source: string) {
+      return realPragma.call(this, source, options);
+    });
+    vi.spyOn(driver, 'exec').mockImplementation(function (this: unknown, source: string) {
       if (/^ALTER TABLE/.test(source)) seen.push(source);
       return realExec.call(this, source);
-    } as typeof Database.prototype.exec);
+    });
     try {
       await open().ensureLoaded();
     } finally {

@@ -212,7 +212,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/core/segments/FileSegmentStorage.ts` | src | reachable | 661 |
 | `src/core/segments/ISegmentStorage.ts` | src | reachable | 279 |
 | `src/core/sqlite-register.ts` | src | reachable | 31 |
-| `src/core/SQLiteStorage.ts` | src | reachable | 2569 |
+| `src/core/SQLiteStorage.ts` | src | reachable | 2578 |
 | `src/core/storageCache.ts` | src | reachable | 152 |
 | `src/core/StorageFactory.ts` | src | reachable | 158 |
 | `src/core/TransactionManager.ts` | src | reachable | 760 |
@@ -591,7 +591,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/sqlite-embeddings-content-hash.test.ts` | tests | test | 138 |
 | `tests/unit/core/sqlite-events.test.ts` | tests | test | 470 |
 | `tests/unit/core/sqlite-lazy-load.test.ts` | tests | test | 82 |
-| `tests/unit/core/SQLiteStorage.test.ts` | tests | test | 1690 |
+| `tests/unit/core/SQLiteStorage.test.ts` | tests | test | 1720 |
 | `tests/unit/core/storage-write-ownership.test.ts` | tests | test | 140 |
 | `tests/unit/core/storageCache.test.ts` | tests | test | 288 |
 | `tests/unit/core/StorageFactory.test.ts` | tests | test | 220 |

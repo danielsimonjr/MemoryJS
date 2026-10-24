@@ -198,10 +198,10 @@ const RELOAD_ORDER: Record<string, string[]> = {
   'SQLite': ['ord-1', 'ord-dup', 'ord-2', 'ord-3'],
 };
 
-/** Relations of the batch order pins in file or row order after a reload, recorded before the R01 refactor. */
+/** Relations of the batch order pins in file or row order after a reload. A repeated key keeps the position of its first write on both backends. */
 const RELOAD_RELATION_ORDER: Record<string, string[]> = {
   'JSONL': ['ord-1>ord-2:2', 'ord-2>ord-3:undefined', 'ord-3>ord-1:undefined'],
-  'SQLite': ['ord-2>ord-3:undefined', 'ord-1>ord-2:2', 'ord-3>ord-1:undefined'],
+  'SQLite': ['ord-1>ord-2:2', 'ord-2>ord-3:undefined', 'ord-3>ord-1:undefined'],
 };
 
 const DELETE_RELATIONS_UNSEGMENTED = [

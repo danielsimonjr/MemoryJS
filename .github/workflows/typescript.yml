@@ -105,6 +105,18 @@ jobs:
         env:
           SKIP_BENCHMARKS: "true"
 
+      # SQLiteStorage falls back to node:sqlite (src/core/nodeSqliteAdapter.ts) when the
+      # better-sqlite3 addon is absent, for example after an install that skips install scripts.
+      # MEMORY_SQLITE_DRIVER=node selects that driver. Run the suite on it once, on one leg, so
+      # that a test or a code path that works only on better-sqlite3 fails here. Node 24 loads
+      # node:sqlite without a flag.
+      - name: Test (node:sqlite driver)
+        if: matrix.os == 'ubuntu-latest' && matrix.node == 24
+        run: bun run test:ci
+        env:
+          SKIP_BENCHMARKS: "true"
+          MEMORY_SQLITE_DRIVER: node
+
       - name: Build
         run: bun run build
 
