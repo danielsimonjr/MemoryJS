@@ -5,7 +5,8 @@
  * best `limit` entities in a min-heap on `salienceScore`. Equal scores have no tie
  * key, so their output order follows the heap structure. These tests replace
  * `calculateSalience` with fixed scores, so each case fixes the heap steps alone.
- * Every expected value comes from the source before the shared heap.
+ * Every expected value comes from the source before the shared heap, except the
+ * odd limits, which follow the limit rule of InMemoryVectorStore.search.
  */
 
 import { describe, it, expect, vi } from 'vitest';
@@ -136,25 +137,27 @@ describe('SalienceEngine.getMostSalient heap pins', () => {
     });
   });
 
+  // The limit rule of InMemoryVectorStore.search: NaN, zero and a negative limit
+  // give no entities, and a finite limit is floored.
   describe('odd limits', () => {
     it.each([[0], [-1], [NAN]])(
-      'limit %d rejects with a TypeError after the first score',
+      'limit %d returns no entities and scores none',
       async limit => {
         const { engine, spy } = engineWithScores([0.1, 0.2]);
-        const pending = engine.getMostSalient({}, limit);
-        await expect(pending).rejects.toThrow(TypeError);
-        await expect(pending).rejects.toThrow(/salienceScore/);
-        expect(spy).toHaveBeenCalledTimes(1);
+        await expect(engine.getMostSalient({}, limit)).resolves.toEqual([]);
+        expect(spy).not.toHaveBeenCalled();
       }
     );
 
-    it('limit 0.5 keeps one entry', async () => {
-      expect((await select([0.2, 0.9, 0.5, 0.7], 0.5)).names).toEqual(['e1']);
+    it('limit 0.5 keeps no entry', async () => {
+      expect((await select([0.2, 0.9, 0.5, 0.7], 0.5)).names).toEqual([]);
     });
 
-    it('limit 2.5 keeps three entries', async () => {
-      const result = await select([0.1, 0.8, 0.3, 0.8, 0.5, 0.2, 0.9, 0.4], 2.5);
-      expect(result.names).toEqual(['e6', 'e3', 'e1']);
+    it('limit 2.5 keeps two entries, as limit 2 does', async () => {
+      const scores = [0.1, 0.8, 0.3, 0.8, 0.5, 0.2, 0.9, 0.4];
+      const result = await select(scores, 2.5);
+      expect(result.names).toEqual(['e6', 'e1']);
+      expect(result).toEqual(await select(scores, 2));
     });
   });
 

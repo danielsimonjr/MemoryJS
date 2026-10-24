@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Pin tests for the top-k selection of `InMemoryVectorStore.search`, `QuantizedVectorStore.search` and the heap path of `SalienceEngine.getMostSalient` (83 tests in `tests/unit/search/VectorStore-topk-pins.test.ts`, `tests/unit/search/QuantizedVectorStore-topk-pins.test.ts` and `tests/unit/agent/SalienceEngine-heap-pins.test.ts`). They fix the selected items and their order for equal scores at the k boundary, for NaN, Infinity and -0 scores, for skipped vectors and for odd k or limit values.
 - `docs/analysis/DUPLICATE_FUNCTION_AUDIT.md` lists duplicate and near-duplicate functions in `src/`. It groups them into 26 refactor families, proposes a merge target for each family, and records 13 behaviour differences and defects. No source file changed.
 - SQLite `embeddings` table: nullable `contentHash` column, written by `storeEmbedding(name, vector, model, contentHash?)` and read by `loadEmbeddingMetadata()`. Existing databases get the column when they open.
 - `SQLiteVectorStore` loads persisted vectors on `initialize()`, skips rows of another embedding model, and keeps a content hash per vector (`add(name, vector, contentHash?)`, `getContentHash(name)`). `IVectorStore` gains optional `initialize()` and `getContentHash()`.
