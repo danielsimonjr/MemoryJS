@@ -335,6 +335,36 @@ describe('CLI action frame (pins from the inline frame)', () => {
     });
   });
 
+  describe('time of the log and the exit', () => {
+    /** Runs `entity get` through the synchronous `parse()` of the CLI entry and records the order of events. */
+    async function eventsOfSyncParse(): Promise<string[]> {
+      const events: string[] = [];
+      errorSpy.mockImplementation(() => {
+        events.push('log');
+      });
+      exitSpy.mockImplementation((() => {
+        events.push('exit');
+      }) as never);
+      makeProgram().parse(['node', 'test', '--storage', STORE, 'entity', 'get', 'x1']);
+      events.push('parse returned');
+      queueMicrotask(() => events.push('next microtask'));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      return events;
+    }
+
+    it('a synchronous throw in the async body is logged in the first microtask after parse() returns', async () => {
+      rt.state.failAs = 'sync';
+      expect(await eventsOfSyncParse()).toEqual(['parse returned', 'log', 'exit', 'next microtask']);
+    });
+
+    it('a rejection of the first context call is logged after parse() returns', async () => {
+      rt.state.failAs = 'reject';
+      const events = await eventsOfSyncParse();
+      expect(events.slice(0, 1)).toEqual(['parse returned']);
+      expect(events.filter((e) => e === 'log' || e === 'exit')).toEqual(['log', 'exit']);
+    });
+  });
+
   describe('every converted action', () => {
     // `health` reports a failing storage as JSON and exits without an error line.
     const NO_LINE = new Set(['health']);
