@@ -2,8 +2,8 @@
  * Pin tests for the search layers run by HybridSearchManager and
  * ParallelSearchExecutor.
  *
- * Golden values were recorded from the code before the layer helpers were
- * extracted. The layer helpers throw; each caller keeps its own error policy.
+ * Each golden value is the output of one caller on a fixed collaborator set.
+ * The layer calls stay in each caller, so each caller keeps its own error policy.
  */
 import { describe, it, expect, vi } from 'vitest';
 import { HybridSearchManager } from '../../../src/search/HybridSearchManager.js';
@@ -206,7 +206,7 @@ describe('ParallelSearchExecutor timing pins', () => {
 
 describe('search layer TypeError text pins', () => {
   // A collaborator without the method throws a TypeError. The message names the
-  // call expression, so each message is recorded from the old code.
+  // call expression, so each test pins the exact message text.
   it('keeps the symbolic TypeError text in the hybrid rejection', async () => {
     const hybrid = new HybridSearchManager(null, rankedWith([]) as any);
     (hybrid as any).symbolicSearch = {};

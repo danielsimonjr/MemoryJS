@@ -1,8 +1,8 @@
 /**
  * Pin tests for ProximitySearch.findProximity and its position scan.
  *
- * Golden values were recorded from the code before findProximity reused the
- * position scan. A Map of positions compares as a plain object here.
+ * Each golden value is the output of findProximity on a fixed text.
+ * A Map of positions compares as a plain object here.
  */
 import { describe, it, expect } from 'vitest';
 import { ProximitySearch } from '../../../src/search/ProximitySearch.js';

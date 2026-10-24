@@ -1,8 +1,8 @@
 /**
  * Pin tests for SemanticSearch.search and SemanticSearch.findSimilar.
  *
- * Golden values were recorded from the code before the shared store tail
- * was extracted. The two methods ask the vector store for different counts,
+ * Each golden value is the output of one method on a fixed vector store.
+ * The two methods ask the vector store for different counts,
  * and each count is pinned here.
  */
 import { describe, it, expect, vi } from 'vitest';

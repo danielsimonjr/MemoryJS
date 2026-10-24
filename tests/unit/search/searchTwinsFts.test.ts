@@ -1,8 +1,8 @@
 /**
  * Pin tests for the FTS candidate lookup shared by BM25Search and RankedSearch.
  *
- * Every golden value below was recorded from the code before the FTS helper
- * was extracted. A change to these values is a behaviour change.
+ * Each golden value is the output of one caller on a fixed corpus.
+ * A change to these values is a behaviour change.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { promises as fs } from 'node:fs';
