@@ -177,7 +177,7 @@ export class ProximitySearch {
 
   /**
    * Get the index of every word that equals the term or contains it.
-   * `findProximity` stops at the first term with no index; `getPositions` keeps every term.
+   * `findProximity` stops at the first term with no index. `getPositions` keeps every term.
    */
   private scanTerm(words: string[], term: string): number[] {
     const termPositions: number[] = [];
