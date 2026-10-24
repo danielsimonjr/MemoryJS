@@ -472,5 +472,37 @@ describe('GraphStorage mmap wiring (task 84)', () => {
         warnSpy.mockRestore();
       }
     });
+
+    it('fills a missing or empty createdAt and lastModified of entities and relations on both paths', async () => {
+      // The frozen clock is NOW. lastModified copies createdAt when only createdAt is present.
+      const NOW = '2026-06-01T00:00:00.000Z';
+      const entity = (name: string, extra: object) =>
+        JSON.stringify({ type: 'entity', name, entityType: 'person', observations: [], ...extra });
+      const relation = (relationType: string, extra: object) =>
+        JSON.stringify({ type: 'relation', from: 'a', to: 'b', relationType, ...extra });
+      const content = [
+        entity('e-created-only', { createdAt: '2026-05-11T00:00:00Z' }),
+        entity('e-empty-strings', { createdAt: '', lastModified: '' }),
+        entity('e-last-only', { lastModified: '2026-05-12T00:00:00Z' }),
+        relation('r-none', {}),
+        relation('r-created-only', { createdAt: '2026-05-11T00:00:00Z' }),
+        relation('r-last-only', { lastModified: '2026-05-12T00:00:00Z' }),
+        relation('r-empty-strings', { createdAt: '', lastModified: '' }),
+      ].join('\n') + '\n';
+      for (const useMmap of [false, true]) {
+        const { graph } = await loadWith(useMmap, content);
+        expect(graph.entities.map((e) => [e.name, e.createdAt, e.lastModified])).toEqual([
+          ['e-created-only', '2026-05-11T00:00:00Z', '2026-05-11T00:00:00Z'],
+          ['e-empty-strings', NOW, NOW],
+          ['e-last-only', NOW, '2026-05-12T00:00:00Z'],
+        ]);
+        expect(graph.relations.map((r) => [r.relationType, r.createdAt, r.lastModified])).toEqual([
+          ['r-none', NOW, NOW],
+          ['r-created-only', '2026-05-11T00:00:00Z', '2026-05-11T00:00:00Z'],
+          ['r-last-only', NOW, '2026-05-12T00:00:00Z'],
+          ['r-empty-strings', NOW, NOW],
+        ]);
+      }
+    });
   });
 });
