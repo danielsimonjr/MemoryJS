@@ -3756,6 +3756,7 @@ Reachable from a root: **303** of 303 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `../types/index.js` | `TagAlias` | Import (type-only) |
+| `../utils/jsonlMapFile.js` | `parseJsonlRecords` | Import |
 
 **Exports:**
 - Classes: `TagManager`
@@ -4404,6 +4405,7 @@ Reachable from a root: **303** of 303 files. Dormant: **0** (0 orphaned, 0 test-
 | `../types/index.js` | `SavedSearch, KnowledgeGraph` | Import (type-only) |
 | `./BasicSearch.js` | `BasicSearch` | Import (type-only) |
 | `../utils/index.js` | `sanitizeObject` | Import |
+| `../utils/jsonlMapFile.js` | `parseJsonlRecords` | Import |
 
 **Exports:**
 - Classes: `SavedSearchManager`
@@ -5231,7 +5233,7 @@ Reachable from a root: **303** of 303 files. Dormant: **0** (0 orphaned, 0 test-
 
 **Exports:**
 - Interfaces: `JsonlMapFormat`, `JsonlMapParseOptions`
-- Functions: `parseJsonlMapLines`, `serializeJsonlMap`
+- Functions: `parseJsonlMapLines`, `serializeJsonlMap`, `parseJsonlRecords`
 
 ---
 
@@ -5770,12 +5772,12 @@ graph TD
 |----------|-------|
 | Total TypeScript Files | 303 |
 | Total Modules | 12 |
-| Total Lines of Code | 103909 |
-| Total Exports | 2069 |
+| Total Lines of Code | 103926 |
+| Total Exports | 2070 |
 | Total Re-exports | 1340 |
 | Total Classes | 236 |
 | Total Interfaces | 626 |
-| Total Functions | 355 |
+| Total Functions | 356 |
 | Total Type Guards | 31 |
 | Total Enums | 4 |
 | Type-only Imports | 485 |

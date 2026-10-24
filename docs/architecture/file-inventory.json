@@ -1,12 +1,12 @@
 {
   "generated": "2026-10-24",
-  "totalFiles": 719,
+  "totalFiles": 722,
   "byDisposition": {
     "reachable": 299,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 400,
+    "test": 403,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -15,7 +15,7 @@
   "byArea": {
     "benchmarks": 4,
     "src": 303,
-    "tests": 400,
+    "tests": 403,
     "tools": 10,
     "config": 2
   },
@@ -1376,7 +1376,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 260
+      "loc": 253
     },
     {
       "file": "src/index.ts",
@@ -1642,7 +1642,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 225
+      "loc": 218
     },
     {
       "file": "src/search/SearchFilterChain.ts",
@@ -2048,7 +2048,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 82
+      "loc": 113
     },
     {
       "file": "src/utils/logger.ts",
@@ -4074,11 +4074,25 @@
       "loc": 74
     },
     {
+      "file": "tests/unit/features/StreamingExporter-frame-pins.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 184
+    },
+    {
       "file": "tests/unit/features/StreamingExporter.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
       "loc": 363
+    },
+    {
+      "file": "tests/unit/features/TagManager-loader-pins.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 253
     },
     {
       "file": "tests/unit/features/TagManager.test.ts",
@@ -4401,6 +4415,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 476
+    },
+    {
+      "file": "tests/unit/search/SavedSearchManager-loader-pins.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 271
     },
     {
       "file": "tests/unit/search/SavedSearchManager.test.ts",
@@ -4848,7 +4869,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 122
+      "loc": 162
     },
     {
       "file": "tests/unit/utils/logger.test.ts",
