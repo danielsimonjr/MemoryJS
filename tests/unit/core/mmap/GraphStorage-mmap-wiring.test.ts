@@ -661,5 +661,62 @@ describe('GraphStorage mmap wiring (task 84)', () => {
         warnSpy.mockRestore();
       }
     });
+
+    it('counts every malformed line and warns once per load on both paths', async () => {
+      const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+      const content = ['bad one', ALICE_LINE, '{"type":"entity","name":"torn', BOB_LINE, '}'].join('\n') + '\n';
+      try {
+        for (const useMmap of [false, true]) {
+          warnSpy.mockClear();
+          const result = await loadWith(useMmap, content);
+          expect(result.graph.entities.map((e) => e.name)).toEqual(['alice', 'bob']);
+          expect(warnSpy.mock.calls).toEqual([[`[GraphStorage] ${filePath}: skipped 3 malformed line(s)`]]);
+        }
+      } finally {
+        warnSpy.mockRestore();
+      }
+    });
+
+    it('closes the mmap handle after the warning when a line is skipped', async () => {
+      process.env.MEMORY_USE_MMAP = 'true';
+      process.env.MEMORY_MMAP_THRESHOLD_BYTES = '0';
+      const order: string[] = [];
+      const realClose = FsReadMmapBackend.prototype.close;
+      const closeSpy = vi.spyOn(FsReadMmapBackend.prototype, 'close').mockImplementation(function (
+        this: FsReadMmapBackend,
+        ...args: Parameters<FsReadMmapBackend['close']>
+      ) {
+        order.push('close');
+        return realClose.apply(this, args);
+      });
+      const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {
+        order.push('warn');
+      });
+      try {
+        await fs.writeFile(filePath, `not-json\n${ALICE_LINE}\n`, 'utf-8');
+        const storage = new GraphStorage(filePath);
+        storage.events.on('graph:loaded', () => order.push('graph:loaded'));
+        await storage.loadGraph();
+        expect(order).toEqual(['graph:loaded', 'warn', 'close']);
+        expect(closeSpy).toHaveBeenCalledTimes(1);
+      } finally {
+        warnSpy.mockRestore();
+        closeSpy.mockRestore();
+      }
+    });
+
+    it('counts a line with a leading no-break space or BOM as malformed on the readFile path only', async () => {
+      const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+      const content = [ALICE_LINE, '\u00a0' + BOB_LINE, '\ufeff' + BOB_LINE].join('\n') + '\n';
+      try {
+        await loadWith(false, content);
+        expect(warnSpy.mock.calls).toEqual([[`[GraphStorage] ${filePath}: skipped 2 malformed line(s)`]]);
+        warnSpy.mockClear();
+        await loadWith(true, content);
+        expect(warnSpy).not.toHaveBeenCalled();
+      } finally {
+        warnSpy.mockRestore();
+      }
+    });
   });
 });
