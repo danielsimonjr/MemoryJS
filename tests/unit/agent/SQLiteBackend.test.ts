@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { SQLiteBackend } from '../../../src/agent/SQLiteBackend.js';
 import { ManagerContext } from '../../../src/core/ManagerContext.js';
 import { runMemoryBackendContract } from './IMemoryBackend.contract.test.js';
-import { rmSync, existsSync } from 'node:fs';
+import { removeSqliteFiles } from '../../test-utils/sqlite-files.js';
 import path from 'node:path';
 import os from 'node:os';
 
@@ -13,27 +13,29 @@ import os from 'node:os';
  * backend's name is "SQLiteBackend" but its durable substrate here is
  * JSONL — the contract is what matters. */
 let activeFiles: string[] = [];
+/** Contexts that afterEach closes before it removes the files. */
+let activeContexts: ManagerContext[] = [];
+function track(ctx: ManagerContext): ManagerContext {
+  activeContexts.push(ctx);
+  return ctx;
+}
 function makeBackend(): SQLiteBackend {
   const file = path.join(
     os.tmpdir(),
     `sqlite-backend-${Date.now()}-${Math.random()}.jsonl`,
   );
   activeFiles.push(file);
-  const ctx = new ManagerContext(file);
+  const ctx = track(new ManagerContext(file));
   return new SQLiteBackend(ctx.memoryEngine, ctx.decayEngine);
 }
 
 afterEach(() => {
-  for (const f of activeFiles) {
-    if (existsSync(f)) {
-      try {
-        rmSync(f, { force: true });
-      } catch {
-        /* file may be locked transiently on Windows */
-      }
-    }
-  }
+  // Windows does not delete a SQLite file that a connection holds open.
+  for (const ctx of activeContexts) ctx.close();
+  activeContexts = [];
+  const files = activeFiles;
   activeFiles = [];
+  for (const f of files) removeSqliteFiles(f);
 });
 
 // Run the parameterized contract suite.
@@ -75,7 +77,7 @@ describe('SQLiteBackend specifics', () => {
   it('preserveCallerIds=true throws (not yet implemented)', () => {
     const file = path.join(os.tmpdir(), `sqlite-backend-throw-${Date.now()}.jsonl`);
     activeFiles.push(file);
-    const ctx = new ManagerContext(file);
+    const ctx = track(new ManagerContext(file));
     const backend = new SQLiteBackend(ctx.memoryEngine, ctx.decayEngine, {
       preserveCallerIds: true,
     });
@@ -101,7 +103,7 @@ describe('SQLiteBackend specifics', () => {
     process.env.MEMORY_STORAGE_TYPE = 'sqlite';
     let backend: SQLiteBackend | undefined;
     try {
-      const ctx = new ManagerContext(file);
+      const ctx = track(new ManagerContext(file));
       backend = new SQLiteBackend(ctx.memoryEngine, ctx.decayEngine);
     } catch (err) {
       // better-sqlite3 native binding mismatch; skip rather than fail.
@@ -133,7 +135,7 @@ describe('SQLiteBackend specifics', () => {
   it('dedupOnAdd=false throws (bypass path not yet implemented)', () => {
     const file = path.join(os.tmpdir(), `sqlite-backend-bypass-${Date.now()}.jsonl`);
     activeFiles.push(file);
-    const ctx = new ManagerContext(file);
+    const ctx = track(new ManagerContext(file));
     const backend = new SQLiteBackend(ctx.memoryEngine, ctx.decayEngine, {
       dedupOnAdd: false,
     });
