@@ -376,9 +376,12 @@ bun run test
 
 ### Local Provider
 
-Uses locally computed embeddings (lower quality, no API needed).
+Computes embeddings on the local computer with the `Xenova/all-MiniLM-L6-v2` model through Transformers.js. No API key is necessary. The first run downloads the model (23 MB).
+
+The package `@huggingface/transformers` is an optional peer dependency. `bun install` does not install it. Install it without a change to `package.json`:
 
 ```bash
+bun add --no-save @huggingface/transformers
 export MEMORY_EMBEDDING_PROVIDER=local
 bun run test
 ```

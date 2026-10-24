@@ -1439,7 +1439,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 912
+      "loc": 928
     },
     {
       "file": "src/search/EvidencePathBuilder.ts",
@@ -1943,7 +1943,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 339
+      "loc": 344
     },
     {
       "file": "src/utils/Diagnostics.ts",
@@ -4197,7 +4197,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 1047
+      "loc": 1094
     },
     {
       "file": "tests/unit/search/EvidencePathBuilder.test.ts",

@@ -180,6 +180,17 @@ full-featured entry point.
 - Node.js >= 22.12.0 (production runtime of the published package)
 - TypeScript >= 7.0 (for development)
 
+### Optional peer dependencies
+
+| Package | Install it to use |
+|---|---|
+| `@huggingface/transformers` ^4.3.1 | The `local` embedding provider, which is the default `MEMORY_EMBEDDING_PROVIDER`. It runs the `Xenova/all-MiniLM-L6-v2` model (8-bit weights) offline through Transformers.js. Without the package, the `local` provider is not ready and semantic search is not available. |
+| `pg` >= 8.0.0 | The PostgreSQL storage backend |
+
+```bash
+bun add @huggingface/transformers
+```
+
 ## Quick Start
 
 ### 1. Initialize storage
@@ -952,7 +963,7 @@ knobs) lives in [CLAUDE.md](CLAUDE.md#environment-variables).
 | `MEMORY_STORAGE_TYPE` | Storage backend: `jsonl` or `sqlite` | `jsonl` |
 | `MEMORY_FILE_PATH` | Override storage file path | (per `ManagerContext` ctor) |
 | `MEMORY_BACKEND` | Pluggable Memory-Engine backend: `sqlite` or `in-memory` | `sqlite` |
-| `MEMORY_EMBEDDING_PROVIDER` | Embedding provider: `openai`, `local`, or `none` | `local` |
+| `MEMORY_EMBEDDING_PROVIDER` | Embedding provider: `openai`, `local`, `llamacpp`, or `none`. `local` needs the optional peer dependency `@huggingface/transformers` | `local` |
 | `MEMORY_OPENAI_API_KEY` | OpenAI API key (required when provider is `openai`) | — |
 | `MEMORY_AUTO_INDEX_EMBEDDINGS` | Auto-build embedding index on entity create | `false` |
 | `MEMORY_AUTO_DECAY` | Enable background memory decay | `false` |

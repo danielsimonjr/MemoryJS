@@ -74,11 +74,19 @@ const ctx = new ManagerContext('./memory.db');
 
 | Variable | Values | Default | Description |
 |----------|--------|---------|-------------|
-| `EMBEDDING_PROVIDER` | `openai`, `local`, `none` | `none` | Embedding service provider |
-| `OPENAI_API_KEY` | API key string | - | OpenAI API key (required for openai provider) |
-| `OPENAI_EMBEDDING_MODEL` | Model name | `text-embedding-3-small` | OpenAI embedding model |
-| `EMBEDDING_DIMENSIONS` | Number | `1536` | Embedding vector dimensions |
-| `EMBEDDING_BATCH_SIZE` | Number | `100` | Batch size for embedding requests |
+| `MEMORY_EMBEDDING_PROVIDER` | `openai`, `local`, `llamacpp`, `none` | `local` | Embedding service provider |
+| `MEMORY_OPENAI_API_KEY` | API key string | - | OpenAI API key (required for the `openai` provider) |
+| `MEMORY_EMBEDDING_MODEL` | Model name | provider default | Model override for the embedding service |
+| `MEMORY_EMBEDDING_BASE_URL` | URL | service default | Base URL of the llama-server (`llamacpp` provider) |
+| `MEMORY_LLAMACPP_ALLOWED_HOSTS` | Comma-separated hosts | - | Non-loopback hosts that the `llamacpp` provider can call |
+| `MEMORY_LLAMACPP_TIMEOUT_MS` | Number > 0 | service default | Request timeout of the `llamacpp` provider |
+| `MEMORY_AUTO_INDEX_EMBEDDINGS` | `true`, `false` | `false` | Embed entities when they are created |
+
+The `local` provider runs the `Xenova/all-MiniLM-L6-v2` model (384 dimensions, 8-bit weights) through Transformers.js. It needs the optional peer dependency `@huggingface/transformers`:
+
+```bash
+bun add @huggingface/transformers
+```
 
 ### Example .env File
 
@@ -87,14 +95,9 @@ const ctx = new ManagerContext('./memory.db');
 MEMORY_STORAGE_TYPE=sqlite
 
 # Embeddings
-EMBEDDING_PROVIDER=openai
-OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxxxxxx
-OPENAI_EMBEDDING_MODEL=text-embedding-3-small
-EMBEDDING_DIMENSIONS=1536
-EMBEDDING_BATCH_SIZE=100
-
-# Optional: Custom paths
-MEMORY_BASE_DIR=/var/data/memory
+MEMORY_EMBEDDING_PROVIDER=openai
+MEMORY_OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxxxxxx
+MEMORY_EMBEDDING_MODEL=text-embedding-3-small
 ```
 
 ---
@@ -914,7 +917,7 @@ opt-in / require explicit configuration.
 
 | Variable | Values | Default |
 |----------|--------|---------|
-| `MEMORY_EMBEDDING_PROVIDER` | `openai`, `local`, `none` | `local` |
+| `MEMORY_EMBEDDING_PROVIDER` | `openai`, `local`, `llamacpp`, `none` | `local` |
 | `MEMORY_OPENAI_API_KEY` | API key string | — |
 | `MEMORY_EMBEDDING_MODEL` | model name override | — |
 | `MEMORY_AUTO_INDEX_EMBEDDINGS` | `true`, `false` | `false` |
