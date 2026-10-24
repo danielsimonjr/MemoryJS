@@ -13,6 +13,7 @@ import { SQLiteStorage } from '../../../src/core/SQLiteStorage.js';
 import { BM25Search } from '../../../src/search/BM25Search.js';
 import { RankedSearch } from '../../../src/search/RankedSearch.js';
 import { getFtsCandidateNames } from '../../../src/search/ftsCandidates.js';
+import type { IGraphStorage } from '../../../src/types/index.js';
 
 describe('FTS candidate lookup pins', () => {
   let storage: SQLiteStorage;
@@ -141,14 +142,129 @@ describe('FTS candidate lookup pins', () => {
   it('the FTS lookup on a stale posting returns no candidates when it ranks', async () => {
     makeStalePosting();
 
-    expect(await getFtsCandidateNames(storage, 'zephyr', 3, true)).toStrictEqual(new Set());
+    expect(await getFtsCandidateNames.call({ storage }, 'zephyr', 3, true)).toStrictEqual(new Set());
   });
 
   it('the FTS lookup on a stale posting returns the live match when it does not rank', async () => {
     makeStalePosting();
 
-    expect(await getFtsCandidateNames(storage, 'zephyr', 3, false)).toStrictEqual(
+    expect(await getFtsCandidateNames.call({ storage }, 'zephyr', 3, false)).toStrictEqual(
       new Set(['Haystack']),
     );
+  });
+});
+
+describe('FTS lookup error text, read order and read counts', () => {
+  const entities = [
+    { name: 'A', entityType: 'note', observations: ['zephyr alpha'] },
+    { name: 'B', entityType: 'note', observations: ['zephyr beta'] },
+  ];
+  const graph = { entities, relations: [] };
+  /** A structural test double: only the members that the two searches read. */
+  const fakeStorage = (overrides: Record<string, unknown>): IGraphStorage =>
+    ({
+      loadGraph: async () => graph,
+      ensureLoaded: async () => {},
+      cachedGraph: graph,
+      ...overrides,
+    }) as unknown as IGraphStorage;
+  /** Count the reads of the private `storage` field of a search object. */
+  const countStorageReads = (search: object, storage: IGraphStorage): (() => number) => {
+    let reads = 0;
+    Object.defineProperty(search, 'storage', {
+      get() {
+        reads++;
+        return storage;
+      },
+    });
+    return () => reads;
+  };
+
+  it('BM25Search names the call expression when fullTextSearch is not callable', async () => {
+    const search = new BM25Search(fakeStorage({ fullTextSearch: 5 }));
+
+    await expect(search.search('zephyr')).rejects.toThrow(
+      new TypeError('this.storage.fullTextSearch is not a function'),
+    );
+  });
+
+  it('RankedSearch names the call expression when fullTextSearch is not callable', async () => {
+    const search = new RankedSearch(fakeStorage({ fullTextSearch: 5 }));
+
+    await expect(search.searchNodesRanked('zephyr')).rejects.toThrow(
+      new TypeError('this.storage.fullTextSearch is not a function'),
+    );
+  });
+
+  it('RankedSearch names the call expression when ensureLoaded is missing', async () => {
+    const search = new RankedSearch(
+      fakeStorage({ ensureLoaded: undefined, fullTextSearch: async () => [] }),
+    );
+
+    await expect(search.searchNodesRanked('zephyr')).rejects.toThrow(
+      new TypeError('this.storage.ensureLoaded is not a function'),
+    );
+  });
+
+  it('RankedSearch reads its storage field four times when the lookup finds nothing', async () => {
+    const storage = fakeStorage({ fullTextSearch: async () => [] });
+    const search = new RankedSearch(storage);
+    const reads = countStorageReads(search, storage);
+
+    expect(await search.searchNodesRanked('zephyr')).toStrictEqual([]);
+    expect(reads()).toBe(4);
+  });
+
+  it('BM25Search reads its storage field five times when the lookup finds nothing', async () => {
+    const storage = fakeStorage({ fullTextSearch: async () => [] });
+    const search = new BM25Search(storage);
+    await search.buildIndex();
+    const reads = countStorageReads(search, storage);
+
+    expect(await search.search('zephyr')).toStrictEqual([]);
+    expect(reads()).toBe(5);
+  });
+
+  it('BM25Search reads the storage members and the limit in the golden order', async () => {
+    const log: string[] = [];
+    const limit = {
+      valueOf() {
+        log.push('limit.valueOf');
+        return 2;
+      },
+    };
+    const storage = {
+      loadGraph: async () => graph,
+      get ensureLoaded() {
+        log.push('read ensureLoaded');
+        return async () => {};
+      },
+      get cachedGraph() {
+        log.push('read cachedGraph');
+        return { entities: { length: limit }, relations: [] };
+      },
+      get fullTextSearch() {
+        log.push('read fullTextSearch');
+        return async (query: string, options: unknown) => {
+          log.push(`fullTextSearch ${query} ${JSON.stringify(options)}`);
+          return [];
+        };
+      },
+    } as unknown as IGraphStorage;
+    const search = new BM25Search(storage);
+    await search.buildIndex();
+    log.length = 0;
+
+    await search.search('zephyr');
+
+    expect(log).toStrictEqual([
+      'read ensureLoaded',
+      'read cachedGraph',
+      'read fullTextSearch',
+      'read ensureLoaded',
+      'read fullTextSearch',
+      'limit.valueOf',
+      'fullTextSearch zephyr {"limit":2,"rank":false}',
+    ]);
   });
 });

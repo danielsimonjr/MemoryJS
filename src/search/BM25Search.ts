@@ -12,7 +12,7 @@
 import type { Entity, IGraphStorage, SearchResult } from '../types/index.js';
 import { SEARCH_LIMITS } from '../utils/constants.js';
 import { borrowGraphView } from '../utils/graphCopy.js';
-import { getFtsCandidateNames } from './ftsCandidates.js';
+import { getFtsCandidateNames, type FtsOwner } from './ftsCandidates.js';
 
 /**
  * Common English stopwords to filter from queries and documents.
@@ -236,7 +236,13 @@ export class BM25Search {
     const corpusSize = this.storage.cachedGraph?.entities.length ?? this.index.totalDocs;
     // Storage-native FTS supplies the candidate names; the in-memory BM25 index still scores them.
     // Only the set of names is used, so the storage is asked for it unranked.
-    const candidateNames = await getFtsCandidateNames(this.storage, query, corpusSize, false);
+    // The lookup runs with this search as `this` and reads its `storage` field.
+    const candidateNames = await getFtsCandidateNames.call(
+      this as unknown as FtsOwner,
+      query,
+      corpusSize,
+      false,
+    );
     if (candidateNames?.size === 0) return [];
 
     const { k1, b } = this.config;

@@ -7,28 +7,43 @@
 import type { IGraphStorage } from '../types/index.js';
 
 /**
+ * An object that holds the graph storage in its `storage` field.
+ *
+ * A search class runs the lookup with itself as this object.
+ */
+export interface FtsOwner {
+  /** Graph storage that may expose `fullTextSearch`. */
+  readonly storage: IGraphStorage;
+}
+
+/**
  * Retrieve candidate entity names from the storage full-text index.
  *
- * A null result means the storage has no full-text capability. An empty Set
- * is a valid indexed no-match result.
+ * The function reads `this.storage` at each step, so an error names `this.storage`.
+ * It returns null when the storage has no `fullTextSearch` method.
+ * It returns an empty Set when the index has no match.
+ * It waits until the storage has loaded.
+ * The limit is the larger of `corpusSize` and one.
+ * When `rank` is false, the options carry `rank: false` and the storage returns names only.
  *
- * @param storage - Graph storage that may expose `fullTextSearch`
  * @param query - Search query text
- * @param corpusSize - Number of entities in the corpus. The limit is this value, at least 1.
- * @param rank - True lets the storage rank matches. False asks for names only.
+ * @param corpusSize - Number of entities in the corpus
+ * @param rank - True lets the storage rank the matches. False asks for names only.
  * @returns Set of candidate entity names, or null when full-text search is unavailable
  */
 export async function getFtsCandidateNames(
-  storage: IGraphStorage,
+  this: FtsOwner,
   query: string,
   corpusSize: number,
   rank: boolean,
 ): Promise<Set<string> | null> {
-  if (!storage.fullTextSearch) return null;
-  await storage.ensureLoaded();
+  if (!this.storage.fullTextSearch) return null;
+  await this.storage.ensureLoaded();
   // Retrieve every FTS match so tag/importance post-filtering cannot
   // hide a lower-ranked but eligible candidate.
-  const limit = Math.max(corpusSize, 1);
-  const matches = await storage.fullTextSearch(query, rank ? { limit } : { limit, rank: false });
+  const matches = await this.storage.fullTextSearch(query, {
+    limit: Math.max(corpusSize, 1),
+    ...(rank ? {} : { rank: false }),
+  });
   return new Set(matches.map(match => match.name));
 }
