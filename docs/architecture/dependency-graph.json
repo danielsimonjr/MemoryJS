@@ -3,9 +3,9 @@
     "name": "@danielsimonjr/memoryjs",
     "version": "4.3.0",
     "lastUpdated": "2026-10-24",
-    "totalFiles": 301,
+    "totalFiles": 303,
     "totalModules": 12,
-    "totalExports": 2064
+    "totalExports": 2069
   },
   "entryPoints": [
     {
@@ -10151,6 +10151,12 @@
               "jaccard",
               "tokenizeToSet"
             ]
+          },
+          {
+            "file": "../utils/relationHelpers.js",
+            "imports": [
+              "walkParents"
+            ]
           }
         ],
         "exports": [
@@ -13298,6 +13304,13 @@
             "imports": [
               "borrowGraphView"
             ]
+          },
+          {
+            "file": "./ftsCandidates.js",
+            "imports": [
+              "getFtsCandidateNames",
+              "FtsOwner"
+            ]
           }
         ],
         "exports": [
@@ -13551,6 +13564,12 @@
               "EvidencePathRelation"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../utils/relationHelpers.js",
+            "imports": [
+              "walkParents"
+            ]
           }
         ],
         "exports": [
@@ -13568,6 +13587,29 @@
         "constants": [
           "DEFAULT_EVIDENCE_MAX_DEPTH",
           "DEFAULT_EVIDENCE_MAX_PATHS_PER_RESULT"
+        ]
+      },
+      "src/search/ftsCandidates.ts": {
+        "description": "Full-text candidate lookup shared by the BM25 and ranked search paths.",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "IGraphStorage"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "getFtsCandidateNames"
+        ],
+        "interfaces": [
+          "FtsOwner"
+        ],
+        "functions": [
+          "getFtsCandidateNames"
         ]
       },
       "src/search/FuzzySearch.ts": {
@@ -13752,6 +13794,38 @@
           "DEFAULT_MAX_PAGERANK_ENTITIES"
         ]
       },
+      "src/search/hybridLayers.ts": {
+        "description": "Score mapping for the semantic, lexical and symbolic search layers.",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "SearchResult",
+              "SemanticSearchResult"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./SymbolicSearch.js",
+            "imports": [
+              "SymbolicResult"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "addSimilarityScores",
+          "addNormalizedLexicalScores",
+          "addSymbolicScores"
+        ],
+        "functions": [
+          "addSimilarityScores",
+          "addNormalizedLexicalScores",
+          "addSymbolicScores"
+        ]
+      },
       "src/search/HybridScorer.ts": {
         "description": "Hybrid Scorer - combines search scores with min-max normalization and configurable weights.",
         "externalDependencies": [],
@@ -13831,6 +13905,14 @@
             "file": "./SymbolicSearch.js",
             "imports": [
               "SymbolicSearch"
+            ]
+          },
+          {
+            "file": "./hybridLayers.js",
+            "imports": [
+              "addNormalizedLexicalScores",
+              "addSimilarityScores",
+              "addSymbolicScores"
             ]
           },
           {
@@ -14833,6 +14915,14 @@
             ]
           },
           {
+            "file": "./hybridLayers.js",
+            "imports": [
+              "addNormalizedLexicalScores",
+              "addSimilarityScores",
+              "addSymbolicScores"
+            ]
+          },
+          {
             "file": "../utils/constants.js",
             "imports": [
               "SEMANTIC_SEARCH_LIMITS"
@@ -15184,6 +15274,13 @@
             ]
           },
           {
+            "file": "./ftsCandidates.js",
+            "imports": [
+              "getFtsCandidateNames",
+              "FtsOwner"
+            ]
+          },
+          {
             "file": "./SearchFilterChain.js",
             "imports": [
               "SearchFilterChain",
@@ -15518,6 +15615,7 @@
               "IVectorStore",
               "SemanticSearchResult",
               "SemanticIndexOptions",
+              "VectorSearchResult",
               "ReadonlyKnowledgeGraph",
               "EmbeddingMode"
             ],
@@ -19362,6 +19460,7 @@
           "isBidirectionalRelation",
           "hasConfidence",
           "isCurrentlyValid",
+          "walkParents",
           "RelationBuilder"
         ],
         "classes": [
@@ -19372,7 +19471,8 @@
           "isTemporalRelation",
           "isBidirectionalRelation",
           "hasConfidence",
-          "isCurrentlyValid"
+          "isCurrentlyValid",
+          "walkParents"
         ]
       },
       "src/utils/relationValidation.ts": {
@@ -20246,8 +20346,10 @@
           "src/search/EmbeddingCache.ts",
           "src/search/EmbeddingService.ts",
           "src/search/EvidencePathBuilder.ts",
+          "src/search/ftsCandidates.ts",
           "src/search/FuzzySearch.ts",
           "src/search/GraphRankPrior.ts",
+          "src/search/hybridLayers.ts",
           "src/search/HybridScorer.ts",
           "src/search/HybridSearchManager.ts",
           "src/search/IncrementalIndexer.ts",
@@ -20383,28 +20485,28 @@
       "src/sqlite.ts",
       "src/workers/levenshteinWorker.ts"
     ],
-    "reachableCount": 301,
+    "reachableCount": 303,
     "dormantCount": 0,
     "orphaned": [],
     "testOnly": []
   },
   "statistics": {
-    "totalTypeScriptFiles": 301,
+    "totalTypeScriptFiles": 303,
     "totalModules": 12,
-    "totalLinesOfCode": 103816,
-    "totalExports": 2064,
+    "totalLinesOfCode": 103909,
+    "totalExports": 2069,
     "totalClasses": 236,
-    "totalInterfaces": 625,
-    "totalFunctions": 350,
+    "totalInterfaces": 626,
+    "totalFunctions": 355,
     "totalTypeGuards": 31,
     "totalEnums": 4,
     "totalConstants": 123,
     "totalReExports": 1340,
-    "totalTypeOnlyImports": 482,
+    "totalTypeOnlyImports": 485,
     "runtimeCircularDeps": 0,
     "typeOnlyCircularDeps": 8,
     "entryRoots": 4,
-    "reachableFiles": 301,
+    "reachableFiles": 303,
     "dormantFiles": 0,
     "orphanedFiles": 0,
     "testOnlyFiles": 0,
