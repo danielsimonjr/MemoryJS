@@ -3,8 +3,9 @@
  *
  * Pins how the alias loader reads its JSONL sidecar: a missing file, the
  * cache, malformed lines, blank lines, CRLF line ends, a BOM, non-object
- * values, an empty file and a non-ENOENT read error. Each expected value is
- * the output of the loader before the shared JSONL reader existed.
+ * values, an empty file, a non-ENOENT read error, the JSON.parse calls and the
+ * cache contents. Each expected value is the output of the loader before the
+ * shared JSONL parser existed.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -160,7 +161,7 @@ describe('TagManager alias loader (pins)', () => {
     expect(JSON.stringify(await manager.listTagAliases())).toBe('[{"alias":"js","canonical":"javascript"}]');
   });
 
-  it('keeps duplicate lines and every line of a long file', async () => {
+  it('keeps lines that repeat a key and every line of a long file', async () => {
     const rows: string[] = [];
     for (let i = 0; i < 3000; i++) {
       rows.push(`{"alias":"k${i % 1500}","n":${i}}`);

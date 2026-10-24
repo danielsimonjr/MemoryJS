@@ -3,9 +3,9 @@
  *
  * Pins how the saved-search loader reads its JSONL sidecar: a missing file,
  * the cache, the name index, malformed lines, blank lines, CRLF line ends, a
- * BOM, non-object values, a null line, an empty file and a non-ENOENT read
- * error. Each expected value is the output of the loader before the shared
- * JSONL reader existed.
+ * BOM, non-object values, a null line, an empty file, a non-ENOENT read error
+ * and the JSON.parse calls. Each expected value is the output of the loader
+ * before the shared JSONL parser existed.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -176,7 +176,7 @@ describe('SavedSearchManager loader (pins)', () => {
     expect(JSON.stringify(await manager.listSavedSearches())).toBe('[{"name":"urgent","query":"bug"}]');
   });
 
-  it('keeps duplicate lines and every line of a long file', async () => {
+  it('keeps lines that repeat a key and every line of a long file', async () => {
     const rows: string[] = [];
     for (let i = 0; i < 3000; i++) {
       rows.push(`{"name":"k${i % 1500}","n":${i}}`);
