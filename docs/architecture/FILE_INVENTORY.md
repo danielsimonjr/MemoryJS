@@ -209,7 +209,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/core/PostgreSQLStorage.ts` | src | reachable | 636 |
 | `src/core/RefIndex.ts` | src | reachable | 372 |
 | `src/core/RelationManager.ts` | src | reachable | 491 |
-| `src/core/segments/FileSegmentStorage.ts` | src | reachable | 661 |
+| `src/core/segments/FileSegmentStorage.ts` | src | reachable | 685 |
 | `src/core/segments/ISegmentStorage.ts` | src | reachable | 279 |
 | `src/core/sqlite-register.ts` | src | reachable | 31 |
 | `src/core/SQLiteStorage.ts` | src | reachable | 2578 |
@@ -585,7 +585,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/segments/FileSegmentStorage.test.ts` | tests | test | 877 |
 | `tests/unit/core/segments/GraphStorage-segments.test.ts` | tests | test | 222 |
 | `tests/unit/core/segments/ISegmentStorage.test.ts` | tests | test | 385 |
-| `tests/unit/core/segments/segments-review-fixes.test.ts` | tests | test | 442 |
+| `tests/unit/core/segments/segments-review-fixes.test.ts` | tests | test | 467 |
 | `tests/unit/core/sqlite-append-replace.test.ts` | tests | test | 259 |
 | `tests/unit/core/sqlite-content-hash-migration.test.ts` | tests | test | 57 |
 | `tests/unit/core/sqlite-driver-resolver.test.ts` | tests | test | 72 |
