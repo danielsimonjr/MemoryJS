@@ -133,6 +133,22 @@ describe('upsertRelationInCache', () => {
     expect(upsertRelationInCache(state, live)).toBe(live);
     expect(cache.relations).toEqual([live]);
   });
+
+  it('finds the live relation by its exact key and keeps keys apart that differ only in letter case', () => {
+    const { state, cache } = makeState(false);
+    const upper: Relation = { from: 'A', to: 'B', relationType: 'T', weight: 1 };
+    const lower: Relation = { from: 'a', to: 'b', relationType: 't', weight: 2 };
+    upsertRelationInCache(state, upper);
+    upsertRelationInCache(state, lower);
+
+    expect(upsertRelationInCache(state, { from: 'A', to: 'B', relationType: 'T', weight: 3 })).toBe(upper);
+
+    expect(cache.relations).toEqual([
+      { from: 'A', to: 'B', relationType: 'T', weight: 3 },
+      { from: 'a', to: 'b', relationType: 't', weight: 2 },
+    ]);
+    expect(state.relationKeyMap.size).toBe(2);
+  });
 });
 
 describe('removeEntitiesFromIndexes', () => {
@@ -157,5 +173,33 @@ describe('removeEntitiesFromIndexes', () => {
     expect(calls).toEqual(['remove:e1']);
     expect(cache.entities).toEqual([e1, e2]);
     expect(cache.relations).toEqual([r]);
+  });
+
+  it('works through the given items in list order, entities first and then relations', () => {
+    const { state, calls } = makeState(true);
+    const entities: Entity[] = ['e1', 'e2', 'e3'].map(name => ({ name, entityType: 'A', observations: [] }));
+    const relations: Relation[] = [
+      { from: 'e1', to: 'e2', relationType: 't' },
+      { from: 'e2', to: 'e3', relationType: 't' },
+    ];
+    for (const entity of entities) upsertEntityInCache(state, entity);
+    for (const relation of relations) upsertRelationInCache(state, relation);
+    calls.length = 0;
+    const order: string[] = [];
+    const removeName = state.nameIndex.remove.bind(state.nameIndex);
+    state.nameIndex.remove = (name: string) => {
+      order.push(`name:${name}`);
+      removeName(name);
+    };
+    const removeRelation = state.relationIndex.remove.bind(state.relationIndex);
+    state.relationIndex.remove = (relation: Relation) => {
+      order.push(`relation:${relation.from}`);
+      removeRelation(relation);
+    };
+
+    removeEntitiesFromIndexes(state, entities, relations);
+
+    expect(order).toEqual(['name:e1', 'name:e2', 'name:e3', 'relation:e1', 'relation:e2']);
+    expect(calls).toEqual(['remove:e1', 'remove:e2', 'remove:e3']);
   });
 });

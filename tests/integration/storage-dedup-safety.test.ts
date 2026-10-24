@@ -190,6 +190,42 @@ const LIVE_RELATION_FIELD_READS: Record<string, number> = {
   'SQLite': 1,
 };
 
+/** Entity names in file or row order after a reload of the batch order pins, recorded before the R01 refactor. */
+const RELOAD_ORDER: Record<string, string[]> = {
+  'JSONL': ['ord-1', 'ord-dup', 'ord-2', 'ord-3'],
+  'SQLite': ['ord-1', 'ord-2', 'ord-dup', 'ord-3'],
+};
+
+/** Relations of the batch order pins in file or row order after a reload, recorded before the R01 refactor. */
+const RELOAD_RELATION_ORDER: Record<string, string[]> = {
+  'JSONL': ['ord-1>ord-2:2', 'ord-2>ord-3:undefined', 'ord-3>ord-1:undefined'],
+  'SQLite': ['ord-2>ord-3:undefined', 'ord-1>ord-2:2', 'ord-3>ord-1:undefined'],
+};
+
+const DELETE_RELATIONS_UNSEGMENTED = [
+  'ent-02>ent-17:knows', 'ent-05>ent-18:knows', 'ent-06>ent-05:knows', 'ent-09>ent-06:knows', 'ent-17>ent-02:knows',
+  'ent-18>ent-09:knows', 'ent-02>ent-17:works_with', 'ent-05>ent-18:works_with', 'ent-06>ent-05:works_with',
+  'ent-09>ent-06:works_with',
+];
+
+/**
+ * Order of the calls that `deleteEntities(['ent-09', 'ent-02', 'ent-05'])` makes on the name index and
+ * on the relation index, one entry per variant, recorded before the R02 refactor. The order is the
+ * order of the cache, so it follows the segments in segment mode.
+ */
+const DELETE_INDEX_ORDER: Record<string, { names: string[]; relations: string[] }> = {
+  'JSONL': { names: ['ent-02', 'ent-05', 'ent-09'], relations: DELETE_RELATIONS_UNSEGMENTED },
+  'JSONL with 4 segments': {
+    names: ['ent-05', 'ent-09', 'ent-02'],
+    relations: [
+      'ent-18>ent-09:knows', 'ent-17>ent-02:knows', 'ent-05>ent-18:knows', 'ent-09>ent-06:knows', 'ent-05>ent-18:works_with',
+      'ent-09>ent-06:works_with', 'ent-02>ent-17:knows', 'ent-06>ent-05:knows', 'ent-02>ent-17:works_with',
+      'ent-06>ent-05:works_with',
+    ],
+  },
+  'SQLite': { names: ['ent-02', 'ent-05', 'ent-09'], relations: DELETE_RELATIONS_UNSEGMENTED },
+};
+
 describe.each(VARIANTS)('storage safety net - $label', (variant) => {
   /** True when the variant stores the graph in segment files. */
   const segmented = variant.env.MEMORY_STORAGE_SEGMENT_COUNT !== undefined;
@@ -827,6 +863,98 @@ describe.each(VARIANTS)('storage safety net - $label', (variant) => {
 
       expect(getGraphGenerations(store)).toEqual(generations);
       expect(store.getPendingAppends()).toBe(pending);
+    });
+
+    /** The entities and relations of the batch order pins. One entity name and one relation key occur twice. */
+    const orderedEntities = (): Entity[] => [
+      entity('ord-1', 'first'),
+      { name: 'ord-dup', entityType: 'note', observations: ['dup first'] },
+      entity('ord-2', 'third'),
+      { name: 'ord-dup', entityType: 'note', observations: ['dup last'] },
+      entity('ord-3', 'fifth'),
+    ];
+    const orderedRelations = (): Relation[] => [
+      { from: 'ord-1', to: 'ord-2', relationType: 'ord', weight: 1 },
+      relation('ord-2', 'ord-3', 'ord'),
+      { from: 'ord-1', to: 'ord-2', relationType: 'ord', weight: 2 },
+      relation('ord-3', 'ord-1', 'ord'),
+    ];
+    const describeRelations = (relations: readonly Relation[]): string[] =>
+      relations.filter(r => r.relationType === 'ord').map(r => `${r.from}>${r.to}:${r.weight}`);
+
+    it('puts the items of a batch into the cache in list order, and the last of two equal keys wins', async () => {
+      await seed();
+      const store = openStore();
+      await store.ensureLoaded();
+
+      await store.appendEntities(orderedEntities());
+      await store.appendRelations(orderedRelations());
+
+      const graph = await store.loadGraph();
+      const mine = graph.entities.filter(e => e.name.startsWith('ord-'));
+      expect(mine.map(e => e.name)).toEqual(['ord-1', 'ord-dup', 'ord-2', 'ord-3']);
+      expect(mine.find(e => e.name === 'ord-dup')?.observations).toEqual(['dup last']);
+      expect(describeRelations(graph.relations)).toEqual(['ord-1>ord-2:2', 'ord-2>ord-3:undefined', 'ord-3>ord-1:undefined']);
+    });
+
+    it('writes the items of a batch in list order, so that a reload keeps the last of two equal keys', async () => {
+      await seed();
+      const store = openStore();
+      await store.ensureLoaded();
+      await store.appendEntities(orderedEntities());
+      await store.appendRelations(orderedRelations());
+
+      const graph = await openStore().loadGraph();
+
+      const mine = graph.entities.filter(e => e.name.startsWith('ord-'));
+      expect(mine.find(e => e.name === 'ord-dup')?.observations).toEqual(['dup last']);
+      expect(describeRelations(graph.relations).sort()).toEqual(['ord-1>ord-2:2', 'ord-2>ord-3:undefined', 'ord-3>ord-1:undefined']);
+      // A segment file holds the entities of its own segment only, so the reload order is the order of the segments.
+      if (!segmented) {
+        expect(mine.map(e => e.name)).toEqual(RELOAD_ORDER[variant.label]);
+        expect(describeRelations(graph.relations)).toEqual(RELOAD_RELATION_ORDER[variant.label]);
+      }
+    });
+
+    it('treats relation keys that differ only in letter case as different relations', async () => {
+      await seed();
+      const store = openStore();
+      await store.ensureLoaded();
+      await store.appendEntities(['Case-A', 'Case-B', 'case-a', 'case-b'].map(name => entity(name, 'case')));
+      const before = (await store.loadGraph()).relations.length;
+
+      await store.appendRelation({ from: 'Case-A', to: 'Case-B', relationType: 'T', weight: 1 });
+      await store.appendRelation({ from: 'Case-A', to: 'Case-B', relationType: 'T', weight: 2 });
+      await store.appendRelation({ from: 'case-a', to: 'case-b', relationType: 't', weight: 3 });
+
+      const describeAdded = (relations: readonly Relation[]): string[] =>
+        relations.filter(r => r.relationType === 'T' || r.relationType === 't').map(r => `${r.from}>${r.to}:${r.relationType}=${r.weight}`);
+      const added = (await store.loadGraph()).relations.slice(before);
+      expect(describeAdded(added)).toEqual(['Case-A>Case-B:T=2', 'case-a>case-b:t=3']);
+      expect(describeAdded((await openStore().loadGraph()).relations).sort()).toEqual(['Case-A>Case-B:T=2', 'case-a>case-b:t=3']);
+    });
+
+    it('removes the names and relations of a delete from the indexes in cache order', async () => {
+      await seed();
+      const store = openStore();
+      await store.ensureLoaded();
+      const removedNames: string[] = [];
+      const removedRelations: string[] = [];
+      const nameRemove = NameIndex.prototype.remove;
+      const relationRemove = RelationIndex.prototype.remove;
+      vi.spyOn(NameIndex.prototype, 'remove').mockImplementation(function (this: NameIndex, name: string) {
+        removedNames.push(name);
+        return nameRemove.call(this, name);
+      });
+      vi.spyOn(RelationIndex.prototype, 'remove').mockImplementation(function (this: RelationIndex, removed: Relation) {
+        removedRelations.push(`${removed.from}>${removed.to}:${removed.relationType}`);
+        return relationRemove.call(this, removed);
+      });
+
+      await store.deleteEntities(['ent-09', 'ent-02', 'ent-05']);
+
+      expect(removedNames).toEqual(DELETE_INDEX_ORDER[variant.label].names);
+      expect(removedRelations).toEqual(DELETE_INDEX_ORDER[variant.label].relations);
     });
 
     if (segmented) {
