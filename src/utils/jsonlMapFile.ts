@@ -3,8 +3,9 @@
  *
  * Converts between map entries and JSONL text. Each line holds one JSON
  * object. The key and the value sit in two fields whose names the caller
- * chooses. The codec does not touch files or locks. The caller reads and
- * writes the text.
+ * chooses. The function parseJsonlRecords parses plain record lines, which
+ * need no key field. The codec does not touch files or locks. The caller
+ * reads and writes the text.
  *
  * @module utils/jsonlMapFile
  */
@@ -78,4 +79,34 @@ export function serializeJsonlMap<V>(map: ReadonlyMap<string, V>, format: JsonlM
     lines.push(JSON.stringify({ [format.keyField]: key, [format.valueField]: value }));
   }
   return lines.length === 0 ? '' : lines.join('\n') + '\n';
+}
+
+/**
+ * Parses newline-delimited JSON text into an array of values.
+ *
+ * The function splits the text at each LF character. A CR before an LF stays
+ * in the line. JSON accepts a CR as white space. The function parses each line
+ * without trimming. A byte order mark at the start of a line makes that line
+ * malformed. A line that holds only white space is skipped. A malformed line
+ * is skipped. The function writes no log message for a malformed line. A line
+ * that parses to any JSON value, including null, is kept. The type parameter
+ * is a cast only. The function checks no shape. Input without a split method
+ * throws a TypeError.
+ *
+ * @param data - Newline-delimited JSON text to parse
+ * @returns Parsed values in line order
+ */
+export function parseJsonlRecords<T>(data: string): T[] {
+  const records: T[] = [];
+  // A call outside the loop head gives a non-string input the error "data.split is not a function".
+  const lines = data.split('\n');
+  for (const line of lines) {
+    if (line.trim() === '') continue;
+    try {
+      records.push(JSON.parse(line) as T);
+    } catch {
+      // Skip malformed JSON lines
+    }
+  }
+  return records;
 }

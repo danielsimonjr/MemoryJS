@@ -4,7 +4,7 @@ metadata:
   lastUpdated: "2026-10-24"
   totalFiles: 303
   totalModules: 12
-  totalExports: 2069
+  totalExports: 2070
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -8809,6 +8809,9 @@ modules:
           imports:
             - TagAlias
           typeOnly: true
+        - file: ../utils/jsonlMapFile.js
+          imports:
+            - parseJsonlRecords
       exports:
         - TagManager
       classes:
@@ -10401,6 +10404,9 @@ modules:
         - file: ../utils/index.js
           imports:
             - sanitizeObject
+        - file: ../utils/jsonlMapFile.js
+          imports:
+            - parseJsonlRecords
       exports:
         - SavedSearchManager
       classes:
@@ -13636,12 +13642,14 @@ modules:
       exports:
         - parseJsonlMapLines
         - serializeJsonlMap
+        - parseJsonlRecords
       interfaces:
         - JsonlMapFormat
         - JsonlMapParseOptions
       functions:
         - parseJsonlMapLines
         - serializeJsonlMap
+        - parseJsonlRecords
     src/utils/logger.ts:
       description: Simple logging utility for the Memory MCP Server
       externalDependencies: []
@@ -14552,11 +14560,11 @@ reachability:
 statistics:
   totalTypeScriptFiles: 303
   totalModules: 12
-  totalLinesOfCode: 103909
-  totalExports: 2069
+  totalLinesOfCode: 103926
+  totalExports: 2070
   totalClasses: 236
   totalInterfaces: 626
-  totalFunctions: 355
+  totalFunctions: 356
   totalTypeGuards: 31
   totalEnums: 4
   totalConstants: 123

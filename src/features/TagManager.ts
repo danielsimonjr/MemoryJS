@@ -8,6 +8,7 @@
 
 import * as fs from 'fs/promises';
 import type { TagAlias } from '../types/index.js';
+import { parseJsonlRecords } from '../utils/jsonlMapFile.js';
 
 /**
  * Manages tag alias system for synonym mapping.
@@ -35,15 +36,7 @@ export class TagManager {
     }
     try {
       const data = await fs.readFile(this.tagAliasesFilePath, 'utf-8');
-      const lines = data.split('\n').filter((line: string) => line.trim() !== '');
-      const aliases: TagAlias[] = [];
-      for (const line of lines) {
-        try {
-          aliases.push(JSON.parse(line) as TagAlias);
-        } catch {
-          // Skip malformed JSON lines
-        }
-      }
+      const aliases = parseJsonlRecords<TagAlias>(data);
       this.aliasCache = aliases;
       return aliases;
     } catch (error) {

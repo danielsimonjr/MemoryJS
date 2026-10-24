@@ -5,7 +5,8 @@
  */
 
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { parseJsonlMapLines, serializeJsonlMap } from '../../../src/utils/jsonlMapFile.js';
+import { parseJsonlMapLines, parseJsonlRecords, serializeJsonlMap } from '../../../src/utils/jsonlMapFile.js';
+import { logger } from '../../../src/utils/logger.js';
 
 const TIER = { keyField: 'k', valueField: 'v' };
 
@@ -117,5 +118,44 @@ describe('jsonlMapFile', () => {
       const parsed = parseJsonlMapLines<unknown>(serializeJsonlMap(original, TIER), options);
       expect(parsed).toEqual(original);
     });
+  });
+});
+
+describe('parseJsonlRecords', () => {
+  it('skips blank and whitespace-only lines and keeps line order', () => {
+    expect(JSON.stringify(parseJsonlRecords<unknown>('{"a":1}\n\n   \n{"b":2}\n'))).toBe('[{"a":1},{"b":2}]');
+  });
+
+  it('skips a malformed line without a warning', () => {
+    const warn = vi.spyOn(logger, 'warn');
+
+    expect(JSON.stringify(parseJsonlRecords<unknown>('{"a":1}\n{"b":\n{"c":3}\n'))).toBe('[{"a":1},{"c":3}]');
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it('keeps lines that parse to any JSON value as parsed', () => {
+    expect(JSON.stringify(parseJsonlRecords<unknown>('null\n5\n"text"\n[1,2]\n'))).toBe('[null,5,"text",[1,2]]');
+  });
+
+  it('accepts CRLF line ends and skips a line that starts with a byte order mark', () => {
+    expect(JSON.stringify(parseJsonlRecords<unknown>('﻿{"a":1}\r\n{"b":2}\r\n'))).toBe('[{"b":2}]');
+  });
+
+  it('returns an empty array for empty text', () => {
+    expect(parseJsonlRecords<unknown>('')).toEqual([]);
+  });
+
+  it('treats the type parameter as a cast only', () => {
+    expect(parseJsonlRecords<number>('{"a":1}\n')).toEqual([{ a: 1 }]);
+  });
+
+  it('throws the split TypeError of the old loaders for a non-string input', () => {
+    expect(() => parseJsonlRecords<unknown>(Buffer.from('{"a":1}\n') as unknown as string)).toThrow(
+      new TypeError('data.split is not a function'),
+    );
+    expect(() => parseJsonlRecords<unknown>(undefined as unknown as string)).toThrow(
+      new TypeError("Cannot read properties of undefined (reading 'split')"),
+    );
   });
 });

@@ -10,6 +10,7 @@ import * as fs from 'fs/promises';
 import type { SavedSearch, KnowledgeGraph } from '../types/index.js';
 import type { BasicSearch } from './BasicSearch.js';
 import { sanitizeObject } from '../utils/index.js';
+import { parseJsonlRecords } from '../utils/jsonlMapFile.js';
 
 /**
  * Manages saved search queries with usage tracking.
@@ -43,15 +44,7 @@ export class SavedSearchManager {
     }
     try {
       const data = await fs.readFile(this.savedSearchesFilePath, 'utf-8');
-      const lines = data.split('\n').filter((line: string) => line.trim() !== '');
-      const searches: SavedSearch[] = [];
-      for (const line of lines) {
-        try {
-          searches.push(JSON.parse(line) as SavedSearch);
-        } catch {
-          // Skip malformed JSON lines
-        }
-      }
+      const searches = parseJsonlRecords<SavedSearch>(data);
       this.setCache(searches);
       return searches;
     } catch (error) {

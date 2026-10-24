@@ -10,7 +10,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 719
+**Total files**: 722
 
 ## Disposition counts
 
@@ -20,12 +20,12 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 400 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 403 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 4 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 0 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **719** | |
+| **Total** | **722** | |
 
 ## Per-area counts
 
@@ -34,7 +34,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `benchmarks` | 4 |
 | `config` | 2 |
 | `src` | 303 |
-| `tests` | 400 |
+| `tests` | 403 |
 | `tools` | 10 |
 
 ## All files
@@ -234,7 +234,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/features/ObservationNormalizer.ts` | src | reachable | 266 |
 | `src/features/SemanticForget.ts` | src | reachable | 189 |
 | `src/features/StreamingExporter.ts` | src | reachable | 339 |
-| `src/features/TagManager.ts` | src | reachable | 260 |
+| `src/features/TagManager.ts` | src | reachable | 253 |
 | `src/index.ts` | src | build-entry | 36 |
 | `src/search/BasicSearch.ts` | src | reachable | 165 |
 | `src/search/BloomFilter.ts` | src | reachable | 130 |
@@ -272,7 +272,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/search/QueryPlanner.ts` | src | reachable | 124 |
 | `src/search/RankedSearch.ts` | src | reachable | 532 |
 | `src/search/ReflectionManager.ts` | src | reachable | 374 |
-| `src/search/SavedSearchManager.ts` | src | reachable | 225 |
+| `src/search/SavedSearchManager.ts` | src | reachable | 218 |
 | `src/search/SearchFilterChain.ts` | src | reachable | 282 |
 | `src/search/SearchManager.ts` | src | reachable | 555 |
 | `src/search/SearchSuggestions.ts` | src | reachable | 240 |
@@ -330,7 +330,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/utils/index.ts` | src | reachable | 391 |
 | `src/utils/indexes.ts` | src | reachable | 407 |
 | `src/utils/IndexHealthMonitor.ts` | src | reachable | 78 |
-| `src/utils/jsonlMapFile.ts` | src | reachable | 82 |
+| `src/utils/jsonlMapFile.ts` | src | reachable | 113 |
 | `src/utils/logger.ts` | src | reachable | 45 |
 | `src/utils/MemoryMonitor.ts` | src | reachable | 411 |
 | `src/utils/operationUtils.ts` | src | reachable | 224 |
@@ -620,7 +620,9 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/features/pii-redaction-export.test.ts` | tests | test | 224 |
 | `tests/unit/features/semantic-forget-exact.test.ts` | tests | test | 81 |
 | `tests/unit/features/semantic-forget-semantic.test.ts` | tests | test | 74 |
+| `tests/unit/features/StreamingExporter-frame-pins.test.ts` | tests | test | 184 |
 | `tests/unit/features/StreamingExporter.test.ts` | tests | test | 363 |
+| `tests/unit/features/TagManager-loader-pins.test.ts` | tests | test | 253 |
 | `tests/unit/features/TagManager.test.ts` | tests | test | 330 |
 | `tests/unit/lint-rules/lint-rules.test.ts` | tests | test | 99 |
 | `tests/unit/performance/baselineHelper.test.ts` | tests | test | 21 |
@@ -667,6 +669,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/search/RankedSearchGraphBoost.test.ts` | tests | test | 121 |
 | `tests/unit/search/RankedSearchProjectStarvation.test.ts` | tests | test | 70 |
 | `tests/unit/search/ReflectionManager.test.ts` | tests | test | 476 |
+| `tests/unit/search/SavedSearchManager-loader-pins.test.ts` | tests | test | 271 |
 | `tests/unit/search/SavedSearchManager.test.ts` | tests | test | 347 |
 | `tests/unit/search/search-filter-chain-project.test.ts` | tests | test | 52 |
 | `tests/unit/search/search-filter-chain-versioning.test.ts` | tests | test | 39 |
@@ -730,7 +733,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/utils/formatters.test.ts` | tests | test | 470 |
 | `tests/unit/utils/halfLife.test.ts` | tests | test | 27 |
 | `tests/unit/utils/indexes.test.ts` | tests | test | 847 |
-| `tests/unit/utils/jsonlMapFile.test.ts` | tests | test | 122 |
+| `tests/unit/utils/jsonlMapFile.test.ts` | tests | test | 162 |
 | `tests/unit/utils/logger.test.ts` | tests | test | 253 |
 | `tests/unit/utils/MemoryMonitor.test.ts` | tests | test | 413 |
 | `tests/unit/utils/operationUtils.test.ts` | tests | test | 365 |
