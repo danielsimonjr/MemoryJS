@@ -688,7 +688,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/search/searchTwinsProximity.test.ts` | tests | test | 125 |
 | `tests/unit/search/searchTwinsSemantic.test.ts` | tests | test | 248 |
 | `tests/unit/search/searchTwinsTfidf.test.ts` | tests | test | 178 |
-| `tests/unit/search/SemanticSearch.test.ts` | tests | test | 557 |
+| `tests/unit/search/SemanticSearch.test.ts` | tests | test | 575 |
 | `tests/unit/search/SpellChecker.test.ts` | tests | test | 132 |
 | `tests/unit/search/SQLiteFtsSearchIntegration.test.ts` | tests | test | 58 |
 | `tests/unit/search/SymbolicSearch.test.ts` | tests | test | 244 |

@@ -458,6 +458,24 @@ describe('SemanticSearch with SQLiteVectorStore', () => {
     expect(await proc.search.indexAll(graph)).toMatchObject({ skipped: 1 });
   });
 
+  it('replaces a row that another model wrote, with one re-embed under its own model', async () => {
+    // Turn embeddings of older releases carry the model 'unknown' (PR 207 fixed new writes only).
+    // The store keeps such a row in SQLite but not in memory, so indexAll embeds the entity again
+    // and the write replaces the row. No separate migration has to run.
+    const proc = openProcess();
+    const graph = await saveAndLoad(proc.storage, [
+      { ...createTestEntity('a', 'thing', ['alpha']), contentHash: 'h1' },
+    ]);
+    proc.storage.storeEmbedding('a', [1, 0, 0, 0, 0, 0, 0, 0], 'unknown', 'h1');
+    await proc.store.initialize();
+    expect(proc.store.has('a')).toBe(false);
+
+    expect(await proc.search.indexAll(graph)).toEqual({ indexed: 1, skipped: 0, errors: 0 });
+    const rows = await proc.storage.loadEmbeddingMetadata();
+    expect(rows).toEqual([{ entityName: 'a', embeddingModel: 'mock-model', contentHash: 'h1' }]);
+    expect(await proc.search.indexAll(graph)).toEqual({ indexed: 0, skipped: 1, errors: 0 });
+  });
+
   it('hashes the text of an entity without contentHash, and re-embeds it once after an edit', async () => {
     const first = openProcess();
     const graph = await saveAndLoad(first.storage, [createTestEntity('a', 'thing', ['alpha'])]);
