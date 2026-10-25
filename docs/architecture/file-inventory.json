@@ -1222,7 +1222,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 2609
+      "loc": 2654
     },
     {
       "file": "src/core/storageCache.ts",
@@ -3847,7 +3847,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 259
+      "loc": 339
     },
     {
       "file": "tests/unit/core/sqlite-content-hash-migration.test.ts",
@@ -4519,7 +4519,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 361
+      "loc": 364
     },
     {
       "file": "tests/unit/search/searchTwinsLayers.test.ts",
