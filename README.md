@@ -191,6 +191,10 @@ full-featured entry point.
 bun add @huggingface/transformers
 ```
 
+The `local` provider runs on `onnxruntime-node`, which `@huggingface/transformers` 4.3.1 pins to 1.30.0.
+That release ships native binaries for macOS arm64, Linux x64, Linux arm64, Windows x64 and Windows arm64.
+It ships no binary for macOS x64 (Intel). On an Intel Mac, set `MEMORY_EMBEDDING_PROVIDER` to `openai`, `llamacpp` or `none`.
+
 ## Quick Start
 
 ### 1. Initialize storage
