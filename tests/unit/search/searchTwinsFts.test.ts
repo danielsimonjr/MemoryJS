@@ -139,10 +139,13 @@ describe('FTS candidate lookup pins', () => {
     ]);
   });
 
-  it('the FTS lookup on a stale posting returns no candidates when it ranks', async () => {
+  it('the FTS lookup on a stale posting returns the live match when it ranks', async () => {
     makeStalePosting();
 
-    expect(await getFtsCandidateNames.call({ storage }, 'zephyr', 3, true)).toStrictEqual(new Set());
+    // The ranked query retries with the name read from the entities table, so it skips the stale posting.
+    expect(await getFtsCandidateNames.call({ storage }, 'zephyr', 3, true)).toStrictEqual(
+      new Set(['Haystack']),
+    );
   });
 
   it('the FTS lookup on a stale posting returns the live match when it does not rank', async () => {
