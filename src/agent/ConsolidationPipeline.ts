@@ -29,6 +29,7 @@ import {
 } from '../types/agent-memory.js';
 import { tokenizeStripped } from '../utils/textSimilarity.js';
 import { hash31 } from '../utils/entityUtils.js';
+import { uniqueTimeSuffix } from '../utils/ids.js';
 import type { WorkingMemoryManager } from './WorkingMemoryManager.js';
 import { requireWorkingMemoryEntity } from './workingMemoryGuard.js';
 import type { DecayEngine } from './DecayEngine.js';
@@ -657,7 +658,7 @@ export class ConsolidationPipeline {
     sourceEntityNames: string[]
   ): Promise<AgentEntity> {
     const now = new Date().toISOString();
-    const name = `semantic_pattern_${Date.now()}_${this.hashPattern(pattern.pattern)}`;
+    const name = `semantic_pattern_${uniqueTimeSuffix()}_${this.hashPattern(pattern.pattern)}`;
 
     const entity: AgentEntity = {
       name,
@@ -1115,7 +1116,7 @@ export class ConsolidationPipeline {
   ): Promise<void> {
     const now = new Date().toISOString();
     const auditEntity = {
-      name: `merge_audit_${Date.now()}`,
+      name: `merge_audit_${uniqueTimeSuffix()}`,
       entityType: 'merge_audit',
       observations: [
         `Merged: ${mergedNames.join(', ')}`,

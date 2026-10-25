@@ -920,3 +920,45 @@ describe('DreamPhaseResult shape', () => {
     expect(result.phases[0].durationMs).toBe(0);
   });
 });
+
+describe('Phase 7: Pattern Promotion names', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('gives the pattern entities of two cycles in one millisecond two names', async () => {
+    // A frozen clock makes both cycles fall into the same millisecond.
+    vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
+    const storage = createMockStorage(
+      makeGraph([
+        makeEntity('Alice', { observations: ['User prefers Italian food'] }),
+        makeEntity('Bob', { observations: ['User prefers Mexican food'] }),
+        makeEntity('Cara', { observations: ['User prefers Japanese food'] }),
+      ])
+    );
+    const engine = createEngine(storage, createMockPipeline(), {
+      phases: {
+        temporalAnchoring: false,
+        freshnessSweep: false,
+        entropyPruning: false,
+        consolidation: false,
+        compression: false,
+        entityEnrichment: false,
+        patternPromotion: true,
+        graphHygiene: false,
+      },
+    });
+
+    await engine.runDreamCycle();
+    await engine.runDreamCycle();
+
+    const names = vi
+      .mocked(storage.appendEntity)
+      .mock.calls.map(([entity]) => entity)
+      .filter((entity) => entity.entityType === 'semantic_pattern')
+      .map((entity) => entity.name);
+    expect(names).toHaveLength(2);
+    expect(new Set(names).size).toBe(2);
+    expect(names.every((name) => name.startsWith('pattern:0:1700000000000_'))).toBe(true);
+  });
+});

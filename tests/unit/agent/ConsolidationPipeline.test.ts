@@ -2289,3 +2289,72 @@ describe('ConsolidationPipeline', () => {
     });
   });
 });
+
+describe('ConsolidationPipeline names made in one millisecond', () => {
+  // The pipeline names a semantic pattern and a merge audit record from the clock. A frozen
+  // clock makes every call fall into the same millisecond.
+  let now: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    now = vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
+  });
+
+  afterEach(() => {
+    now.mockRestore();
+  });
+
+  function memory(name: string): AgentEntity {
+    const stamp = new Date().toISOString();
+    return {
+      name,
+      entityType: 'memory',
+      observations: [`${name} fact`],
+      memoryType: 'episodic',
+      createdAt: stamp,
+      lastModified: stamp,
+      importance: 5,
+      accessCount: 0,
+      confidence: 0.8,
+      confirmationCount: 1,
+      visibility: 'private',
+    };
+  }
+
+  it('keeps two semantic memories of the same pattern', async () => {
+    const storage = createMockStorage();
+    const pipeline = new ConsolidationPipeline(storage, createMockWorkingMemory(), createMockDecayEngine());
+    const pattern = {
+      pattern: 'User prefers {X} food',
+      variables: ['Italian'],
+      occurrences: 2,
+      confidence: 0.5,
+      sourceEntities: [],
+    };
+
+    const first = await pipeline.createSemanticFromPattern(pattern, []);
+    const second = await pipeline.createSemanticFromPattern(pattern, []);
+
+    expect(first.name).not.toBe(second.name);
+    expect(first.name.startsWith('semantic_pattern_1700000000000_')).toBe(true);
+    const graph = await storage.loadGraph();
+    expect(graph.entities.filter((e) => e.entityType === 'pattern')).toHaveLength(2);
+  });
+
+  it('keeps the audit record of each of two merges', async () => {
+    const storage = createMockStorage([
+      memory('a1'),
+      memory('a2'),
+      memory('b1'),
+      memory('b2'),
+    ] as unknown as Entity[]);
+    const pipeline = new ConsolidationPipeline(storage, createMockWorkingMemory(), createMockDecayEngine());
+
+    await pipeline.mergeMemories(['a1', 'a2'], 'newest');
+    await pipeline.mergeMemories(['b1', 'b2'], 'newest');
+
+    const graph = await storage.loadGraph();
+    const audits = graph.entities.filter((e) => e.entityType === 'merge_audit');
+    expect(audits).toHaveLength(2);
+    expect(audits.every((e) => e.name.startsWith('merge_audit_1700000000000_'))).toBe(true);
+  });
+});

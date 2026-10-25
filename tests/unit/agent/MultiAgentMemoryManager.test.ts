@@ -4,7 +4,7 @@
  * Tests for multi-agent memory management.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { MultiAgentMemoryManager } from '../../../src/agent/MultiAgentMemoryManager.js';
 import type { IGraphStorage, Entity, Relation } from '../../../src/types/types.js';
 import type { AgentEntity } from '../../../src/types/agent-memory.js';
@@ -1039,6 +1039,69 @@ describe('MultiAgentMemoryManager', () => {
       expect(resolver).toBeDefined();
       expect(typeof resolver.detectConflicts).toBe('function');
       expect(typeof resolver.resolveConflict).toBe('function');
+    });
+  });
+
+  describe('names made in one millisecond', () => {
+    // Without an explicit name, the manager builds one from the clock. A frozen clock makes
+    // every call fall into the same millisecond.
+    let now: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(async () => {
+      now = vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
+      await manager.registerAgent('agent_1', {});
+      await manager.registerAgent('agent_2', {});
+    });
+
+    afterEach(() => {
+      now.mockRestore();
+    });
+
+    it('gives two memories without a name two names', async () => {
+      const first = await manager.createAgentMemory('agent_1', { observations: ['one'] });
+      const second = await manager.createAgentMemory('agent_1', { observations: ['two'] });
+
+      expect(first.name).not.toBe(second.name);
+      expect(first.name.startsWith('memory_agent_1_')).toBe(true);
+    });
+
+    it('gives two copies of one memory two names', async () => {
+      await manager.createAgentMemory('agent_1', { name: 'src', visibility: 'shared' });
+
+      const first = await manager.copyMemory('src', 'agent_2');
+      const second = await manager.copyMemory('src', 'agent_2');
+
+      expect(first?.name).not.toBe(second?.name);
+      expect(first?.name.startsWith('copy_src_agent_2_')).toBe(true);
+    });
+
+    it('gives two simple merges two names', async () => {
+      await manager.createAgentMemory('agent_1', { name: 'm1', visibility: 'shared' });
+      await manager.createAgentMemory('agent_2', { name: 'm2', visibility: 'shared' });
+
+      const first = await manager.mergeCrossAgent(['m1', 'm2'], 'default');
+      const second = await manager.mergeCrossAgent(['m1', 'm2'], 'default');
+
+      expect(first?.name).not.toBe(second?.name);
+      expect(first?.name.startsWith('merged_default_')).toBe(true);
+    });
+
+    it('gives two conflict-resolving merges two names', async () => {
+      await manager.createAgentMemory('agent_1', { name: 'c1', visibility: 'shared' });
+      await manager.createAgentMemory('agent_2', { name: 'c2', visibility: 'shared' });
+      const resolved = (await storage.getEntityByName('c1')) as AgentEntity;
+      const resolver = {
+        detectConflicts: vi.fn().mockReturnValue([{ id: 'conflict' }]),
+        resolveConflict: vi.fn().mockReturnValue({ resolvedMemory: resolved, sourceMemories: ['c1', 'c2'] }),
+      };
+      vi.spyOn(manager as unknown as { getConflictResolver(): unknown }, 'getConflictResolver').mockReturnValue(resolver);
+
+      const first = await manager.mergeCrossAgent(['c1', 'c2'], 'default', { resolveConflicts: true });
+      const second = await manager.mergeCrossAgent(['c1', 'c2'], 'default', { resolveConflicts: true });
+
+      expect(resolver.resolveConflict).toHaveBeenCalledTimes(2);
+      expect(first?.name).not.toBe(second?.name);
+      expect(first?.name.startsWith('merged_default_')).toBe(true);
     });
   });
 });
