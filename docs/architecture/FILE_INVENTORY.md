@@ -212,7 +212,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/core/segments/FileSegmentStorage.ts` | src | reachable | 685 |
 | `src/core/segments/ISegmentStorage.ts` | src | reachable | 279 |
 | `src/core/sqlite-register.ts` | src | reachable | 31 |
-| `src/core/SQLiteStorage.ts` | src | reachable | 2609 |
+| `src/core/SQLiteStorage.ts` | src | reachable | 2654 |
 | `src/core/storageCache.ts` | src | reachable | 152 |
 | `src/core/StorageFactory.ts` | src | reachable | 158 |
 | `src/core/TransactionManager.ts` | src | reachable | 760 |
@@ -587,7 +587,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/segments/GraphStorage-segments.test.ts` | tests | test | 222 |
 | `tests/unit/core/segments/ISegmentStorage.test.ts` | tests | test | 385 |
 | `tests/unit/core/segments/segments-review-fixes.test.ts` | tests | test | 467 |
-| `tests/unit/core/sqlite-append-replace.test.ts` | tests | test | 259 |
+| `tests/unit/core/sqlite-append-replace.test.ts` | tests | test | 339 |
 | `tests/unit/core/sqlite-content-hash-migration.test.ts` | tests | test | 57 |
 | `tests/unit/core/sqlite-driver-resolver.test.ts` | tests | test | 72 |
 | `tests/unit/core/sqlite-embeddings-content-hash.test.ts` | tests | test | 138 |
@@ -683,7 +683,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/search/SearchFilterChain.test.ts` | tests | test | 524 |
 | `tests/unit/search/SearchManager.test.ts` | tests | test | 568 |
 | `tests/unit/search/SearchSuggestions.test.ts` | tests | test | 304 |
-| `tests/unit/search/searchTwinsFts.test.ts` | tests | test | 361 |
+| `tests/unit/search/searchTwinsFts.test.ts` | tests | test | 364 |
 | `tests/unit/search/searchTwinsLayers.test.ts` | tests | test | 339 |
 | `tests/unit/search/searchTwinsPaths.test.ts` | tests | test | 136 |
 | `tests/unit/search/searchTwinsProximity.test.ts` | tests | test | 125 |

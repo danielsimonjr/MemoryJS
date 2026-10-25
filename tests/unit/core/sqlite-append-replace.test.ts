@@ -5,12 +5,13 @@
  * The write must keep the rowid, the relations of the entity and the
  * `parentId` of its children, and it must keep the full-text index exact.
  */
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import Database from 'better-sqlite3';
 import { SQLiteStorage } from '../../../src/core/SQLiteStorage.js';
+import { logger } from '../../../src/utils/logger.js';
 import type { Entity } from '../../../src/types/index.js';
 
 /** A fresh copy per test: the storage keeps the objects that it is given and updates them in place. */
@@ -192,7 +193,7 @@ describe('a store that holds postings of replaced rows', () => {
   });
 
   /** Build a store the way the old write did: INSERT OR REPLACE leaves the delete trigger silent. */
-  async function buildDamagedStore(): Promise<void> {
+  async function buildDamagedStore(options: { marked?: boolean } = {}): Promise<void> {
     const first = new SQLiteStorage(dbFile);
     await first.saveGraph({ entities: makeSeed(), relations: [] });
     first.close();
@@ -202,8 +203,8 @@ describe('a store that holds postings of replaced rows', () => {
     );
     replace.run('Alpha', JSON.stringify(['alpha updated']));
     replace.run('Gamma', JSON.stringify(['gamma changed']));
-    // A store from an older release has no marker.
-    raw.pragma('user_version = 0');
+    // A store from an older release has no marker. A marked store keeps the marker that the first open set.
+    if (!options.marked) raw.pragma('user_version = 0');
     raw.close();
   }
 
@@ -254,5 +255,84 @@ describe('a store that holds postings of replaced rows', () => {
     storage.close();
 
     expect(userVersion(dbFile)).toBeGreaterThan(0);
+  });
+
+  describe('when the marker hides the damage', () => {
+    // An older release can write a marked store again (two programs share one file),
+    // so the repair at open does not run and the stale postings stay.
+    it('returns the live matches of a ranked search, not an empty list', async () => {
+      await buildDamagedStore({ marked: true });
+
+      const storage = new SQLiteStorage(dbFile);
+      try {
+        await storage.loadGraph();
+
+        expect(storage.fullTextSearch('original').map(r => r.name)).toStrictEqual(['Beta']);
+        expect(storage.fullTextSearch('original', { rank: false }).map(r => r.name)).toStrictEqual(['Beta']);
+        expect(storage.fullTextSearch('updated').map(r => r.name)).toStrictEqual(['Alpha']);
+      } finally {
+        storage.close();
+      }
+      // The search reads around the damage. It does not repair the index.
+      expect(indexIsExact(dbFile)).toBe(false);
+    });
+
+    it('warns once per storage and names compact() as the way out', async () => {
+      await buildDamagedStore({ marked: true });
+      const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+
+      const storage = new SQLiteStorage(dbFile);
+      try {
+        await storage.loadGraph();
+        storage.fullTextSearch('original');
+        storage.fullTextSearch('original');
+
+        const staleWarnings = warn.mock.calls.map(call => String(call[0])).filter(m => m.includes('compact()'));
+        expect(staleWarnings).toHaveLength(1);
+      } finally {
+        storage.close();
+        warn.mockRestore();
+      }
+    });
+
+    it('is repaired by compact(), after which the search no longer warns', async () => {
+      await buildDamagedStore({ marked: true });
+      const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+
+      const storage = new SQLiteStorage(dbFile);
+      try {
+        await storage.loadGraph();
+        await storage.compact();
+        warn.mockClear();
+
+        expect(storage.fullTextSearch('original').map(r => r.name)).toStrictEqual(['Beta']);
+        expect(warn).not.toHaveBeenCalled();
+      } finally {
+        storage.close();
+        warn.mockRestore();
+      }
+      expect(indexIsExact(dbFile)).toBe(true);
+    });
+  });
+
+  it('logs an unexpected search failure and still returns an empty list', async () => {
+    const storage = new SQLiteStorage(dbFile);
+    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+    try {
+      await storage.saveGraph({ entities: makeSeed(), relations: [] });
+      const prepare = vi
+        .spyOn(storage as unknown as { prepareCached: () => never }, 'prepareCached')
+        .mockImplementation(() => {
+          throw new Error('disk on fire');
+        });
+
+      expect(storage.fullTextSearch('original')).toStrictEqual([]);
+
+      expect(warn.mock.calls.map(call => String(call[0])).join(' ')).toContain('disk on fire');
+      prepare.mockRestore();
+    } finally {
+      storage.close();
+      warn.mockRestore();
+    }
   });
 });

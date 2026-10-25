@@ -126,6 +126,19 @@ export function explainMissingFts5(error: unknown): unknown {
     { cause: error }
   );
 }
+
+/**
+ * True when SQLite reports a posting in the full-text index for a row that the entities
+ * table no longer holds (SQLITE_CORRUPT_VTAB, "fts5: missing row N from content table").
+ * A release that replaces a row with `INSERT OR REPLACE` leaves such a posting. The message is the same on both drivers.
+ */
+function isStaleFtsPostingError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return (
+    (error as { code?: unknown }).code === 'SQLITE_CORRUPT_VTAB' ||
+    /fts5: missing row \d+ from content table/i.test(error.message)
+  );
+}
 import { Mutex } from 'async-mutex';
 import type { KnowledgeGraph, Entity, Relation, ReadonlyKnowledgeGraph, IGraphStorage, LowercaseData } from '../types/index.js';
 import {
@@ -285,6 +298,9 @@ export class SQLiteStorage implements IGraphStorage {
    * Note: better-sqlite3 writes to disk immediately, but we track for API compatibility.
    */
   private pendingChanges: number = 0;
+
+  /** True after a search met a stale full-text posting and logged it. `compact()` clears it. */
+  private staleFtsPostingLogged: boolean = false;
 
   /**
    * Warm-cache outgoing/incoming adjacency index. Kept in lockstep with
@@ -1862,6 +1878,7 @@ export class SQLiteStorage implements IGraphStorage {
       // Rebuild FTS index for optimal search performance
       this.db.exec(`INSERT INTO entities_fts(entities_fts) VALUES('rebuild')`);
 
+      this.staleFtsPostingLogged = false;
       this.pendingChanges = 0;
     });
   }
@@ -2091,7 +2108,8 @@ export class SQLiteStorage implements IGraphStorage {
       // The unranked query takes each name from the entities table. A posting of
       // a replaced row has no entities row, so the join skips it. Reading the
       // name through the full-text table instead throws SQLITE_CORRUPT_VTAB.
-      const stmt = this.prepareCached(reader, options.rank === false
+      const ranked = options.rank !== false;
+      const stmt = this.prepareCached(reader, !ranked
         ? `
         SELECT e.name AS name, 0 AS score
         FROM entities_fts f
@@ -2107,10 +2125,37 @@ export class SQLiteStorage implements IGraphStorage {
         LIMIT ?
       `);
 
-      const results = stmt.all(ftsQuery, limit) as Array<{ name: string; score: number }>;
-      return results;
-    } catch {
-      // If FTS query fails (invalid syntax), fall back to empty results
+      try {
+        return stmt.all(ftsQuery, limit) as Array<{ name: string; score: number }>;
+      } catch (error) {
+        // The unranked query reads names from the entities table, so only the ranked one can meet a stale posting.
+        if (!ranked || !isStaleFtsPostingError(error)) throw error;
+        if (!this.staleFtsPostingLogged) {
+          this.staleFtsPostingLogged = true;
+          logger.warn(
+            '[SQLiteStorage] The full-text index holds a posting of a row that no longer exists. ' +
+              'Search results stay correct, but each ranked search that reaches the posting runs twice. ' +
+              'Call compact() to rebuild the index.',
+          );
+        }
+        // Same ranking, with the name taken from the entities table. The join skips the stale posting.
+        const safe = this.prepareCached(reader, `
+        SELECT e.name AS name, bm25(entities_fts, 10, 5, 3, 1) AS score
+        FROM entities_fts
+        JOIN entities e ON e.rowid = entities_fts.rowid
+        WHERE entities_fts MATCH ?
+        ORDER BY score
+        LIMIT ?
+      `);
+        return safe.all(ftsQuery, limit) as Array<{ name: string; score: number }>;
+      }
+    } catch (error) {
+      // The query text is sanitized above, so a failure here is not a syntax error. Return no results, but say why.
+      logger.warn(
+        `[SQLiteStorage] fullTextSearch failed and returned no results: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
       return [];
     }
   }
