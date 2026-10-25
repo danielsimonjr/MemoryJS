@@ -90,10 +90,10 @@ The library has ten public module entry points plus CLI and worker builds. ESM o
 | commander 15.0.0 | CLI; requires Node >=22.12.0 |
 | chalk 6.0.0 and cli-table3 | CLI formatting; Chalk requires Node >=22 |
 | pg | Optional peer dependency for PostgreSQL |
-| @xenova/transformers | Dynamic optional import in embedding code; absent from declared dependencies and peers |
+| @huggingface/transformers 4.3.1 | Optional peer dependency of the `local` embedding provider; loaded by a dynamic import |
 | js-yaml 4.3.1 | Independent graph-tool lockfile; vulnerable version, not a root runtime dependency |
 
-The package advertises Node >=18 and bundles for node18. Installed direct dependencies require newer runtimes. CI tests Node 22 and 24, so the advertised Node 18 contract has no matching gate.
+The package declares Node >=22.12.0 and bundles for node22. CI tests Node 22 and 24.
 
 The js-yaml advisory affects YAML loading and is fixed in 4.3.2. The inspected graph generator uses `yaml.dump`; a reachable exploit was not established. The lockfile still requires correction. See the [reviewed advisory](https://github.com/advisories/GHSA-2883-xcg3-v3hh).
 
