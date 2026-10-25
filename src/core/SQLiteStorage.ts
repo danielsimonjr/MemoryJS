@@ -109,6 +109,23 @@ export function resolveSQLiteSynchronousMode(): 'FULL' | 'NORMAL' | 'OFF' {
   const raw = (process.env.MEMORY_SQLITE_SYNCHRONOUS ?? 'NORMAL').trim().toUpperCase();
   return raw === 'FULL' || raw === 'OFF' ? raw : 'NORMAL';
 }
+
+/**
+ * Replace the bare "no such module: fts5" error with one that identifies the cause.
+ *
+ * `SQLiteStorage` stores its full-text index in an FTS5 virtual table. `node:sqlite` includes
+ * FTS5 from Node 22.16.0 (nodejs/node#57621). Older Node versions cannot create the table.
+ * SQLite returns only "no such module: fts5". The function returns any other value unchanged.
+ */
+export function explainMissingFts5(error: unknown): unknown {
+  if (!(error instanceof Error) || !/no such module: fts5/i.test(error.message)) return error;
+  return new Error(
+    `This SQLite build has no FTS5 module, which SQLiteStorage needs. ` +
+      `node:sqlite in Node older than 22.16.0 has none (this is Node ${process.version}). ` +
+      `Use Node 22.16.0 or later, or install better-sqlite3 and leave MEMORY_SQLITE_DRIVER unset.`,
+    { cause: error }
+  );
+}
 import { Mutex } from 'async-mutex';
 import type { KnowledgeGraph, Entity, Relation, ReadonlyKnowledgeGraph, IGraphStorage, LowercaseData } from '../types/index.js';
 import {
@@ -429,7 +446,17 @@ export class SQLiteStorage implements IGraphStorage {
    */
   private initialize(): void {
     if (this.initialized) return;
+    try {
+      this.openAndPrepare();
+    } catch (error) {
+      // A failed start must not leave the writer or read pool open.
+      // The next call opens a new set. Open handles keep the file locked on Windows.
+      this.close();
+      throw error;
+    }
+  }
 
+  private openAndPrepare(): void {
     // Open database (creates file if it doesn't exist). The native addon is
     // loaded lazily here — see loadDatabaseCtor.
     const Database = loadDatabaseCtor();
@@ -571,16 +598,20 @@ export class SQLiteStorage implements IGraphStorage {
 
     // FTS5 virtual table for full-text search
     // content='' makes it an external content table (we manage content ourselves)
-    this.db.exec(`
-      CREATE VIRTUAL TABLE IF NOT EXISTS entities_fts USING fts5(
-        name,
-        entityType,
-        observations,
-        tags,
-        content='entities',
-        content_rowid='rowid'
-      )
-    `);
+    try {
+      this.db.exec(`
+        CREATE VIRTUAL TABLE IF NOT EXISTS entities_fts USING fts5(
+          name,
+          entityType,
+          observations,
+          tags,
+          content='entities',
+          content_rowid='rowid'
+        )
+      `);
+    } catch (error) {
+      throw explainMissingFts5(error);
+    }
 
     // Triggers to keep FTS5 index in sync with entities table
     this.db.exec(`

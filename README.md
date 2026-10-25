@@ -507,6 +507,13 @@ Features:
 - Referential integrity with ON DELETE CASCADE
 - ACID transactions
 
+SQLite drivers:
+- `better-sqlite3` loads first. It requires a native binary. Installers that skip install scripts do not create it.
+- If `better-sqlite3` is missing, `SQLiteStorage` uses `node:sqlite`. This requires Node 22.16.0 or later. Earlier `node:sqlite` versions lack the FTS5 module.
+- Install `better-sqlite3` on Node 22.12.0 to 22.15.
+- `MEMORY_SQLITE_DRIVER=node` forces `node:sqlite`. The same Node floor applies.
+- SQLite builds without FTS5 stop storage at first use. The error names Node 22.16.0.
+
 ### Storage Files
 
 When using JSONL, related files are automatically created:
