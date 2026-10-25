@@ -4554,7 +4554,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 557
+      "loc": 575
     },
     {
       "file": "tests/unit/search/SpellChecker.test.ts",
