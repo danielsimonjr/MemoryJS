@@ -12,6 +12,7 @@
 
 import { EventEmitter } from 'events';
 import { randomUUID } from 'crypto';
+import { uniqueTimeSuffix } from '../utils/ids.js';
 import type { Entity, IGraphStorage, ReadonlyKnowledgeGraph, Relation } from '../types/types.js';
 import type { GraphStorage } from '../core/GraphStorage.js';
 import { FreshnessManager } from '../features/FreshnessManager.js';
@@ -560,7 +561,7 @@ export class DreamEngine extends EventEmitter {
         for (const pattern of patterns) {
           // Promote high-confidence patterns as semantic observation entities.
           if (pattern.confidence >= 0.6) {
-            const entityName = `pattern:${promoted}:${Date.now()}`;
+            const entityName = `pattern:${promoted}:${uniqueTimeSuffix()}`;
             const patternEntity: Entity = {
               name: entityName,
               entityType: 'semantic_pattern',

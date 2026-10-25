@@ -20,6 +20,7 @@ import { isAgentEntity } from '../types/agent-memory.js';
 import { EventEmitter } from 'events';
 import { ConflictResolver, type ResolutionResult } from './ConflictResolver.js';
 import { VisibilityResolver } from './VisibilityResolver.js';
+import { uniqueTimeSuffix } from '../utils/ids.js';
 
 /**
  * Configuration for MultiAgentMemoryManager.
@@ -248,7 +249,7 @@ export class MultiAgentMemoryManager extends EventEmitter {
       : this.config.defaultAgentId;
 
     const now = new Date().toISOString();
-    const name = entity.name ?? `memory_${effectiveAgentId}_${Date.now()}`;
+    const name = entity.name ?? `memory_${effectiveAgentId}_${uniqueTimeSuffix()}`;
 
     const agentEntity: AgentEntity = {
       // Base entity fields
@@ -768,7 +769,7 @@ export class MultiAgentMemoryManager extends EventEmitter {
     const now = new Date().toISOString();
     const newName =
       options?.newName ??
-      `copy_${memoryName}_${requestingAgentId}_${Date.now()}`;
+      `copy_${memoryName}_${requestingAgentId}_${uniqueTimeSuffix()}`;
 
     const copiedMemory: AgentEntity = {
       // Base entity fields
@@ -1014,7 +1015,7 @@ export class MultiAgentMemoryManager extends EventEmitter {
         const now = new Date().toISOString();
         const newName =
           options.newName ??
-          `merged_${targetAgentId}_${Date.now()}`;
+          `merged_${targetAgentId}_${uniqueTimeSuffix()}`;
 
         const mergedMemory: AgentEntity = {
           ...resolution.resolvedMemory,
@@ -1047,7 +1048,7 @@ export class MultiAgentMemoryManager extends EventEmitter {
 
     // No conflicts or not resolving - simple merge
     const now = new Date().toISOString();
-    const newName = options?.newName ?? `merged_${targetAgentId}_${Date.now()}`;
+    const newName = options?.newName ?? `merged_${targetAgentId}_${uniqueTimeSuffix()}`;
 
     // Combine observations
     const allObservations = new Set<string>();
