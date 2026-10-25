@@ -1,12 +1,12 @@
 {
   "generated": "2026-10-25",
-  "totalFiles": 729,
+  "totalFiles": 731,
   "byDisposition": {
-    "reachable": 299,
+    "reachable": 300,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 410,
+    "test": 411,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -14,8 +14,8 @@
   },
   "byArea": {
     "benchmarks": 4,
-    "src": 303,
-    "tests": 410,
+    "src": 304,
+    "tests": 411,
     "tools": 10,
     "config": 2
   },
@@ -186,7 +186,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1884
+      "loc": 1885
     },
     {
       "file": "src/agent/ConsolidationScheduler.ts",
@@ -249,7 +249,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 645
+      "loc": 646
     },
     {
       "file": "src/agent/EntropyFilter.ts",
@@ -375,7 +375,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1149
+      "loc": 1150
     },
     {
       "file": "src/agent/ObservationDedupManager.ts",
@@ -2016,6 +2016,13 @@
       "loc": 24
     },
     {
+      "file": "src/utils/ids.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 23
+    },
+    {
       "file": "src/utils/IIndexHealth.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
@@ -2657,7 +2664,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 2292
+      "loc": 2361
     },
     {
       "file": "tests/unit/agent/ConsolidationScheduler.test.ts",
@@ -2741,7 +2748,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 923
+      "loc": 965
     },
     {
       "file": "tests/unit/agent/EntropyFilter.test.ts",
@@ -2874,7 +2881,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 1045
+      "loc": 1108
     },
     {
       "file": "tests/unit/agent/ObservationDedupManager.test.ts",
@@ -4905,6 +4912,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 27
+    },
+    {
+      "file": "tests/unit/utils/ids.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 35
     },
     {
       "file": "tests/unit/utils/indexes.test.ts",

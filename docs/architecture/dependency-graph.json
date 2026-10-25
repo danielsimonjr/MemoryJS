@@ -3,9 +3,9 @@
     "name": "@danielsimonjr/memoryjs",
     "version": "4.3.0",
     "lastUpdated": "2026-10-25",
-    "totalFiles": 303,
+    "totalFiles": 304,
     "totalModules": 12,
-    "totalExports": 2072
+    "totalExports": 2073
   },
   "entryPoints": [
     {
@@ -1246,6 +1246,12 @@
             ]
           },
           {
+            "file": "../utils/ids.js",
+            "imports": [
+              "uniqueTimeSuffix"
+            ]
+          },
+          {
             "file": "./WorkingMemoryManager.js",
             "imports": [
               "WorkingMemoryManager"
@@ -1901,6 +1907,12 @@
           }
         ],
         "internalDependencies": [
+          {
+            "file": "../utils/ids.js",
+            "imports": [
+              "uniqueTimeSuffix"
+            ]
+          },
           {
             "file": "../types/types.js",
             "imports": [
@@ -4380,6 +4392,12 @@
             "file": "./VisibilityResolver.js",
             "imports": [
               "VisibilityResolver"
+            ]
+          },
+          {
+            "file": "../utils/ids.js",
+            "imports": [
+              "uniqueTimeSuffix"
             ]
           }
         ],
@@ -18293,6 +18311,25 @@
           "halfLifeFactor"
         ]
       },
+      "src/utils/ids.ts": {
+        "description": "Unique name suffix",
+        "externalDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "crypto",
+            "imports": [
+              "randomUUID"
+            ]
+          }
+        ],
+        "internalDependencies": [],
+        "exports": [
+          "uniqueTimeSuffix"
+        ],
+        "functions": [
+          "uniqueTimeSuffix"
+        ]
+      },
       "src/utils/IIndexHealth.ts": {
         "description": "Index Health interface.",
         "externalDependencies": [],
@@ -20471,6 +20508,7 @@
           "src/utils/formatters.ts",
           "src/utils/graphCopy.ts",
           "src/utils/halfLife.ts",
+          "src/utils/ids.ts",
           "src/utils/IIndexHealth.ts",
           "src/utils/index.ts",
           "src/utils/indexes.ts",
@@ -20509,19 +20547,19 @@
       "src/sqlite.ts",
       "src/workers/levenshteinWorker.ts"
     ],
-    "reachableCount": 303,
+    "reachableCount": 304,
     "dormantCount": 0,
     "orphaned": [],
     "testOnly": []
   },
   "statistics": {
-    "totalTypeScriptFiles": 303,
+    "totalTypeScriptFiles": 304,
     "totalModules": 12,
-    "totalLinesOfCode": 104195,
-    "totalExports": 2072,
+    "totalLinesOfCode": 104221,
+    "totalExports": 2073,
     "totalClasses": 236,
     "totalInterfaces": 626,
-    "totalFunctions": 358,
+    "totalFunctions": 359,
     "totalTypeGuards": 31,
     "totalEnums": 4,
     "totalConstants": 123,
@@ -20530,7 +20568,7 @@
     "runtimeCircularDeps": 0,
     "typeOnlyCircularDeps": 8,
     "entryRoots": 4,
-    "reachableFiles": 303,
+    "reachableFiles": 304,
     "dormantFiles": 0,
     "orphanedFiles": 0,
     "testOnlyFiles": 0,

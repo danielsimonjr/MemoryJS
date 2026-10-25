@@ -10,22 +10,22 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 729
+**Total files**: 731
 
 ## Disposition counts
 
 | Disposition | Count | Meaning |
 | --- | --: | --- |
-| `reachable` | 299 | A `src/` file in the module graph, reachable from a root. |
+| `reachable` | 300 | A `src/` file in the module graph, reachable from a root. |
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 410 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 411 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 4 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 0 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **729** | |
+| **Total** | **731** | |
 
 ## Per-area counts
 
@@ -33,8 +33,8 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | --- | --: |
 | `benchmarks` | 4 |
 | `config` | 2 |
-| `src` | 303 |
-| `tests` | 410 |
+| `src` | 304 |
+| `tests` | 411 |
 | `tools` | 10 |
 
 ## All files
@@ -64,7 +64,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/CollaborativeSynthesis.ts` | src | reachable | 355 |
 | `src/agent/ConflictResolver.ts` | src | reachable | 467 |
 | `src/agent/connectivity.ts` | src | reachable | 66 |
-| `src/agent/ConsolidationPipeline.ts` | src | reachable | 1884 |
+| `src/agent/ConsolidationPipeline.ts` | src | reachable | 1885 |
 | `src/agent/ConsolidationScheduler.ts` | src | reachable | 239 |
 | `src/agent/ContextProfileManager.ts` | src | reachable | 301 |
 | `src/agent/ContextWindowManager.ts` | src | reachable | 1933 |
@@ -73,7 +73,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/DecisionManager.ts` | src | reachable | 428 |
 | `src/agent/DistillationPipeline.ts` | src | reachable | 204 |
 | `src/agent/DistillationPolicy.ts` | src | reachable | 339 |
-| `src/agent/DreamEngine.ts` | src | reachable | 645 |
+| `src/agent/DreamEngine.ts` | src | reachable | 646 |
 | `src/agent/EntropyFilter.ts` | src | reachable | 179 |
 | `src/agent/EpisodicMemoryManager.ts` | src | reachable | 535 |
 | `src/agent/events/EventManager.ts` | src | reachable | 500 |
@@ -91,7 +91,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/MemoryEngine.ts` | src | reachable | 597 |
 | `src/agent/MemoryFormatter.ts` | src | reachable | 516 |
 | `src/agent/MemoryValidator.ts` | src | reachable | 332 |
-| `src/agent/MultiAgentMemoryManager.ts` | src | reachable | 1149 |
+| `src/agent/MultiAgentMemoryManager.ts` | src | reachable | 1150 |
 | `src/agent/ObservationDedupManager.ts` | src | reachable | 261 |
 | `src/agent/ObserverPipeline.ts` | src | reachable | 380 |
 | `src/agent/PatternDetector.ts` | src | reachable | 372 |
@@ -326,6 +326,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/utils/formatters.ts` | src | reachable | 197 |
 | `src/utils/graphCopy.ts` | src | reachable | 96 |
 | `src/utils/halfLife.ts` | src | reachable | 24 |
+| `src/utils/ids.ts` | src | reachable | 23 |
 | `src/utils/IIndexHealth.ts` | src | reachable | 47 |
 | `src/utils/index.ts` | src | reachable | 391 |
 | `src/utils/indexes.ts` | src | reachable | 438 |
@@ -417,7 +418,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/CollaborativeSynthesis.test.ts` | tests | test | 710 |
 | `tests/unit/agent/ConflictResolver.test.ts` | tests | test | 466 |
 | `tests/unit/agent/ConnectivitySignals.test.ts` | tests | test | 478 |
-| `tests/unit/agent/ConsolidationPipeline.test.ts` | tests | test | 2292 |
+| `tests/unit/agent/ConsolidationPipeline.test.ts` | tests | test | 2361 |
 | `tests/unit/agent/ConsolidationScheduler.test.ts` | tests | test | 363 |
 | `tests/unit/agent/context-window-manager-compress.test.ts` | tests | test | 166 |
 | `tests/unit/agent/context-window-manager-wakeup.test.ts` | tests | test | 226 |
@@ -429,7 +430,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/delta-services-wiring.test.ts` | tests | test | 61 |
 | `tests/unit/agent/DistillationPipeline.test.ts` | tests | test | 153 |
 | `tests/unit/agent/DistillationPolicy.test.ts` | tests | test | 850 |
-| `tests/unit/agent/DreamEngine.test.ts` | tests | test | 923 |
+| `tests/unit/agent/DreamEngine.test.ts` | tests | test | 965 |
 | `tests/unit/agent/EntropyFilter.test.ts` | tests | test | 318 |
 | `tests/unit/agent/EpisodicMemoryManager.test.ts` | tests | test | 727 |
 | `tests/unit/agent/EventManager.test.ts` | tests | test | 512 |
@@ -448,7 +449,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/MemoryFormatter.test.ts` | tests | test | 313 |
 | `tests/unit/agent/MemoryFormatterSalience.test.ts` | tests | test | 242 |
 | `tests/unit/agent/MemoryValidator.test.ts` | tests | test | 203 |
-| `tests/unit/agent/MultiAgentMemoryManager.test.ts` | tests | test | 1045 |
+| `tests/unit/agent/MultiAgentMemoryManager.test.ts` | tests | test | 1108 |
 | `tests/unit/agent/ObservationDedupManager.test.ts` | tests | test | 229 |
 | `tests/unit/agent/ObservationDedupReportStage.test.ts` | tests | test | 111 |
 | `tests/unit/agent/ObserverPipeline.test.ts` | tests | test | 556 |
@@ -739,6 +740,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/utils/fieldPath.test.ts` | tests | test | 50 |
 | `tests/unit/utils/formatters.test.ts` | tests | test | 470 |
 | `tests/unit/utils/halfLife.test.ts` | tests | test | 27 |
+| `tests/unit/utils/ids.test.ts` | tests | test | 35 |
 | `tests/unit/utils/indexes.test.ts` | tests | test | 885 |
 | `tests/unit/utils/jsonlMapFile.test.ts` | tests | test | 162 |
 | `tests/unit/utils/logger.test.ts` | tests | test | 253 |

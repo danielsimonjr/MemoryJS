@@ -48,7 +48,7 @@ The codebase is organized into the following modules:
 - **security**: 5 files
 - **root**: 1 file
 - **types**: 12 files
-- **utils**: 39 files
+- **utils**: 40 files
 - **workers**: 1 file
 
 ---
@@ -63,7 +63,7 @@ Seeded build/entry roots (package `exports`, `bin` targets, tsup entries, script
 - `src/sqlite.ts`
 - `src/workers/levenshteinWorker.ts`
 
-Reachable from a root: **303** of 303 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
+Reachable from a root: **304** of 304 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
 
 ---
 
@@ -440,6 +440,7 @@ Reachable from a root: **303** of 303 files. Dormant: **0** (0 orphaned, 0 test-
 | `../types/agent-memory.js` | `isAgentEntity, isFailureMemory, isProspectiveMemory, isReflectionMemory` | Import |
 | `../utils/textSimilarity.js` | `tokenizeStripped` | Import |
 | `../utils/entityUtils.js` | `hash31` | Import |
+| `../utils/ids.js` | `uniqueTimeSuffix` | Import |
 | `./WorkingMemoryManager.js` | `WorkingMemoryManager` | Import (type-only) |
 | `./workingMemoryGuard.js` | `requireWorkingMemoryEntity` | Import |
 | `./DecayEngine.js` | `DecayEngine` | Import (type-only) |
@@ -628,6 +629,7 @@ Reachable from a root: **303** of 303 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../utils/ids.js` | `uniqueTimeSuffix` | Import |
 | `../types/types.js` | `Entity, IGraphStorage, ReadonlyKnowledgeGraph, Relation` | Import (type-only) |
 | `../core/GraphStorage.js` | `GraphStorage` | Import (type-only) |
 | `../features/FreshnessManager.js` | `FreshnessManager` | Import |
@@ -1012,6 +1014,7 @@ Reachable from a root: **303** of 303 files. Dormant: **0** (0 orphaned, 0 test-
 | `../types/agent-memory.js` | `isAgentEntity` | Import |
 | `./ConflictResolver.js` | `ConflictResolver, ResolutionResult` | Import |
 | `./VisibilityResolver.js` | `VisibilityResolver` | Import |
+| `../utils/ids.js` | `uniqueTimeSuffix` | Import |
 
 **Exports:**
 - Classes: `MultiAgentMemoryManager`
@@ -5154,6 +5157,18 @@ Reachable from a root: **303** of 303 files. Dormant: **0** (0 orphaned, 0 test-
 
 ---
 
+### `src/utils/ids.ts` - Unique name suffix
+
+**Node.js Built-in Dependencies:**
+| Module | Import |
+|--------|--------|
+| `crypto` | `randomUUID` |
+
+**Exports:**
+- Functions: `uniqueTimeSuffix`
+
+---
+
 ### `src/utils/IIndexHealth.ts` - Index Health interface.
 
 **Exports:**
@@ -5502,7 +5517,7 @@ Reachable from a root: **303** of 303 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/utils/errors` | 0 files | 28 files |
 | `src/cli/commands/helpers` | 4 files | 23 files |
 | `src/cli/commands/index` | 24 files | 1 file |
-| `src/agent/ConsolidationPipeline` | 15 files | 7 files |
+| `src/agent/ConsolidationPipeline` | 16 files | 7 files |
 | `src/cli/formatters` | 2 files | 20 files |
 | `src/utils/textSimilarity` | 0 files | 21 files |
 | `src/agent/ContextWindowManager` | 14 files | 5 files |
@@ -5527,7 +5542,7 @@ Reachable from a root: **303** of 303 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/agent/procedural/graph/ProceduralGraphEvolution` | 11 files | 2 files |
 | `src/search/FuzzySearch` | 11 files | 2 files |
 | `src/utils/searchCache` | 2 files | 11 files |
-| `src/core/GraphEventEmitter` | 2 files | 10 files |
+| `src/agent/DreamEngine` | 9 files | 3 files |
 
 ---
 
@@ -5680,7 +5695,7 @@ graph TD
         N87[constants]
         N88[Diagnostics]
         N89[durableWriteFile]
-        N90[...29 more]
+        N90[...30 more]
     end
 
     subgraph Workers
@@ -5771,21 +5786,21 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 303 |
+| Total TypeScript Files | 304 |
 | Total Modules | 12 |
-| Total Lines of Code | 104195 |
-| Total Exports | 2072 |
+| Total Lines of Code | 104221 |
+| Total Exports | 2073 |
 | Total Re-exports | 1340 |
 | Total Classes | 236 |
 | Total Interfaces | 626 |
-| Total Functions | 358 |
+| Total Functions | 359 |
 | Total Type Guards | 31 |
 | Total Enums | 4 |
 | Type-only Imports | 485 |
 | Runtime Circular Deps | 0 |
 | Type-only Circular Deps | 8 |
 | Entry/Build Roots | 4 |
-| Reachable Files | 303 |
+| Reachable Files | 304 |
 | Dormant Files (orphaned / test-only) | 0 (0 / 0) |
 
 ---
