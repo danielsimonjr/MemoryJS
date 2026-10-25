@@ -4,7 +4,7 @@
 
 # @danielsimonjr/memoryjs - Dependency Graph
 
-**Version**: 4.3.0 | **Last Updated**: 2026-10-24
+**Version**: 4.3.0 | **Last Updated**: 2026-10-25
 
 This document provides a comprehensive dependency graph of all files, components, imports, functions, and variables in the codebase.
 
@@ -3352,7 +3352,7 @@ Reachable from a root: **303** of 303 files. Dormant: **0** (0 orphaned, 0 test-
 **Exports:**
 - Classes: `SQLiteStorage`
 - Types: `DatabaseCtor`
-- Functions: `__resetDatabaseCtorForTests`, `resolveSQLiteDatabaseCtor`, `resolveSQLiteSynchronousMode`
+- Functions: `__resetDatabaseCtorForTests`, `resolveSQLiteDatabaseCtor`, `resolveSQLiteSynchronousMode`, `explainMissingFts5`
 
 ---
 
@@ -5773,12 +5773,12 @@ graph TD
 |----------|-------|
 | Total TypeScript Files | 303 |
 | Total Modules | 12 |
-| Total Lines of Code | 104164 |
-| Total Exports | 2071 |
+| Total Lines of Code | 104195 |
+| Total Exports | 2072 |
 | Total Re-exports | 1340 |
 | Total Classes | 236 |
 | Total Interfaces | 626 |
-| Total Functions | 357 |
+| Total Functions | 358 |
 | Total Type Guards | 31 |
 | Total Enums | 4 |
 | Type-only Imports | 485 |
@@ -5790,5 +5790,5 @@ graph TD
 
 ---
 
-*Last Updated*: 2026-10-24
+*Last Updated*: 2026-10-25
 *Version*: 4.3.0
