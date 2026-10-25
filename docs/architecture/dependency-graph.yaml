@@ -1,10 +1,10 @@
 metadata:
   name: "@danielsimonjr/memoryjs"
   version: 4.3.0
-  lastUpdated: "2026-10-24"
+  lastUpdated: "2026-10-25"
   totalFiles: 303
   totalModules: 12
-  totalExports: 2071
+  totalExports: 2072
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -7840,6 +7840,7 @@ modules:
         - __resetDatabaseCtorForTests
         - resolveSQLiteDatabaseCtor
         - resolveSQLiteSynchronousMode
+        - explainMissingFts5
         - SQLiteStorage
       classes:
         - SQLiteStorage
@@ -7847,6 +7848,7 @@ modules:
         - __resetDatabaseCtorForTests
         - resolveSQLiteDatabaseCtor
         - resolveSQLiteSynchronousMode
+        - explainMissingFts5
     src/core/storageCache.ts:
       description: Cache and index steps shared by the storage backends.
       externalDependencies: []
@@ -14565,11 +14567,11 @@ reachability:
 statistics:
   totalTypeScriptFiles: 303
   totalModules: 12
-  totalLinesOfCode: 104164
-  totalExports: 2071
+  totalLinesOfCode: 104195
+  totalExports: 2072
   totalClasses: 236
   totalInterfaces: 626
-  totalFunctions: 357
+  totalFunctions: 358
   totalTypeGuards: 31
   totalEnums: 4
   totalConstants: 123
