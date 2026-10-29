@@ -4,7 +4,7 @@ metadata:
   lastUpdated: "2026-10-29"
   totalFiles: 310
   totalModules: 12
-  totalExports: 2094
+  totalExports: 2095
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -7830,6 +7830,7 @@ modules:
             - serializeJsonlMap
         - file: ../../utils/mutateMapWithFlushRollback.js
           imports:
+            - clearMapWithFlushRollback
             - mutateMapWithFlushRollback
         - file: ./IColumnStore.js
           imports:
@@ -11037,6 +11038,9 @@ modules:
             - Mutex
       nodeDependencies: []
       internalDependencies:
+        - file: ../../utils/mutateMapWithFlushRollback.js
+          imports:
+            - clearMapWithFlushRollback
         - file: ../../utils/jsonlMapFile.js
           imports:
             - parseJsonlMapLines
@@ -14001,8 +14005,10 @@ modules:
       internalDependencies: []
       exports:
         - mutateMapWithFlushRollback
+        - clearMapWithFlushRollback
       functions:
         - mutateMapWithFlushRollback
+        - clearMapWithFlushRollback
     src/utils/nextMonotonicIsoTimestamp.ts:
       description: Returns the next ISO-8601 timestamp strictly after `lastTimestamp`.
       externalDependencies: []
@@ -14830,11 +14836,11 @@ reachability:
 statistics:
   totalTypeScriptFiles: 310
   totalModules: 12
-  totalLinesOfCode: 105461
-  totalExports: 2094
+  totalLinesOfCode: 105469
+  totalExports: 2095
   totalClasses: 237
   totalInterfaces: 631
-  totalFunctions: 369
+  totalFunctions: 370
   totalTypeGuards: 31
   totalEnums: 4
   totalConstants: 124

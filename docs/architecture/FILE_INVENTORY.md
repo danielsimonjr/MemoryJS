@@ -194,7 +194,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/cli/interactive.ts` | src | reachable | 439 |
 | `src/cli/options.ts` | src | reachable | 58 |
 | `src/core/columns/IColumnStore.ts` | src | reachable | 177 |
-| `src/core/columns/JsonlColumnStore.ts` | src | reachable | 238 |
+| `src/core/columns/JsonlColumnStore.ts` | src | reachable | 230 |
 | `src/core/EntityManager.ts` | src | reachable | 1604 |
 | `src/core/EntityStateMachine.ts` | src | reachable | 104 |
 | `src/core/GraphEventEmitter.ts` | src | reachable | 463 |
@@ -289,7 +289,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/search/tiered/DiskWarmTier.ts` | src | reachable | 168 |
 | `src/search/tiered/ITieredIndex.ts` | src | reachable | 225 |
 | `src/search/tiered/LRUHotTier.ts` | src | reachable | 164 |
-| `src/search/tiered/MapFileTier.ts` | src | reachable | 153 |
+| `src/search/tiered/MapFileTier.ts` | src | reachable | 146 |
 | `src/search/tiered/TieredIndex.ts` | src | reachable | 319 |
 | `src/search/VectorStore.ts` | src | reachable | 473 |
 | `src/security/ABACPolicy.ts` | src | reachable | 271 |
@@ -337,7 +337,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/utils/jsonlRecordFile.ts` | src | reachable | 40 |
 | `src/utils/logger.ts` | src | reachable | 45 |
 | `src/utils/MemoryMonitor.ts` | src | reachable | 411 |
-| `src/utils/mutateMapWithFlushRollback.ts` | src | reachable | 21 |
+| `src/utils/mutateMapWithFlushRollback.ts` | src | reachable | 44 |
 | `src/utils/nextMonotonicIsoTimestamp.ts` | src | reachable | 15 |
 | `src/utils/operationUtils.ts` | src | reachable | 224 |
 | `src/utils/parallelUtils.ts` | src | reachable | 148 |
@@ -547,7 +547,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/BatchTransaction.test.ts` | tests | test | 695 |
 | `tests/unit/core/columns/columns-review-fixes.test.ts` | tests | test | 338 |
 | `tests/unit/core/columns/IColumnStore.test.ts` | tests | test | 132 |
-| `tests/unit/core/columns/JsonlColumnStore.test.ts` | tests | test | 390 |
+| `tests/unit/core/columns/JsonlColumnStore.test.ts` | tests | test | 408 |
 | `tests/unit/core/columns/ObservationColumnStore-wiring.test.ts` | tests | test | 266 |
 | `tests/unit/core/columns/shadow-write-drain.test.ts` | tests | test | 109 |
 | `tests/unit/core/ConcurrencyControl.test.ts` | tests | test | 459 |
@@ -708,7 +708,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/search/TFIDFIndexManager.test.ts` | tests | test | 564 |
 | `tests/unit/search/tiered/BrotliColdTier.test.ts` | tests | test | 599 |
 | `tests/unit/search/tiered/disk-tier-concurrency.test.ts` | tests | test | 69 |
-| `tests/unit/search/tiered/DiskWarmTier.test.ts` | tests | test | 537 |
+| `tests/unit/search/tiered/DiskWarmTier.test.ts` | tests | test | 558 |
 | `tests/unit/search/tiered/ITieredIndex.test.ts` | tests | test | 175 |
 | `tests/unit/search/tiered/LRUHotTier.test.ts` | tests | test | 235 |
 | `tests/unit/search/tiered/tiered-review-fixes.test.ts` | tests | test | 275 |

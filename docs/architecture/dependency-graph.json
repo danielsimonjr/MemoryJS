@@ -5,7 +5,7 @@
     "lastUpdated": "2026-10-29",
     "totalFiles": 310,
     "totalModules": 12,
-    "totalExports": 2094
+    "totalExports": 2095
   },
   "entryPoints": [
     {
@@ -11655,6 +11655,7 @@
           {
             "file": "../../utils/mutateMapWithFlushRollback.js",
             "imports": [
+              "clearMapWithFlushRollback",
               "mutateMapWithFlushRollback"
             ]
           },
@@ -16409,6 +16410,12 @@
         "nodeDependencies": [],
         "internalDependencies": [
           {
+            "file": "../../utils/mutateMapWithFlushRollback.js",
+            "imports": [
+              "clearMapWithFlushRollback"
+            ]
+          },
+          {
             "file": "../../utils/jsonlMapFile.js",
             "imports": [
               "parseJsonlMapLines",
@@ -19892,10 +19899,12 @@
         "nodeDependencies": [],
         "internalDependencies": [],
         "exports": [
-          "mutateMapWithFlushRollback"
+          "mutateMapWithFlushRollback",
+          "clearMapWithFlushRollback"
         ],
         "functions": [
-          "mutateMapWithFlushRollback"
+          "mutateMapWithFlushRollback",
+          "clearMapWithFlushRollback"
         ]
       },
       "src/utils/nextMonotonicIsoTimestamp.ts": {
@@ -20920,11 +20929,11 @@
   "statistics": {
     "totalTypeScriptFiles": 310,
     "totalModules": 12,
-    "totalLinesOfCode": 105461,
-    "totalExports": 2094,
+    "totalLinesOfCode": 105469,
+    "totalExports": 2095,
     "totalClasses": 237,
     "totalInterfaces": 631,
-    "totalFunctions": 369,
+    "totalFunctions": 370,
     "totalTypeGuards": 31,
     "totalEnums": 4,
     "totalConstants": 124,

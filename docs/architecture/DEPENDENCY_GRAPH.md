@@ -3341,7 +3341,7 @@ Reachable from a root: **310** of 310 files. Dormant: **0** (0 orphaned, 0 test-
 |------|---------|------|
 | `../../utils/durableWriteFile.js` | `durableWriteFile` | Import |
 | `../../utils/jsonlMapFile.js` | `parseJsonlMapLines, serializeJsonlMap` | Import |
-| `../../utils/mutateMapWithFlushRollback.js` | `mutateMapWithFlushRollback` | Import |
+| `../../utils/mutateMapWithFlushRollback.js` | `clearMapWithFlushRollback, mutateMapWithFlushRollback` | Import |
 | `./IColumnStore.js` | `IColumnStore` | Import (type-only) |
 
 **Exports:**
@@ -4744,6 +4744,7 @@ Reachable from a root: **310** of 310 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../../utils/mutateMapWithFlushRollback.js` | `clearMapWithFlushRollback` | Import |
 | `../../utils/jsonlMapFile.js` | `parseJsonlMapLines, serializeJsonlMap, JsonlMapFormat` | Import |
 | `./ITieredIndex.js` | `IIndexTier` | Import (type-only) |
 
@@ -5402,7 +5403,7 @@ Reachable from a root: **310** of 310 files. Dormant: **0** (0 orphaned, 0 test-
 ### `src/utils/mutateMapWithFlushRollback.ts` - Updates a map entry and flushes; restores the prior entry if flush fails.
 
 **Exports:**
-- Functions: `mutateMapWithFlushRollback`
+- Functions: `mutateMapWithFlushRollback`, `clearMapWithFlushRollback`
 
 ---
 
@@ -5886,12 +5887,12 @@ graph TD
 |----------|-------|
 | Total TypeScript Files | 310 |
 | Total Modules | 12 |
-| Total Lines of Code | 105461 |
-| Total Exports | 2094 |
+| Total Lines of Code | 105469 |
+| Total Exports | 2095 |
 | Total Re-exports | 1349 |
 | Total Classes | 237 |
 | Total Interfaces | 631 |
-| Total Functions | 369 |
+| Total Functions | 370 |
 | Total Type Guards | 31 |
 | Total Enums | 4 |
 | Type-only Imports | 498 |

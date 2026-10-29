@@ -1096,7 +1096,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 238
+      "loc": 230
     },
     {
       "file": "src/core/EntityManager.ts",
@@ -1761,7 +1761,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 153
+      "loc": 146
     },
     {
       "file": "src/search/tiered/TieredIndex.ts",
@@ -2097,7 +2097,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 21
+      "loc": 44
     },
     {
       "file": "src/utils/nextMonotonicIsoTimestamp.ts",
@@ -3567,7 +3567,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 390
+      "loc": 408
     },
     {
       "file": "tests/unit/core/columns/ObservationColumnStore-wiring.test.ts",
@@ -4694,7 +4694,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 537
+      "loc": 558
     },
     {
       "file": "tests/unit/search/tiered/ITieredIndex.test.ts",
