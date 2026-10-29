@@ -1,6 +1,6 @@
 # Duplicate Function Audit
 
-**Clone cleanup ledger (Phase 2)**: see [`docs/roadmap/CLONES_REMAINING.md`](../roadmap/CLONES_REMAINING.md) for pairs left in place after the EMMA M1–M3 stack clone cleanup.
+**Clone cleanup ledger (Phase 2)**: see [`docs/analysis/CLONES_REMAINING.md`](./CLONES_REMAINING.md) for pairs left in place after the EMMA M1–M3 stack clone cleanup.
 
 **Date**: 2026-10-22
 **Commit audited**: `6a20b5c` on `master`

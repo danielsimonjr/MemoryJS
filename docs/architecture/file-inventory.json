@@ -1,12 +1,12 @@
 {
   "generated": "2026-10-29",
-  "totalFiles": 736,
+  "totalFiles": 737,
   "byDisposition": {
     "reachable": 303,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 413,
+    "test": 414,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -15,7 +15,7 @@
   "byArea": {
     "benchmarks": 4,
     "src": 307,
-    "tests": 413,
+    "tests": 414,
     "tools": 10,
     "config": 2
   },
@@ -1306,7 +1306,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 199
+      "loc": 211
     },
     {
       "file": "src/features/FactExtractor.ts",
@@ -2258,7 +2258,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 86
+      "loc": 109
     },
     {
       "file": "tests/integration/features/governance-enforcement.test.ts",
@@ -2825,7 +2825,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 432
+      "loc": 598
     },
     {
       "file": "tests/unit/agent/HeuristicExtractionStage.test.ts",
@@ -4519,7 +4519,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 113
+      "loc": 149
     },
     {
       "file": "tests/unit/search/SearchFilterChain.test.ts",
@@ -4975,6 +4975,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 413
+    },
+    {
+      "file": "tests/unit/utils/mutateMapWithFlushRollback.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 34
     },
     {
       "file": "tests/unit/utils/nextMonotonicIsoTimestamp.test.ts",

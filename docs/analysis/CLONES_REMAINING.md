@@ -2,10 +2,12 @@
 
 **Tool**: `@danielsimonjr/repo-tools` 2.3.0  
 **Command**: `repo-tools clones . --src=src --out=../tmp/memoryjs-clones-baseline`  
-**Baseline branch**: `cursor/emma-m3-63f4` (Phase 2 branched from M3 head)  
-**Baseline run**: 4 exact groups, 8 units in them, 1 text-identical group, 54 near pairs, 1381 units (`files=305`)  
-**After cleanup**: 1 exact group, 2 units in them, 0 text-identical groups, 51 near pairs, 1375 units  
+**Baseline commit**: `60102494873a4edb3aa4b1007dd26dca55a60951`  
+**Baseline**: 4 exact groups, 8 units in them, 1 text-identical group, 54 near pairs, 1365 units  
+**After cleanup**: 1 exact group, 2 units in them, 0 text-identical groups, 51 near pairs, 1376 units  
 **Cleanup commit**: `d3413b82d5d38add291a88abd4cb5c776cab919a`
+
+This PR was stacked on `cursor/emma-m3-63f4` (the plan asked for a branch from `master`). The 54 near-pair labels on that head matched master; unit count was 1381 (`files=305`) because M1–M3 added source. Follow-up counts above are from a re-run of the same command on this cleanup head (`files=307`, units=1376).
 
 A row is a pair or an exact group this cleanup did not merge. A same-algorithm pair is not a row.
 
@@ -37,7 +39,7 @@ A row is a pair or an exact group this cleanup did not merge. A same-algorithm p
 | K014 | near | `src/utils/EntityValidator.ts EntityValidator.validate` ; `src/utils/EntityValidator.ts EntityValidator.validateSync` | jStruct=0.799 contain=0.931 jNames=0.957 | look-alike | Sync and async validators; JavaScript has no clean way to share both bodies. |
 | K015 | near | `src/core/GraphTraversal.ts GraphTraversal.trackTraversalAccess` ; `src/search/SearchManager.ts SearchManager.trackSearchResults` | jStruct=0.768 contain=0.896 jNames=0.706 | look-alike | Access tracking hooks for traversal vs search; emitted events and fields differ. |
 | K016 | near | `src/agent/ConsolidationScheduler.ts ConsolidationScheduler.start` ; `src/agent/DecayScheduler.ts DecayScheduler.start` | jStruct=0.765 contain=0.907 jNames=0.5 | look-alike | Parallel schedulers with different callbacks and env-driven intervals. |
-| K017 | near | `src/agent/SalienceEngine.ts SalienceEngine.calculateQueryRelevance` ; `src/agent/SalienceEngine.ts SalienceEngine.calculateIntentRelevance` | jStruct=0.757 contain=0.966 jNames=0.667 | look-alike | Shape overlap only; contracts, side effects, or backing boundaries differ. |
+| K017 | near | `src/agent/SalienceEngine.ts SalienceEngine.calculateQueryRelevance` ; `src/agent/SalienceEngine.ts SalienceEngine.calculateIntentRelevance` | jStruct=0.757 contain=0.966 jNames=0.667 | look-alike | Query fallback scores name (1.0), entityType (0.7), then observations (0.5). Intent fallback scores only observations (0.8) and never name or type. |
 | K018 | near | `src/search/QueryCostEstimator.ts QueryCostEstimator.scoreLexicalLayer` ; `src/search/QueryCostEstimator.ts QueryCostEstimator.scoreSemanticLayer` | jStruct=0.738 contain=0.882 jNames=0.909 | look-alike | Layer cost heuristics use different inputs; merging would blur semantic vs lexical weights. |
 | K019 | near | `src/agent/DecisionManager.ts DecisionManager.reject` ; `src/agent/DecisionManager.ts DecisionManager.supersede` | jStruct=0.72 contain=0.922 jNames=0.636 | look-alike | Decision lifecycle transitions differ in validation, metadata, and stored status. |
 | K020 | near | `src/agent/AccessTracker.ts AccessTracker.constructor` ; `src/agent/SalienceEngine.ts SalienceEngine.constructor` | jStruct=0.718 contain=0.848 jNames=0.08 | look-alike | Each constructor merges its own default configuration. The syntax matches because the pattern matches. |
@@ -47,7 +49,7 @@ A row is a pair or an exact group this cleanup did not merge. A same-algorithm p
 | K024 | near | `src/adapters/LangChainMemoryAdapter.ts LangChainMemoryAdapter.constructor` ; `src/search/tiered/LRUHotTier.ts LRUHotTier.constructor` | jStruct=0.704 contain=1 jNames=0.05 | look-alike | Each constructor merges its own default configuration. The syntax matches because the pattern matches. |
 | K025 | near | `src/agent/DecisionManager.ts DecisionManager.accept` ; `src/agent/DecisionManager.ts DecisionManager.supersede` | jStruct=0.701 contain=0.844 jNames=0.737 | look-alike | Decision lifecycle transitions differ in validation, metadata, and stored status. |
 | K026 | near | `src/adapters/LangChainMemoryAdapter.ts LangChainMemoryAdapter.constructor` ; `src/agent/RelationConsolidator.ts RelationConsolidator.constructor` | jStruct=0.679 contain=1 jNames=0.056 | look-alike | Each constructor merges its own default configuration. The syntax matches because the pattern matches. |
-| K027 | near | `src/agent/SalienceEngine.ts SalienceEngine.calculateTaskRelevance` ; `src/agent/SalienceEngine.ts SalienceEngine.calculateIntentRelevance` | jStruct=0.671 contain=0.948 jNames=0.667 | look-alike | Shape overlap only; contracts, side effects, or backing boundaries differ. |
+| K027 | near | `src/agent/SalienceEngine.ts SalienceEngine.calculateTaskRelevance` ; `src/agent/SalienceEngine.ts SalienceEngine.calculateIntentRelevance` | jStruct=0.671 contain=0.948 jNames=0.667 | look-alike | Task relevance short-circuits on `entity.taskId` and then scores name (0.8) / observations (0.5). Intent has no id short-circuit and only observations at 0.8. |
 | K028 | near | `src/agent/AccessTracker.ts AccessTracker.constructor` ; `src/agent/SessionManager.ts SessionManager.constructor` | jStruct=0.667 contain=0.824 jNames=0.167 | look-alike | Each constructor merges its own default configuration. The syntax matches because the pattern matches. |
 | K029 | near | `src/agent/AgentReflectionManager.ts AgentReflectionManager.archive` ; `src/agent/FailureManager.ts FailureManager.markResolved` | jStruct=0.658 contain=0.859 jNames=0.5 | look-alike | Archive vs resolve lifecycle; status fields and relations differ. |
 | K030 | near | `src/agent/InMemoryBackend.ts InMemoryBackend.get_weighted` ; `src/agent/SQLiteBackend.ts SQLiteBackend.get_weighted` | jStruct=0.655 contain=0.796 jNames=0.714 | look-alike | Two memory backends apply PRD weighting with different storage queries. |
