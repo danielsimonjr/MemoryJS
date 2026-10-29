@@ -1,12 +1,12 @@
 {
   "generated": "2026-10-29",
-  "totalFiles": 737,
+  "totalFiles": 739,
   "byDisposition": {
-    "reachable": 303,
+    "reachable": 304,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 414,
+    "test": 415,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -14,8 +14,8 @@
   },
   "byArea": {
     "benchmarks": 4,
-    "src": 307,
-    "tests": 414,
+    "src": 308,
+    "tests": 415,
     "tools": 10,
     "config": 2
   },
@@ -102,7 +102,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 431
+      "loc": 433
     },
     {
       "file": "src/agent/AgentMemoryConfig.ts",
@@ -207,7 +207,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1933
+      "loc": 1935
     },
     {
       "file": "src/agent/DecayEngine.ts",
@@ -368,7 +368,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 516
+      "loc": 518
     },
     {
       "file": "src/agent/MemoryValidator.ts",
@@ -746,7 +746,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 747
+      "loc": 749
     },
     {
       "file": "src/agent/SessionCheckpoint.ts",
@@ -760,7 +760,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 683
+      "loc": 685
     },
     {
       "file": "src/agent/SessionQueryBuilder.ts",
@@ -2000,6 +2000,13 @@
       "area": "src",
       "disposition": "reachable",
       "loc": 35
+    },
+    {
+      "file": "src/utils/fillDefaults.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 18
     },
     {
       "file": "src/utils/formatters.ts",
@@ -4926,6 +4933,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 50
+    },
+    {
+      "file": "tests/unit/utils/fillDefaults.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 22
     },
     {
       "file": "tests/unit/utils/formatters.test.ts",
