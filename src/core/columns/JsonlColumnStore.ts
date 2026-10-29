@@ -30,6 +30,7 @@ import { promises as fs } from 'fs';
 import { Mutex } from 'async-mutex';
 import { durableWriteFile } from '../../utils/durableWriteFile.js';
 import { parseJsonlMapLines, serializeJsonlMap } from '../../utils/jsonlMapFile.js';
+import { mutateMapWithFlushRollback } from '../../utils/mutateMapWithFlushRollback.js';
 import type { IColumnStore } from './IColumnStore.js';
 
 /**
@@ -99,21 +100,7 @@ export class JsonlColumnStore<T> implements IColumnStore<T> {
     // mutation, or the later flush writes a Map that never saw the earlier change.
     return this.mutex.runExclusive(async () => {
       const cache = await this.ensureLoaded();
-      // Snapshot prior state so we can roll the cache back if the disk
-      // flush fails — without this, the in-memory cache would be the
-      // new value while disk holds the old one, and a process restart
-      // (which re-reads disk) loses the write silently. Restores the
-      // `IColumnStore.batchPut` JSDoc's atomicity promise.
-      const hadPrior = cache.has(name);
-      const priorValue = hadPrior ? cache.get(name)! : undefined;
-      cache.set(name, value);
-      try {
-        await this.flush(cache);
-      } catch (err) {
-        if (hadPrior) cache.set(name, priorValue!);
-        else cache.delete(name);
-        throw err;
-      }
+      await mutateMapWithFlushRollback(cache, name, value, (c) => this.flush(c));
     });
   }
 

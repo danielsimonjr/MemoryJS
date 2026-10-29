@@ -346,18 +346,7 @@ export class EpisodicMemoryManager {
    * @returns Next event or undefined
    */
   async getNextEvent(entityName: string): Promise<AgentEntity | undefined> {
-    const relations = this.storage.getRelationsFrom(entityName);
-
-    for (const rel of relations) {
-      if (rel.relationType === EpisodicRelations.PRECEDES) {
-        const entity = this.storage.getEntityByName(rel.to);
-        if (entity && isAgentEntity(entity)) {
-          return entity as AgentEntity;
-        }
-      }
-    }
-
-    return undefined;
+    return this.getAdjacentEvent(entityName, EpisodicRelations.PRECEDES);
   }
 
   /**
@@ -367,10 +356,17 @@ export class EpisodicMemoryManager {
    * @returns Previous event or undefined
    */
   async getPreviousEvent(entityName: string): Promise<AgentEntity | undefined> {
+    return this.getAdjacentEvent(entityName, EpisodicRelations.FOLLOWS);
+  }
+
+  private async getAdjacentEvent(
+    entityName: string,
+    relationType: string,
+  ): Promise<AgentEntity | undefined> {
     const relations = this.storage.getRelationsFrom(entityName);
 
     for (const rel of relations) {
-      if (rel.relationType === EpisodicRelations.FOLLOWS) {
+      if (rel.relationType === relationType) {
         const entity = this.storage.getEntityByName(rel.to);
         if (entity && isAgentEntity(entity)) {
           return entity as AgentEntity;
