@@ -336,7 +336,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/utils/indexes.ts` | src | reachable | 430 |
 | `src/utils/IndexHealthMonitor.ts` | src | reachable | 78 |
 | `src/utils/jsonlMapFile.ts` | src | reachable | 113 |
-| `src/utils/jsonlRecordFile.ts` | src | reachable | 40 |
+| `src/utils/jsonlRecordFile.ts` | src | reachable | 41 |
 | `src/utils/logger.ts` | src | reachable | 45 |
 | `src/utils/MemoryMonitor.ts` | src | reachable | 411 |
 | `src/utils/mutateMapWithFlushRollback.ts` | src | reachable | 44 |
@@ -755,7 +755,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/utils/ids.test.ts` | tests | test | 35 |
 | `tests/unit/utils/indexes.test.ts` | tests | test | 898 |
 | `tests/unit/utils/jsonlMapFile.test.ts` | tests | test | 162 |
-| `tests/unit/utils/jsonlRecordFile.test.ts` | tests | test | 81 |
+| `tests/unit/utils/jsonlRecordFile.test.ts` | tests | test | 84 |
 | `tests/unit/utils/logger.test.ts` | tests | test | 253 |
 | `tests/unit/utils/MemoryMonitor.test.ts` | tests | test | 413 |
 | `tests/unit/utils/mutateMapWithFlushRollback.test.ts` | tests | test | 34 |

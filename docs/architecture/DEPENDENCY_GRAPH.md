@@ -5424,6 +5424,11 @@ Reachable from a root: **313** of 313 files. Dormant: **0** (0 orphaned, 0 test-
 |--------|--------|
 | `fs/promises` | `* as fs` |
 
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `./durableWriteFile.js` | `durableWriteFile` | Import |
+
 **Exports:**
 - Functions: `writeJsonlRecordsUpdatingCache`, `deleteRecordsByKey`
 
@@ -5931,7 +5936,7 @@ graph TD
 |----------|-------|
 | Total TypeScript Files | 313 |
 | Total Modules | 12 |
-| Total Lines of Code | 105544 |
+| Total Lines of Code | 105545 |
 | Total Exports | 2103 |
 | Total Re-exports | 1349 |
 | Total Classes | 237 |
