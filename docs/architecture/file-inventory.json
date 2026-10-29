@@ -1,12 +1,12 @@
 {
-  "generated": "2026-10-25",
-  "totalFiles": 731,
+  "generated": "2026-10-29",
+  "totalFiles": 733,
   "byDisposition": {
-    "reachable": 300,
+    "reachable": 301,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 411,
+    "test": 412,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -14,8 +14,8 @@
   },
   "byArea": {
     "benchmarks": 4,
-    "src": 304,
-    "tests": 411,
+    "src": 305,
+    "tests": 412,
     "tools": 10,
     "config": 2
   },
@@ -305,7 +305,14 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 310
+      "loc": 456
+    },
+    {
+      "file": "src/agent/GuardedComponentEdit.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 601
     },
     {
       "file": "src/agent/HeuristicManager.ts",
@@ -326,7 +333,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 608
+      "loc": 618
     },
     {
       "file": "src/agent/InMemoryBackend.ts",
@@ -403,7 +410,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 528
+      "loc": 542
     },
     {
       "file": "src/agent/procedural/graph/backing/index.ts",
@@ -1110,7 +1117,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1885
+      "loc": 1886
     },
     {
       "file": "src/core/GraphTraversal.ts",
@@ -1138,7 +1145,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1823
+      "loc": 1824
     },
     {
       "file": "src/core/mmap/FsReadMmapBackend.ts",
@@ -1222,7 +1229,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 2654
+      "loc": 2658
     },
     {
       "file": "src/core/storageCache.ts",
@@ -1271,7 +1278,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 552
+      "loc": 554
     },
     {
       "file": "src/features/AutoLinker.ts",
@@ -1299,7 +1306,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 130
+      "loc": 196
     },
     {
       "file": "src/features/FactExtractor.ts",
@@ -1810,7 +1817,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 2401
+      "loc": 2423
     },
     {
       "file": "src/types/artifact.ts",
@@ -1838,7 +1845,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 252
+      "loc": 254
     },
     {
       "file": "src/types/procedure.ts",
@@ -1887,7 +1894,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 2516
+      "loc": 2522
     },
     {
       "file": "src/utils/AsyncMutex.ts",
@@ -2104,7 +2111,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 772
+      "loc": 781
     },
     {
       "file": "src/utils/SchemaValidator.ts",
@@ -2237,7 +2244,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 68
+      "loc": 86
     },
     {
       "file": "tests/integration/features/governance-enforcement.test.ts",
@@ -2797,7 +2804,14 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 557
+      "loc": 722
+    },
+    {
+      "file": "tests/unit/agent/GuardedComponentEdit.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 292
     },
     {
       "file": "tests/unit/agent/HeuristicExtractionStage.test.ts",
@@ -2916,7 +2930,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 562
+      "loc": 592
     },
     {
       "file": "tests/unit/agent/procedural/graph/appendixF.test.ts",
