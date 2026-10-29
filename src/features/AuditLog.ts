@@ -59,6 +59,8 @@ export interface AuditEntry {
   after?: object;
   /** Whether the operation was ultimately committed or rolled back */
   status: 'committed' | 'rolled_back';
+  /** Extra attributes. `applyGuardedEdit` sets `{ failureId }`. */
+  metadata?: Record<string, unknown>;
   /**
    * Monotonic sequence number within this log file (0-based line position).
    * Optional on read — entries written before hash chaining existed lack it

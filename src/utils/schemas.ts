@@ -127,6 +127,7 @@ export const CreateEntitySchema = z.object({
   rootEntityName: z.string().optional(),
   isLatest: z.boolean().optional(),
   supersededBy: z.string().optional(),
+  causedByFailureId: z.string().optional(),
   // v1.11.0: Memory Engine dedup
   contentHash: z.string().length(64).optional(),
   // η.4.4: Bitemporal validity
@@ -141,6 +142,13 @@ export const CreateEntitySchema = z.object({
     sourceRef: z.string().optional(),
   })).optional(),
   lifecycleStatus: z.enum(['draft', 'published', 'archived']).optional(),
+  heuristicRecord: z.unknown().optional(),
+  planRecord: z.unknown().optional(),
+  memoryType: z.string().optional(),
+  agentId: z.string().optional(),
+  visibility: z.string().optional(),
+  confirmationCount: z.number().optional(),
+  source: z.unknown().optional(),
 }).strict();
 
 /**
@@ -194,6 +202,7 @@ export const UpdateEntitySchema = z.object({
   rootEntityName: entityNameSchema.optional(),
   parentEntityName: entityNameSchema.optional(),
   version: z.number().int().min(1).optional(),
+  causedByFailureId: z.string().optional(),
   // v1.11.0: Memory Engine dedup
   contentHash: z.string().length(64).optional(),
   // η.4.4: Temporal Versioning expansion

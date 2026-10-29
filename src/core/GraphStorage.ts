@@ -87,6 +87,7 @@ const OPTIONAL_PERSISTED_ENTITY_FIELDS: ReadonlyArray<string> = [
   'id',
   'tags', 'importance', 'parentId', 'projectId',
   'version', 'parentEntityName', 'rootEntityName', 'isLatest', 'supersededBy',
+  'causedByFailureId',
   'contentHash',
   'ttl', 'confidence',
   // η.4.4 temporal versioning expansion

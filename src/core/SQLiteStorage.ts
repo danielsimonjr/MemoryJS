@@ -787,6 +787,7 @@ export class SQLiteStorage implements IGraphStorage {
     'validFrom', 'validUntil', 'observationMeta',
     // Entity state machine
     'lifecycleStatus',
+    'causedByFailureId',
     // AgentEntity (types/agent-memory.ts)
     'memoryType', 'sessionId', 'conversationId', 'taskId',
     'expiresAt', 'isWorkingMemory', 'promotedAt', 'promotedFrom', 'markedForPromotion',
@@ -801,6 +802,9 @@ export class SQLiteStorage implements IGraphStorage {
     'outcome', 'failureCauses',
     // ArtifactEntity (types/artifact.ts)
     'artifactType', 'toolName', 'shortId',
+    // v2.1.x subclass-manager record fields (GraphStorage parity)
+    'heuristicRecord',
+    'planRecord',
   ];
 
   /** Build the JSON blob payload for the `agentMetadata` column. */

@@ -7,7 +7,8 @@
  * @module features/ContradictionDetector
  */
 
-import type { Entity } from '../types/types.js';
+import type { Entity, EntityStatus } from '../types/types.js';
+import type { PlanRecord } from '../types/agent-memory.js';
 import type { SemanticSearch } from '../search/SemanticSearch.js';
 import type { EntityManager } from '../core/EntityManager.js';
 
@@ -21,6 +22,24 @@ export interface Contradiction {
   newObservation: string;
   /** Cosine similarity score (0-1) */
   similarity: number;
+}
+
+/** Optional arguments for {@link ContradictionDetector.supersede}. */
+export interface SupersedeOptions {
+  causedByFailureId?: string;
+  lifecycleStatus?: EntityStatus;
+  /**
+   * Guarded edits set this. Skip `detect`. Keep every existing observation.
+   * Copy subtype fields that are present on the old entity:
+   * `memoryType`, `heuristicRecord` (structuredClone), `agentId`,
+   * `visibility`, `confidence`, `confirmationCount`, `source`.
+   * Do not copy `id`, `name`, `contentHash`, `supersededBy`, or the
+   * version-chain fields. Those are set by this method, as today.
+   */
+  preserveBody?: boolean;
+  patch?: Partial<Pick<Entity, 'importance' | 'confidence' | 'ttl'>>;
+  /** When set with `preserveBody`, stored on the new entity instead of copying from the old plan. */
+  planRecord?: PlanRecord;
 }
 
 /**
@@ -80,34 +99,44 @@ export class ContradictionDetector {
    * @param newObservations - Observations to merge into the new version
    *   (non-contradicted existing observations are carried over automatically)
    * @param entityManager - Used to persist both the updated old entity and the new version
+   * @param options - Optional failure link, lifecycle, body preservation, or scalar patch
    * @returns The newly created entity
    */
   async supersede(
     oldEntity: Entity,
     newObservations: string[],
-    entityManager: EntityManager
+    entityManager: EntityManager,
+    options?: SupersedeOptions
   ): Promise<Entity> {
     const currentVersion = oldEntity.version ?? 1;
     const nextVersion = currentVersion + 1;
     const rootName = oldEntity.rootEntityName ?? oldEntity.name;
     const newName = `${rootName}-v${nextVersion}`;
 
-    // Detect which existing observations are contradicted
-    const contradictions = await this.detect(oldEntity, newObservations);
-    const contradictedSet = new Set(
-      contradictions.map(c => c.existingObservation)
-    );
-    const preserved = oldEntity.observations.filter(
-      o => !contradictedSet.has(o)
-    );
+    const preserveBody = options?.preserveBody === true;
+    let observations: string[];
 
-    // Create the new version
+    if (preserveBody) {
+      observations = [...oldEntity.observations, ...newObservations];
+    } else {
+      const contradictions = await this.detect(oldEntity, newObservations);
+      const contradictedSet = new Set(
+        contradictions.map(c => c.existingObservation)
+      );
+      const preserved = oldEntity.observations.filter(
+        o => !contradictedSet.has(o)
+      );
+      observations = [...preserved, ...newObservations];
+    }
+
+    const oldRecord = oldEntity as unknown as Record<string, unknown>;
+
     const newEntity: Entity = {
       name: newName,
       entityType: oldEntity.entityType,
-      observations: [...preserved, ...newObservations],
+      observations,
       tags: oldEntity.tags ? [...oldEntity.tags] : undefined,
-      importance: oldEntity.importance,
+      importance: options?.patch?.importance ?? oldEntity.importance,
       parentId: oldEntity.parentId,
       projectId: oldEntity.projectId,
       version: nextVersion,
@@ -116,9 +145,58 @@ export class ContradictionDetector {
       isLatest: true,
     };
 
+    // Default supersede copies only the fields it copied before options existed.
+    // confidence/ttl come from an explicit patch, or from the old entity when
+    // preserveBody keeps the rest of the body.
+    if (options?.patch?.confidence !== undefined) {
+      newEntity.confidence = options.patch.confidence;
+    } else if (preserveBody && oldEntity.confidence !== undefined) {
+      newEntity.confidence = oldEntity.confidence;
+    }
+    if (options?.patch?.ttl !== undefined) {
+      newEntity.ttl = options.patch.ttl;
+    } else if (preserveBody && oldEntity.ttl !== undefined) {
+      newEntity.ttl = oldEntity.ttl;
+    }
+
+    if (options?.causedByFailureId !== undefined) {
+      newEntity.causedByFailureId = options.causedByFailureId;
+    }
+    if (options?.lifecycleStatus !== undefined) {
+      newEntity.lifecycleStatus = options.lifecycleStatus;
+    }
+
+    if (preserveBody) {
+      if (oldRecord.memoryType !== undefined) {
+        (newEntity as unknown as Record<string, unknown>).memoryType = oldRecord.memoryType;
+      }
+      if (oldRecord.heuristicRecord !== undefined) {
+        (newEntity as unknown as Record<string, unknown>).heuristicRecord = structuredClone(
+          oldRecord.heuristicRecord
+        );
+      }
+      if (oldRecord.agentId !== undefined) {
+        (newEntity as unknown as Record<string, unknown>).agentId = oldRecord.agentId;
+      }
+      if (oldRecord.visibility !== undefined) {
+        (newEntity as unknown as Record<string, unknown>).visibility = oldRecord.visibility;
+      }
+      if (oldRecord.confirmationCount !== undefined) {
+        (newEntity as unknown as Record<string, unknown>).confirmationCount =
+          oldRecord.confirmationCount;
+      }
+      if (oldRecord.source !== undefined) {
+        (newEntity as unknown as Record<string, unknown>).source = structuredClone(oldRecord.source);
+      }
+      if (options?.planRecord !== undefined) {
+        (newEntity as unknown as Record<string, unknown>).planRecord = structuredClone(options.planRecord);
+      } else if (oldRecord.planRecord !== undefined) {
+        (newEntity as unknown as Record<string, unknown>).planRecord = structuredClone(oldRecord.planRecord);
+      }
+    }
+
     await entityManager.createEntities([newEntity]);
 
-    // Mark old entity as superseded
     await entityManager.updateEntity(oldEntity.name, {
       isLatest: false,
       supersededBy: newName,

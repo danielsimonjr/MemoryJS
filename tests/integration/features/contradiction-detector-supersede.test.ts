@@ -64,4 +64,45 @@ describe('ContradictionDetector.supersede', () => {
     expect(v3.parentEntityName).toBe('alice-v2');
     expect(v3.rootEntityName).toBe('alice');
   });
+
+  it('preserveBody keeps every observation and stores causedByFailureId and lifecycleStatus', async () => {
+    const detector = new ContradictionDetector(mockSearch(), 0.85);
+    const old = (await ctx.entityManager.getEntity('alice'))!;
+    const updated = await detector.supersede(
+      old,
+      ['Extra fact'],
+      ctx.entityManager,
+      {
+        preserveBody: true,
+        causedByFailureId: 'failure-test-id',
+        lifecycleStatus: 'draft',
+      },
+    );
+    expect(updated.observations).toEqual(['Lives in NYC', 'Likes coffee', 'Extra fact']);
+    expect(updated.causedByFailureId).toBe('failure-test-id');
+    expect(updated.lifecycleStatus).toBe('draft');
+  });
+
+  it('default supersede does not copy confidence or ttl from the old entity', async () => {
+    await ctx.entityManager.updateEntity('alice', { confidence: 0.9, ttl: 120 });
+    const detector = new ContradictionDetector(mockSearch(), 0.85);
+    const old = (await ctx.entityManager.getEntity('alice'))!;
+    expect(old.confidence).toBe(0.9);
+    expect(old.ttl).toBe(120);
+    const updated = await detector.supersede(old, ['Lives in SF'], ctx.entityManager);
+    expect(updated.confidence).toBeUndefined();
+    expect(updated.ttl).toBeUndefined();
+    expect(updated.importance).toBe(old.importance);
+  });
+
+  it('preserveBody copies confidence and ttl when patch does not override them', async () => {
+    await ctx.entityManager.updateEntity('alice', { confidence: 0.4, ttl: 60 });
+    const detector = new ContradictionDetector(mockSearch(), 0.85);
+    const old = (await ctx.entityManager.getEntity('alice'))!;
+    const updated = await detector.supersede(old, ['Kept'], ctx.entityManager, {
+      preserveBody: true,
+    });
+    expect(updated.confidence).toBe(0.4);
+    expect(updated.ttl).toBe(60);
+  });
 });
