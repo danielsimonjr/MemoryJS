@@ -244,7 +244,6 @@ export class StreamingExporter {
 
     const io: StreamWriteIo = {
       writeRaw: line => {
-        if (writeError) throw writeError;
         writeStream.write(line);
         bytesWritten += Buffer.byteLength(line, 'utf-8');
       },
