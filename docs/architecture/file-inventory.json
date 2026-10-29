@@ -1117,7 +1117,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1886
+      "loc": 1881
     },
     {
       "file": "src/core/GraphTraversal.ts",
@@ -1229,14 +1229,14 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 2658
+      "loc": 2653
     },
     {
       "file": "src/core/storageCache.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 152
+      "loc": 194
     },
     {
       "file": "src/core/StorageFactory.ts",
@@ -3938,7 +3938,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 288
+      "loc": 337
     },
     {
       "file": "tests/unit/core/StorageFactory.test.ts",
