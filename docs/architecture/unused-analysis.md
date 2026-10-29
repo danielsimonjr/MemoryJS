@@ -4,7 +4,7 @@
 
 # Unused Files and Exports Analysis
 
-**Generated**: 2026-10-25
+**Generated**: 2026-10-29
 
 ## Summary
 
@@ -12,9 +12,9 @@
 - **Dormant files** (runtime code on disk, unreachable from any entry/build root): 0
   - **Orphaned (reachable from nothing — delete/wire candidates)**: 0
   - **Test-only (exercised by a test, ships nothing)**: 0
-- **Potentially unused exports**: 72
+- **Potentially unused exports**: 74
   - **Unreferenced anywhere (deletion candidates)**: 0
-  - **Referenced in-module (type contracts / helpers backing live exports)**: 72
+  - **Referenced in-module (type contracts / helpers backing live exports)**: 74
 
 Seeded reachability roots (4):
 
@@ -131,21 +131,25 @@ support exports that ARE used, so they cannot be deleted in isolation.
 - `DEFAULT_ALL_PATHS_MAX_PATHS` (constant) — 1 in-file ref
 - `DEFAULT_ALL_PATHS_MAX_EXPANSIONS` (constant) — 1 in-file ref
 
-### `src/core/mmap/FsReadMmapBackend.ts`
-
-- `FsReadMmapBackendOptions` (interface) — 1 in-file ref
-
 ### `src/core/ObservationStore.ts`
 
 - `ObservationStoreStats` (interface) — 1 in-file ref
+
+### `src/core/SQLiteStorage.ts`
+
+- `DatabaseCtor` (type) — 6 in-file refs
+
+### `src/core/mmap/FsReadMmapBackend.ts`
+
+- `FsReadMmapBackendOptions` (interface) — 1 in-file ref
 
 ### `src/core/segments/FileSegmentStorage.ts`
 
 - `SegmentCommitIncompleteError` (class) — 3 in-file refs
 
-### `src/core/SQLiteStorage.ts`
+### `src/features/ContradictionDetector.ts`
 
-- `DatabaseCtor` (type) — 6 in-file refs
+- `SupersedeOptions` (interface) — 1 in-file ref
 
 ### `src/features/IOManager.ts`
 
@@ -172,6 +176,10 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 - `IndexRecommendation` (interface) — 2 in-file refs
 - `PartialIndexAdvisorOptions` (interface) — 1 in-file ref
+
+### `src/search/SearchFilterChain.ts`
+
+- `SearchFilterVersionContext` (interface) — 1 in-file ref
 
 ### `src/search/SearchManager.ts`
 
@@ -219,6 +227,19 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 - `CachePressureSnapshot` (interface) — 2 in-file refs
 
+### `src/utils/Diagnostics.ts`
+
+- `EntityCounts` (interface) — 2 in-file refs
+- `TieredIndexStatsSnapshot` (interface) — 2 in-file refs
+
+### `src/utils/IndexHealthMonitor.ts`
+
+- `IndexHealthSources` (interface) — 1 in-file ref
+
+### `src/utils/WorkerPoolManager.ts`
+
+- `WorkerPoolRuntimeStats` (interface) — 1 in-file ref
+
 ### `src/utils/compression/CompressedMap.ts`
 
 - `CompressedMapOptions` (interface) — 1 in-file ref
@@ -231,18 +252,9 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 - `EMBEDDING_ENV_VARS` (constant) — 7 in-file refs
 
-### `src/utils/Diagnostics.ts`
-
-- `EntityCounts` (interface) — 2 in-file refs
-- `TieredIndexStatsSnapshot` (interface) — 2 in-file refs
-
 ### `src/utils/durableWriteFile.ts`
 
 - `DurableReplaceError` (class) — 3 in-file refs
-
-### `src/utils/IndexHealthMonitor.ts`
-
-- `IndexHealthSources` (interface) — 1 in-file ref
 
 ### `src/utils/jsonlMapFile.ts`
 
@@ -251,8 +263,4 @@ support exports that ARE used, so they cannot be deleted in isolation.
 ### `src/utils/searchCache.ts`
 
 - `GraphGenerationDependency` (type) — 2 in-file refs
-
-### `src/utils/WorkerPoolManager.ts`
-
-- `WorkerPoolRuntimeStats` (interface) — 1 in-file ref
 

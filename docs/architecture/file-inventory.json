@@ -298,7 +298,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 301
+      "loc": 314
     },
     {
       "file": "src/agent/FailureManager.ts",
@@ -2811,7 +2811,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 539
+      "loc": 617
     },
     {
       "file": "tests/unit/agent/FailureManager.test.ts",
