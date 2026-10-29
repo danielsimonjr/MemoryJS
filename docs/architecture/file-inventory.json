@@ -837,7 +837,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 812
+      "loc": 801
     },
     {
       "file": "src/agent/world/index.ts",
