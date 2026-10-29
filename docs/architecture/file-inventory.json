@@ -3224,7 +3224,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 812
+      "loc": 848
     },
     {
       "file": "tests/unit/agent/SessionCheckpoint.test.ts",
