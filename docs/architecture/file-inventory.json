@@ -2867,7 +2867,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 131
+      "loc": 137
     },
     {
       "file": "tests/unit/agent/keyValueLine.test.ts",

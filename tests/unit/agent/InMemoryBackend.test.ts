@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import { InMemoryBackend } from '../../../src/agent/InMemoryBackend.js';
 import { DecayEngine } from '../../../src/agent/DecayEngine.js';
 import { AccessTracker } from '../../../src/agent/AccessTracker.js';
@@ -34,6 +34,10 @@ runMemoryBackendContract('InMemoryBackend', () => {
 
 // Backend-specific tests.
 describe('InMemoryBackend specifics', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   function mk() {
     const storage = createMockStorage();
     const tracker = new AccessTracker(storage);
@@ -85,6 +89,8 @@ describe('InMemoryBackend specifics', () => {
   });
 
   it('keeps a score equal to the threshold and honors limit 1', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-29T18:00:00.000Z'));
     const backend = mk();
     const t = new Date().toISOString();
     await backend.add({
