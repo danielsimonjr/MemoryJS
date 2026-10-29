@@ -9340,8 +9340,8 @@
           {
             "file": "../../types/types.js",
             "imports": [
-              "Relation",
-              "ReadonlyKnowledgeGraph"
+              "Entity",
+              "Relation"
             ],
             "typeOnly": true
           },
@@ -21086,7 +21086,7 @@
   "statistics": {
     "totalTypeScriptFiles": 313,
     "totalModules": 12,
-    "totalLinesOfCode": 105514,
+    "totalLinesOfCode": 105515,
     "totalExports": 2100,
     "totalClasses": 237,
     "totalInterfaces": 632,

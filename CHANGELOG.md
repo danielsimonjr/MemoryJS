@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Clones refactor P2: `loadProjectedRecords` and `matchesDefined` for agent record list filtering (K002).
 - Clones refactor P1: shared `failureChainText` prelude for failure descriptions and lessons in `FailureDistillation`.
 - Phase 2 clone cleanup: merged episodic adjacent-event navigation, procedural-graph monotonic timestamps, and tiered-store flush rollback helpers; documented remaining pairs in `docs/analysis/CLONES_REMAINING.md`.
+- Add `loadEntityRelationEnds` for inspect show and neighbors (CLONES P17).
 - Add `RefIndex.rewriteReverseBucket` for purge and rename (CLONES P16).
 - Add `selectWeightedTurns` for PRD-weighted turn selection in memory backends (CLONES P15).
 - Extract `StreamingExporter.writeStreamed` frame for JSONL and CSV exports (CLONES P14).

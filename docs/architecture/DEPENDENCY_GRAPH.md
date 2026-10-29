@@ -2575,7 +2575,7 @@ Reachable from a root: **313** of 313 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `../../core/ManagerContext.js` | `ManagerContext` | Import |
-| `../../types/types.js` | `Relation, ReadonlyKnowledgeGraph` | Import (type-only) |
+| `../../types/types.js` | `Entity, Relation` | Import (type-only) |
 | `./helpers.js` | `runAction` | Import |
 
 **Exports:**
@@ -5930,7 +5930,7 @@ graph TD
 |----------|-------|
 | Total TypeScript Files | 313 |
 | Total Modules | 12 |
-| Total Lines of Code | 105514 |
+| Total Lines of Code | 105515 |
 | Total Exports | 2100 |
 | Total Re-exports | 1349 |
 | Total Classes | 237 |

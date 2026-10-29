@@ -176,7 +176,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/cli/commands/heuristic.ts` | src | reachable | 125 |
 | `src/cli/commands/hierarchy.ts` | src | reachable | 66 |
 | `src/cli/commands/index.ts` | src | reachable | 66 |
-| `src/cli/commands/inspect.ts` | src | reachable | 260 |
+| `src/cli/commands/inspect.ts` | src | reachable | 261 |
 | `src/cli/commands/io.ts` | src | reachable | 71 |
 | `src/cli/commands/maintenance.ts` | src | reachable | 188 |
 | `src/cli/commands/observation.ts` | src | reachable | 80 |
@@ -535,7 +535,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/cli/heuristic.test.ts` | tests | test | 70 |
 | `tests/unit/cli/hierarchy.test.ts` | tests | test | 65 |
 | `tests/unit/cli/index.test.ts` | tests | test | 255 |
-| `tests/unit/cli/inspect.test.ts` | tests | test | 184 |
+| `tests/unit/cli/inspect.test.ts` | tests | test | 212 |
 | `tests/unit/cli/interactive.test.ts` | tests | test | 925 |
 | `tests/unit/cli/maintenance-cli.test.ts` | tests | test | 78 |
 | `tests/unit/cli/observation.test.ts` | tests | test | 66 |
