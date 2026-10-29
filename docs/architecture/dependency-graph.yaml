@@ -4,7 +4,7 @@ metadata:
   lastUpdated: "2026-10-29"
   totalFiles: 310
   totalModules: 12
-  totalExports: 2095
+  totalExports: 2096
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -280,6 +280,7 @@ modules:
           typeOnly: true
         - file: ../utils/halfLife.js
           imports:
+            - clampedHalfLifeScore
             - halfLifeFactor
         - file: ../types/agent-memory.js
           imports:
@@ -956,6 +957,7 @@ modules:
             - tokenizeToSet
         - file: ../utils/halfLife.js
           imports:
+            - clampedHalfLifeScore
             - halfLifeFactor
         - file: ./connectivity.js
           imports:
@@ -13024,8 +13026,10 @@ modules:
       internalDependencies: []
       exports:
         - halfLifeFactor
+        - clampedHalfLifeScore
       functions:
         - halfLifeFactor
+        - clampedHalfLifeScore
     src/utils/ids.ts:
       description: Unique name suffix
       externalDependencies: []
@@ -14836,11 +14840,11 @@ reachability:
 statistics:
   totalTypeScriptFiles: 310
   totalModules: 12
-  totalLinesOfCode: 105469
-  totalExports: 2095
+  totalLinesOfCode: 105471
+  totalExports: 2096
   totalClasses: 237
   totalInterfaces: 631
-  totalFunctions: 370
+  totalFunctions: 371
   totalTypeGuards: 31
   totalEnums: 4
   totalConstants: 124

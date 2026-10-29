@@ -186,7 +186,7 @@ Reachable from a root: **310** of 310 files. Dormant: **0** (0 orphaned, 0 test-
 |------|---------|------|
 | `../types/types.js` | `IGraphStorage` | Import (type-only) |
 | `../types/agent-memory.js` | `AgentEntity, AccessContext, AccessPattern` | Import (type-only) |
-| `../utils/halfLife.js` | `halfLifeFactor` | Import |
+| `../utils/halfLife.js` | `clampedHalfLifeScore, halfLifeFactor` | Import |
 | `../types/agent-memory.js` | `AccessContext` | Re-export (type-only) |
 
 **Exports:**
@@ -478,7 +478,7 @@ Reachable from a root: **310** of 310 files. Dormant: **0** (0 orphaned, 0 test-
 | `./AccessTracker.js` | `AccessTracker` | Import |
 | `../features/FreshnessManager.js` | `FreshnessManager` | Import |
 | `../utils/textSimilarity.js` | `tokenizeToSet` | Import |
-| `../utils/halfLife.js` | `halfLifeFactor` | Import |
+| `../utils/halfLife.js` | `clampedHalfLifeScore, halfLifeFactor` | Import |
 | `./connectivity.js` | `computeDegreeMap, normalizedDegree, DegreeMap` | Import |
 | `../types/agent-memory.js` | `DecayResult, ForgetOptions, ForgetResult` | Re-export (type-only) |
 
@@ -5300,7 +5300,7 @@ Reachable from a root: **310** of 310 files. Dormant: **0** (0 orphaned, 0 test-
 ### `src/utils/halfLife.ts` - Half-Life Utilities
 
 **Exports:**
-- Functions: `halfLifeFactor`
+- Functions: `halfLifeFactor`, `clampedHalfLifeScore`
 
 ---
 
@@ -5887,12 +5887,12 @@ graph TD
 |----------|-------|
 | Total TypeScript Files | 310 |
 | Total Modules | 12 |
-| Total Lines of Code | 105469 |
-| Total Exports | 2095 |
+| Total Lines of Code | 105471 |
+| Total Exports | 2096 |
 | Total Re-exports | 1349 |
 | Total Classes | 237 |
 | Total Interfaces | 631 |
-| Total Functions | 370 |
+| Total Functions | 371 |
 | Total Type Guards | 31 |
 | Total Enums | 4 |
 | Type-only Imports | 498 |

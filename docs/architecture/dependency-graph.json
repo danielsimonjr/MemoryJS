@@ -5,7 +5,7 @@
     "lastUpdated": "2026-10-29",
     "totalFiles": 310,
     "totalModules": 12,
-    "totalExports": 2095
+    "totalExports": 2096
   },
   "entryPoints": [
     {
@@ -397,6 +397,7 @@
           {
             "file": "../utils/halfLife.js",
             "imports": [
+              "clampedHalfLifeScore",
               "halfLifeFactor"
             ]
           },
@@ -1502,6 +1503,7 @@
           {
             "file": "../utils/halfLife.js",
             "imports": [
+              "clampedHalfLifeScore",
               "halfLifeFactor"
             ]
           },
@@ -18794,10 +18796,12 @@
         "nodeDependencies": [],
         "internalDependencies": [],
         "exports": [
-          "halfLifeFactor"
+          "halfLifeFactor",
+          "clampedHalfLifeScore"
         ],
         "functions": [
-          "halfLifeFactor"
+          "halfLifeFactor",
+          "clampedHalfLifeScore"
         ]
       },
       "src/utils/ids.ts": {
@@ -20929,11 +20933,11 @@
   "statistics": {
     "totalTypeScriptFiles": 310,
     "totalModules": 12,
-    "totalLinesOfCode": 105469,
-    "totalExports": 2095,
+    "totalLinesOfCode": 105471,
+    "totalExports": 2096,
     "totalClasses": 237,
     "totalInterfaces": 631,
-    "totalFunctions": 370,
+    "totalFunctions": 371,
     "totalTypeGuards": 31,
     "totalEnums": 4,
     "totalConstants": 124,
