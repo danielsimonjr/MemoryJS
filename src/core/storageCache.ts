@@ -149,3 +149,45 @@ export function removeEntitiesFromIndexes(
     state.relationKeyMap.delete(relationKeyOf(r));
   }
 }
+
+/**
+ * Remove entities and incident relations from an in-memory graph snapshot.
+ *
+ * The caller runs this after the durable delete. Index maintenance is separate
+ * (`removeEntitiesFromIndexes`).
+ */
+export function deleteNamesFromSnapshot(
+  cache: KnowledgeGraph,
+  nameSet: ReadonlySet<string>,
+): void {
+  cache.entities = cache.entities.filter(e => !nameSet.has(e.name));
+  cache.relations = cache.relations.filter(
+    r => !nameSet.has(r.from) && !nameSet.has(r.to),
+  );
+}
+
+/**
+ * Apply relation deletes and entity timestamp bumps to the in-memory snapshot.
+ *
+ * Runs after the durable write. Touches `lastModified` even when no relation
+ * matched.
+ */
+export function deleteRelationsFromSnapshot(
+  cache: KnowledgeGraph,
+  indexes: Pick<StorageCacheState, 'relationIndex' | 'relationKeyMap'>,
+  keySet: ReadonlySet<string>,
+  deletedRelations: readonly Relation[],
+  touchedEntities: readonly Entity[],
+  timestamp: string,
+): void {
+  if (deletedRelations.length > 0) {
+    cache.relations = cache.relations.filter(r => !keySet.has(relationKeyOf(r)));
+    for (const r of deletedRelations) {
+      indexes.relationIndex.remove(r);
+      indexes.relationKeyMap.delete(relationKeyOf(r));
+    }
+  }
+  for (const entity of touchedEntities) {
+    entity.lastModified = timestamp;
+  }
+}

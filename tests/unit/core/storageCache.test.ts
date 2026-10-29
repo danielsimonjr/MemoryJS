@@ -8,6 +8,8 @@
 
 import { describe, it, expect } from 'vitest';
 import {
+  deleteNamesFromSnapshot,
+  deleteRelationsFromSnapshot,
   relationKeyOf,
   removeEntitiesFromIndexes,
   upsertEntityInCache,
@@ -283,5 +285,52 @@ describe('removeEntitiesFromIndexes', () => {
 
     expect(order).toEqual(['name:e1', 'name:e2', 'name:e3', 'relation:e1', 'relation:e2']);
     expect(calls).toEqual(['remove:e1', 'remove:e2', 'remove:e3']);
+  });
+});
+
+describe('deleteNamesFromSnapshot', () => {
+  it('drops entities and relations touching deleted names', () => {
+    const cache: KnowledgeGraph = {
+      entities: [
+        { name: 'e1', entityType: 'A', observations: [] },
+        { name: 'e2', entityType: 'A', observations: [] },
+      ],
+      relations: [
+        { from: 'e1', to: 'e2', relationType: 't' },
+        { from: 'e2', to: 'e3', relationType: 't' },
+      ],
+    };
+    deleteNamesFromSnapshot(cache, new Set(['e1']));
+    expect(cache.entities.map(e => e.name)).toEqual(['e2']);
+    expect(cache.relations).toEqual([{ from: 'e2', to: 'e3', relationType: 't' }]);
+  });
+});
+
+describe('deleteRelationsFromSnapshot', () => {
+  it('removes relations from cache and indexes and bumps touched entities', () => {
+    const { state, cache } = makeState(false);
+    const e1: Entity = { name: 'e1', entityType: 'A', observations: [], lastModified: 'old' };
+    const e2: Entity = { name: 'e2', entityType: 'A', observations: [] };
+    const r: Relation = { from: 'e1', to: 'e2', relationType: 't' };
+    upsertEntityInCache(state, e1);
+    upsertEntityInCache(state, e2);
+    upsertRelationInCache(state, r);
+    const keySet = new Set([relationKeyOf(r)]);
+
+    deleteRelationsFromSnapshot(cache, state, keySet, [r], [e1], '2020-01-01T00:00:00.000Z');
+
+    expect(cache.relations).toEqual([]);
+    expect(state.relationKeyMap.size).toBe(0);
+    expect(e1.lastModified).toBe('2020-01-01T00:00:00.000Z');
+  });
+
+  it('still bumps lastModified when no relation was deleted', () => {
+    const cache: KnowledgeGraph = { entities: [], relations: [] };
+    const { state } = makeState(false);
+    const e1: Entity = { name: 'e1', entityType: 'A', observations: [], lastModified: 'old' };
+
+    deleteRelationsFromSnapshot(cache, state, new Set(), [], [e1], '2020-06-01T00:00:00.000Z');
+
+    expect(e1.lastModified).toBe('2020-06-01T00:00:00.000Z');
   });
 });
