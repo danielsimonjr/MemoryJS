@@ -102,7 +102,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 425
+      "loc": 430
     },
     {
       "file": "src/agent/AgentMemoryConfig.ts",
@@ -1131,7 +1131,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1409
+      "loc": 1406
     },
     {
       "file": "src/core/HierarchyManager.ts",
@@ -1670,7 +1670,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 555
+      "loc": 553
     },
     {
       "file": "src/search/SearchSuggestions.ts",
@@ -2636,7 +2636,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 718
+      "loc": 744
     },
     {
       "file": "tests/unit/agent/ActiveRetrieval.test.ts",
@@ -4575,7 +4575,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 568
+      "loc": 589
     },
     {
       "file": "tests/unit/search/SearchSuggestions.test.ts",

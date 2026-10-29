@@ -52,7 +52,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/adapters/pagination.ts` | src | reachable | 92 |
 | `src/adapters/RateLimiter.ts` | src | reachable | 206 |
 | `src/adapters/RestRouter.ts` | src | reachable | 751 |
-| `src/agent/AccessTracker.ts` | src | reachable | 425 |
+| `src/agent/AccessTracker.ts` | src | reachable | 430 |
 | `src/agent/AgentMemoryConfig.ts` | src | reachable | 265 |
 | `src/agent/AgentMemoryManager.ts` | src | reachable | 702 |
 | `src/agent/AgentReflectionManager.ts` | src | reachable | 306 |
@@ -199,7 +199,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/core/EntityStateMachine.ts` | src | reachable | 104 |
 | `src/core/GraphEventEmitter.ts` | src | reachable | 463 |
 | `src/core/GraphStorage.ts` | src | reachable | 1886 |
-| `src/core/GraphTraversal.ts` | src | reachable | 1409 |
+| `src/core/GraphTraversal.ts` | src | reachable | 1406 |
 | `src/core/HierarchyManager.ts` | src | reachable | 305 |
 | `src/core/index.ts` | src | reachable | 42 |
 | `src/core/ManagerContext.ts` | src | reachable | 1824 |
@@ -276,7 +276,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/search/ReflectionManager.ts` | src | reachable | 374 |
 | `src/search/SavedSearchManager.ts` | src | reachable | 220 |
 | `src/search/SearchFilterChain.ts` | src | reachable | 335 |
-| `src/search/SearchManager.ts` | src | reachable | 555 |
+| `src/search/SearchManager.ts` | src | reachable | 553 |
 | `src/search/SearchSuggestions.ts` | src | reachable | 240 |
 | `src/search/SemanticSearch.ts` | src | reachable | 578 |
 | `src/search/SpellChecker.ts` | src | reachable | 173 |
@@ -414,7 +414,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/adapters/rest-tenancy.test.ts` | tests | test | 347 |
 | `tests/unit/adapters/rest-unscoped-warning.test.ts` | tests | test | 46 |
 | `tests/unit/adapters/RestRouter.test.ts` | tests | test | 203 |
-| `tests/unit/agent/AccessTracker.test.ts` | tests | test | 718 |
+| `tests/unit/agent/AccessTracker.test.ts` | tests | test | 744 |
 | `tests/unit/agent/ActiveRetrieval.test.ts` | tests | test | 194 |
 | `tests/unit/agent/agent-memory-manager-diary.test.ts` | tests | test | 70 |
 | `tests/unit/agent/AgentMemoryManager.test.ts` | tests | test | 668 |
@@ -691,7 +691,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/search/search-filter-chain-project.test.ts` | tests | test | 52 |
 | `tests/unit/search/search-filter-chain-versioning.test.ts` | tests | test | 149 |
 | `tests/unit/search/SearchFilterChain.test.ts` | tests | test | 524 |
-| `tests/unit/search/SearchManager.test.ts` | tests | test | 568 |
+| `tests/unit/search/SearchManager.test.ts` | tests | test | 589 |
 | `tests/unit/search/SearchSuggestions.test.ts` | tests | test | 304 |
 | `tests/unit/search/searchTwinsFts.test.ts` | tests | test | 364 |
 | `tests/unit/search/searchTwinsLayers.test.ts` | tests | test | 339 |
