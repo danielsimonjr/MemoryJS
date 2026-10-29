@@ -287,7 +287,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/search/tiered/BrotliColdTier.ts` | src | reachable | 169 |
 | `src/search/tiered/DiskWarmTier.ts` | src | reachable | 168 |
 | `src/search/tiered/ITieredIndex.ts` | src | reachable | 225 |
-| `src/search/tiered/LRUHotTier.ts` | src | reachable | 170 |
+| `src/search/tiered/LRUHotTier.ts` | src | reachable | 177 |
 | `src/search/tiered/MapFileTier.ts` | src | reachable | 153 |
 | `src/search/tiered/TieredIndex.ts` | src | reachable | 319 |
 | `src/search/VectorStore.ts` | src | reachable | 473 |
@@ -422,8 +422,8 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/CollaborativeSynthesis.test.ts` | tests | test | 710 |
 | `tests/unit/agent/ConflictResolver.test.ts` | tests | test | 466 |
 | `tests/unit/agent/ConnectivitySignals.test.ts` | tests | test | 478 |
-| `tests/unit/agent/ConsolidationPipeline.test.ts` | tests | test | 2361 |
-| `tests/unit/agent/ConsolidationScheduler.test.ts` | tests | test | 363 |
+| `tests/unit/agent/ConsolidationPipeline.test.ts` | tests | test | 2371 |
+| `tests/unit/agent/ConsolidationScheduler.test.ts` | tests | test | 371 |
 | `tests/unit/agent/context-window-manager-compress.test.ts` | tests | test | 166 |
 | `tests/unit/agent/context-window-manager-wakeup.test.ts` | tests | test | 226 |
 | `tests/unit/agent/ContextProfileManager.test.ts` | tests | test | 526 |
@@ -495,7 +495,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/reconstruction/MemoryToolkit.test.ts` | tests | test | 61 |
 | `tests/unit/agent/reconstruction/ReconstructiveMemory.test.ts` | tests | test | 135 |
 | `tests/unit/agent/ReflectionStage.test.ts` | tests | test | 344 |
-| `tests/unit/agent/RelationConsolidator.test.ts` | tests | test | 670 |
+| `tests/unit/agent/RelationConsolidator.test.ts` | tests | test | 678 |
 | `tests/unit/agent/RoleProfiles.test.ts` | tests | test | 255 |
 | `tests/unit/agent/RuleEvaluator.test.ts` | tests | test | 310 |
 | `tests/unit/agent/SalienceEngine-heap-pins.test.ts` | tests | test | 179 |
@@ -707,7 +707,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/search/tiered/disk-tier-concurrency.test.ts` | tests | test | 69 |
 | `tests/unit/search/tiered/DiskWarmTier.test.ts` | tests | test | 537 |
 | `tests/unit/search/tiered/ITieredIndex.test.ts` | tests | test | 175 |
-| `tests/unit/search/tiered/LRUHotTier.test.ts` | tests | test | 235 |
+| `tests/unit/search/tiered/LRUHotTier.test.ts` | tests | test | 252 |
 | `tests/unit/search/tiered/tiered-review-fixes.test.ts` | tests | test | 275 |
 | `tests/unit/search/tiered/TieredIndex-wiring.test.ts` | tests | test | 142 |
 | `tests/unit/search/tiered/TieredIndex.test.ts` | tests | test | 270 |
