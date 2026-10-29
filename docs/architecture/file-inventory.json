@@ -1194,7 +1194,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 372
+      "loc": 371
     },
     {
       "file": "src/core/RelationManager.ts",
