@@ -171,6 +171,10 @@ describe('DecisionManager', () => {
       expect(await mgr.reject(rec.id, 'r')).toBe('already-rejected');
     });
 
+    it('throws on an empty reason before a missing id can return not-found', async () => {
+      await expect(mgr.reject('decision-does-not-exist', '')).rejects.toThrow(/reason/);
+    });
+
     it('returns "illegal-transition" when target is accepted', async () => {
       const rec = await mgr.propose({
         context: 'c', decision: 'd', alternatives: [], consequences: [],
