@@ -956,7 +956,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 260
+      "loc": 261
     },
     {
       "file": "src/cli/commands/io.ts",
