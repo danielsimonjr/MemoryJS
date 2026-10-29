@@ -233,7 +233,10 @@ export class BooleanSearch {
 
     // Apply tag and importance filters using SearchFilterChain
     const filters: SearchFilters = { tags, minImportance, maxImportance, projectId };
-    const filteredEntities = SearchFilterChain.applyFilters(booleanMatched, filters);
+    const versionContext = {
+      visibleSupersededNames: SearchFilterChain.publishedAncestorsOfDraftHeads(graph.entities),
+    };
+    const filteredEntities = SearchFilterChain.applyFilters(booleanMatched, filters, versionContext);
 
     // Apply pagination using SearchFilterChain
     const pagination = SearchFilterChain.validatePagination(offset, limit);

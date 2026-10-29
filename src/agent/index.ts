@@ -80,6 +80,8 @@ export {
 
 export {
   applyGuardedEdit,
+  noteHelped,
+  retire,
   GuardedEditError,
   type GuardedChange,
   type GuardedEditContext,

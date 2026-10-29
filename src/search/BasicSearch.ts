@@ -72,7 +72,10 @@ export class BasicSearch {
 
     // Apply tag and importance filters using SearchFilterChain
     const filters: SearchFilters = { tags, minImportance, maxImportance, projectId };
-    const filteredEntities = SearchFilterChain.applyFilters(textMatched, filters);
+    const versionContext = {
+      visibleSupersededNames: SearchFilterChain.publishedAncestorsOfDraftHeads(graph.entities),
+    };
+    const filteredEntities = SearchFilterChain.applyFilters(textMatched, filters, versionContext);
 
     // Apply pagination using SearchFilterChain
     const pagination = SearchFilterChain.validatePagination(offset, limit);
@@ -137,7 +140,10 @@ export class BasicSearch {
 
     // Apply entity type and tag filters using SearchFilterChain
     const filters: SearchFilters = { tags, entityType };
-    const filteredEntities = SearchFilterChain.applyFilters(dateFiltered, filters);
+    const versionContext = {
+      visibleSupersededNames: SearchFilterChain.publishedAncestorsOfDraftHeads(graph.entities),
+    };
+    const filteredEntities = SearchFilterChain.applyFilters(dateFiltered, filters, versionContext);
 
     // Apply pagination using SearchFilterChain
     const pagination = SearchFilterChain.validatePagination(offset, limit);

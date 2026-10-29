@@ -62,6 +62,11 @@ export interface SearchFilters {
   lifecycleStatus?: ReadonlyArray<EntityStatus>;
 }
 
+/** Optional versioning context for {@link SearchFilterChain.applyFilters}. */
+export interface SearchFilterVersionContext {
+  visibleSupersededNames?: ReadonlySet<string>;
+}
+
 /**
  * Centralized filter chain for all search implementations.
  * Ensures consistent filtering behavior across search types.
@@ -76,19 +81,64 @@ export interface SearchFilters {
  */
 export class SearchFilterChain {
   /**
+   * Names of the nearest published ancestor of a head whose effective
+   * status is `draft`. Undefined `lifecycleStatus` counts as published.
+   * An archived or draft ancestor is skipped. The walk follows
+   * `parentEntityName`. A head that is not a draft adds nothing.
+   */
+  static publishedAncestorsOfDraftHeads(entities: readonly Entity[]): ReadonlySet<string> {
+    const byName = new Map<string, Entity>();
+    for (const entity of entities) {
+      byName.set(entity.name, entity);
+    }
+
+    const visible = new Set<string>();
+
+    for (const head of entities) {
+      if (head.isLatest === false) continue;
+      const headEffective = head.lifecycleStatus ?? DEFAULT_ENTITY_STATUS;
+      if (headEffective !== 'draft') continue;
+
+      const seen = new Set<string>();
+      let parentName = head.parentEntityName;
+      while (parentName !== undefined && !seen.has(parentName)) {
+        seen.add(parentName);
+        const parent = byName.get(parentName);
+        if (parent === undefined) break;
+        const parentEffective = parent.lifecycleStatus ?? DEFAULT_ENTITY_STATUS;
+        if (parentEffective === 'published') {
+          visible.add(parent.name);
+          break;
+        }
+        parentName = parent.parentEntityName;
+      }
+    }
+
+    return visible;
+  }
+
+  /**
    * Applies all filters to an array of entities.
    * Entities must pass ALL specified filters to be included.
    *
    * @param entities - Entities to filter
    * @param filters - Filter criteria to apply
+   * @param versionContext - Optional superseded-name visibility set
    * @returns Filtered entities array
    */
-  static applyFilters(entities: readonly Entity[], filters: SearchFilters): Entity[] {
+  static applyFilters(
+    entities: readonly Entity[],
+    filters: SearchFilters,
+    versionContext?: SearchFilterVersionContext,
+  ): Entity[] {
     const normalizedSearchTags = filters.tags?.length
       ? normalizeTags(filters.tags)
       : undefined;
+    const visibleSupersededNames =
+      versionContext?.visibleSupersededNames ??
+      this.publishedAncestorsOfDraftHeads(entities);
     return entities.filter(entity =>
-      this.entityPassesFilters(entity, filters, normalizedSearchTags)
+      this.entityPassesFilters(entity, filters, normalizedSearchTags, visibleSupersededNames)
     );
   }
 
@@ -104,7 +154,8 @@ export class SearchFilterChain {
   static entityPassesFilters(
     entity: Entity,
     filters: SearchFilters,
-    normalizedSearchTags?: string[]
+    normalizedSearchTags?: string[],
+    visibleSupersededNames?: ReadonlySet<string>,
   ): boolean {
     // Tag filter - check if entity has any matching tag
     if (normalizedSearchTags && normalizedSearchTags.length > 0) {
@@ -151,7 +202,9 @@ export class SearchFilterChain {
 
     // Versioning filter: exclude superseded entities by default
     if (!filters.includeSuperseded && entity.isLatest === false) {
-      return false;
+      if (!visibleSupersededNames?.has(entity.name)) {
+        return false;
+      }
     }
 
     // Lifecycle-status filter: defaults to the entity-state-machine

@@ -35,4 +35,78 @@ describe('SearchFilterChain default versioning behavior', () => {
     const result = SearchFilterChain.applyFilters(entities, {});
     expect(result.map(e => e.name)).toContain('c');
   });
+
+  it('when the latest version is draft, default filters return the published parent and omit the draft', () => {
+    const chain: Entity[] = [
+      {
+        name: 'parent',
+        entityType: 'concept',
+        observations: ['keeps coffee'],
+        version: 1,
+        rootEntityName: 'parent',
+        isLatest: false,
+        lifecycleStatus: 'published',
+        parentEntityName: undefined,
+      },
+      {
+        name: 'parent-v2',
+        entityType: 'concept',
+        observations: ['trial tea'],
+        version: 2,
+        rootEntityName: 'parent',
+        parentEntityName: 'parent',
+        isLatest: true,
+        lifecycleStatus: 'draft',
+      },
+    ];
+    const result = SearchFilterChain.applyFilters(chain, {});
+    expect(result.map(e => e.name)).toEqual(['parent']);
+  });
+
+  it('when the latest version is archived, default filters omit the head and the superseded parent', () => {
+    const chain: Entity[] = [
+      {
+        name: 'parent',
+        entityType: 'concept',
+        observations: ['keeps coffee'],
+        version: 1,
+        rootEntityName: 'parent',
+        isLatest: false,
+        lifecycleStatus: 'published',
+      },
+      {
+        name: 'parent-v2',
+        entityType: 'concept',
+        observations: ['trial tea'],
+        version: 2,
+        rootEntityName: 'parent',
+        parentEntityName: 'parent',
+        isLatest: true,
+        lifecycleStatus: 'archived',
+      },
+    ];
+    const result = SearchFilterChain.applyFilters(chain, {});
+    expect(result).toHaveLength(0);
+  });
+
+  it('a superseded entity with no draft head stays excluded', () => {
+    const chain: Entity[] = [
+      {
+        name: 'old',
+        entityType: 'concept',
+        observations: ['a'],
+        isLatest: false,
+        lifecycleStatus: 'published',
+      },
+      {
+        name: 'new',
+        entityType: 'concept',
+        observations: ['b'],
+        isLatest: true,
+        lifecycleStatus: 'published',
+      },
+    ];
+    const result = SearchFilterChain.applyFilters(chain, {});
+    expect(result.map(e => e.name)).toEqual(['new']);
+  });
 });

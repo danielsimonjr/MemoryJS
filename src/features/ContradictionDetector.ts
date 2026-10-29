@@ -173,6 +173,9 @@ export class ContradictionDetector {
         (newEntity as unknown as Record<string, unknown>).confirmationCount =
           oldRecord.confirmationCount;
       }
+      if (oldRecord.accessCount !== undefined) {
+        (newEntity as unknown as Record<string, unknown>).accessCount = oldRecord.accessCount;
+      }
       if (oldRecord.source !== undefined) {
         (newEntity as unknown as Record<string, unknown>).source = structuredClone(oldRecord.source);
       }

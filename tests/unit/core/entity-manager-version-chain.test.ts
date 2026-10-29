@@ -61,4 +61,91 @@ describe('EntityManager version chain navigation', () => {
     const latest = await ctx.entityManager.getLatestVersion('alice');
     expect(latest?.name).toBe('alice-v3');
   });
+
+  it('getLatestVersion returns the draft head', async () => {
+    await ctx.entityManager.createEntities([
+      {
+        name: 'brew',
+        entityType: 'concept',
+        observations: ['keeps coffee'],
+        version: 1,
+        rootEntityName: 'brew',
+        isLatest: false,
+        lifecycleStatus: 'published',
+        supersededBy: 'brew-v2',
+      },
+      {
+        name: 'brew-v2',
+        entityType: 'concept',
+        observations: ['keeps coffee', 'trial tea'],
+        version: 2,
+        parentEntityName: 'brew',
+        rootEntityName: 'brew',
+        isLatest: true,
+        lifecycleStatus: 'draft',
+      },
+    ]);
+    const latest = await ctx.entityManager.getLatestVersion('brew');
+    expect(latest?.name).toBe('brew-v2');
+    expect(latest?.lifecycleStatus).toBe('draft');
+  });
+
+  it('getLatestPublished returns the published parent while the head is draft', async () => {
+    await ctx.entityManager.createEntities([
+      {
+        name: 'brew',
+        entityType: 'concept',
+        observations: ['keeps coffee'],
+        version: 1,
+        rootEntityName: 'brew',
+        isLatest: false,
+        lifecycleStatus: 'published',
+        supersededBy: 'brew-v2',
+      },
+      {
+        name: 'brew-v2',
+        entityType: 'concept',
+        observations: ['trial tea'],
+        version: 2,
+        parentEntityName: 'brew',
+        rootEntityName: 'brew',
+        isLatest: true,
+        lifecycleStatus: 'draft',
+      },
+    ]);
+    const published = await ctx.entityManager.getLatestPublished('brew');
+    expect(published?.name).toBe('brew');
+  });
+
+  it('getLatestPublished returns the published parent after the head is archived', async () => {
+    await ctx.entityManager.createEntities([
+      {
+        name: 'brew',
+        entityType: 'concept',
+        observations: ['keeps coffee'],
+        version: 1,
+        rootEntityName: 'brew',
+        isLatest: false,
+        lifecycleStatus: 'published',
+        supersededBy: 'brew-v2',
+      },
+      {
+        name: 'brew-v2',
+        entityType: 'concept',
+        observations: ['trial tea'],
+        version: 2,
+        parentEntityName: 'brew',
+        rootEntityName: 'brew',
+        isLatest: true,
+        lifecycleStatus: 'archived',
+      },
+    ]);
+    const published = await ctx.entityManager.getLatestPublished('brew');
+    expect(published?.name).toBe('brew');
+  });
+
+  it('getLatestPublished returns the head when the head is published', async () => {
+    const published = await ctx.entityManager.getLatestPublished('alice');
+    expect(published?.name).toBe('alice-v3');
+  });
 });

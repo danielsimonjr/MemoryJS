@@ -877,6 +877,25 @@ export class EntityManager {
   }
 
   /**
+   * Newest entity in the version chain whose effective status is `published`.
+   * Undefined `lifecycleStatus` counts as published.
+   * Returns null when the name is unknown or every version is draft or archived.
+   * The head is returned when the head is published.
+   */
+  async getLatestPublished(entityName: string): Promise<Entity | null> {
+    const chain = await this.getVersionChain(entityName);
+    if (chain.length === 0) return null;
+    for (let i = chain.length - 1; i >= 0; i--) {
+      const entity = chain[i]!;
+      const effective = entity.lifecycleStatus ?? 'published';
+      if (effective === 'published') {
+        return entity;
+      }
+    }
+    return null;
+  }
+
+  /**
    * Update one or more fields of an existing entity.
    *
    * This method allows partial updates - only the fields specified in the updates
