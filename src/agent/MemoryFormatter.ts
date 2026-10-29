@@ -8,6 +8,7 @@
  */
 
 import type { AgentEntity, ContextPackage } from '../types/agent-memory.js';
+import { fillDefaults } from '../utils/fillDefaults.js';
 
 /**
  * Configuration for MemoryFormatter.
@@ -47,14 +48,15 @@ export class MemoryFormatter {
   private readonly defaultPromptTemplate: string;
 
   constructor(config: MemoryFormatterConfig = {}) {
-    this.config = {
-      defaultMaxTokens: config.defaultMaxTokens ?? 2000,
-      tokenMultiplier: config.tokenMultiplier ?? 1.3,
-      includeTimestamps: config.includeTimestamps ?? true,
-      includeSalience: config.includeSalience ?? false,
-      includeMemoryType: config.includeMemoryType ?? true,
-      promptTemplate: config.promptTemplate ?? '',
+    const defaults: Required<MemoryFormatterConfig> = {
+      defaultMaxTokens: 2000,
+      tokenMultiplier: 1.3,
+      includeTimestamps: true,
+      includeSalience: false,
+      includeMemoryType: true,
+      promptTemplate: '',
     };
+    this.config = fillDefaults(config, defaults);
 
     this.defaultPromptTemplate = `## {name} ({type})
 {observations}

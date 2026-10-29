@@ -314,6 +314,15 @@ describe('NGramIndex stats', () => {
     const s = idx.stats();
     expect(s.totalDocuments).toBe(1); // still just one document
   });
+
+  it('after re-adding, old n-grams no longer return the document id', () => {
+    const idx = makeIndex(3);
+    idx.addDocument('id1', 'hello world');
+    expect(idx.query('hello', 0.1)).toContain('id1');
+    idx.addDocument('id1', 'goodbye moon');
+    expect(idx.query('hello', 0.1)).not.toContain('id1');
+    expect(idx.query('goodbye', 0.1)).toContain('id1');
+  });
 });
 
 // ---------------------------------------------------------------------------

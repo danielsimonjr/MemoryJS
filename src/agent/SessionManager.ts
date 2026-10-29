@@ -18,6 +18,7 @@ import type {
 import { isSessionEntity } from '../types/agent-memory.js';
 import { WorkingMemoryManager } from './WorkingMemoryManager.js';
 import type { EpisodicMemoryManager } from './EpisodicMemoryManager.js';
+import { fillDefaults } from '../utils/fillDefaults.js';
 
 /**
  * Configuration for SessionManager.
@@ -133,13 +134,14 @@ export class SessionManager {
     this.storage = storage;
     this.workingMemory = workingMemory;
     this.episodicMemory = episodicMemory;
-    this.config = {
-      consolidateOnEnd: config.consolidateOnEnd ?? false,
-      cleanupOnEnd: config.cleanupOnEnd ?? false,
-      promoteOnEnd: config.promoteOnEnd ?? true,
-      createSummaryOnEnd: config.createSummaryOnEnd ?? (episodicMemory !== undefined),
-      defaultAgentId: config.defaultAgentId ?? 'default',
+    const defaults: Required<SessionConfig> = {
+      consolidateOnEnd: false,
+      cleanupOnEnd: false,
+      promoteOnEnd: true,
+      createSummaryOnEnd: episodicMemory !== undefined,
+      defaultAgentId: 'default',
     };
+    this.config = fillDefaults<Required<SessionConfig>>(config, defaults);
     this.activeSessions = new Map();
   }
 

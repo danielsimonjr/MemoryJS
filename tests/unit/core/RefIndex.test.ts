@@ -192,6 +192,25 @@ describe('RefIndex', () => {
     });
   });
 
+  describe('renameEntity', () => {
+    it('moves entityName and empties refsForEntity(oldName)', async () => {
+      await index.register('alias', 'Alice');
+      const count = await index.renameEntity('Alice', 'Alicia');
+      expect(count).toBe(1);
+      expect(await index.resolve('alias')).toBe('Alicia');
+      expect(await index.refsForEntity('Alice')).toEqual([]);
+      expect(await index.refsForEntity('Alicia')).toEqual(['alias']);
+    });
+
+    it('returns 0 and does not rewrite the sidecar when the name has no refs', async () => {
+      await index.register('alias', 'Alice');
+      const before = await fs.readFile(indexPath);
+      const count = await index.renameEntity('Nobody', 'Somebody');
+      expect(count).toBe(0);
+      expect(await fs.readFile(indexPath)).toEqual(before);
+    });
+  });
+
   // -------------------------------------------------------------------------
   describe('purgeEntities (batch)', () => {
     it('removes aliases for many entities with a single rewrite and returns total count', async () => {
