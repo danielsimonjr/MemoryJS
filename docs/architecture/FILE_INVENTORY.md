@@ -510,7 +510,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/VisibilityResolver.test.ts` | tests | test | 462 |
 | `tests/unit/agent/workingMemoryGuard.test.ts` | tests | test | 104 |
 | `tests/unit/agent/WorkingMemoryManager.test.ts` | tests | test | 1269 |
-| `tests/unit/agent/WorkThreadManager.test.ts` | tests | test | 1197 |
+| `tests/unit/agent/WorkThreadManager.test.ts` | tests | test | 1209 |
 | `tests/unit/agent/WorldModel.test.ts` | tests | test | 176 |
 | `tests/unit/cli/actionFrame.test.ts` | tests | test | 446 |
 | `tests/unit/cli/audit.test.ts` | tests | test | 420 |
