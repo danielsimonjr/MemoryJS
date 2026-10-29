@@ -47,11 +47,14 @@ type CacheStateOwner = {
   observationIndex?: ObservationIndex;
 };
 
-/** @internal Owner shape for {@link bindStorageCacheState} (storage classes cast `this`). */
+/**
+ * Cache and index fields owned by a storage backend for {@link bindStorageCacheState}.
+ * @internal Storage classes cast `this` to this shape.
+ */
 export type StorageCacheOwner = CacheStateOwner;
 
 /**
- * Build live {@link StorageCacheState} getters for a storage owner and lowercase hooks.
+ * Wires a storage owner's cache fields into a {@link StorageCacheState} facade with live getters.
  */
 export function bindStorageCacheState(
   owner: CacheStateOwner,
