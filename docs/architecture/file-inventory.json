@@ -3245,7 +3245,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 827
+      "loc": 848
     },
     {
       "file": "tests/unit/agent/SessionQueryBuilder.test.ts",
