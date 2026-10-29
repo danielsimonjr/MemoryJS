@@ -234,7 +234,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/features/ObservableDataModelAdapter.ts` | src | reachable | 360 |
 | `src/features/ObservationNormalizer.ts` | src | reachable | 266 |
 | `src/features/SemanticForget.ts` | src | reachable | 189 |
-| `src/features/StreamingExporter.ts` | src | reachable | 312 |
+| `src/features/StreamingExporter.ts` | src | reachable | 311 |
 | `src/features/TagManager.ts` | src | reachable | 253 |
 | `src/index.ts` | src | build-entry | 36 |
 | `src/search/BasicSearch.ts` | src | reachable | 171 |

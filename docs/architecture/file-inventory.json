@@ -1376,7 +1376,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 312
+      "loc": 311
     },
     {
       "file": "src/features/TagManager.ts",
