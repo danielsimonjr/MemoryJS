@@ -551,6 +551,9 @@ describe('SearchManager', () => {
     it('should search with tracking options', async () => {
       const mockTracker = {
         recordAccess: vi.fn().mockResolvedValue(undefined),
+        async recordAccessBatch(names: readonly string[], context: unknown) {
+          await Promise.all(names.map((name) => this.recordAccess(name, context)));
+        },
         getAccessHistory: async () => [],
       };
       manager.setAccessTracker(mockTracker as any);
@@ -562,6 +565,24 @@ describe('SearchManager', () => {
       });
 
       expect(mockTracker.recordAccess).toHaveBeenCalled();
+      const contexts = mockTracker.recordAccess.mock.calls.map(([, context]) => context);
+      expect(contexts.every((c) => c === contexts[0])).toBe(true);
+      expect(contexts[0].retrievalMethod).toBe('search');
+    });
+
+    it('does not record access for an empty result list', async () => {
+      const mockTracker = {
+        recordAccess: vi.fn().mockResolvedValue(undefined),
+        async recordAccessBatch(names: readonly string[], context: unknown) {
+          await Promise.all(names.map((name) => this.recordAccess(name, context)));
+        },
+        getAccessHistory: async () => [],
+      };
+      manager.setAccessTracker(mockTracker as any);
+      await manager.searchNodes('zzz-no-such-entity-xyz', undefined, undefined, undefined, {
+        trackAccess: true,
+      });
+      expect(mockTracker.recordAccess).not.toHaveBeenCalled();
     });
   });
 });

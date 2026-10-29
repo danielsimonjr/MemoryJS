@@ -10,7 +10,8 @@
 
 import type { IGraphStorage } from '../types/types.js';
 import type { AgentEntity, AccessContext, AccessPattern } from '../types/agent-memory.js';
-import { halfLifeFactor } from '../utils/halfLife.js';
+import { clampedHalfLifeScore, halfLifeFactor } from '../utils/halfLife.js';
+import { fillDefaults } from '../utils/fillDefaults.js';
 
 // Re-export AccessContext for convenience
 export type { AccessContext } from '../types/agent-memory.js';
@@ -89,12 +90,13 @@ export class AccessTracker {
 
   constructor(storage: IGraphStorage, config: AccessTrackerConfig = {}) {
     this.storage = storage;
-    this.config = {
-      historyBufferSize: config.historyBufferSize ?? 100,
-      recencyHalfLifeHours: config.recencyHalfLifeHours ?? 24,
-      frequentThreshold: config.frequentThreshold ?? 10,
-      occasionalThreshold: config.occasionalThreshold ?? 1,
+    const defaults: Required<AccessTrackerConfig> = {
+      historyBufferSize: 100,
+      recencyHalfLifeHours: 24,
+      frequentThreshold: 10,
+      occasionalThreshold: 1,
     };
+    this.config = fillDefaults(config, defaults);
     this.accessRecords = new Map();
     this.dirty = false;
   }
@@ -147,6 +149,11 @@ export class AccessTracker {
 
     // Update entity in storage if it exists
     await this.updateEntityAccessFields(entityName, record);
+  }
+
+  /** Records the same access context for many entity names in parallel. */
+  async recordAccessBatch(names: readonly string[], context: AccessContext): Promise<void> {
+    await Promise.all(names.map(name => this.recordAccess(name, context)));
   }
 
   /**
@@ -219,15 +226,7 @@ export class AccessTracker {
     lastAccessedAt: string,
     halfLifeHours: number = 24
   ): number {
-    if (!lastAccessedAt) return 0;
-
-    const lastAccess = new Date(lastAccessedAt).getTime();
-    const now = Date.now();
-    const hoursSinceAccess = (now - lastAccess) / (1000 * 60 * 60);
-
-    const score = halfLifeFactor(hoursSinceAccess, halfLifeHours);
-
-    return Math.max(0, Math.min(1, score));
+    return clampedHalfLifeScore(lastAccessedAt, halfLifeHours);
   }
 
   /**

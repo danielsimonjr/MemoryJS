@@ -9,6 +9,10 @@
 import * as fs from 'fs/promises';
 import type { TagAlias } from '../types/index.js';
 import { parseJsonlRecords } from '../utils/jsonlMapFile.js';
+import {
+  deleteRecordsByKey,
+  writeJsonlRecordsUpdatingCache,
+} from '../utils/jsonlRecordFile.js';
 
 /**
  * Manages tag alias system for synonym mapping.
@@ -54,17 +58,19 @@ export class TagManager {
    * @param aliases - Array of tag aliases
    */
   private async saveTagAliases(aliases: TagAlias[]): Promise<void> {
-    const lines = aliases.map(a => JSON.stringify(a));
-    try {
-      await fs.writeFile(this.tagAliasesFilePath, lines.join('\n'));
-    } catch (err) {
-      // Write failed (e.g. EPERM under a Dropbox lock). A caller may have
-      // already mutated the cached array, so it now diverges from disk —
-      // drop it so the next read re-syncs from the file.
-      this.aliasCache = null;
-      throw err;
-    }
-    this.aliasCache = aliases;
+    await writeJsonlRecordsUpdatingCache(
+      this.tagAliasesFilePath,
+      aliases,
+      () => {
+        // Write failed (e.g. EPERM under a Dropbox lock). A caller may have
+        // already mutated the cached array, so it now diverges from disk —
+        // drop it so the next read re-syncs from the file.
+        this.aliasCache = null;
+      },
+      records => {
+        this.aliasCache = records;
+      },
+    );
   }
 
   /**
@@ -203,17 +209,13 @@ export class TagManager {
    * @returns True if removed, false if not found
    */
   async removeTagAlias(alias: string): Promise<boolean> {
-    const aliases = await this.loadTagAliases();
     const normalizedAlias = alias.toLowerCase();
-    const initialLength = aliases.length;
-    const filtered = aliases.filter(a => a.alias !== normalizedAlias);
-
-    if (filtered.length === initialLength) {
-      return false; // Alias not found
-    }
-
-    await this.saveTagAliases(filtered);
-    return true;
+    return deleteRecordsByKey(
+      () => this.loadTagAliases(),
+      records => this.saveTagAliases(records),
+      row => row.alias,
+      normalizedAlias,
+    );
   }
 
   /**

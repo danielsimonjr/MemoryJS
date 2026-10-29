@@ -38,6 +38,7 @@ import type {
   PlanRecord,
 } from '../types/agent-memory.js';
 import { isPlanMemory, toIsoDateTime } from '../types/agent-memory.js';
+import { loadProjectedRecords, matchesDefined } from './recordQuery.js';
 import { validateNonEmpty } from '../utils/index.js';
 
 /** Configuration for `PlanManager`. */
@@ -391,12 +392,13 @@ export class PlanManager {
   /** List plans with optional filters. */
   async listPlans(options: ListPlansOptions = {}): Promise<Readonly<PlanRecord>[]> {
     const all = await this.loadAllPlanRecords();
-    return all.filter((p) => {
-      if (options.sessionId !== undefined && p.sessionId !== options.sessionId) return false;
-      if (options.agentId !== undefined && p.agentId !== options.agentId) return false;
-      if (options.status !== undefined && p.lifecycle.status !== options.status) return false;
-      return true;
-    });
+    return all.filter((p) =>
+      matchesDefined([
+        [options.sessionId, p.sessionId],
+        [options.agentId, p.agentId],
+        [options.status, p.lifecycle.status],
+      ]),
+    );
   }
 
   // ==================== Internal ====================
@@ -426,8 +428,7 @@ export class PlanManager {
    * Consumers (`listPlans`, `getActivePlan`) only read.
    */
   private async loadAllPlanRecords(): Promise<Readonly<PlanRecord>[]> {
-    const graph = await this.storage.loadGraph();
-    return graph.entities.filter(isPlanMemory).map((e) => e.planRecord);
+    return loadProjectedRecords(this.storage, isPlanMemory, (e) => e.planRecord);
   }
 
   private async persistPlan(plan: PlanRecord): Promise<boolean> {

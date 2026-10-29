@@ -176,6 +176,16 @@ describe('ConsolidationPipeline', () => {
       expect(config.minPromotionConfirmations).toBe(5);
       expect(config.preserveOriginals).toBe(true);
     });
+
+    it('stores maxDuplicateComparisons 0 as 100_000', () => {
+      const customPipeline = new ConsolidationPipeline(
+        storage,
+        workingMemory,
+        decayEngine,
+        { maxDuplicateComparisons: 0 },
+      );
+      expect(customPipeline.getConfig().maxDuplicateComparisons).toBe(100_000);
+    });
   });
 
   // ==================== Pipeline Stages ====================

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import { InMemoryBackend } from '../../../src/agent/InMemoryBackend.js';
 import { DecayEngine } from '../../../src/agent/DecayEngine.js';
 import { AccessTracker } from '../../../src/agent/AccessTracker.js';
@@ -34,6 +34,10 @@ runMemoryBackendContract('InMemoryBackend', () => {
 
 // Backend-specific tests.
 describe('InMemoryBackend specifics', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   function mk() {
     const storage = createMockStorage();
     const tracker = new AccessTracker(storage);
@@ -81,6 +85,40 @@ describe('InMemoryBackend specifics', () => {
     }
     const result = await backend.get_weighted('', 's', { limit: 10, threshold: 0 });
     expect(result.length).toBe(3);
+    expect(result.map((r) => r.turn.id)).toEqual(['t-0', 't-1', 't-2']);
+  });
+
+  it('keeps a score equal to the threshold and honors limit 1', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-29T18:00:00.000Z'));
+    const backend = mk();
+    const t = new Date().toISOString();
+    await backend.add({
+      id: 'low', sessionId: 's', content: 'low', role: 'user',
+      importance: 1.0, createdAt: t,
+    });
+    await backend.add({
+      id: 'high', sessionId: 's', content: 'high', role: 'user',
+      importance: 3.0, createdAt: t,
+    });
+    const scored = await backend.get_weighted('', 's', { threshold: 0, limit: 10 });
+    expect(scored.length).toBeGreaterThanOrEqual(2);
+    const floor = scored[scored.length - 1]!.score;
+    const atFloor = await backend.get_weighted('', 's', { threshold: floor, limit: 10 });
+    expect(atFloor.some((r) => r.score === floor)).toBe(true);
+    const top = await backend.get_weighted('', 's', { threshold: 0, limit: 1 });
+    expect(top).toHaveLength(1);
+    expect(top[0]!.score).toBe(scored[0]!.score);
+  });
+
+  it('returns [] for an empty session without scoring', async () => {
+    const storage = createMockStorage();
+    const tracker = new AccessTracker(storage);
+    const decay = new DecayEngine(storage, tracker);
+    const score = vi.spyOn(decay, 'calculatePrdEffectiveImportance');
+    const backend = new InMemoryBackend(decay);
+    expect(await backend.get_weighted('', 'missing')).toEqual([]);
+    expect(score).not.toHaveBeenCalled();
   });
 
   it('round-trips metadata field', async () => {
