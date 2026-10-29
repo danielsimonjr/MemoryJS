@@ -21,3 +21,19 @@
 export function halfLifeFactor(ageHours: number, halfLifeHours: number): number {
   return Math.exp(-(Math.LN2 / halfLifeHours) * ageHours);
 }
+
+/**
+ * Returns the clamped half-life score of a timestamp.
+ * An empty timestamp returns 0. A future timestamp clamps to 1.
+ * An unparseable timestamp still produces NaN, matching both callers.
+ */
+export function clampedHalfLifeScore(timestamp: string, halfLifeHours: number): number {
+  if (!timestamp) {
+    return 0;
+  }
+  const lastAccess = new Date(timestamp).getTime();
+  const now = Date.now();
+  const hoursSinceAccess = (now - lastAccess) / (1000 * 60 * 60);
+  const score = halfLifeFactor(hoursSinceAccess, halfLifeHours);
+  return Math.max(0, Math.min(1, score));
+}

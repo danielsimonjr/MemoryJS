@@ -32,6 +32,7 @@ import type { SummarizationService } from './SummarizationService.js';
 // types layer references it via `RoleProfile` and must stay a leaf).
 // Re-exported here for backwards compatibility.
 import type { ContextWindowManagerConfig } from '../types/agent-memory.js';
+import { fillDefaults } from '../utils/fillDefaults.js';
 export type { ContextWindowManagerConfig };
 
 /** Compression intensity level for compressForContext. */
@@ -159,18 +160,19 @@ export class ContextWindowManager {
     this.storage = storage;
     this.salienceEngine = salienceEngine;
     this.contextProfileManager = new ContextProfileManager();
-    this.config = {
-      defaultMaxTokens: config.defaultMaxTokens ?? 4000,
-      tokenMultiplier: config.tokenMultiplier ?? 1.3,
-      reserveBuffer: config.reserveBuffer ?? 100,
-      maxEntitiesToConsider: config.maxEntitiesToConsider ?? 1000,
-      workingBudgetPct: config.workingBudgetPct ?? 0.3,
-      episodicBudgetPct: config.episodicBudgetPct ?? 0.3,
-      semanticBudgetPct: config.semanticBudgetPct ?? 0.4,
-      recentSessionCount: config.recentSessionCount ?? 3,
-      diversityThreshold: config.diversityThreshold ?? 0.8,
-      enforceDiversity: config.enforceDiversity ?? true,
+    const defaults: Required<ContextWindowManagerConfig> = {
+      defaultMaxTokens: 4000,
+      tokenMultiplier: 1.3,
+      reserveBuffer: 100,
+      maxEntitiesToConsider: 1000,
+      workingBudgetPct: 0.3,
+      episodicBudgetPct: 0.3,
+      semanticBudgetPct: 0.4,
+      recentSessionCount: 3,
+      diversityThreshold: 0.8,
+      enforceDiversity: true,
     };
+    this.config = fillDefaults(config, defaults);
   }
 
   // ==================== Distillation ====================

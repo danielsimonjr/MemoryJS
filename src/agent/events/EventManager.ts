@@ -297,19 +297,15 @@ export class EventManager {
         ? `${FLOW_TAG_PREFIX}${filter.flowKey.trim().toLowerCase()}`
         : undefined;
 
-    const events: EventRecord[] = [];
-    for (const name of dedupe(candidates)) {
-      const event = await this.getEvent(name);
-      if (!event) continue;
-      if (filter.actor !== undefined && event.actor !== filter.actor) continue;
-      if (filter.target !== undefined && event.target !== filter.target) continue;
-      if (filter.action !== undefined && event.action !== filter.action) continue;
-      if (flowTag !== undefined && `${FLOW_TAG_PREFIX}${event.flowKey ?? ''}` !== flowTag) continue;
-      if (range !== undefined && !inRange(eventTimeMs(event), range)) continue;
-      events.push(event);
-    }
+    const events = await this.collectEvents(candidates, event => {
+      if (filter.actor !== undefined && event.actor !== filter.actor) return false;
+      if (filter.target !== undefined && event.target !== filter.target) return false;
+      if (filter.action !== undefined && event.action !== filter.action) return false;
+      if (flowTag !== undefined && `${FLOW_TAG_PREFIX}${event.flowKey ?? ''}` !== flowTag) return false;
+      if (range !== undefined && !inRange(eventTimeMs(event), range)) return false;
+      return true;
+    });
 
-    sortChronologically(events);
     return filter.limit !== undefined ? events.slice(0, filter.limit) : events;
   }
 
@@ -346,17 +342,14 @@ export class EventManager {
 
     const range = filter.timeRange !== undefined ? resolveRange(filter.timeRange) : undefined;
 
-    const events: EventRecord[] = [];
-    for (const name of dedupe(candidates)) {
-      const event = await this.getEvent(name);
-      if (!event || event.actor === undefined) continue;
-      if (filter.target !== undefined && event.target !== filter.target) continue;
-      if (filter.context !== undefined && event.context !== filter.context) continue;
-      if (range !== undefined && !inRange(eventTimeMs(event), range)) continue;
-      events.push(event);
-    }
+    const events = await this.collectEvents(candidates, event => {
+      if (event.actor === undefined) return false;
+      if (filter.target !== undefined && event.target !== filter.target) return false;
+      if (filter.context !== undefined && event.context !== filter.context) return false;
+      if (range !== undefined && !inRange(eventTimeMs(event), range)) return false;
+      return true;
+    });
 
-    sortChronologically(events);
     const limited = filter.limit !== undefined ? events.slice(0, filter.limit) : events;
     return limited.map(event => ({
       actor: event.actor as string,
@@ -369,6 +362,21 @@ export class EventManager {
   // ----------------------------------------------------------
   // Internals
   // ----------------------------------------------------------
+
+  private async collectEvents(
+    candidates: readonly string[],
+    accept: (event: EventRecord) => boolean,
+  ): Promise<EventRecord[]> {
+    const events: EventRecord[] = [];
+    for (const name of dedupe([...candidates])) {
+      const event = await this.getEvent(name);
+      if (!event) continue;
+      if (!accept(event)) continue;
+      events.push(event);
+    }
+    sortChronologically(events);
+    return events;
+  }
 
   /**
    * Ensure every endpoint entity exists. With `autoCreateEndpoints`,

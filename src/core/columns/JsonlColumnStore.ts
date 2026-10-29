@@ -30,7 +30,7 @@ import { promises as fs } from 'fs';
 import { Mutex } from 'async-mutex';
 import { durableWriteFile } from '../../utils/durableWriteFile.js';
 import { parseJsonlMapLines, serializeJsonlMap } from '../../utils/jsonlMapFile.js';
-import { mutateMapWithFlushRollback } from '../../utils/mutateMapWithFlushRollback.js';
+import { clearMapWithFlushRollback, mutateMapWithFlushRollback } from '../../utils/mutateMapWithFlushRollback.js';
 import type { IColumnStore } from './IColumnStore.js';
 
 /**
@@ -161,15 +161,7 @@ export class JsonlColumnStore<T> implements IColumnStore<T> {
 
   async clear(): Promise<void> {
     const cache = await this.ensureLoaded();
-    if (cache.size === 0) return;
-    const priorSnapshot = new Map(cache);
-    cache.clear();
-    try {
-      await this.flush(cache);
-    } catch (err) {
-      for (const [k, v] of priorSnapshot) cache.set(k, v);
-      throw err;
-    }
+    await clearMapWithFlushRollback(cache, c => this.flush(c));
   }
 
   /**
