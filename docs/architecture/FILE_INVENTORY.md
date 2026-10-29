@@ -322,7 +322,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/utils/Diagnostics.ts` | src | reachable | 85 |
 | `src/utils/durableWriteFile.ts` | src | reachable | 270 |
 | `src/utils/entityUtils.ts` | src | reachable | 889 |
-| `src/utils/EntityValidator.ts` | src | reachable | 275 |
+| `src/utils/EntityValidator.ts` | src | reachable | 276 |
 | `src/utils/errors.ts` | src | reachable | 474 |
 | `src/utils/errorSuggestions.ts` | src | reachable | 268 |
 | `src/utils/fieldPath.ts` | src | reachable | 35 |
@@ -745,7 +745,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/utils/compressionUtil.test.ts` | tests | test | 551 |
 | `tests/unit/utils/durableWriteFile.test.ts` | tests | test | 309 |
 | `tests/unit/utils/entityUtils.test.ts` | tests | test | 1097 |
-| `tests/unit/utils/EntityValidator.test.ts` | tests | test | 492 |
+| `tests/unit/utils/EntityValidator.test.ts` | tests | test | 515 |
 | `tests/unit/utils/errors.test.ts` | tests | test | 377 |
 | `tests/unit/utils/errorSuggestions.test.ts` | tests | test | 389 |
 | `tests/unit/utils/fieldPath.test.ts` | tests | test | 50 |
