@@ -148,6 +148,7 @@ export const CreateEntitySchema = z.object({
   agentId: z.string().optional(),
   visibility: z.string().optional(),
   confirmationCount: z.number().optional(),
+  accessCount: z.number().optional(),
   source: z.unknown().optional(),
 }).strict();
 

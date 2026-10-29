@@ -9,6 +9,7 @@ import type { Entity, IGraphStorage } from '../types/types.js';
 import type {
   FailureEntity,
   GoalNode,
+  MemorySource,
   PlanEntity,
   PlanRecord,
 } from '../types/agent-memory.js';
@@ -16,6 +17,7 @@ import {
   isFailureMemory,
   isHeuristicMemory,
   isPlanMemory,
+  type AgentEntity,
 } from '../types/agent-memory.js';
 import type { EntityManager } from '../core/EntityManager.js';
 import type { RelationManager } from '../core/RelationManager.js';
@@ -30,6 +32,7 @@ import type {
   PGRoundRecord,
 } from '../types/proceduralGraph.js';
 import { graphDigest } from './procedural/graph/canonical.js';
+import { validateNonEmpty } from '../utils/schemas.js';
 import {
   PROCEDURE_ENTITY_TYPE,
   PROCEDURE_STEP_ENTITY_TYPE,
@@ -597,4 +600,111 @@ function applyPgEdgeTextChange(
   }
   childEdge[edit.field] = edit.value;
   return child;
+}
+
+function isMemorySource(value: unknown): value is MemorySource {
+  if (value === null || typeof value !== 'object') return false;
+  const source = value as Record<string, unknown>;
+  return (
+    typeof source.agentId === 'string' &&
+    typeof source.timestamp === 'string' &&
+    typeof source.method === 'string' &&
+    typeof source.reliability === 'number'
+  );
+}
+
+function effectiveLifecycleStatus(entity: Entity): Entity['lifecycleStatus'] | 'published' {
+  return entity.lifecycleStatus ?? 'published';
+}
+
+function loadVersionEntity(storage: IGraphStorage, versionName: string): Entity {
+  const entity = storage.getEntityByName(versionName);
+  if (entity === undefined) {
+    throw new GuardedEditError('version-not-found', `Version '${versionName}' was not found`);
+  }
+  return entity;
+}
+
+function assertTaskEntity(storage: IGraphStorage, taskId: string): void {
+  if (storage.getEntityByName(taskId) === undefined) {
+    throw new GuardedEditError('task-not-found', `Task '${taskId}' was not found`);
+  }
+}
+
+/**
+ * Publish a guarded-edit version (or un-archive it) and record that it helped a task.
+ */
+export async function noteHelped(
+  versionName: string,
+  taskId: string,
+  deps: GuardedEditContext,
+): Promise<Entity> {
+  const entity = loadVersionEntity(deps.storage, versionName);
+  assertTaskEntity(deps.storage, taskId);
+
+  const effective = effectiveLifecycleStatus(entity);
+  const updates: Partial<Entity> = {};
+
+  if (effective === 'draft' || effective === 'archived') {
+    updates.lifecycleStatus = 'published';
+  }
+
+  const agentEntity = entity as AgentEntity;
+  if (isMemorySource(agentEntity.source)) {
+    (updates as Partial<AgentEntity>).source = {
+      ...agentEntity.source,
+      trustLevel: 'verified',
+    };
+  }
+
+  if (Object.keys(updates).length > 0) {
+    await deps.entityManager.updateEntity(versionName, updates);
+  }
+
+  const reloaded = loadVersionEntity(deps.storage, versionName);
+  if (isHeuristicMemory(reloaded)) {
+    const result = await deps.heuristicManager.reinforce(versionName);
+    if (result === 'not-found') {
+      throw new GuardedEditError('component-not-found', `Heuristic '${versionName}' was not found`);
+    }
+    if (result !== 'updated') {
+      throw new GuardedEditError('conflict', `Heuristic reinforce failed with '${result}'`);
+    }
+  }
+
+  await deps.relationManager.createRelations([
+    { from: versionName, to: taskId, relationType: 'helped_task' },
+  ]);
+
+  return loadVersionEntity(deps.storage, versionName);
+}
+
+/**
+ * Archive a guarded-edit version and record that it was retired after a task.
+ */
+export async function retire(
+  versionName: string,
+  taskId: string,
+  reason: string,
+  deps: GuardedEditContext,
+): Promise<Entity> {
+  validateNonEmpty(reason, 'reason', 'retire');
+  const entity = loadVersionEntity(deps.storage, versionName);
+  assertTaskEntity(deps.storage, taskId);
+
+  const effective = effectiveLifecycleStatus(entity);
+  if (effective === 'draft' || effective === 'published') {
+    await deps.entityManager.updateEntity(versionName, { lifecycleStatus: 'archived' });
+  }
+
+  await deps.relationManager.createRelations([
+    {
+      from: versionName,
+      to: taskId,
+      relationType: 'retired_after',
+      metadata: { reason },
+    },
+  ]);
+
+  return loadVersionEntity(deps.storage, versionName);
 }

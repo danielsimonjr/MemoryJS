@@ -8,6 +8,8 @@ import { AuditLog } from '../../../src/features/AuditLog.js';
 import type { SemanticSearch } from '../../../src/search/SemanticSearch.js';
 import {
   applyGuardedEdit,
+  noteHelped,
+  retire,
   GuardedEditError,
   type GuardedEditContext,
 } from '../../../src/agent/GuardedComponentEdit.js';
@@ -401,6 +403,178 @@ describe('applyGuardedEdit', () => {
     ).rejects.toMatchObject({ code: 'conflict' });
     const afterAudit = await auditLog.query({});
     expect(afterAudit).toHaveLength(beforeAudit.length);
+  });
+
+  it('noteHelped publishes the draft, writes helped_task, and bumps heuristic support by one', async () => {
+    const heuristicId = await ctx.heuristicManager.add({
+      condition: 'when widget stuck',
+      action: 'retry once',
+      agentId: 'agent-1',
+    });
+    const rec = await ctx.failureManager.record({
+      ...validFailureInput(),
+      blamedComponent: { kind: 'heuristic', id: heuristicId },
+    });
+    const edit = await applyGuardedEdit(
+      rec.id,
+      { targetId: heuristicId, observation: 'extra detail' },
+      deps,
+    );
+    expect(edit.kind).toBe('entity');
+    if (edit.kind !== 'entity') return;
+    const beforeHelp = (await ctx.entityManager.getEntity(edit.entity.name))!;
+    expect(beforeHelp.heuristicRecord?.support).toBe(0);
+    expect(beforeHelp.lifecycleStatus).toBe('draft');
+
+    await ctx.entityManager.createEntities([
+      { name: 'task-episode-1', entityType: 'task', observations: ['follow-up task'] },
+    ]);
+    const published = await noteHelped(edit.entity.name, 'task-episode-1', deps);
+    expect(published.lifecycleStatus).toBe('published');
+    expect(published.heuristicRecord?.support).toBe(1);
+
+    const graph = await ctx.storage.loadGraph();
+    const helped = graph.relations.filter(
+      (r) => r.from === edit.entity.name && r.relationType === 'helped_task',
+    );
+    expect(helped).toHaveLength(1);
+    expect(helped[0]?.to).toBe('task-episode-1');
+  });
+
+  it('retire archives the version, keeps it loadable, and stores retired_after reason', async () => {
+    await ctx.entityManager.createEntities([
+      { name: 'widget', entityType: 'concept', observations: ['a'] },
+    ]);
+    const rec = await ctx.failureManager.record({
+      ...validFailureInput(),
+      blamedComponent: { kind: 'entity', id: 'widget' },
+    });
+    const edit = await applyGuardedEdit(
+      rec.id,
+      { targetId: 'widget', observation: 'b' },
+      deps,
+    );
+    expect(edit.kind).toBe('entity');
+    if (edit.kind !== 'entity') return;
+
+    await ctx.entityManager.createEntities([
+      { name: 'task-episode-2', entityType: 'task', observations: ['task'] },
+    ]);
+    const deleteSpy = vi.spyOn(ctx.entityManager, 'deleteEntities');
+    const reason = 'did not help on retry';
+    const archived = await retire(edit.entity.name, 'task-episode-2', reason, deps);
+
+    expect(archived.lifecycleStatus).toBe('archived');
+    expect(await ctx.entityManager.getEntity(edit.entity.name)).toBeDefined();
+    const chain = await ctx.entityManager.getVersionChain('widget');
+    expect(chain.map((e) => e.name)).toContain(edit.entity.name);
+    const graph = await ctx.storage.loadGraph();
+    const retired = graph.relations.find(
+      (r) => r.from === edit.entity.name && r.relationType === 'retired_after',
+    );
+    expect(retired?.metadata).toEqual({ reason });
+    expect(deleteSpy).not.toHaveBeenCalled();
+  });
+
+  it('noteHelped on an already published version does not send it back to draft', async () => {
+    await ctx.entityManager.createEntities([
+      {
+        name: 'stable',
+        entityType: 'concept',
+        observations: ['ok'],
+        lifecycleStatus: 'published',
+      },
+    ]);
+    await ctx.entityManager.createEntities([
+      { name: 'task-stable', entityType: 'task', observations: ['t'] },
+    ]);
+    const updateSpy = vi.spyOn(ctx.entityManager, 'updateEntity');
+    const result = await noteHelped('stable', 'task-stable', deps);
+    expect(result.lifecycleStatus).toBe('published');
+    for (const call of updateSpy.mock.calls) {
+      expect(call[1]?.lifecycleStatus).not.toBe('draft');
+    }
+  });
+
+  it('retire does not call deleteEntities', async () => {
+    await ctx.entityManager.createEntities([
+      { name: 'widget', entityType: 'concept', observations: ['a'] },
+    ]);
+    const rec = await ctx.failureManager.record({
+      ...validFailureInput(),
+      blamedComponent: { kind: 'entity', id: 'widget' },
+    });
+    const edit = await applyGuardedEdit(
+      rec.id,
+      { targetId: 'widget', observation: 'b' },
+      deps,
+    );
+    expect(edit.kind).toBe('entity');
+    if (edit.kind !== 'entity') return;
+    await ctx.entityManager.createEntities([
+      { name: 'task-retire', entityType: 'task', observations: ['t'] },
+    ]);
+    const deleteSpy = vi.spyOn(ctx.entityManager, 'deleteEntities');
+    await retire(edit.entity.name, 'task-retire', 'no good', deps);
+    expect(deleteSpy).not.toHaveBeenCalled();
+  });
+
+  it('noteHelped throws task-not-found before a status write when the task is missing', async () => {
+    await ctx.entityManager.createEntities([
+      { name: 'widget', entityType: 'concept', observations: ['a'] },
+    ]);
+    const rec = await ctx.failureManager.record({
+      ...validFailureInput(),
+      blamedComponent: { kind: 'entity', id: 'widget' },
+    });
+    const edit = await applyGuardedEdit(
+      rec.id,
+      { targetId: 'widget', observation: 'b' },
+      deps,
+    );
+    expect(edit.kind).toBe('entity');
+    if (edit.kind !== 'entity') return;
+    const updateSpy = vi.spyOn(ctx.entityManager, 'updateEntity');
+    await expect(noteHelped(edit.entity.name, 'missing-task', deps)).rejects.toMatchObject({
+      code: 'task-not-found',
+    });
+    expect(updateSpy).not.toHaveBeenCalled();
+    const stillDraft = (await ctx.entityManager.getEntity(edit.entity.name))!;
+    expect(stillDraft.lifecycleStatus).toBe('draft');
+  });
+
+  it('noteHelped throws version-not-found before a write when the version is missing', async () => {
+    await ctx.entityManager.createEntities([
+      { name: 'task-missing-version', entityType: 'task', observations: ['t'] },
+    ]);
+    const updateSpy = vi.spyOn(ctx.entityManager, 'updateEntity');
+    await expect(noteHelped('rev-not-an-entity', 'task-missing-version', deps)).rejects.toMatchObject({
+      code: 'version-not-found',
+    });
+    expect(updateSpy).not.toHaveBeenCalled();
+  });
+
+  it('retire throws before a write when the reason is empty or whitespace', async () => {
+    await ctx.entityManager.createEntities([
+      { name: 'widget', entityType: 'concept', observations: ['a'] },
+      { name: 'task-reason', entityType: 'task', observations: ['t'] },
+    ]);
+    const rec = await ctx.failureManager.record({
+      ...validFailureInput(),
+      blamedComponent: { kind: 'entity', id: 'widget' },
+    });
+    const edit = await applyGuardedEdit(
+      rec.id,
+      { targetId: 'widget', observation: 'b' },
+      deps,
+    );
+    expect(edit.kind).toBe('entity');
+    if (edit.kind !== 'entity') return;
+    const updateSpy = vi.spyOn(ctx.entityManager, 'updateEntity');
+    await expect(retire(edit.entity.name, 'task-reason', '   ', deps)).rejects.toThrow(/reason/i);
+    expect(updateSpy).not.toHaveBeenCalled();
+    const stillDraft = (await ctx.entityManager.getEntity(edit.entity.name))!;
+    expect(stillDraft.lifecycleStatus).toBe('draft');
   });
 });
 

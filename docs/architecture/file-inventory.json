@@ -312,7 +312,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 601
+      "loc": 711
     },
     {
       "file": "src/agent/HeuristicManager.ts",
@@ -333,7 +333,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 618
+      "loc": 620
     },
     {
       "file": "src/agent/InMemoryBackend.ts",
@@ -1096,7 +1096,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1585
+      "loc": 1604
     },
     {
       "file": "src/core/EntityStateMachine.ts",
@@ -1306,7 +1306,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 208
+      "loc": 211
     },
     {
       "file": "src/features/FactExtractor.ts",
@@ -1397,7 +1397,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 165
+      "loc": 171
     },
     {
       "file": "src/search/BloomFilter.ts",
@@ -1425,7 +1425,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 572
+      "loc": 575
     },
     {
       "file": "src/search/EarlyTerminationManager.ts",
@@ -1467,7 +1467,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 637
+      "loc": 640
     },
     {
       "file": "src/search/GraphRankPrior.ts",
@@ -1656,7 +1656,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 282
+      "loc": 335
     },
     {
       "file": "src/search/SearchManager.ts",
@@ -2111,7 +2111,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 781
+      "loc": 782
     },
     {
       "file": "src/utils/SchemaValidator.ts",
@@ -2811,7 +2811,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 424
+      "loc": 598
     },
     {
       "file": "tests/unit/agent/HeuristicExtractionStage.test.ts",
@@ -3581,7 +3581,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 65
+      "loc": 152
     },
     {
       "file": "tests/unit/core/EntityManager.test.ts",
@@ -4176,7 +4176,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 428
+      "loc": 458
     },
     {
       "file": "tests/unit/search/BloomFilter.test.ts",
@@ -4505,7 +4505,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 39
+      "loc": 149
     },
     {
       "file": "tests/unit/search/SearchFilterChain.test.ts",

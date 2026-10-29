@@ -424,4 +424,34 @@ describe('BasicSearch', () => {
       expect(result.entities).toHaveLength(0);
     });
   });
+
+  it('a text query that matches only the published parent returns that parent while the head is draft', async () => {
+    await entityManager.createEntities([
+      {
+        name: 'brew',
+        entityType: 'concept',
+        observations: ['keeps coffee'],
+        version: 1,
+        rootEntityName: 'brew',
+        isLatest: false,
+        lifecycleStatus: 'published',
+        supersededBy: 'brew-v2',
+      },
+      {
+        name: 'brew-v2',
+        entityType: 'concept',
+        observations: ['trial tea'],
+        version: 2,
+        parentEntityName: 'brew',
+        rootEntityName: 'brew',
+        isLatest: true,
+        lifecycleStatus: 'draft',
+      },
+    ]);
+
+    const result = await basicSearch.searchNodes('coffee');
+    const names = result.entities.map((e) => e.name);
+    expect(names).toContain('brew');
+    expect(names).not.toContain('brew-v2');
+  });
 });
