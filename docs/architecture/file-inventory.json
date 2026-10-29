@@ -1,8 +1,8 @@
 {
   "generated": "2026-10-29",
-  "totalFiles": 737,
+  "totalFiles": 738,
   "byDisposition": {
-    "reachable": 303,
+    "reachable": 304,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
@@ -14,7 +14,7 @@
   },
   "byArea": {
     "benchmarks": 4,
-    "src": 307,
+    "src": 308,
     "tests": 414,
     "tools": 10,
     "config": 2
@@ -193,7 +193,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 239
+      "loc": 226
     },
     {
       "file": "src/agent/ContextProfileManager.ts",
@@ -221,7 +221,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 242
+      "loc": 229
     },
     {
       "file": "src/agent/DecisionManager.ts",
@@ -2168,6 +2168,13 @@
       "area": "src",
       "disposition": "reachable",
       "loc": 100
+    },
+    {
+      "file": "src/utils/unrefInterval.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 30
     },
     {
       "file": "src/utils/validators.ts",
