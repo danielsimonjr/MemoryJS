@@ -155,23 +155,24 @@ export class ObservationDedupManager {
 
     // Coalesce union-find roots into groups.
     const byRoot = new Map<string, DuplicateObservationGroup>();
+    const hashesByRoot = new Map<string, Set<string>>();
     for (const e of all) {
       const root = find(e.hash);
       let grp = byRoot.get(root);
       if (!grp) {
         grp = { observation: e.normalized, occurrences: [], tier: 'jaccard' };
         byRoot.set(root, grp);
+        hashesByRoot.set(root, new Set());
       }
+      hashesByRoot.get(root)!.add(e.hash);
       grp.occurrences.push(...e.occurrences);
     }
 
     const groups: DuplicateObservationGroup[] = [];
-    for (const g of byRoot.values()) {
+    for (const [root, g] of byRoot) {
       if (g.occurrences.length < minOccurrences) continue;
-      // Skip groups that collapse to a single distinct text (those are
-      // the exact-tier's job).
-      const distinct = new Set(g.occurrences.map((o) => `${o.entityName}|${o.observationIndex}`));
-      if (distinct.size < minOccurrences) continue;
+      const hashes = hashesByRoot.get(root)!;
+      if (hashes.size < 2 && minOccurrences >= 2) continue;
       groups.push(g);
     }
     groups.sort((a, b) => b.occurrences.length - a.occurrences.length);
