@@ -18,7 +18,7 @@
 import { Command } from 'commander';
 import { promises as fs } from 'node:fs';
 import { ManagerContext } from '../../core/ManagerContext.js';
-import type { Relation, ReadonlyKnowledgeGraph } from '../../types/types.js';
+import type { Entity, Relation } from '../../types/types.js';
 import { runAction } from './helpers.js';
 
 
@@ -39,21 +39,30 @@ interface EntitySnapshot {
   };
 }
 
-async function snapshotEntity(ctx: ManagerContext, name: string): Promise<EntitySnapshot> {
-  // `getEntityByName` reads the in-memory nameIndex which is only hydrated by
-  // `loadGraph()`. Call loadGraph first so the lookup hits a populated cache.
+async function loadEntityRelationEnds(
+  ctx: ManagerContext,
+  name: string,
+): Promise<{
+  entity: Entity;
+  outgoing: Array<{ to: string; type: string }>;
+  incoming: Array<{ from: string; type: string }>;
+}> {
   const graph = await ctx.storage.loadGraph();
   const entity = ctx.storage.getEntityByName(name);
   if (!entity) throw new Error(`entity not found: ${name}`);
-
-  const observations = await ctx.observationManager.getObservationsFor(name);
-
   const outgoing = graph.relations
     .filter((r: Relation) => r.from === name)
-    .map((r) => ({ to: r.to, type: r.relationType }));
+    .map(r => ({ to: r.to, type: r.relationType }));
   const incoming = graph.relations
     .filter((r: Relation) => r.to === name)
-    .map((r) => ({ from: r.from, type: r.relationType }));
+    .map(r => ({ from: r.from, type: r.relationType }));
+  return { entity, outgoing, incoming };
+}
+
+async function snapshotEntity(ctx: ManagerContext, name: string): Promise<EntitySnapshot> {
+  const { entity, outgoing, incoming } = await loadEntityRelationEnds(ctx, name);
+
+  const observations = await ctx.observationManager.getObservationsFor(name);
 
   const children = (await ctx.hierarchyManager.getChildren(name)).map((c) => c.name);
   const ancestors = (await ctx.hierarchyManager.getAncestors(name)).map((a) => a.name);
@@ -184,15 +193,7 @@ interface NeighborReport {
 }
 
 async function neighbors(ctx: ManagerContext, name: string): Promise<NeighborReport> {
-  const graph: ReadonlyKnowledgeGraph = await ctx.storage.loadGraph();
-  const entity = ctx.storage.getEntityByName(name);
-  if (!entity) throw new Error(`entity not found: ${name}`);
-  const outgoing = graph.relations
-    .filter((r) => r.from === name)
-    .map((r) => ({ to: r.to, type: r.relationType }));
-  const incoming = graph.relations
-    .filter((r) => r.to === name)
-    .map((r) => ({ from: r.from, type: r.relationType }));
+  const { outgoing, incoming } = await loadEntityRelationEnds(ctx, name);
   return {
     entity: name,
     outgoing,

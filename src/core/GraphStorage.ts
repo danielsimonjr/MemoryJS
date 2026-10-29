@@ -32,10 +32,14 @@ import { FnvSegmentRouter } from './segments/ISegmentStorage.js';
 import { FsReadMmapBackend } from './mmap/FsReadMmapBackend.js';
 import { streamLines } from './mmap/IMmapBackend.js';
 import {
+  deleteNamesFromSnapshot,
+  deleteRelationsFromSnapshot,
+  bindStorageCacheState,
   relationKeyOf,
   removeEntitiesFromIndexes,
   upsertEntityInCache,
   upsertRelationInCache,
+  type StorageCacheOwner,
   type StorageCacheState,
 } from './storageCache.js';
 
@@ -347,32 +351,18 @@ export class GraphStorage implements IGraphStorage {
    * owner field at the moment of use.
    */
   private static cacheStateOf(owner: GraphStorage): StorageCacheState {
-    return {
-      get cache() {
-        return owner.cache;
+    return bindStorageCacheState(
+      owner as unknown as StorageCacheOwner,
+      {
+        set(entity: Entity): void {
+          owner.lowercaseCache.set(entity);
+        },
+        remove(entity: Entity): void {
+          owner.lowercaseCache.remove(entity.name);
+        },
       },
-      get nameIndex() {
-        return owner.nameIndex;
-      },
-      get typeIndex() {
-        return owner.typeIndex;
-      },
-      get relationIndex() {
-        return owner.relationIndex;
-      },
-      get relationKeyMap() {
-        return owner.relationKeyMap;
-      },
-      get observationIndex() {
-        return owner.observationIndex;
-      },
-      setLowercase(entity: Entity): void {
-        owner.lowercaseCache.set(entity);
-      },
-      removeLowercase(entity: Entity): void {
-        owner.lowercaseCache.remove(entity.name);
-      },
-    };
+      { includeObservationIndex: true },
+    );
   }
 
   // ==================== Phase 10 Sprint 2: Event Emitter Access ====================
@@ -1410,10 +1400,7 @@ export class GraphStorage implements IGraphStorage {
       }
 
       const applyCacheDeletion = (): void => {
-        this.cache!.entities = this.cache!.entities.filter(e => !nameSet.has(e.name));
-        this.cache!.relations = this.cache!.relations.filter(
-          r => !nameSet.has(r.from) && !nameSet.has(r.to),
-        );
+        deleteNamesFromSnapshot(this.cache!, nameSet);
         removeEntitiesFromIndexes(this.cacheState, deletedEntities, deletedRelations);
       };
 
@@ -1512,18 +1499,14 @@ export class GraphStorage implements IGraphStorage {
       const previousTimestamps = touchedEntities.map(e => e.lastModified);
 
       const applyCacheMutation = (): void => {
-        if (deletedRelations.length > 0) {
-          this.cache!.relations = this.cache!.relations.filter(
-            r => !keySet.has(relationKeyOf(r)),
-          );
-          for (const r of deletedRelations) {
-            this.relationIndex.remove(r);
-            this.relationKeyMap.delete(relationKeyOf(r));
-          }
-        }
-        for (const entity of touchedEntities) {
-          entity.lastModified = timestamp;
-        }
+        deleteRelationsFromSnapshot(
+          this.cache!,
+          this.cacheState,
+          keySet,
+          deletedRelations,
+          touchedEntities,
+          timestamp,
+        );
       };
 
       if (this.segmentStorage !== null) {

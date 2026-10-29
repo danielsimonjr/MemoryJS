@@ -418,6 +418,14 @@ describe('PlanManager', () => {
       expect(complete.map((p) => p.id)).toEqual([p2.id]);
       void p1;
     });
+
+    it('listPlans returns the cached planRecord object from storage', async () => {
+      const plan = await pm.createPlan('cached');
+      const entity = await storage.getEntityByName(plan.id);
+      expect(entity && isPlanMemory(entity)).toBe(true);
+      const listed = await pm.listPlans({ sessionId: plan.sessionId });
+      expect(listed[0]).toBe((entity as PlanEntity).planRecord);
+    });
   });
 
   // ==================== invariant validation ====================

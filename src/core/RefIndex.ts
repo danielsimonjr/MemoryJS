@@ -161,19 +161,9 @@ export class RefIndex {
    */
   async purgeEntity(entityName: string): Promise<number> {
     return this.mutex.runExclusive(async () => {
-      await this.ensureLoaded();
-
-      const refs = this.reverseIndex.get(entityName);
-      if (!refs || refs.size === 0) return 0;
-
-      const count = refs.size;
-      for (const ref of refs) {
+      return this.rewriteReverseBucket(entityName, ref => {
         this.entries.delete(ref);
-      }
-      this.reverseIndex.delete(entityName);
-
-      await this.persistAll();
-      return count;
+      });
     });
   }
 
@@ -189,24 +179,33 @@ export class RefIndex {
    */
   async renameEntity(oldName: string, newName: string): Promise<number> {
     return this.mutex.runExclusive(async () => {
-      await this.ensureLoaded();
-
-      const refs = this.reverseIndex.get(oldName);
-      if (!refs || refs.size === 0) return 0;
-
-      const count = refs.size;
-      for (const ref of refs) {
+      return this.rewriteReverseBucket(oldName, ref => {
         const entry = this.entries.get(ref);
         if (entry) {
           entry.entityName = newName;
         }
         this.addToReverseIndex(newName, ref);
-      }
-      this.reverseIndex.delete(oldName);
-
-      await this.persistAll();
-      return count;
+      });
     });
+  }
+
+  private async rewriteReverseBucket(
+    entityName: string,
+    mutate: (ref: string) => void,
+  ): Promise<number> {
+    await this.ensureLoaded();
+
+    const refs = this.reverseIndex.get(entityName);
+    if (!refs || refs.size === 0) return 0;
+
+    const count = refs.size;
+    for (const ref of refs) {
+      mutate(ref);
+    }
+    this.reverseIndex.delete(entityName);
+
+    await this.persistAll();
+    return count;
   }
 
   /**

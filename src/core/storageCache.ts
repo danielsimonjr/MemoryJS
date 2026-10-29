@@ -38,6 +38,67 @@ export interface StorageCacheState {
   removeLowercase(entity: Entity): void;
 }
 
+type CacheStateOwner = {
+  cache: KnowledgeGraph | null;
+  nameIndex: NameIndex;
+  typeIndex: TypeIndex;
+  relationIndex: RelationIndex;
+  relationKeyMap: Map<string, Relation>;
+  observationIndex?: ObservationIndex;
+};
+
+/**
+ * Cache and index fields owned by a storage backend for {@link bindStorageCacheState}.
+ * @internal Storage classes cast `this` to this shape.
+ */
+export type StorageCacheOwner = CacheStateOwner;
+
+/**
+ * Wires a storage owner's cache fields into a {@link StorageCacheState} facade with live getters.
+ */
+export function bindStorageCacheState(
+  owner: CacheStateOwner,
+  lowercase: {
+    set(entity: Entity): void;
+    remove(entity: Entity): void;
+  },
+  options?: { includeObservationIndex?: boolean },
+): StorageCacheState {
+  const state: StorageCacheState = {
+    get cache() {
+      return owner.cache;
+    },
+    get nameIndex() {
+      return owner.nameIndex;
+    },
+    get typeIndex() {
+      return owner.typeIndex;
+    },
+    get relationIndex() {
+      return owner.relationIndex;
+    },
+    get relationKeyMap() {
+      return owner.relationKeyMap;
+    },
+    setLowercase(entity: Entity): void {
+      lowercase.set(entity);
+    },
+    removeLowercase(entity: Entity): void {
+      lowercase.remove(entity);
+    },
+  };
+  if (options?.includeObservationIndex) {
+    Object.defineProperty(state, 'observationIndex', {
+      enumerable: true,
+      configurable: true,
+      get(): ObservationIndex {
+        return owner.observationIndex!;
+      },
+    });
+  }
+  return state;
+}
+
 /**
  * Composite key uniquely identifying a relation (`from`/`to`/`relationType`
  * triple). The `\u0000` separator matches the keys that `RelationManager`
@@ -147,5 +208,47 @@ export function removeEntitiesFromIndexes(
   for (const r of deletedRelations) {
     state.relationIndex.remove(r);
     state.relationKeyMap.delete(relationKeyOf(r));
+  }
+}
+
+/**
+ * Remove entities and incident relations from an in-memory graph snapshot.
+ *
+ * The caller runs this after the durable delete. Index maintenance is separate
+ * (`removeEntitiesFromIndexes`).
+ */
+export function deleteNamesFromSnapshot(
+  cache: KnowledgeGraph,
+  nameSet: ReadonlySet<string>,
+): void {
+  cache.entities = cache.entities.filter(e => !nameSet.has(e.name));
+  cache.relations = cache.relations.filter(
+    r => !nameSet.has(r.from) && !nameSet.has(r.to),
+  );
+}
+
+/**
+ * Apply relation deletes and entity timestamp bumps to the in-memory snapshot.
+ *
+ * Runs after the durable write. Touches `lastModified` even when no relation
+ * matched.
+ */
+export function deleteRelationsFromSnapshot(
+  cache: KnowledgeGraph,
+  indexes: Pick<StorageCacheState, 'relationIndex' | 'relationKeyMap'>,
+  keySet: ReadonlySet<string>,
+  deletedRelations: readonly Relation[],
+  touchedEntities: readonly Entity[],
+  timestamp: string,
+): void {
+  if (deletedRelations.length > 0) {
+    cache.relations = cache.relations.filter(r => !keySet.has(relationKeyOf(r)));
+    for (const r of deletedRelations) {
+      indexes.relationIndex.remove(r);
+      indexes.relationKeyMap.delete(relationKeyOf(r));
+    }
+  }
+  for (const entity of touchedEntities) {
+    entity.lastModified = timestamp;
   }
 }
