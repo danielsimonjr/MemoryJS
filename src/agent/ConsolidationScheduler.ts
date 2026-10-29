@@ -16,9 +16,11 @@
 
 import { EventEmitter } from 'events';
 import { logger } from '../utils/logger.js';
+import { beginUnrefInterval, stopUnrefInterval, type IntervalRunState } from '../utils/unrefInterval.js';
 import type { ConsolidationPipeline } from './ConsolidationPipeline.js';
 import type { CompressionManager } from '../features/CompressionManager.js';
 import type { ConsolidationResult } from '../types/agent-memory.js';
+import { fillDefaults } from '../utils/fillDefaults.js';
 
 // ==================== Types ====================
 
@@ -87,8 +89,7 @@ export class ConsolidationScheduler extends EventEmitter {
   > &
     Pick<ConsolidationSchedulerConfig, 'onConsolidationComplete' | 'onError'>;
 
-  private intervalId?: ReturnType<typeof setInterval>;
-  private running = false;
+  private readonly intervalState: IntervalRunState = { running: false };
   /**
    * Promise for the immediate cycle launched by start().
    * Exposed so callers (e.g., tests) can await the first cycle during teardown.
@@ -103,10 +104,13 @@ export class ConsolidationScheduler extends EventEmitter {
     super();
     this.pipeline = pipeline;
     this.compressionManager = compressionManager;
+    const filled = fillDefaults(config, {
+      consolidationIntervalMs: 60 * 60 * 1000,
+      autoMergeDuplicates: false,
+      duplicateThreshold: 0.9,
+    });
     this.config = {
-      consolidationIntervalMs: config.consolidationIntervalMs ?? 60 * 60 * 1000,
-      autoMergeDuplicates: config.autoMergeDuplicates ?? false,
-      duplicateThreshold: config.duplicateThreshold ?? 0.9,
+      ...filled,
       onConsolidationComplete: config.onConsolidationComplete,
       onError: config.onError,
     };
@@ -121,18 +125,9 @@ export class ConsolidationScheduler extends EventEmitter {
    * One cycle runs immediately on start.
    */
   start(): void {
-    if (this.running) return;
-
-    this.running = true;
-    this.intervalId = setInterval(
-      () => { void /* fire-and-forget interval tick */ this.runConsolidationCycle(); },
-      this.config.consolidationIntervalMs
-    );
-    // Prevent the interval from keeping the Node.js process alive when the
-    // event loop would otherwise exit (mirrors DecayScheduler pattern).
-    this.intervalId.unref();
-
-    // Run immediately on start; store promise so callers can await teardown if needed
+    if (!beginUnrefInterval(this.intervalState, this.config.consolidationIntervalMs, () => this.runConsolidationCycle())) {
+      return;
+    }
     this.initialCyclePromise = this.runConsolidationCycle();
   }
 
@@ -142,18 +137,14 @@ export class ConsolidationScheduler extends EventEmitter {
    * Any in-progress cycle completes; no new cycles are started.
    */
   stop(): void {
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-      this.intervalId = undefined;
-    }
-    this.running = false;
+    stopUnrefInterval(this.intervalState);
   }
 
   /**
    * Whether the scheduler is currently active.
    */
   isRunning(): boolean {
-    return this.running;
+    return this.intervalState.running;
   }
 
   /**
@@ -204,7 +195,7 @@ export class ConsolidationScheduler extends EventEmitter {
    */
   private async runConsolidationCycle(): Promise<void> {
     // Guard: if stop() was called before this cycle started executing, skip it
-    if (!this.running) return;
+    if (!this.intervalState.running) return;
     try {
       const result = await this.runNow();
       this.config.onConsolidationComplete?.(result);

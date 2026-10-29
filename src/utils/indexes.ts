@@ -4,6 +4,7 @@
  */
 
 import type { Entity, LowercaseData, Relation } from '../types/index.js';
+import { removeIdFromPostings } from './postingIndex.js';
 
 /** O(1) entity lookup by name. */
 export class NameIndex {
@@ -363,16 +364,7 @@ export class ObservationIndex {
     const words = this.entityObservations.get(entityName);
     if (!words) return;
 
-    for (const word of words) {
-      const entities = this.index.get(word);
-      if (entities) {
-        entities.delete(entityName);
-        if (entities.size === 0) {
-          this.index.delete(word);
-        }
-      }
-    }
-
+    removeIdFromPostings(this.index, words, entityName);
     this.entityObservations.delete(entityName);
   }
 

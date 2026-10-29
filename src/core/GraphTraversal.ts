@@ -142,10 +142,7 @@ export class GraphTraversal {
       retrievalMethod: 'traversal',
     };
 
-    // Batch record all visited nodes
-    await Promise.all(
-      nodes.map((name) => this.accessTracker!.recordAccess(name, context))
-    );
+    await this.accessTracker.recordAccessBatch(nodes, context);
   }
 
   // ==================== Sprint 6: BFS and DFS Traversal ====================
