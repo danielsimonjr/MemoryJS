@@ -54,7 +54,7 @@ describe('ObservationDedupManager', () => {
     expect(groups[0]!.observation).toBe('prefers italian food');
     expect(groups[0]!.tier).toBe('exact');
     expect(groups[0]!.occurrences).toHaveLength(2);
-    expect(groups[0]!.occurrences.map((o) => o.entityName).sort()).toEqual(['Alice', 'Bob']);
+    expect(groups[0]!.occurrences.map((o) => o.entityName)).toEqual(['Alice', 'Bob']);
   });
 
   it('returns empty when no observation appears more than once', async () => {

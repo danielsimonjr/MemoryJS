@@ -31,6 +31,7 @@ import type {
   GetWeightedOptions,
 } from './MemoryBackend.js';
 import type { AgentEntity } from '../types/agent-memory.js';
+import { selectWeightedTurns } from './selectWeightedTurns.js';
 
 /**
  * Ephemeral `IMemoryBackend` that keeps turns in a per-session in-process list.
@@ -67,22 +68,11 @@ export class InMemoryBackend implements IMemoryBackend {
     const threshold = options?.threshold ?? this.decayEngine.prdMinImportanceThreshold;
     const limit = options?.limit ?? 10;
 
-    // Score every turn via PRD effective-importance, with the query
-    // contributing the relevance-boost term.
-    const scored: WeightedTurn[] = list.map((turn) => {
+    return selectWeightedTurns(list, turn => {
       const synthetic = turnToEntity(turn);
-      const score = this.decayEngine.calculatePrdEffectiveImportance(
-        synthetic,
-        query,
-      );
+      const score = this.decayEngine.calculatePrdEffectiveImportance(synthetic, query);
       return { turn, score };
-    });
-
-    // Threshold filter, then descending-score sort, then limit.
-    return scored
-      .filter((wt) => wt.score >= threshold)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, limit);
+    }, threshold, limit);
   }
 
   async delete_session(sessionId: string): Promise<void> {

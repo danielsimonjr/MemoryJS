@@ -44,6 +44,7 @@ import { extractJson } from './reconstruction/MemoryDistiller.js';
 import { cosineParts } from '../utils/textSimilarity.js';
 import type { PipelineStage, StageResult } from './ConsolidationPipeline.js';
 import type { AgentEntity, ConsolidateOptions } from '../types/agent-memory.js';
+import { fillDefaults } from '../utils/fillDefaults.js';
 
 // ==================== Structural dependency interfaces ====================
 
@@ -410,9 +411,14 @@ export class RelationConsolidator {
     this.embedding = options.embedding;
     this.llm = options.llm;
     this.semanticThreshold = options.thresholds?.semantic ?? 0.9;
-    this.maxGroups = options.maxGroups ?? 100;
-    this.maxLlmBatch = options.maxLlmBatch ?? 50;
-    this.maxNeighborhoodRelations = options.maxNeighborhoodRelations ?? 200;
+    const filled = fillDefaults(options, {
+      maxGroups: 100,
+      maxLlmBatch: 50,
+      maxNeighborhoodRelations: 200,
+    });
+    this.maxGroups = filled.maxGroups;
+    this.maxLlmBatch = filled.maxLlmBatch;
+    this.maxNeighborhoodRelations = filled.maxNeighborhoodRelations;
   }
 
   // ==================== Public API ====================
