@@ -3009,7 +3009,7 @@ Reachable from a root: **313** of 313 files. Dormant: **0** (0 orphaned, 0 test-
 | `./segments/ISegmentStorage.js` | `FnvSegmentRouter` | Import |
 | `./mmap/FsReadMmapBackend.js` | `FsReadMmapBackend` | Import |
 | `./mmap/IMmapBackend.js` | `streamLines` | Import |
-| `./storageCache.js` | `bindStorageCacheState, relationKeyOf, removeEntitiesFromIndexes, upsertEntityInCache, upsertRelationInCache, StorageCacheOwner, StorageCacheState` | Import |
+| `./storageCache.js` | `deleteNamesFromSnapshot, deleteRelationsFromSnapshot, bindStorageCacheState, relationKeyOf, removeEntitiesFromIndexes, upsertEntityInCache, upsertRelationInCache, StorageCacheOwner, StorageCacheState` | Import |
 
 **Exports:**
 - Classes: `GraphStorage`
@@ -3278,7 +3278,7 @@ Reachable from a root: **313** of 313 files. Dormant: **0** (0 orphaned, 0 test-
 | `../utils/logger.js` | `logger` | Import |
 | `../search/PartialIndexAdvisor.js` | `PartialIndexAdvisor, FilterObservation` | Import |
 | `./GraphEventEmitter.js` | `GraphEventEmitter` | Import |
-| `./storageCache.js` | `bindStorageCacheState, relationKeyOf, removeEntitiesFromIndexes, upsertEntityInCache, upsertRelationInCache, StorageCacheOwner, StorageCacheState` | Import |
+| `./storageCache.js` | `deleteNamesFromSnapshot, deleteRelationsFromSnapshot, bindStorageCacheState, relationKeyOf, removeEntitiesFromIndexes, upsertEntityInCache, upsertRelationInCache, StorageCacheOwner, StorageCacheState` | Import |
 
 **Exports:**
 - Classes: `SQLiteStorage`
@@ -3507,7 +3507,7 @@ Reachable from a root: **313** of 313 files. Dormant: **0** (0 orphaned, 0 test-
 **Exports:**
 - Interfaces: `StorageCacheState`
 - Types: `StorageCacheOwner`
-- Functions: `bindStorageCacheState`, `relationKeyOf`, `upsertEntityInCache`, `upsertRelationInCache`, `removeEntitiesFromIndexes`
+- Functions: `bindStorageCacheState`, `relationKeyOf`, `upsertEntityInCache`, `upsertRelationInCache`, `removeEntitiesFromIndexes`, `deleteNamesFromSnapshot`, `deleteRelationsFromSnapshot`
 
 ---
 
@@ -5931,12 +5931,12 @@ graph TD
 |----------|-------|
 | Total TypeScript Files | 313 |
 | Total Modules | 12 |
-| Total Lines of Code | 105512 |
-| Total Exports | 2101 |
+| Total Lines of Code | 105544 |
+| Total Exports | 2103 |
 | Total Re-exports | 1349 |
 | Total Classes | 237 |
 | Total Interfaces | 632 |
-| Total Functions | 376 |
+| Total Functions | 378 |
 | Total Type Guards | 31 |
 | Total Enums | 4 |
 | Type-only Imports | 499 |

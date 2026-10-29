@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Clones refactor P2: `loadProjectedRecords` and `matchesDefined` for agent record list filtering (K002).
 - Clones refactor P1: shared `failureChainText` prelude for failure descriptions and lessons in `FailureDistillation`.
 - Phase 2 clone cleanup: merged episodic adjacent-event navigation, procedural-graph monotonic timestamps, and tiered-store flush rollback helpers; documented remaining pairs in `docs/analysis/CLONES_REMAINING.md`.
+- Share post-write snapshot delete helpers in `storageCache` (CLONES P23).
 - Share storage cache-state binding in `bindStorageCacheState` (CLONES P22).
 - Share default session query collect path in `SessionQueryBuilder` (CLONES P21).
 - Add `ParallelSearchExecutor.timeLayer` for semantic and lexical timing (CLONES P19).

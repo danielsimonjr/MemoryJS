@@ -4,7 +4,7 @@ metadata:
   lastUpdated: "2026-10-29"
   totalFiles: 313
   totalModules: 12
-  totalExports: 2101
+  totalExports: 2103
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -7106,6 +7106,8 @@ modules:
             - streamLines
         - file: ./storageCache.js
           imports:
+            - deleteNamesFromSnapshot
+            - deleteRelationsFromSnapshot
             - bindStorageCacheState
             - relationKeyOf
             - removeEntitiesFromIndexes
@@ -7739,6 +7741,8 @@ modules:
             - GraphEventEmitter
         - file: ./storageCache.js
           imports:
+            - deleteNamesFromSnapshot
+            - deleteRelationsFromSnapshot
             - bindStorageCacheState
             - relationKeyOf
             - removeEntitiesFromIndexes
@@ -8228,6 +8232,8 @@ modules:
         - upsertEntityInCache
         - upsertRelationInCache
         - removeEntitiesFromIndexes
+        - deleteNamesFromSnapshot
+        - deleteRelationsFromSnapshot
       interfaces:
         - StorageCacheState
       functions:
@@ -8236,6 +8242,8 @@ modules:
         - upsertEntityInCache
         - upsertRelationInCache
         - removeEntitiesFromIndexes
+        - deleteNamesFromSnapshot
+        - deleteRelationsFromSnapshot
   features:
     src/features/AnalyticsManager.ts:
       description: Analytics Manager
@@ -14937,11 +14945,11 @@ reachability:
 statistics:
   totalTypeScriptFiles: 313
   totalModules: 12
-  totalLinesOfCode: 105512
-  totalExports: 2101
+  totalLinesOfCode: 105544
+  totalExports: 2103
   totalClasses: 237
   totalInterfaces: 632
-  totalFunctions: 376
+  totalFunctions: 378
   totalTypeGuards: 31
   totalEnums: 4
   totalConstants: 124

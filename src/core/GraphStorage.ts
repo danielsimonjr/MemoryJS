@@ -32,6 +32,8 @@ import { FnvSegmentRouter } from './segments/ISegmentStorage.js';
 import { FsReadMmapBackend } from './mmap/FsReadMmapBackend.js';
 import { streamLines } from './mmap/IMmapBackend.js';
 import {
+  deleteNamesFromSnapshot,
+  deleteRelationsFromSnapshot,
   bindStorageCacheState,
   relationKeyOf,
   removeEntitiesFromIndexes,
@@ -1398,10 +1400,7 @@ export class GraphStorage implements IGraphStorage {
       }
 
       const applyCacheDeletion = (): void => {
-        this.cache!.entities = this.cache!.entities.filter(e => !nameSet.has(e.name));
-        this.cache!.relations = this.cache!.relations.filter(
-          r => !nameSet.has(r.from) && !nameSet.has(r.to),
-        );
+        deleteNamesFromSnapshot(this.cache!, nameSet);
         removeEntitiesFromIndexes(this.cacheState, deletedEntities, deletedRelations);
       };
 
@@ -1500,18 +1499,14 @@ export class GraphStorage implements IGraphStorage {
       const previousTimestamps = touchedEntities.map(e => e.lastModified);
 
       const applyCacheMutation = (): void => {
-        if (deletedRelations.length > 0) {
-          this.cache!.relations = this.cache!.relations.filter(
-            r => !keySet.has(relationKeyOf(r)),
-          );
-          for (const r of deletedRelations) {
-            this.relationIndex.remove(r);
-            this.relationKeyMap.delete(relationKeyOf(r));
-          }
-        }
-        for (const entity of touchedEntities) {
-          entity.lastModified = timestamp;
-        }
+        deleteRelationsFromSnapshot(
+          this.cache!,
+          this.cacheState,
+          keySet,
+          deletedRelations,
+          touchedEntities,
+          timestamp,
+        );
       };
 
       if (this.segmentStorage !== null) {
