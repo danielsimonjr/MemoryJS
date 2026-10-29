@@ -444,6 +444,33 @@ describe('ParallelSearchExecutor', () => {
       expect(lexicalTiming?.success).toBe(false);
       expect(lexicalTiming?.error).toBe('Lexical search timeout');
     });
+
+    it('does not merge scores after a semantic timeout', async () => {
+      let finish!: (value: Array<{ name: string; similarity: number }>) => void;
+      mockSemanticSearch.search.mockImplementation(
+        () => new Promise(resolve => {
+          finish = resolve;
+        }),
+      );
+
+      const result = await executor.execute(testGraph, 'test', { timeoutMs: 20 });
+      expect(result.semanticResults.size).toBe(0);
+      finish([{ name: 'Alice', similarity: 0.9 }]);
+      await new Promise(resolve => setTimeout(resolve, 20));
+      expect(result.semanticResults.size).toBe(0);
+    });
+
+    it('does not start a timer when semantic search is missing', async () => {
+      const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+      const bare = new ParallelSearchExecutor(undefined as any, mockRankedSearch as any);
+      const result = await bare.execute(testGraph, 'test', { timeoutMs: 50 });
+      const semantic = result.timings.find(t => t.layer === 'semantic');
+      expect(semantic?.success).toBe(true);
+      expect(semantic?.resultCount).toBe(0);
+      const timeoutCalls = setTimeoutSpy.mock.calls.filter(([, ms]) => ms === 50);
+      expect(timeoutCalls).toHaveLength(1); // lexical only
+      setTimeoutSpy.mockRestore();
+    });
   });
 
   describe('options passing', () => {

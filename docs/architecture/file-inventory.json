@@ -1572,7 +1572,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 581
+      "loc": 563
     },
     {
       "file": "src/search/PartialIndexAdvisor.ts",
@@ -4435,7 +4435,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 551
+      "loc": 578
     },
     {
       "file": "tests/unit/search/PartialIndexAdvisor.test.ts",
