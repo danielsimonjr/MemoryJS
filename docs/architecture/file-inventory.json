@@ -2664,7 +2664,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 668
+      "loc": 699
     },
     {
       "file": "tests/unit/agent/AgentReflectionManager.test.ts",
