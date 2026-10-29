@@ -14,7 +14,7 @@ import { isAgentEntity } from '../types/agent-memory.js';
 import { AccessTracker } from './AccessTracker.js';
 import { FreshnessManager } from '../features/FreshnessManager.js';
 import { tokenizeToSet } from '../utils/textSimilarity.js';
-import { halfLifeFactor } from '../utils/halfLife.js';
+import { clampedHalfLifeScore, halfLifeFactor } from '../utils/halfLife.js';
 import { computeDegreeMap, normalizedDegree, type DegreeMap } from './connectivity.js';
 
 // Re-export for convenience
@@ -242,13 +242,7 @@ export class DecayEngine {
     lastAccessedAt: string,
     halfLifeHours: number = 168
   ): number {
-    if (!lastAccessedAt) return 0;
-
-    const now = Date.now();
-    const lastAccess = new Date(lastAccessedAt).getTime();
-    const ageHours = (now - lastAccess) / (1000 * 60 * 60);
-
-    return Math.max(0, Math.min(1, halfLifeFactor(ageHours, halfLifeHours)));
+    return clampedHalfLifeScore(lastAccessedAt, halfLifeHours);
   }
 
   // ==================== Effective Importance Calculation ====================

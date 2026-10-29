@@ -123,6 +123,23 @@ describe('DecayScheduler.start/stop', () => {
     scheduler.stop();
   });
 
+  it('arms an unrefed interval and does not grow a promise field', () => {
+    const engine = createMockDecayEngine();
+    const scheduler = new DecayScheduler(engine, { decayIntervalMs: 2500 });
+    const setIntervalSpy = vi.spyOn(globalThis, 'setInterval');
+    scheduler.start();
+    expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+    expect(setIntervalSpy.mock.calls[0][1]).toBe(2500);
+    expect('initialCyclePromise' in scheduler).toBe(false);
+    scheduler.start();
+    expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+    scheduler.stop();
+    scheduler.start();
+    expect(setIntervalSpy).toHaveBeenCalledTimes(2);
+    scheduler.stop();
+    setIntervalSpy.mockRestore();
+  });
+
   it('should be safe to stop when not running', () => {
     const engine = createMockDecayEngine();
     const scheduler = new DecayScheduler(engine);

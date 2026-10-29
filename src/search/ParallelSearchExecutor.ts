@@ -211,53 +211,65 @@ export class ParallelSearchExecutor {
     limit: number,
     _timeoutMs: number
   ): Promise<{ results: Map<string, number>; timing: LayerTiming }> {
-    const startTime = Date.now();
     const results = new Map<string, number>();
 
-    let success = true;
-    let error: string | undefined;
-
     if (!this.semanticSearch) {
-      // Semantic search not available - treat as graceful degradation
+      const now = Date.now();
       return {
         results,
         timing: {
           layer: 'semantic',
-          startTime,
-          endTime: Date.now(),
-          durationMs: Date.now() - startTime,
-          success: true, // Not an error, just not configured
+          startTime: now,
+          endTime: now,
+          durationMs: 0,
+          success: true,
           resultCount: 0,
         },
       };
     }
 
-    const timeout = createTimeout<never>(_timeoutMs, 'Semantic search timeout');
-    try {
-      // Execute semantic search with timeout
-      const semanticResults = await Promise.race([
-        this.semanticSearch.search(
-          graph,
-          query,
-          options.topK ?? limit,
-          options.minSimilarity ?? 0
-        ),
-        timeout.promise,
-      ]);
+    return this.timeLayer('semantic', _timeoutMs, 'Semantic search timeout', results, async res => {
+      const semanticResults = await this.semanticSearch!.search(
+        graph,
+        query,
+        options.topK ?? limit,
+        options.minSimilarity ?? 0,
+      );
+      addSimilarityScores(res, semanticResults);
+    });
+  }
 
-      addSimilarityScores(results, semanticResults);
+  private async timeLayer(
+    layer: 'semantic' | 'lexical',
+    timeoutMs: number,
+    timeoutMessage: string,
+    results: Map<string, number>,
+    run: (results: Map<string, number>) => Promise<void>,
+  ): Promise<{ results: Map<string, number>; timing: LayerTiming }> {
+    const startTime = Date.now();
+    let success = true;
+    let error: string | undefined;
+    const timeout = createTimeout<never>(timeoutMs, timeoutMessage);
+    // Race the search+score work on a scratch map. Promise.race does not cancel
+    // `run`, so writing the live `results` inside `run` would let a timed-out
+    // layer still populate the map the caller already returned.
+    const pending = new Map<string, number>();
+    try {
+      await Promise.race([run(pending), timeout.promise]);
+      for (const [name, score] of pending) {
+        results.set(name, score);
+      }
     } catch (err) {
       success = false;
       error = err instanceof Error ? err.message : String(err);
     } finally {
       timeout.clear();
     }
-
     const endTime = Date.now();
     return {
       results,
       timing: {
-        layer: 'semantic',
+        layer,
         startTime,
         endTime,
         durationMs: endTime - startTime,
@@ -277,47 +289,17 @@ export class ParallelSearchExecutor {
     limit: number,
     _timeoutMs: number
   ): Promise<{ results: Map<string, number>; timing: LayerTiming }> {
-    const startTime = Date.now();
     const results = new Map<string, number>();
-
-    let success = true;
-    let error: string | undefined;
-
-    const timeout = createTimeout<never>(_timeoutMs, 'Lexical search timeout');
-    try {
-      // Execute lexical search with timeout
-      const lexicalResults = await Promise.race([
-        this.rankedSearch.searchNodesRanked(
-          query,
-          undefined, // tags
-          undefined, // minImportance
-          undefined, // maxImportance
-          limit
-        ),
-        timeout.promise,
-      ]);
-
-      addNormalizedLexicalScores(results, lexicalResults);
-    } catch (err) {
-      success = false;
-      error = err instanceof Error ? err.message : String(err);
-    } finally {
-      timeout.clear();
-    }
-
-    const endTime = Date.now();
-    return {
-      results,
-      timing: {
-        layer: 'lexical',
-        startTime,
-        endTime,
-        durationMs: endTime - startTime,
-        success,
-        error,
-        resultCount: results.size,
-      },
-    };
+    return this.timeLayer('lexical', _timeoutMs, 'Lexical search timeout', results, async res => {
+      const lexicalResults = await this.rankedSearch.searchNodesRanked(
+        query,
+        undefined,
+        undefined,
+        undefined,
+        limit,
+      );
+      addNormalizedLexicalScores(res, lexicalResults);
+    });
   }
 
   /**
