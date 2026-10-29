@@ -11,6 +11,7 @@
 import type { DecayResult, ForgetResult, ForgetOptions } from '../types/agent-memory.js';
 import type { DecayEngine } from './DecayEngine.js';
 import { logger } from '../utils/logger.js';
+import { beginUnrefInterval, stopUnrefInterval } from '../utils/unrefInterval.js';
 
 // Re-export for convenience
 export type { DecayResult, ForgetResult } from '../types/agent-memory.js';
