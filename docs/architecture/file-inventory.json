@@ -102,7 +102,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 431
+      "loc": 436
     },
     {
       "file": "src/agent/AgentMemoryConfig.ts",
@@ -1124,7 +1124,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1409
+      "loc": 1406
     },
     {
       "file": "src/core/HierarchyManager.ts",
@@ -1663,7 +1663,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 555
+      "loc": 553
     },
     {
       "file": "src/search/SearchSuggestions.ts",
