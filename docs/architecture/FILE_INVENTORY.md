@@ -214,7 +214,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/core/segments/ISegmentStorage.ts` | src | reachable | 279 |
 | `src/core/sqlite-register.ts` | src | reachable | 31 |
 | `src/core/SQLiteStorage.ts` | src | reachable | 2645 |
-| `src/core/storageCache.ts` | src | reachable | 210 |
+| `src/core/storageCache.ts` | src | reachable | 213 |
 | `src/core/StorageFactory.ts` | src | reachable | 158 |
 | `src/core/TransactionManager.ts` | src | reachable | 760 |
 | `src/core/TransitionLedger.ts` | src | reachable | 450 |

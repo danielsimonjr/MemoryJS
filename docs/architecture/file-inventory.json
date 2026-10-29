@@ -1236,7 +1236,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 210
+      "loc": 213
     },
     {
       "file": "src/core/StorageFactory.ts",
