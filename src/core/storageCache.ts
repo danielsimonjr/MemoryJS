@@ -38,6 +38,64 @@ export interface StorageCacheState {
   removeLowercase(entity: Entity): void;
 }
 
+type CacheStateOwner = {
+  cache: KnowledgeGraph | null;
+  nameIndex: NameIndex;
+  typeIndex: TypeIndex;
+  relationIndex: RelationIndex;
+  relationKeyMap: Map<string, Relation>;
+  observationIndex?: ObservationIndex;
+};
+
+/** @internal Owner shape for {@link bindStorageCacheState} (storage classes cast `this`). */
+export type StorageCacheOwner = CacheStateOwner;
+
+/**
+ * Build live {@link StorageCacheState} getters for a storage owner and lowercase hooks.
+ */
+export function bindStorageCacheState(
+  owner: CacheStateOwner,
+  lowercase: {
+    set(entity: Entity): void;
+    remove(entity: Entity): void;
+  },
+  options?: { includeObservationIndex?: boolean },
+): StorageCacheState {
+  const state: StorageCacheState = {
+    get cache() {
+      return owner.cache;
+    },
+    get nameIndex() {
+      return owner.nameIndex;
+    },
+    get typeIndex() {
+      return owner.typeIndex;
+    },
+    get relationIndex() {
+      return owner.relationIndex;
+    },
+    get relationKeyMap() {
+      return owner.relationKeyMap;
+    },
+    setLowercase(entity: Entity): void {
+      lowercase.set(entity);
+    },
+    removeLowercase(entity: Entity): void {
+      lowercase.remove(entity);
+    },
+  };
+  if (options?.includeObservationIndex) {
+    Object.defineProperty(state, 'observationIndex', {
+      enumerable: true,
+      configurable: true,
+      get(): ObservationIndex {
+        return owner.observationIndex!;
+      },
+    });
+  }
+  return state;
+}
+
 /**
  * Composite key uniquely identifying a relation (`from`/`to`/`relationType`
  * triple). The `\u0000` separator matches the keys that `RelationManager`

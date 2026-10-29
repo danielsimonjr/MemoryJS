@@ -8,6 +8,7 @@
 
 import { describe, it, expect } from 'vitest';
 import {
+  bindStorageCacheState,
   relationKeyOf,
   removeEntitiesFromIndexes,
   upsertEntityInCache,
@@ -283,5 +284,57 @@ describe('removeEntitiesFromIndexes', () => {
 
     expect(order).toEqual(['name:e1', 'name:e2', 'name:e3', 'relation:e1', 'relation:e2']);
     expect(calls).toEqual(['remove:e1', 'remove:e2', 'remove:e3']);
+  });
+});
+
+describe('bindStorageCacheState', () => {
+  it('exposes live getters and optional observationIndex', () => {
+    const owner = {
+      cache: null as KnowledgeGraph | null,
+      nameIndex: new NameIndex(),
+      typeIndex: new TypeIndex(),
+      relationIndex: new RelationIndex(),
+      relationKeyMap: new Map<string, Relation>(),
+      observationIndex: new ObservationIndex(),
+    };
+    const lowercaseCalls: string[] = [];
+    const state = bindStorageCacheState(
+      owner,
+      {
+        set(entity: Entity) {
+          lowercaseCalls.push(`set:${entity.name}`);
+        },
+        remove(entity: Entity) {
+          lowercaseCalls.push(`remove:${entity.name}`);
+        },
+      },
+      { includeObservationIndex: true },
+    );
+
+    const graph: KnowledgeGraph = { entities: [], relations: [] };
+    owner.cache = graph;
+    expect(state.cache).toBe(graph);
+
+    const entity: Entity = { name: 'e1', entityType: 'T', observations: ['alpha'] };
+    upsertEntityInCache(state, entity);
+    expect(owner.nameIndex.get('e1')).toBe(entity);
+    expect([...owner.observationIndex.getEntitiesWithWord('alpha')]).toEqual(['e1']);
+    expect(lowercaseCalls).toEqual(['set:e1']);
+    expect('observationIndex' in state).toBe(true);
+  });
+
+  it('does not define observationIndex without the option', () => {
+    const owner = {
+      cache: { entities: [], relations: [] } as KnowledgeGraph,
+      nameIndex: new NameIndex(),
+      typeIndex: new TypeIndex(),
+      relationIndex: new RelationIndex(),
+      relationKeyMap: new Map<string, Relation>(),
+    };
+    const state = bindStorageCacheState(owner, {
+      set() {},
+      remove() {},
+    });
+    expect('observationIndex' in state).toBe(false);
   });
 });
