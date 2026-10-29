@@ -80,7 +80,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/events/index.ts` | src | reachable | 20 |
 | `src/agent/ExclusionManager.ts` | src | reachable | 210 |
 | `src/agent/ExperienceExtractor.ts` | src | reachable | 435 |
-| `src/agent/FailureDistillation.ts` | src | reachable | 301 |
+| `src/agent/FailureDistillation.ts` | src | reachable | 314 |
 | `src/agent/FailureManager.ts` | src | reachable | 457 |
 | `src/agent/GuardedComponentEdit.ts` | src | reachable | 711 |
 | `src/agent/HeuristicManager.ts` | src | reachable | 354 |
@@ -440,7 +440,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/EventManager.test.ts` | tests | test | 512 |
 | `tests/unit/agent/ExclusionManager.test.ts` | tests | test | 237 |
 | `tests/unit/agent/ExperienceExtractor.test.ts` | tests | test | 178 |
-| `tests/unit/agent/FailureDistillation.test.ts` | tests | test | 539 |
+| `tests/unit/agent/FailureDistillation.test.ts` | tests | test | 617 |
 | `tests/unit/agent/FailureManager.test.ts` | tests | test | 737 |
 | `tests/unit/agent/GuardedComponentEdit.test.ts` | tests | test | 598 |
 | `tests/unit/agent/HeuristicExtractionStage.test.ts` | tests | test | 326 |
