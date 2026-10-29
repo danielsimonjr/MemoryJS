@@ -4533,7 +4533,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 568
+      "loc": 570
     },
     {
       "file": "tests/unit/search/SearchSuggestions.test.ts",

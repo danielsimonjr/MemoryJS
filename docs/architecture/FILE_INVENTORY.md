@@ -685,7 +685,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/search/search-filter-chain-project.test.ts` | tests | test | 52 |
 | `tests/unit/search/search-filter-chain-versioning.test.ts` | tests | test | 149 |
 | `tests/unit/search/SearchFilterChain.test.ts` | tests | test | 524 |
-| `tests/unit/search/SearchManager.test.ts` | tests | test | 568 |
+| `tests/unit/search/SearchManager.test.ts` | tests | test | 570 |
 | `tests/unit/search/SearchSuggestions.test.ts` | tests | test | 304 |
 | `tests/unit/search/searchTwinsFts.test.ts` | tests | test | 364 |
 | `tests/unit/search/searchTwinsLayers.test.ts` | tests | test | 339 |
