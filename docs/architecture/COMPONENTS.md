@@ -2110,8 +2110,8 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 | Claim | Value | Source |
 |---|---|---|
 | totalSourceFiles | 742 | repo-tools map |
-| totalLinesOfCode | 254846 | repo-tools map |
-| totalExports | 2925 | repo-tools map |
+| totalLinesOfCode | 255224 | repo-tools map |
+| totalExports | 2928 | repo-tools map |
 | reachableFiles | 304 | repo-tools map |
 | runtimeCircularDeps | 0 | repo-tools map |
 | typeOnlyCircularDeps | 24 | repo-tools map |

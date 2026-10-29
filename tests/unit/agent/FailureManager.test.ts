@@ -403,6 +403,171 @@ describe('FailureManager', () => {
       ).toBe(false);
     });
   });
+
+  describe('blamedComponent', () => {
+    function seedEntity(name: string, overrides: Partial<Entity> = {}): Promise<void> {
+      const now = new Date().toISOString();
+      return (storage.appendEntity as ReturnType<typeof vi.fn>)({
+        name,
+        entityType: 'concept',
+        observations: ['obs'],
+        createdAt: now,
+        lastModified: now,
+        ...overrides,
+      } as Entity);
+    }
+
+    it('round-trips one blamedComponent through lookupByComponent and getAll', async () => {
+      await seedEntity('widget');
+      const rec = await fm.record(validInput({ blamedComponent: { kind: 'entity', id: 'widget' } }));
+      expect(rec.blamedComponent).toEqual({ kind: 'entity', id: 'widget' });
+      const byComponent = await fm.lookupByComponent('widget');
+      expect(byComponent.map((r) => r.id)).toEqual([rec.id]);
+      const all = await fm.getAll();
+      expect(all.find((r) => r.id === rec.id)?.blamedComponent).toEqual({ kind: 'entity', id: 'widget' });
+    });
+
+    it('stores kind and id and drops any other key', async () => {
+      await seedEntity('widget');
+      await fm.record(
+        validInput({
+          blamedComponent: { kind: 'entity', id: 'widget', extra: 'drop-me' } as unknown as {
+            kind: 'entity';
+            id: string;
+          },
+        }),
+      );
+      const stored = (await fm.getAll())[0];
+      expect(stored.blamedComponent).toEqual({ kind: 'entity', id: 'widget' });
+      expect(Object.keys(stored.blamedComponent ?? {})).toEqual(['kind', 'id']);
+    });
+
+    it('rejects an empty blamedComponent id before append', async () => {
+      await expect(
+        fm.record(validInput({ blamedComponent: { kind: 'entity', id: '' } })),
+      ).rejects.toThrow(/blamedComponent/i);
+      expect(storage.appendEntity).not.toHaveBeenCalled();
+    });
+
+    it('rejects an unknown entity id before append', async () => {
+      await expect(
+        fm.record(validInput({ blamedComponent: { kind: 'entity', id: 'missing' } })),
+      ).rejects.toThrow(/missing/);
+      expect(storage.appendEntity).not.toHaveBeenCalled();
+    });
+
+    it('rejects a heuristic kind when the entity is not a heuristic', async () => {
+      await seedEntity('person');
+      const callsBefore = (storage.appendEntity as ReturnType<typeof vi.fn>).mock.calls.length;
+      await expect(
+        fm.record(validInput({ blamedComponent: { kind: 'heuristic', id: 'person' } })),
+      ).rejects.toThrow(/person/);
+      expect((storage.appendEntity as ReturnType<typeof vi.fn>).mock.calls.length).toBe(callsBefore);
+    });
+
+    it('rejects a procedure kind when the entity is not a procedure or a procedure-step', async () => {
+      await seedEntity('widget');
+      const callsBefore = (storage.appendEntity as ReturnType<typeof vi.fn>).mock.calls.length;
+      await expect(
+        fm.record(validInput({ blamedComponent: { kind: 'procedure', id: 'widget' } })),
+      ).rejects.toThrow(/widget/);
+      expect((storage.appendEntity as ReturnType<typeof vi.fn>).mock.calls.length).toBe(callsBefore);
+    });
+
+    it('rejects an unknown plan-node id', async () => {
+      const fmPlan = new FailureManager(storage, entityManager, {
+        findPlanNodeOwners: async () => [],
+      });
+      await expect(
+        fmPlan.record(validInput({ blamedComponent: { kind: 'plan-node', id: 'node-x' } })),
+      ).rejects.toThrow(/node-x/);
+      expect(storage.appendEntity).not.toHaveBeenCalled();
+    });
+
+    it('rejects a plan-node id that two plans own', async () => {
+      const fmPlan = new FailureManager(storage, entityManager, {
+        findPlanNodeOwners: async () => ['plan-a', 'plan-b'],
+      });
+      await expect(
+        fmPlan.record(validInput({ blamedComponent: { kind: 'plan-node', id: 'node-x' } })),
+      ).rejects.toThrow(/node-x/i);
+      expect(storage.appendEntity).not.toHaveBeenCalled();
+    });
+
+    it('rejects a plan-node blame when no resolver is configured', async () => {
+      await expect(
+        fm.record(validInput({ blamedComponent: { kind: 'plan-node', id: 'node-x' } })),
+      ).rejects.toThrow(/findPlanNodeOwners/i);
+      expect(storage.appendEntity).not.toHaveBeenCalled();
+    });
+
+    it('rejects a pg-node id that is not in the snapshot', async () => {
+      const snapshot = {
+        schemaVersion: 1 as const,
+        graphId: 'g1',
+        revisionId: 'rev-1',
+        entryNodeId: 'n1',
+        relationVocabulary: [] as readonly string[],
+        cyclePolicy: 'warn' as const,
+        toolCatalogHash: 'h',
+        nodes: [{ id: 'n1', description: 'start' }],
+        edges: [] as readonly [],
+      };
+      await expect(
+        fm.record(validInput({ blamedComponent: { kind: 'pg-node', id: 'n-missing' } }), {
+          pgSnapshot: snapshot,
+        }),
+      ).rejects.toThrow(/n-missing/);
+      expect(storage.appendEntity).not.toHaveBeenCalled();
+    });
+
+    it('rejects a pg-node blame when no snapshot is supplied', async () => {
+      await expect(
+        fm.record(validInput({ blamedComponent: { kind: 'pg-node', id: 'n1' } })),
+      ).rejects.toThrow(/pgSnapshot|pg-node/i);
+      expect(storage.appendEntity).not.toHaveBeenCalled();
+    });
+
+    it('lookupByComponent applies the status filter and skips records that omit the field', async () => {
+      await seedEntity('widget');
+      const openRec = await fm.record(
+        validInput({ blamedComponent: { kind: 'entity', id: 'widget' } }),
+      );
+      await fm.record(validInput());
+      const resolvedRec = await fm.record(
+        validInput({ blamedComponent: { kind: 'entity', id: 'widget' } }),
+      );
+      await fm.markResolved(resolvedRec.id);
+      expect(await fm.lookupByComponent('widget', { status: 'open' })).toHaveLength(1);
+      expect((await fm.lookupByComponent('widget', { status: 'open' }))[0].id).toBe(openRec.id);
+      expect(await fm.lookupByComponent('widget', { status: 'all' })).toHaveLength(2);
+      expect(await fm.lookupByComponent('other-id')).toEqual([]);
+    });
+
+    it('lookupByComponent returns every match when limit is omitted', async () => {
+      await seedEntity('widget');
+      for (let i = 0; i < 6; i++) {
+        await fm.record(validInput({ blamedComponent: { kind: 'entity', id: 'widget' } }));
+      }
+      const matches = await fm.lookupByComponent('widget');
+      expect(matches).toHaveLength(6);
+    });
+
+    it('lookupForTask stays green when blamedComponent is absent', async () => {
+      await seedEntity('widget');
+      const hint = 'password hashing token unique';
+      await fm.record(validInput({ applicability_hint: hint }));
+      await fm.record(
+        validInput({
+          applicability_hint: 'other hint',
+          blamedComponent: { kind: 'entity', id: 'widget' },
+        }),
+      );
+      const results = await fm.lookupForTask('password hashing token');
+      expect(results.some((r) => r.applicability_hint === hint)).toBe(true);
+      expect(results[0].applicability_hint).toBe(hint);
+    });
+  });
 });
 
 /**

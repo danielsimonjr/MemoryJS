@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-25",
+  "generated": "2026-10-29",
   "totalFiles": 731,
   "byDisposition": {
     "reachable": 300,
@@ -305,7 +305,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 310
+      "loc": 456
     },
     {
       "file": "src/agent/HeuristicManager.ts",
@@ -403,7 +403,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 528
+      "loc": 542
     },
     {
       "file": "src/agent/procedural/graph/backing/index.ts",
@@ -1138,7 +1138,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1823
+      "loc": 1824
     },
     {
       "file": "src/core/mmap/FsReadMmapBackend.ts",
@@ -1810,7 +1810,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 2401
+      "loc": 2423
     },
     {
       "file": "src/types/artifact.ts",
@@ -2797,7 +2797,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 557
+      "loc": 722
     },
     {
       "file": "tests/unit/agent/HeuristicExtractionStage.test.ts",
@@ -2916,7 +2916,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 562
+      "loc": 592
     },
     {
       "file": "tests/unit/agent/procedural/graph/appendixF.test.ts",
