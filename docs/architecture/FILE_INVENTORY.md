@@ -582,7 +582,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/optimistic-concurrency.test.ts` | tests | test | 133 |
 | `tests/unit/core/PostgreSQLStorage.test.ts` | tests | test | 420 |
 | `tests/unit/core/rebuild-native.test.ts` | tests | test | 42 |
-| `tests/unit/core/RefIndex.test.ts` | tests | test | 561 |
+| `tests/unit/core/RefIndex.test.ts` | tests | test | 580 |
 | `tests/unit/core/relation-manager-temporal.test.ts` | tests | test | 157 |
 | `tests/unit/core/RelationManager-metadata.test.ts` | tests | test | 127 |
 | `tests/unit/core/RelationManager.test.ts` | tests | test | 339 |
