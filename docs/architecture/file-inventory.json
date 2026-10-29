@@ -1558,7 +1558,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 581
+      "loc": 556
     },
     {
       "file": "src/search/PartialIndexAdvisor.ts",
