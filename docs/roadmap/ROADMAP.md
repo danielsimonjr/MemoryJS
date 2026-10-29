@@ -1,6 +1,6 @@
 # MemoryJS Roadmap
 
-**Last refreshed**: 2026-05-13 (v1.15.0). Memorilla research note added 2026-10-18 — [MEMORILLA_LATENT_MEMORY_PLAN.md](./MEMORILLA_LATENT_MEMORY_PLAN.md). Docs only; that note does not change the snapshot below.
+**Last refreshed**: 2026-05-13 (v1.15.0). Memorilla research note added 2026-10-18 — [MEMORILLA_LATENT_MEMORY_PLAN.md](./MEMORILLA_LATENT_MEMORY_PLAN.md). EMMA research track added 2026-10-29 in the section below. Both notes are docs only and do not change the snapshot below.
 
 Forward-looking work tracker. **Shipped features are not listed here** — see [CHANGELOG.md](../../CHANGELOG.md) for the per-version history and [`docs/planning/FUTURE_FEATURES_IMPLEMENTATION_PLAN.md`](../planning/FUTURE_FEATURES_IMPLEMENTATION_PLAN.md) for the per-phase task ledger of completed work.
 
@@ -279,6 +279,93 @@ What is actually missing is wiring and two fields:
 
 Suggested order: **E1 → E2**. E3 has shipped as a library API. No new store, no latent adapter, no FactKG download.
 
+### Research track — EMMA (2026-10-29), audited against `src/`
+
+> Planning only. Benchmark figures in the abstract are the authors' results. This track leaves those benchmarks unscheduled.
+
+> Source: Niu, Liu, Yu, and Klinkner, *EMMA: Structured Episodic Memory for Multi-Agent Workflow Synthesis*, arXiv:2610.35966. Abstract: <https://arxiv.org/abs/2610.35966>.
+>
+> Abstract (update rule): "EMMA makes the ownership and admissibility of updates explicit: a reflector assigns each diagnosed failure to the scope owning its correction and proposes one edit within it, and backbone-independent guards keep every accepted edit scoped, incremental and bounded." The abstract also reports the best overall result on KramaBench, AppWorld, and BBEH, up to 32.5% over the strongest of ACE, GEPA, EvoMAS, and ADAS, with 17–38% fewer training executions than the most efficient baseline.
+>
+> Loop this section evaluates, and nothing wider: after a failed task, a reviewer blames one component and makes one small, guarded edit to it. The abstract's controller-routing memory, inheriting specialists, and per-step skill pool are a multi-agent workflow synthesizer. This library does not gain that system from the items below.
+
+Three candidate ideas were checked against `src/`. Each one already has a store, a writer, or a lifecycle. The open work is the joint that the loop needs and the current modules do not write.
+
+#### M1. Name one blamed component on the failure record
+
+**Already covered.** A structured failure of task, attempt, and outcome is already stored and is already retrievable on a later run.
+
+- `FailureRecord` (`src/types/agent-memory.ts`) keeps the task in `context`, the attempt in `attempted`, the outcome in `failure_mode`, a free-text diagnosis in `root_cause`, the retrieval key in `applicability_hint`, `lifecycle` (`open` | `resolved`), and `sourceSessionId`.
+- `FailureManager.record` and `FailureManager.lookupForTask` (`src/agent/FailureManager.ts`) persist that record and score later tasks by substring overlap on `applicability_hint`, `context`, and `attempted`.
+- `FailureDistillation.distillFromSession` (`src/agent/FailureDistillation.ts`) runs only when the session entity's `outcome` is `'failure'`, walks `EpisodicRelations.CAUSED_BY`, and returns a `DistilledLesson` whose `causeChain` is a list of episode names.
+- `EpisodicMemoryManager.createEpisode`, `getTimeline`, and `addCausalLink` (`src/agent/EpisodicMemoryManager.ts`) store the attempt itself.
+- `PGTrajectory` (`src/types/proceduralGraph.ts`) records `taskId`, `revisionId`, `steps`, `score`, and `outcome` for one procedural-graph run. `ToolAffordanceManager.recordOutcome` (`src/agent/ToolAffordanceManager.ts`) records one tool call as `success` | `failure` | `partial`.
+
+**Gap.** Nothing on `FailureRecord` points at exactly one component. `root_cause` is prose. `causeChain` is a list. `lookupForTask` cannot answer "which failures blamed this procedure, heuristic, or plan node?"
+
+**Builds on.** `FailureRecord`, `FailureManager.record`, `FailureManager.lookupForTask`, `isFailureMemory`. The id is an existing handle: an entity `name` (including heuristic ids and `ProcedureStore` procedure / procedure-step names), a node id that `PlanManager.findNode` can resolve, or a `PGNode.id` inside a loaded `PGSnapshot`.
+
+**New pieces.** Add optional `blamedComponent: { kind: 'entity' | 'heuristic' | 'procedure' | 'plan-node' | 'pg-node'; id: string }` to `FailureRecord`. The type holds one id. `record` rejects an empty id. It also rejects an id the kind's existing getter cannot resolve: `storage.getEntityByName` for `entity`, `heuristic`, and `procedure`; `PlanManager.findNode` for `plan-node`; the snapshot's `nodes` for `pg-node`. Add `FailureManager.lookupByComponent(id, options?)` beside `lookupForTask`, same status filter, match on `blamedComponent.id` only. Records that omit the field keep today's `lookupForTask` scoring and stay out of `lookupByComponent`.
+
+**Acceptance.** A record written with one resolved component id round-trips through `lookupByComponent` and through `getAll`. A second component cannot be represented on the same record. An unknown id is rejected at `record` time. A record with no `blamedComponent` keeps the current `lookupForTask` token score and is absent from `lookupByComponent`.
+
+**Tests.** Extend `tests/unit/agent/FailureManager.test.ts`: round-trip, unknown-id rejection, status filter, and a `lookupForTask` case that stays green when the new field is absent.
+
+Effort: **S**.
+
+#### M2. One guarded edit, saved as a new version and linked to that failure
+
+**Already covered.** Versions, history, and audit retention already exist. M2 writes through those chains. Existing delete APIs stay available to their current callers.
+
+- Entity chain fields `version`, `parentEntityName`, `rootEntityName`, `isLatest`, `supersededBy` live on `Entity` (`src/types/types.ts`). `ContradictionDetector.supersede` (`src/features/ContradictionDetector.ts`) creates the next entity and sets the previous `isLatest: false` and `supersededBy`. `EntityManager.getVersionChain` and `getLatestVersion` (`src/core/EntityManager.ts`) read the chain. `SearchFilterChain.entityPassesFilters` (`src/search/SearchFilterChain.ts`) drops `isLatest === false` unless `includeSuperseded` is set. Tests: `tests/unit/core/entity-manager-version-chain.test.ts`, `tests/unit/search/search-filter-chain-versioning.test.ts`.
+- Procedural-graph revisions already keep history: `PGSnapshot.revisionId` and `parentRevisionId` (`src/types/proceduralGraph.ts`), `ProceduralGraphState.listRevisions` / `loadRevision` (`src/agent/procedural/graph/backing/ProceduralGraphState.ts`), and `ProceduralGraphEvolution.run` (`src/agent/procedural/graph/ProceduralGraphEvolution.ts`), which records every round on `PGRoundRecord` and rejected proposals on `PGRejectionRecord`.
+- `AuditLog.append` and `AuditLog.query` (`src/features/AuditLog.ts`) record mutations. `RelationManager.invalidateRelation` ends a relation and leaves the row. `DecisionManager.supersede` versions a decision. `HeuristicExtractionStage.runOnResolution` (`src/agent/ConsolidationPipeline.ts`) mints a new heuristic from a resolved failure; it does not edit the blamed component.
+- Delete and archive APIs stay on their current callers: `SemanticForget.forgetByContent`, `DecayEngine.forgetWeakMemories`, `HeuristicManager.remove`, `EntityManager.deleteEntities`, `ArchiveManager.archiveEntities`. `applyGuardedEdit` is a separate caller and leaves the previous version stored.
+
+**Gap.** A new version is not stamped with the failure that caused it. `supersede` takes observations and no failure id. `PGRoundRecord` points at a run and a score, and it does not point at a `FailureRecord.id`. A single call can also change more than one component: `ProceduralGraphRefiner.proposeEdits` (`src/agent/procedural/graph/ProceduralGraphRefiner.ts`) accepts a `PGEditSet` of `add_nodes`, `delete_nodes`, `add_edges`, and `delete_edges`. `HeuristicManager.reinforce` rewrites confidence on the same row.
+
+**Builds on.** M1's `blamedComponent`. For an entity-backed component (heuristic, procedure step, plan, or plain entity), `ContradictionDetector.supersede` and `EntityManager.getVersionChain`. For a `pg-node`, one child `PGSnapshot` committed through `IProceduralGraphBacking` with `parentRevisionId` set to the retained revision. `AuditLog.append` for the write. `FailureManager.markResolved` stays the way a failure is closed after the edit exists.
+
+**New pieces.** One function, `applyGuardedEdit`, in a new module `src/agent/GuardedComponentEdit.ts`:
+
+1. Load the failure. Require `blamedComponent`. Refuse the call when it is absent.
+2. Apply one bounded change to that id only. Entity path: the same version fields `supersede` writes (`version`, `parentEntityName`, `rootEntityName`, `isLatest`), plus one observation or one scalar field, and a new optional `causedByFailureId` on the new entity equal to `FailureRecord.id`. `supersede` does not accept that id or an initial `lifecycleStatus` today, so extend it with those two optional arguments rather than cloning the method. Procedural-graph path: one node-text or one edge-text change on the blamed `PGNode.id`, committed as a child revision. Refuse a `PGEditSet` that adds or deletes a node, touches any other id, or changes more than one text field.
+3. Leave the previous version in place. The function does not call `deleteEntities`, `forgetByContent`, `forgetWeakMemories`, `HeuristicManager.remove`, or `ArchiveManager.archiveEntities`.
+4. Append one audit entry whose target is the new version and whose metadata names the failure id.
+
+**Acceptance.** One call yields one new version of the blamed id. `getVersionChain` (entity) or `loadRevision` (graph) still returns the previous version. The new version's `causedByFailureId` equals the failure id. A call whose payload names any other id throws before a write. A payload with two field changes throws before a write. A payload that deletes the old version throws before a write.
+
+**Tests.** New `tests/unit/agent/GuardedComponentEdit.test.ts` on a temp graph: chain length grows by one, the old entity reloads, `causedByFailureId` matches, a second target is rejected, and a delete-shaped payload is rejected with no storage change. One procedural-graph case on `InMemoryProceduralGraphBacking`: the child snapshot's `parentRevisionId` is the previous revision, and `listRevisions` returns both.
+
+Effort: **M**. Depends on M1.
+
+#### M3. Start that edit as draft, publish it when a later task succeeds, archive it otherwise
+
+**Already covered.** Trust labels, numeric confidence, working-memory promotion, and decay already exist. M3 calls `EntityStatus` and those scorers. It adds no parallel enum.
+
+- `EntityStatus` is `'draft' | 'published' | 'archived'` (`src/types/types.ts`), with `ENTITY_STATUS_TRANSITIONS`. `draft → published`, `draft → archived`, `published → archived`, and `archived → published` are legal. `published → draft` is not. `EntityStateMachine.transition` (`src/core/EntityStateMachine.ts`) enforces that. `EntityManager.updateEntity` calls it before writing `lifecycleStatus`. `DEFAULT_ENTITY_STATUS` is `'published'`, and a missing `lifecycleStatus` is treated as published. `SearchFilterChain.entityPassesFilters` keeps only `published` unless the caller passes `lifecycleStatus`. The field comment already defines `draft` as in-flight, `published` as live, and `archived` as removed from default search while the entity remains stored.
+- `TrustLevel` (`'ground-truth' | 'verified' | 'inferred' | 'unverified'`), `inferTrustLevel`, and `compareTrustLevel` (`src/types/agent-memory.ts`) rank provenance. `ConflictResolver.resolveTrustLevel` and `CollaborativeSynthesis.resolveConflicts` (`strategy: 'trust_level'`) consume that order. `AgentEntity.confidence` and `confirmationCount` are the numeric belief. `HeuristicManager.reinforce` and `recordContradiction` move confidence in place. `ProcedureManager.refineProcedure` updates a procedure's success rate in place. `WorkingMemoryManager.promoteMemory` moves `working` to `episodic` or `semantic` (`promotedAt`, `promotedFrom`). `SessionManager` does that at session end when `promoteOnEnd` is set. `ProspectivePromotionStage` promotes a fired intention to an episodic entity.
+- Removal of weak memory is a different operation: `DecayEngine.forgetWeakMemories`, `SemanticForget.forgetByContent`, `FreshnessManager` (TTL and confidence reports), and `ArchiveManager.archiveEntities` (copies matches into a compressed archive and removes them from the live graph). `FailureManager.markResolved` closes the failure record. `ProceduralGraphEvolution` promotes a candidate revision to head when its validation mean improves; that rule stays the graph's own.
+
+**Gap.** `ContradictionDetector.supersede` creates the new version without `lifecycleStatus`, so the new version is immediately published. No writer moves `draft → published` because a later task that used this version succeeded, and no writer moves it to `archived` because that later task failed, while keeping the row. `published → draft` is illegal, so a follow-up `updateEntity` cannot demote a version `supersede` has already created.
+
+**Builds on.** M2's new version. `EntityManager.createEntities` (initial `lifecycleStatus: 'draft'` is accepted; the transition guard runs on update). `EntityManager.updateEntity` plus `EntityStateMachine.transition`. `EntityManager.getVersionChain`. `SearchFilterChain.entityPassesFilters`. `RelationManager.createRelations` for the evidence edge (`metadata` already exists on `Relation`). When the blamed component is a heuristic, `HeuristicManager.reinforce` on publish. Optional: set `source.trustLevel` to `'verified'` on publish so `resolveTrustLevel` already prefers it. Procedural-graph head promotion stays inside `ProceduralGraphEvolution`; M3 does not add a second rule on `PGHead`.
+
+**New pieces.** In `applyGuardedEdit`, pass `lifecycleStatus: 'draft'` into the create path (the optional argument from M2). Add two methods on the same module:
+
+- `noteHelped(versionName, taskId)` — `updateEntity` to `published`, then `createRelations` of type `helped_task` from the version to `taskId` (the later task's episode or session name). If the version is a heuristic, call `reinforce`.
+- `retire(versionName, taskId, reason)` — `updateEntity` to `archived`, then a `retired_after` relation whose `metadata.reason` is `reason`. The entity stays in storage. `getVersionChain` still returns it.
+
+Default search interaction: `entityPassesFilters` hides `isLatest === false` and hides `draft`. A draft latest version would hide the previous published version too. Extend the versioning branch so that, when the latest entity is `draft`, the newest ancestor with `lifecycleStatus` published or unset still passes. Trial retrieval uses `getLatestVersion` and `lookupByComponent`, which do not apply this filter. `getLatestPublished(name)` on `EntityManager` walks `getVersionChain` and returns that ancestor for callers that want trusted memory only.
+
+**Acceptance.** The version M2 writes has `lifecycleStatus: 'draft'`. Default search returns the previous published ancestor and omits the draft. `getLatestVersion` returns the draft. After `noteHelped`, the draft is `published`, default search returns it, a `helped_task` relation points at `taskId`, and a heuristic's `support` has increased by one. After `retire`, default search omits it, `getVersionChain` still contains it, and a `retired_after` relation stores `reason`. An entity that never went through `applyGuardedEdit` keeps its current status and its current search behavior. `noteHelped` on an already published version follows `EntityStateMachine` (published → published is a no-op; published → draft throws and is not the API).
+
+**Tests.** Extend `tests/unit/agent/GuardedComponentEdit.test.ts` for the initial `draft`. Extend `tests/unit/search/search-filter-chain-versioning.test.ts` with a chain whose latest is `draft` and whose parent is `published`: default filters return the parent. New cases for `noteHelped` and `retire` assert status, the relation, the heuristic `support` bump, and that `retire` does not call a delete (entity still loads by name).
+
+Effort: **M**. Depends on M2.
+
+Suggested order: **M1 → M2 → M3**. No new store, no new status enum, no workflow synthesizer, no benchmark harness.
+
 ---
 
 ## Status Summary
@@ -293,6 +380,7 @@ Suggested order: **E1 → E2**. E3 has shipped as a library API. No new store, n
 | **Enterprise** | Distributed coordinator, cloud-native artefacts, GDPR tooling, encryption layer |
 | **Long horizon** | GPU, GraphSAGE, KG completion, real-time WS transport, affective tagging (deferred P3) |
 | **Latent memory (Memorilla)** | Two enhancements, not new modules: E1 wire `semanticSearch` to the existing `embeddings` table and re-embed on `contentHash` change; E2 `sourceTokens` / `compressionRatio` / optional `maxSlots` on `ContextPackage`, ranking via `HybridSearchManager`. E3 finishes the `SummarizationService` provider and adds an optional excluded-entity summary; no production code calls it yet. Soft tokens and GRPO dropped. See [`MEMORILLA_LATENT_MEMORY_PLAN.md`](./MEMORILLA_LATENT_MEMORY_PLAN.md). |
+| **Failure-edit loop (EMMA)** | M1 one `blamedComponent` on `FailureRecord` plus `lookupByComponent`. M2 `applyGuardedEdit`: one bounded change, new version, `causedByFailureId`, previous version kept. M3 that version starts `draft`, `noteHelped` publishes it, `retire` archives it. See the EMMA research track above. |
 | **Out of scope** | Clawvault (sibling repo), sensory buffer (covered by ingest pipeline), Memorilla soft-token injection and in-core GRPO |
 
 **Genuinely active P1/P2 items: 6.** Everything else is gated, strategic, or long-horizon.
@@ -379,6 +467,9 @@ Items reaching P1/P2 must have:
 - **Fallahpour, A., Idehpour, P., Kothapalli, V., Mounier, N., Wu, S., Pardis, S., and Leskovec, J. (2026).** ["Memorilla: Latent Semantic Memory for LLMs."](https://arxiv.org/abs/2610.21375) arXiv:2610.21375. HTML: <https://arxiv.org/html/2610.21375>. Site: <https://memory.stanford.edu/>.
   - Write-once embeddings and a K = 16 soft-token readout for a frozen LLM
   - Audited in [`MEMORILLA_LATENT_MEMORY_PLAN.md`](./MEMORILLA_LATENT_MEMORY_PLAN.md). Chunk store, vector table, hybrid search, and token budgets already exist. Open work is wiring `embeddings` into `semanticSearch` and reporting the context-packer's compression ratio. Soft-token injection is dropped.
+- **Niu, R., Liu, K., Yu, R., and Klinkner, K. (2026).** ["EMMA: Structured Episodic Memory for Multi-Agent Workflow Synthesis."](https://arxiv.org/abs/2610.35966) arXiv:2610.35966.
+  - A reflector assigns each diagnosed failure to the scope that owns the correction and proposes one guarded edit inside that scope.
+  - Audited in the EMMA research track above. Failure records, version chains, and `draft` / `published` / `archived` already exist. Open work is M1–M3: one blamed component, one failure-linked edit, and publishing or archiving that edit from a later task.
 
 ### Companion documents
 
