@@ -149,7 +149,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/selectWeightedTurns.ts` | src | reachable | 18 |
 | `src/agent/SessionCheckpoint.ts` | src | reachable | 692 |
 | `src/agent/SessionManager.ts` | src | reachable | 685 |
-| `src/agent/SessionQueryBuilder.ts` | src | reachable | 540 |
+| `src/agent/SessionQueryBuilder.ts` | src | reachable | 535 |
 | `src/agent/SQLiteBackend.ts` | src | reachable | 172 |
 | `src/agent/SummarizationService.ts` | src | reachable | 341 |
 | `src/agent/ToolAffordanceManager.ts` | src | reachable | 279 |
@@ -508,7 +508,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/SalienceEngine.test.ts` | tests | test | 848 |
 | `tests/unit/agent/SessionCheckpoint.test.ts` | tests | test | 698 |
 | `tests/unit/agent/SessionManager.test.ts` | tests | test | 848 |
-| `tests/unit/agent/SessionQueryBuilder.test.ts` | tests | test | 589 |
+| `tests/unit/agent/SessionQueryBuilder.test.ts` | tests | test | 610 |
 | `tests/unit/agent/SQLiteBackend.test.ts` | tests | test | 154 |
 | `tests/unit/agent/SummarizationService.test.ts` | tests | test | 531 |
 | `tests/unit/agent/ToolAffordanceManager.test.ts` | tests | test | 198 |

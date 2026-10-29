@@ -781,7 +781,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 540
+      "loc": 535
     },
     {
       "file": "src/agent/SQLiteBackend.ts",
@@ -3294,7 +3294,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 589
+      "loc": 610
     },
     {
       "file": "tests/unit/agent/SQLiteBackend.test.ts",
