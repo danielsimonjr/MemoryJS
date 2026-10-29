@@ -1,5 +1,7 @@
 # Duplicate Function Audit
 
+**Clone cleanup ledger (Phase 2)**: see [`docs/roadmap/CLONES_REMAINING.md`](../roadmap/CLONES_REMAINING.md) for pairs left in place after the EMMA M1–M3 stack clone cleanup.
+
 **Date**: 2026-10-22
 **Commit audited**: `6a20b5c` on `master`
 **Scope**: `src/` only. 292 TypeScript files. 1,372 functions of 50 or more normalised syntax-tree nodes.

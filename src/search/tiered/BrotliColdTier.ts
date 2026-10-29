@@ -33,6 +33,7 @@
 import { promises as fs } from 'fs';
 import { compress, decompress } from '../../utils/compressionUtil.js';
 import { durableWriteFile } from '../../utils/durableWriteFile.js';
+import { mutateMapWithFlushRollback } from '../../utils/mutateMapWithFlushRollback.js';
 import { MapFileTier } from './MapFileTier.js';
 
 /**
@@ -94,18 +95,7 @@ export class BrotliColdTier<V> extends MapFileTier<V> {
   async put(key: string, value: V): Promise<void> {
     return this.mutex.runExclusive(async () => {
       const cache = await this.ensureLoaded();
-      // A failed flush restores the previous value of the key, so the cache
-      // matches the file.
-      const hadPrior = cache.has(key);
-      const priorValue = hadPrior ? cache.get(key)! : undefined;
-      cache.set(key, value);
-      try {
-        await this.flush(cache);
-      } catch (err) {
-        if (hadPrior) cache.set(key, priorValue!);
-        else cache.delete(key);
-        throw err;
-      }
+      await mutateMapWithFlushRollback(cache, key, value, (c) => this.flush(c));
     });
   }
 

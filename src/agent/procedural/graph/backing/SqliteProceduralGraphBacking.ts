@@ -29,6 +29,7 @@ import type {
   PGCommitResult,
 } from './IProceduralGraphBacking.js';
 import { graphExistsError } from './ProceduralGraphState.js';
+import { nextMonotonicIsoTimestamp } from '../../../../utils/nextMonotonicIsoTimestamp.js';
 
 /** better-sqlite3 / node:sqlite statement surface used by this backing. */
 interface AdaptedStatement {
@@ -507,11 +508,8 @@ export class SqliteProceduralGraphBacking implements IProceduralGraphBacking {
   }
 
   private nextTimestamp(): string {
-    let ts = new Date().toISOString();
-    if (this.lastTimestamp !== '' && ts <= this.lastTimestamp) {
-      ts = new Date(Date.parse(this.lastTimestamp) + 1).toISOString();
-    }
-    this.lastTimestamp = ts;
-    return ts;
+    const next = nextMonotonicIsoTimestamp(this.lastTimestamp);
+    this.lastTimestamp = next.lastTimestamp;
+    return next.timestamp;
   }
 }

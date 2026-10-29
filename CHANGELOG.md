@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Phase 2 clone cleanup: merged episodic adjacent-event navigation, procedural-graph monotonic timestamps, and tiered-store flush rollback helpers; documented remaining pairs in `docs/roadmap/CLONES_REMAINING.md`.
+
 ### Added
 
 - EMMA M3: `noteHelped` and `retire` on guarded-edit versions, `EntityManager.getLatestPublished`, and default search visibility for published ancestors of draft heads via `SearchFilterChain.publishedAncestorsOfDraftHeads`.

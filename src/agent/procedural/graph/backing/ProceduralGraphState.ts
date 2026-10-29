@@ -16,6 +16,7 @@ import type {
 } from '../../../../types/proceduralGraph.js';
 import { graphDigest, storageKey } from '../canonical.js';
 import type { PGCommitInput, PGCommitResult } from './IProceduralGraphBacking.js';
+import { nextMonotonicIsoTimestamp } from '../../../../utils/nextMonotonicIsoTimestamp.js';
 
 /** One entry in a revision list: the revision id, parent id, digest and creation time. */
 export interface PGRevisionListItem {
@@ -434,12 +435,9 @@ export class ProceduralGraphState {
   }
 
   private nextTimestamp(): string {
-    let ts = new Date().toISOString();
-    if (this.lastTimestamp !== '' && ts <= this.lastTimestamp) {
-      ts = new Date(Date.parse(this.lastTimestamp) + 1).toISOString();
-    }
-    this.lastTimestamp = ts;
-    return ts;
+    const next = nextMonotonicIsoTimestamp(this.lastTimestamp);
+    this.lastTimestamp = next.lastTimestamp;
+    return next.timestamp;
   }
 
   private noteTimestamp(ts: string): void {
