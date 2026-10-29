@@ -362,6 +362,7 @@ export class SessionQueryBuilder {
    */
   async search(query: string): Promise<AgentEntity[]> {
     if (this.searchFunction) {
+      const sessionIds = await this.resolveSessionIds();
       const searchResults = await this.searchFunction(query);
       let results = searchResults
         .map(r => {
@@ -369,7 +370,6 @@ export class SessionQueryBuilder {
           return r as AgentEntity;
         })
         .filter(isAgentEntity);
-      const sessionIds = await this.resolveSessionIds();
       results = this.applyFilters(results, sessionIds);
       return this.paginate(results);
     }
