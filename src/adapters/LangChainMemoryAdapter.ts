@@ -18,6 +18,7 @@
 
 import type { ManagerContext } from '../core/ManagerContext.js';
 import type { MemoryEngine } from '../agent/MemoryEngine.js';
+import { fillDefaults } from '../utils/fillDefaults.js';
 import type { AgentEntity } from '../types/agent-memory.js';
 
 /** Subset of LangChain's `BaseMessage` we need on output. */
@@ -85,12 +86,20 @@ export class LangChainMemoryAdapter {
 
   constructor(ctx: ManagerContext, options: LangChainMemoryAdapterOptions = {}) {
     this.engine = ctx.memoryEngine;
-    this.sessionId = options.sessionId ?? 'langchain';
-    this.inputKey = options.inputKey ?? 'input';
-    this.outputKey = options.outputKey ?? 'output';
-    this.memoryKey = options.memoryKey ?? 'history';
-    this.returnString = options.returnString ?? false;
-    this.maxTurns = options.maxTurns ?? 20;
+    const filled = fillDefaults(options, {
+      sessionId: 'langchain',
+      inputKey: 'input',
+      outputKey: 'output',
+      memoryKey: 'history',
+      returnString: false,
+      maxTurns: 20,
+    });
+    this.sessionId = filled.sessionId;
+    this.inputKey = filled.inputKey;
+    this.outputKey = filled.outputKey;
+    this.memoryKey = filled.memoryKey;
+    this.returnString = filled.returnString;
+    this.maxTurns = filled.maxTurns;
   }
 
   /** Memory variable keys this adapter writes back into LangChain's chain. */

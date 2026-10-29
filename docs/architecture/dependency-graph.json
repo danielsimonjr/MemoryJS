@@ -3,9 +3,9 @@
     "name": "@danielsimonjr/memoryjs",
     "version": "4.3.0",
     "lastUpdated": "2026-10-29",
-    "totalFiles": 307,
+    "totalFiles": 312,
     "totalModules": 12,
-    "totalExports": 2089
+    "totalExports": 2099
   },
   "entryPoints": [
     {
@@ -89,6 +89,12 @@
               "MemoryEngine"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../utils/fillDefaults.js",
+            "imports": [
+              "fillDefaults"
+            ]
           },
           {
             "file": "../types/agent-memory.js",
@@ -397,7 +403,14 @@
           {
             "file": "../utils/halfLife.js",
             "imports": [
+              "clampedHalfLifeScore",
               "halfLifeFactor"
+            ]
+          },
+          {
+            "file": "../utils/fillDefaults.js",
+            "imports": [
+              "fillDefaults"
             ]
           },
           {
@@ -830,6 +843,12 @@
             ]
           },
           {
+            "file": "./recordQuery.js",
+            "imports": [
+              "matchesDefined"
+            ]
+          },
+          {
             "file": "../utils/index.js",
             "imports": [
               "validateNonEmpty",
@@ -1201,6 +1220,12 @@
               "ReflectionScope"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../utils/fillDefaults.js",
+            "imports": [
+              "fillDefaults"
+            ]
           }
         ],
         "exports": [
@@ -1245,6 +1270,14 @@
             ]
           },
           {
+            "file": "../utils/unrefInterval.js",
+            "imports": [
+              "beginUnrefInterval",
+              "stopUnrefInterval",
+              "IntervalRunState"
+            ]
+          },
+          {
             "file": "./ConsolidationPipeline.js",
             "imports": [
               "ConsolidationPipeline"
@@ -1264,6 +1297,12 @@
               "ConsolidationResult"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../utils/fillDefaults.js",
+            "imports": [
+              "fillDefaults"
+            ]
           }
         ],
         "exports": [
@@ -1392,6 +1431,12 @@
             "typeOnly": true
           },
           {
+            "file": "../utils/fillDefaults.js",
+            "imports": [
+              "fillDefaults"
+            ]
+          },
+          {
             "file": "./ProjectContextManager.js",
             "imports": [
               "ProjectContextManager"
@@ -1496,6 +1541,7 @@
           {
             "file": "../utils/halfLife.js",
             "imports": [
+              "clampedHalfLifeScore",
               "halfLifeFactor"
             ]
           },
@@ -1563,6 +1609,20 @@
             "file": "../utils/logger.js",
             "imports": [
               "logger"
+            ]
+          },
+          {
+            "file": "../utils/fillDefaults.js",
+            "imports": [
+              "fillDefaults"
+            ]
+          },
+          {
+            "file": "../utils/unrefInterval.js",
+            "imports": [
+              "beginUnrefInterval",
+              "stopUnrefInterval",
+              "IntervalRunState"
             ]
           },
           {
@@ -1648,6 +1708,13 @@
             "file": "../utils/index.js",
             "imports": [
               "validateNonEmpty"
+            ]
+          },
+          {
+            "file": "./recordQuery.js",
+            "imports": [
+              "loadProjectedRecords",
+              "matchesDefined"
             ]
           }
         ],
@@ -2163,6 +2230,13 @@
             ]
           },
           {
+            "file": "./recordQuery.js",
+            "imports": [
+              "loadProjectedRecords",
+              "matchesDefined"
+            ]
+          },
+          {
             "file": "../utils/index.js",
             "imports": [
               "validateNonEmpty"
@@ -2576,6 +2650,12 @@
               "ContextPackage"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../utils/fillDefaults.js",
+            "imports": [
+              "fillDefaults"
+            ]
           }
         ],
         "exports": [
@@ -2851,6 +2931,13 @@
             ]
           },
           {
+            "file": "./recordQuery.js",
+            "imports": [
+              "loadProjectedRecords",
+              "matchesDefined"
+            ]
+          },
+          {
             "file": "../utils/index.js",
             "imports": [
               "validateNonEmpty"
@@ -3101,6 +3188,12 @@
               "ConsolidateOptions"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../utils/fillDefaults.js",
+            "imports": [
+              "fillDefaults"
+            ]
           }
         ],
         "exports": [
@@ -3304,6 +3397,12 @@
             ]
           },
           {
+            "file": "../utils/fillDefaults.js",
+            "imports": [
+              "fillDefaults"
+            ]
+          },
+          {
             "file": "../types/agent-memory.js",
             "imports": [
               "SalienceEngineConfig"
@@ -3460,6 +3559,12 @@
               "EpisodicMemoryManager"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../utils/fillDefaults.js",
+            "imports": [
+              "fillDefaults"
+            ]
           }
         ],
         "exports": [
@@ -3811,6 +3916,12 @@
             "imports": [
               "LowEntropyContentError",
               "MemoryWriteBlockedError"
+            ]
+          },
+          {
+            "file": "../utils/fillDefaults.js",
+            "imports": [
+              "fillDefaults"
             ]
           },
           {
@@ -8086,6 +8197,29 @@
           "BridgePersistResult"
         ]
       },
+      "src/agent/recordQuery.ts": {
+        "description": "Loads entities from storage, keeps those matching `isRecord`, and maps each to `project`.",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "Entity",
+              "IGraphStorage"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "loadProjectedRecords",
+          "matchesDefined"
+        ],
+        "functions": [
+          "loadProjectedRecords",
+          "matchesDefined"
+        ]
+      },
       "src/agent/retrieval/ActiveRetrievalController.ts": {
         "description": "Active Retrieval Controller (3B.5)",
         "externalDependencies": [],
@@ -11605,6 +11739,7 @@
           {
             "file": "../../utils/mutateMapWithFlushRollback.js",
             "imports": [
+              "clearMapWithFlushRollback",
               "mutateMapWithFlushRollback"
             ]
           },
@@ -13020,6 +13155,13 @@
             "imports": [
               "parseJsonlRecords"
             ]
+          },
+          {
+            "file": "../utils/jsonlRecordFile.js",
+            "imports": [
+              "deleteRecordsByKey",
+              "writeJsonlRecordsUpdatingCache"
+            ]
           }
         ],
         "exports": [
@@ -14330,7 +14472,14 @@
         "description": "N-gram Index",
         "externalDependencies": [],
         "nodeDependencies": [],
-        "internalDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../utils/postingIndex.js",
+            "imports": [
+              "removeIdFromPostings"
+            ]
+          }
+        ],
         "exports": [
           "NGramIndex"
         ],
@@ -14874,6 +15023,13 @@
             "file": "../utils/jsonlMapFile.js",
             "imports": [
               "parseJsonlRecords"
+            ]
+          },
+          {
+            "file": "../utils/jsonlRecordFile.js",
+            "imports": [
+              "deleteRecordsByKey",
+              "writeJsonlRecordsUpdatingCache"
             ]
           }
         ],
@@ -16313,6 +16469,12 @@
               "IIndexTier"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../../utils/fillDefaults.js",
+            "imports": [
+              "fillDefaults"
+            ]
           }
         ],
         "exports": [
@@ -16337,6 +16499,12 @@
         ],
         "nodeDependencies": [],
         "internalDependencies": [
+          {
+            "file": "../../utils/mutateMapWithFlushRollback.js",
+            "imports": [
+              "clearMapWithFlushRollback"
+            ]
+          },
           {
             "file": "../../utils/jsonlMapFile.js",
             "imports": [
@@ -18656,6 +18824,18 @@
           "getFieldByDotPath"
         ]
       },
+      "src/utils/fillDefaults.ts": {
+        "description": "Copies each key of `defaults` onto a new object.",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "fillDefaults"
+        ],
+        "functions": [
+          "fillDefaults"
+        ]
+      },
       "src/utils/formatters.ts": {
         "description": "Response and Pagination Formatters",
         "externalDependencies": [],
@@ -18716,10 +18896,12 @@
         "nodeDependencies": [],
         "internalDependencies": [],
         "exports": [
-          "halfLifeFactor"
+          "halfLifeFactor",
+          "clampedHalfLifeScore"
         ],
         "functions": [
-          "halfLifeFactor"
+          "halfLifeFactor",
+          "clampedHalfLifeScore"
         ]
       },
       "src/utils/ids.ts": {
@@ -19728,6 +19910,12 @@
               "Relation"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "./postingIndex.js",
+            "imports": [
+              "removeIdFromPostings"
+            ]
           }
         ],
         "exports": [
@@ -19776,6 +19964,27 @@
           "parseJsonlRecords"
         ]
       },
+      "src/utils/jsonlRecordFile.ts": {
+        "description": "Writes JSONL records to a file and updates the in-memory cache on success.",
+        "externalDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "fs/promises",
+            "imports": [
+              "* as fs"
+            ]
+          }
+        ],
+        "internalDependencies": [],
+        "exports": [
+          "writeJsonlRecordsUpdatingCache",
+          "deleteRecordsByKey"
+        ],
+        "functions": [
+          "writeJsonlRecordsUpdatingCache",
+          "deleteRecordsByKey"
+        ]
+      },
       "src/utils/logger.ts": {
         "description": "Simple logging utility for the Memory MCP Server",
         "externalDependencies": [],
@@ -19794,10 +20003,12 @@
         "nodeDependencies": [],
         "internalDependencies": [],
         "exports": [
-          "mutateMapWithFlushRollback"
+          "mutateMapWithFlushRollback",
+          "clearMapWithFlushRollback"
         ],
         "functions": [
-          "mutateMapWithFlushRollback"
+          "mutateMapWithFlushRollback",
+          "clearMapWithFlushRollback"
         ]
       },
       "src/utils/nextMonotonicIsoTimestamp.ts": {
@@ -19872,6 +20083,18 @@
           "parallelMap",
           "parallelFilter",
           "getPoolStats"
+        ]
+      },
+      "src/utils/postingIndex.ts": {
+        "description": "Deletes `id` from each posting set named by `terms`, and drops empty sets.",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "removeIdFromPostings"
+        ],
+        "functions": [
+          "removeIdFromPostings"
         ]
       },
       "src/utils/relationHelpers.ts": {
@@ -20246,6 +20469,23 @@
           "withTimeout"
         ]
       },
+      "src/utils/unrefInterval.ts": {
+        "description": "unrefInterval module",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "beginUnrefInterval",
+          "stopUnrefInterval"
+        ],
+        "interfaces": [
+          "IntervalRunState"
+        ],
+        "functions": [
+          "beginUnrefInterval",
+          "stopUnrefInterval"
+        ]
+      },
       "src/utils/validators.ts": {
         "description": "Built-in Validators",
         "externalDependencies": [],
@@ -20539,6 +20779,7 @@
           "src/agent/reconstruction/MemoryToolkit.ts",
           "src/agent/reconstruction/ReconstructiveMemory.ts",
           "src/agent/reconstruction/index.ts",
+          "src/agent/recordQuery.ts",
           "src/agent/retrieval/ActiveRetrievalController.ts",
           "src/agent/retrieval/QueryRewriter.ts",
           "src/agent/retrieval/index.ts",
@@ -20761,6 +21002,7 @@
           "src/utils/errorSuggestions.ts",
           "src/utils/errors.ts",
           "src/utils/fieldPath.ts",
+          "src/utils/fillDefaults.ts",
           "src/utils/formatters.ts",
           "src/utils/graphCopy.ts",
           "src/utils/halfLife.ts",
@@ -20768,11 +21010,13 @@
           "src/utils/index.ts",
           "src/utils/indexes.ts",
           "src/utils/jsonlMapFile.ts",
+          "src/utils/jsonlRecordFile.ts",
           "src/utils/logger.ts",
           "src/utils/mutateMapWithFlushRollback.ts",
           "src/utils/nextMonotonicIsoTimestamp.ts",
           "src/utils/operationUtils.ts",
           "src/utils/parallelUtils.ts",
+          "src/utils/postingIndex.ts",
           "src/utils/relationHelpers.ts",
           "src/utils/relationValidation.ts",
           "src/utils/schemas.ts",
@@ -20781,6 +21025,7 @@
           "src/utils/taskScheduler.ts",
           "src/utils/textSimilarity.ts",
           "src/utils/timing.ts",
+          "src/utils/unrefInterval.ts",
           "src/utils/validators.ts"
         ]
       },
@@ -20799,28 +21044,28 @@
       "src/sqlite.ts",
       "src/workers/levenshteinWorker.ts"
     ],
-    "reachableCount": 307,
+    "reachableCount": 312,
     "dormantCount": 0,
     "orphaned": [],
     "testOnly": []
   },
   "statistics": {
-    "totalTypeScriptFiles": 307,
+    "totalTypeScriptFiles": 312,
     "totalModules": 12,
-    "totalLinesOfCode": 105356,
-    "totalExports": 2089,
+    "totalLinesOfCode": 105538,
+    "totalExports": 2099,
     "totalClasses": 237,
-    "totalInterfaces": 631,
-    "totalFunctions": 364,
+    "totalInterfaces": 632,
+    "totalFunctions": 374,
     "totalTypeGuards": 31,
     "totalEnums": 4,
     "totalConstants": 124,
     "totalReExports": 1349,
-    "totalTypeOnlyImports": 497,
+    "totalTypeOnlyImports": 498,
     "runtimeCircularDeps": 0,
     "typeOnlyCircularDeps": 8,
     "entryRoots": 4,
-    "reachableFiles": 307,
+    "reachableFiles": 312,
     "dormantFiles": 0,
     "orphanedFiles": 0,
     "testOnlyFiles": 0,
