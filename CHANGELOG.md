@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Add `fillDefaults` for pure `??` config tables in agent constructors (CLONES P7).
+- Use `fillDefaults` for mixed agent and adapter constructors (CLONES P8).
 
 ### Added
 
