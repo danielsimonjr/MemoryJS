@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `docs/plans/CLONES_REFACTOR_PLAN.md` records a MERGE or KEEP verdict for each clone row K001–K051 left by the Phase 2 cleanup, and orders the merges into small pull requests. No `src/` change.
 - EMMA M3: `noteHelped` and `retire` on guarded-edit versions, `EntityManager.getLatestPublished`, and default search visibility for published ancestors of draft heads via `SearchFilterChain.publishedAncestorsOfDraftHeads`.
 - EMMA M2: `applyGuardedEdit` for one failure-linked bounded edit, optional `causedByFailureId` on version entities and `PGRoundRecord`, `ContradictionDetector.supersede` `SupersedeOptions` (`preserveBody`, draft lifecycle), and audit `metadata.failureId`.
 - EMMA M1: optional `blamedComponent` on `FailureRecord`, `FailureManager.lookupByComponent`, and `PlanManager.findNodeOwners` for resolving plan-node blame at record time.
