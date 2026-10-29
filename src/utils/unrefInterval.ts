@@ -1,3 +1,4 @@
+/** Mutable interval handle shared by scheduler start/stop helpers. */
 export interface IntervalRunState {
   running: boolean;
   intervalId?: ReturnType<typeof setInterval>;
@@ -20,6 +21,7 @@ export function beginUnrefInterval(
   return true;
 }
 
+/** Clears the interval and marks the run state as stopped. */
 export function stopUnrefInterval(state: IntervalRunState): void {
   if (state.intervalId !== undefined) {
     clearInterval(state.intervalId);
