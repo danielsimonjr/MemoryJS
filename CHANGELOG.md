@@ -9,11 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Share observation hash bucketing in `ObservationDedupManager` (CLONES P20).
+- Clones refactor P3: `removeIdFromPostings` for inverted-index removal (K004).
+- Clones refactor P2: `loadProjectedRecords` and `matchesDefined` for agent record list filtering (K002).
+- Clones refactor P1: shared `failureChainText` prelude for failure descriptions and lessons in `FailureDistillation`.
 - Phase 2 clone cleanup: merged episodic adjacent-event navigation, procedural-graph monotonic timestamps, and tiered-store flush rollback helpers; documented remaining pairs in `docs/analysis/CLONES_REMAINING.md`.
 - Share post-write snapshot delete helpers in `storageCache` (CLONES P23).
+- Share storage cache-state binding in `bindStorageCacheState` (CLONES P22).
+- Share default session query collect path in `SessionQueryBuilder` (CLONES P21).
+- Add `ParallelSearchExecutor.timeLayer` for semantic and lexical timing (CLONES P19).
+- Add `EventManager.collectEvents` for shared event query filtering (CLONES P18).
+- Add `loadEntityRelationEnds` for inspect show and neighbors (CLONES P17).
+- Add `RefIndex.rewriteReverseBucket` for purge and rename (CLONES P16).
+- Add `selectWeightedTurns` for PRD-weighted turn selection in memory backends (CLONES P15).
+- Extract `StreamingExporter.writeStreamed` frame for JSONL and CSV exports (CLONES P14).
+- Add `SalienceEngine.semanticOr` for shared semantic relevance branch (CLONES P13).
+- Add `AccessTracker.recordAccessBatch` for traversal and search tracking (CLONES P12).
+- Extract `DecisionManager.closeProposed` for accept and reject (CLONES P11).
+- Extract `WorkThreadManager.updateThread` frame for claim, release, and finish (CLONES P10).
+- Add `beginUnrefInterval` / `stopUnrefInterval` for consolidation and decay schedulers (CLONES P9).
+- Add `fillDefaults` for pure `??` config tables in agent constructors (CLONES P7).
+- Use `fillDefaults` for mixed agent and adapter constructors (CLONES P8).
+- Add `clampedHalfLifeScore` shared by AccessTracker and DecayEngine static helpers (CLONES P6).
+- Add `clearMapWithFlushRollback` for tiered map clears with flush rollback (CLONES P5).
+- Extract `writeJsonlRecordsUpdatingCache` and `deleteRecordsByKey` in `src/utils/jsonlRecordFile.ts` for tag-alias and saved-search JSONL persistence (CLONES P4).
 
 ### Added
 
+- `docs/plans/CLONES_REFACTOR_PLAN.md` records a MERGE or KEEP verdict for each clone row K001–K051 left by the Phase 2 cleanup, and orders the merges into small pull requests. No `src/` change.
 - EMMA M3: `noteHelped` and `retire` on guarded-edit versions, `EntityManager.getLatestPublished`, and default search visibility for published ancestors of draft heads via `SearchFilterChain.publishedAncestorsOfDraftHeads`.
 - EMMA M2: `applyGuardedEdit` for one failure-linked bounded edit, optional `causedByFailureId` on version entities and `PGRoundRecord`, `ContradictionDetector.supersede` `SupersedeOptions` (`preserveBody`, draft lifecycle), and audit `metadata.failureId`.
 - EMMA M1: optional `blamedComponent` on `FailureRecord`, `FailureManager.lookupByComponent`, and `PlanManager.findNodeOwners` for resolving plan-node blame at record time.

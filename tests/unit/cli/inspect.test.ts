@@ -104,6 +104,16 @@ describe('inspect CLI commands', () => {
       }
       expect(threw).toBe(true);
     });
+
+    it('prints entity not found from show', async () => {
+      const h = await createCliHarness(registerInspectCommands);
+      try {
+        await expect(h.parse(['show', 'NoSuch'])).rejects.toThrow();
+        expect(errorLines(h.errorSpy).join('\n')).toContain('entity not found: NoSuch');
+      } finally {
+        await cleanupCliHarness(h);
+      }
+    });
   });
 
   describe('tree', () => {
@@ -144,6 +154,24 @@ describe('inspect CLI commands', () => {
       const r = lastJson() as { inDegree: number; incoming: Array<{ from: string }> };
       expect(r.inDegree).toBe(1);
       expect(r.incoming[0].from).toBe('Root');
+    });
+
+    it('does not include children on neighbors', async () => {
+      const program = makeProgram();
+      await program.parseAsync(['node', 'memory', '--storage', storagePath, 'neighbors', 'Root']);
+      const r = lastJson() as Record<string, unknown>;
+      expect(r).not.toHaveProperty('children');
+      expect(r.entity).toBe('Root');
+    });
+
+    it('prints entity not found from neighbors', async () => {
+      const h = await createCliHarness(registerInspectCommands);
+      try {
+        await expect(h.parse(['neighbors', 'NoSuch'])).rejects.toThrow();
+        expect(errorLines(h.errorSpy).join('\n')).toContain('entity not found: NoSuch');
+      } finally {
+        await cleanupCliHarness(h);
+      }
     });
   });
 

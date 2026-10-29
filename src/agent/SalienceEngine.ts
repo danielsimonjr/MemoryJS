@@ -20,6 +20,7 @@ import { DecayEngine } from './DecayEngine.js';
 import { SummarizationService } from './SummarizationService.js';
 import { FreshnessManager } from '../features/FreshnessManager.js';
 import { computeDegreeMap, normalizedDegree, type DegreeMap } from './connectivity.js';
+import { fillDefaults } from '../utils/fillDefaults.js';
 
 // S10: `SalienceEngineConfig` moved to src/types/agent-memory.ts (the types
 // layer references it via `RoleProfile` and must stay a leaf). Re-exported
@@ -79,20 +80,21 @@ export class SalienceEngine {
     this.decayEngine = decayEngine;
     this.summarizationService = new SummarizationService();
     this.freshnessManager = new FreshnessManager(storage);
-    this.config = {
-      importanceWeight: config.importanceWeight ?? 0.25,
-      recencyWeight: config.recencyWeight ?? 0.25,
-      frequencyWeight: config.frequencyWeight ?? 0.2,
-      contextWeight: config.contextWeight ?? 0.2,
-      noveltyWeight: config.noveltyWeight ?? 0.1,
-      recencyDecayHours: config.recencyDecayHours ?? 24,
-      sessionBoostFactor: config.sessionBoostFactor ?? 1.0,
-      recentEntityBoostFactor: config.recentEntityBoostFactor ?? 0.7,
-      useSemanticSimilarity: config.useSemanticSimilarity ?? true,
-      uniquenessThreshold: config.uniquenessThreshold ?? 0.5,
-      freshnessWeight: config.freshnessWeight ?? 0.15,
-      connectivityWeight: config.connectivityWeight ?? 0,
+    const defaults: Required<SalienceEngineConfig> = {
+      importanceWeight: 0.25,
+      recencyWeight: 0.25,
+      frequencyWeight: 0.2,
+      contextWeight: 0.2,
+      noveltyWeight: 0.1,
+      recencyDecayHours: 24,
+      sessionBoostFactor: 1.0,
+      recentEntityBoostFactor: 0.7,
+      useSemanticSimilarity: true,
+      uniquenessThreshold: 0.5,
+      freshnessWeight: 0.15,
+      connectivityWeight: 0,
     };
+    this.config = fillDefaults(config, defaults);
   }
 
   // ==================== Main Salience Calculation ====================
@@ -350,29 +352,18 @@ export class SalienceEngine {
    * @returns Score between 0 and 1
    */
   calculateTaskRelevance(entity: AgentEntity, taskDescription: string): number {
-    // Exact task ID match
     if (entity.taskId === taskDescription) {
       return 1.0;
     }
-
-    // Build entity text for comparison
-    const entityText = this.buildEntityText(entity);
-
-    if (this.config.useSemanticSimilarity) {
-      // Use TF-IDF cosine similarity
-      return this.summarizationService.calculateSimilarity(entityText, taskDescription);
-    }
-
-    // Fallback to keyword matching
-    const taskLower = taskDescription.toLowerCase();
-    if (entity.name.toLowerCase().includes(taskLower)) {
-      return 0.8;
-    }
-    if (entity.observations?.some((o) => o.toLowerCase().includes(taskLower))) {
-      return 0.5;
-    }
-
-    return 0;
+    return this.semanticOr(entity, taskDescription, (e, taskLower) => {
+      if (e.name.toLowerCase().includes(taskLower)) {
+        return 0.8;
+      }
+      if (e.observations?.some(o => o.toLowerCase().includes(taskLower))) {
+        return 0.5;
+      }
+      return 0;
+    });
   }
 
   /**
@@ -399,27 +390,18 @@ export class SalienceEngine {
    * @returns Score between 0 and 1
    */
   calculateQueryRelevance(entity: AgentEntity, queryText: string): number {
-    // Build entity text for comparison
-    const entityText = this.buildEntityText(entity);
-
-    if (this.config.useSemanticSimilarity) {
-      // Use TF-IDF cosine similarity for semantic matching
-      return this.summarizationService.calculateSimilarity(entityText, queryText);
-    }
-
-    // Fallback to keyword matching
-    const queryLower = queryText.toLowerCase();
-    if (entity.name.toLowerCase().includes(queryLower)) {
-      return 1.0;
-    }
-    if (entity.entityType.toLowerCase().includes(queryLower)) {
-      return 0.7;
-    }
-    if (entity.observations?.some((o) => o.toLowerCase().includes(queryLower))) {
-      return 0.5;
-    }
-
-    return 0;
+    return this.semanticOr(entity, queryText, (e, queryLower) => {
+      if (e.name.toLowerCase().includes(queryLower)) {
+        return 1.0;
+      }
+      if (e.entityType.toLowerCase().includes(queryLower)) {
+        return 0.7;
+      }
+      if (e.observations?.some(o => o.toLowerCase().includes(queryLower))) {
+        return 0.5;
+      }
+      return 0;
+    });
   }
 
   /**
@@ -431,19 +413,23 @@ export class SalienceEngine {
    * @returns Score between 0 and 1
    */
   calculateIntentRelevance(entity: AgentEntity, userIntent: string): number {
-    const entityText = this.buildEntityText(entity);
+    return this.semanticOr(entity, userIntent, (e, intentLower) => {
+      if (e.observations?.some(o => o.toLowerCase().includes(intentLower))) {
+        return 0.8;
+      }
+      return 0;
+    });
+  }
 
+  private semanticOr(
+    entity: AgentEntity,
+    text: string,
+    fallback: (entity: AgentEntity, lowered: string) => number,
+  ): number {
     if (this.config.useSemanticSimilarity) {
-      return this.summarizationService.calculateSimilarity(entityText, userIntent);
+      return this.summarizationService.calculateSimilarity(this.buildEntityText(entity), text);
     }
-
-    // Fallback to keyword matching
-    const intentLower = userIntent.toLowerCase();
-    if (entity.observations?.some((o) => o.toLowerCase().includes(intentLower))) {
-      return 0.8;
-    }
-
-    return 0;
+    return fallback(entity, text.toLowerCase());
   }
 
   /**

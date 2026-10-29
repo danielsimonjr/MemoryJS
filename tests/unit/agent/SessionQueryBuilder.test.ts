@@ -501,6 +501,69 @@ describe('SessionQueryBuilder.searchWithRecencyRanking', () => {
   });
 });
 
+// ==================== CLONES P21: collectFiltered pins ====================
+
+describe('SessionQueryBuilder collectFiltered (P21)', () => {
+  it('custom searchFunction does not call loadGraph', async () => {
+    const entities = [createAgentEntity('mem_1', 'session_1', { observations: ['alpha'] })];
+    const storage = createMockStorage(entities);
+    const wmm = new WorkingMemoryManager(storage);
+    const sm = new SessionManager(storage, wmm);
+    const builder = new SessionQueryBuilder(storage, sm);
+
+    builder.setSearchFunction(async () => [{ entity: entities[0] } as never]);
+    vi.mocked(storage.loadGraph).mockClear();
+
+    await builder.forSession('session_1').search('nomatch');
+
+    expect(storage.loadGraph).not.toHaveBeenCalled();
+  });
+
+  it('execute returns entities that default search would drop by text', async () => {
+    const entities = [
+      createAgentEntity('mem_visible', 'session_1', { observations: ['hotel'] }),
+      createAgentEntity('mem_other', 'session_1', { observations: ['restaurant'] }),
+    ];
+    const storage = createMockStorage(entities);
+    const wmm = new WorkingMemoryManager(storage);
+    const sm = new SessionManager(storage, wmm);
+    const builder = new SessionQueryBuilder(storage, sm);
+
+    const searched = await builder.forSession('session_1').search('hotel');
+    const executed = await builder.forSession('session_1').execute();
+
+    expect(searched.map(e => e.name)).toEqual(['mem_visible']);
+    expect(executed.map(e => e.name).sort()).toEqual(['mem_other', 'mem_visible']);
+  });
+
+  it('applies offset then limit on search and execute', async () => {
+    const entities = [
+      createAgentEntity('mem_a', 'session_1'),
+      createAgentEntity('mem_b', 'session_1'),
+      createAgentEntity('mem_c', 'session_1'),
+      createAgentEntity('mem_d', 'session_1'),
+    ];
+    const storage = createMockStorage(entities);
+    const wmm = new WorkingMemoryManager(storage);
+    const sm = new SessionManager(storage, wmm);
+
+    const searchResults = await new SessionQueryBuilder(storage, sm)
+      .forSession('session_1')
+      .withOffset(1)
+      .withLimit(2)
+      .search('mem');
+
+    const executeResults = await new SessionQueryBuilder(storage, sm)
+      .forSession('session_1')
+      .withOffset(1)
+      .withLimit(2)
+      .execute();
+
+    expect(searchResults.map(e => e.name)).toEqual(['mem_b', 'mem_c']);
+    expect(executeResults.map(e => e.name)).toEqual(['mem_b', 'mem_c']);
+  });
+});
+
 // ==================== Reset Tests ====================
 
 describe('SessionQueryBuilder.reset', () => {

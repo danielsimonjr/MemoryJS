@@ -156,10 +156,12 @@ import { GraphEventEmitter } from './GraphEventEmitter.js';
 import {
   deleteNamesFromSnapshot,
   deleteRelationsFromSnapshot,
+  bindStorageCacheState,
   relationKeyOf,
   removeEntitiesFromIndexes,
   upsertEntityInCache,
   upsertRelationInCache,
+  type StorageCacheOwner,
   type StorageCacheState,
 } from './storageCache.js';
 
@@ -386,29 +388,14 @@ export class SQLiteStorage implements IGraphStorage {
    * owner field at the moment of use.
    */
   private static cacheStateOf(owner: SQLiteStorage): StorageCacheState {
-    return {
-      get cache() {
-        return owner.cache;
-      },
-      get nameIndex() {
-        return owner.nameIndex;
-      },
-      get typeIndex() {
-        return owner.typeIndex;
-      },
-      get relationIndex() {
-        return owner.relationIndex;
-      },
-      get relationKeyMap() {
-        return owner.relationKeyMap;
-      },
-      setLowercase(entity: Entity): void {
+    return bindStorageCacheState(owner as unknown as StorageCacheOwner, {
+      set(entity: Entity): void {
         owner.updateLowercaseCache(entity);
       },
-      removeLowercase(entity: Entity): void {
+      remove(entity: Entity): void {
         owner.lowercaseCache.delete(entity.name);
       },
-    };
+    });
   }
 
   /**

@@ -535,4 +535,82 @@ describe('FailureDistillation', () => {
       }
     });
   });
+
+  // ==================== Failure and lesson text (clone refactor pins) ====================
+
+  describe('failureDescription and lesson strings', () => {
+    const lowThreshold: FailureDistillationConfig = { minLessonConfidence: 0.5 };
+
+    it('uses empty-chain templates when there is no CAUSED_BY edge', async () => {
+      const session = createSessionEntity(SESSION_ID, 'failure');
+      const ep = createEpisodeEntity('ep_solo', SESSION_ID, 'Isolated failure');
+      const storage = createMockStorage([session, ep]);
+
+      const fd = new FailureDistillation(storage, lowThreshold);
+      const result = await fd.distillFromSession(SESSION_ID);
+
+      const lesson = result.lessons.find((l) => l.sourceEpisodes.includes('ep_solo'));
+      expect(lesson).toBeDefined();
+      expect(lesson!.failureDescription).toBe('Failure: Isolated failure');
+      expect(lesson!.lesson).toBe('Avoid: Isolated failure');
+      expect(lesson!.causeChain).toEqual([]);
+    });
+
+    it('uses root-cause templates for a one-step chain', async () => {
+      const session = createSessionEntity(SESSION_ID, 'failure');
+      const ep_a = createEpisodeEntity('ep_a', SESSION_ID, 'Failure A');
+      const ep_b = createEpisodeEntity('ep_b', SESSION_ID, 'Cause B');
+      const storage = createMockStorage([session, ep_a, ep_b], [createCausalRelation('ep_a', 'ep_b')]);
+
+      const fd = new FailureDistillation(storage, lowThreshold);
+      const result = await fd.distillFromSession(SESSION_ID);
+
+      const lesson = result.lessons.find((l) => l.sourceEpisodes.includes('ep_a'));
+      expect(lesson).toBeDefined();
+      expect(lesson!.failureDescription).toBe('Failure: Failure A (root cause: Cause B)');
+      expect(lesson!.lesson).toBe('To prevent "Failure A", address root cause: "Cause B"');
+      expect(lesson!.causeChain).toEqual(['ep_b']);
+    });
+
+    it('uses the last entity in a two-step chain as root (ep_b → ep_c → ep_d)', async () => {
+      const session = createSessionEntity(SESSION_ID, 'failure');
+      const ep_b = createEpisodeEntity('ep_b', SESSION_ID, 'Terminal failure B');
+      const ep_c = createEpisodeEntity('ep_c', SESSION_ID, 'Intermediate cause C');
+      const ep_d = createEpisodeEntity('ep_d', SESSION_ID, 'Root cause D');
+      const storage = createMockStorage(
+        [session, ep_b, ep_c, ep_d],
+        [createCausalRelation('ep_b', 'ep_c'), createCausalRelation('ep_c', 'ep_d')],
+      );
+
+      const fd = new FailureDistillation(storage, lowThreshold);
+      const result = await fd.distillFromSession(SESSION_ID);
+
+      const lesson = result.lessons.find((l) => l.sourceEpisodes.includes('ep_b'));
+      expect(lesson).toBeDefined();
+      expect(lesson!.failureDescription).toBe(
+        'Failure: Terminal failure B (root cause: Root cause D)',
+      );
+      expect(lesson!.lesson).toBe(
+        'To prevent "Terminal failure B", address root cause: "Root cause D"',
+      );
+      expect(lesson!.causeChain).toEqual(['ep_c', 'ep_d']);
+    });
+
+    it('uses entity name when observations are empty', async () => {
+      const session = createSessionEntity(SESSION_ID, 'failure');
+      const ep: AgentEntity = {
+        ...createEpisodeEntity('ep_empty_obs', SESSION_ID, 'unused'),
+        observations: [],
+      };
+      const storage = createMockStorage([session, ep]);
+
+      const fd = new FailureDistillation(storage, lowThreshold);
+      const result = await fd.distillFromSession(SESSION_ID);
+
+      const lesson = result.lessons.find((l) => l.sourceEpisodes.includes('ep_empty_obs'));
+      expect(lesson).toBeDefined();
+      expect(lesson!.failureDescription).toBe('Failure: ep_empty_obs');
+      expect(lesson!.lesson).toBe('Avoid: ep_empty_obs');
+    });
+  });
 });

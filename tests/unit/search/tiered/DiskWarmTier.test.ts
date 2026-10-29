@@ -266,6 +266,27 @@ describe('DiskWarmTier', () => {
       expect(await tier.get('alice')).toBe(1);
       expect(await tier.get('bob')).toBe(2);
     });
+
+    it('clear: restores previous entry order when flush throws', async () => {
+      const tier = new DiskWarmTier<number>({ filePath: sidecar });
+      await tier.put('a', 1);
+      await tier.put('b', 2);
+      await tier.put('c', 3);
+      injectFlushFailure(sidecar);
+      await expect(tier.clear()).rejects.toThrow(/synthetic/);
+      vi.restoreAllMocks();
+      await tier.put('d', 4);
+      expect(await fs.readFile(sidecar, 'utf-8')).toBe(
+        '{"k":"a","v":1}\n{"k":"b","v":2}\n{"k":"c","v":3}\n{"k":"d","v":4}\n',
+      );
+    });
+
+    it('clear: does not flush an empty tier', async () => {
+      const tier = new DiskWarmTier<number>({ filePath: sidecar });
+      const rename = vi.spyOn(fs, 'rename');
+      await tier.clear();
+      expect(rename).not.toHaveBeenCalled();
+    });
   });
 
   describe('malformed-line tolerance', () => {

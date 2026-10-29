@@ -34,10 +34,12 @@ import { streamLines } from './mmap/IMmapBackend.js';
 import {
   deleteNamesFromSnapshot,
   deleteRelationsFromSnapshot,
+  bindStorageCacheState,
   relationKeyOf,
   removeEntitiesFromIndexes,
   upsertEntityInCache,
   upsertRelationInCache,
+  type StorageCacheOwner,
   type StorageCacheState,
 } from './storageCache.js';
 
@@ -349,32 +351,18 @@ export class GraphStorage implements IGraphStorage {
    * owner field at the moment of use.
    */
   private static cacheStateOf(owner: GraphStorage): StorageCacheState {
-    return {
-      get cache() {
-        return owner.cache;
+    return bindStorageCacheState(
+      owner as unknown as StorageCacheOwner,
+      {
+        set(entity: Entity): void {
+          owner.lowercaseCache.set(entity);
+        },
+        remove(entity: Entity): void {
+          owner.lowercaseCache.remove(entity.name);
+        },
       },
-      get nameIndex() {
-        return owner.nameIndex;
-      },
-      get typeIndex() {
-        return owner.typeIndex;
-      },
-      get relationIndex() {
-        return owner.relationIndex;
-      },
-      get relationKeyMap() {
-        return owner.relationKeyMap;
-      },
-      get observationIndex() {
-        return owner.observationIndex;
-      },
-      setLowercase(entity: Entity): void {
-        owner.lowercaseCache.set(entity);
-      },
-      removeLowercase(entity: Entity): void {
-        owner.lowercaseCache.remove(entity.name);
-      },
-    };
+      { includeObservationIndex: true },
+    );
   }
 
   // ==================== Phase 10 Sprint 2: Event Emitter Access ====================

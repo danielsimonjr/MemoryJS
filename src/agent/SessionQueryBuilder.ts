@@ -361,49 +361,26 @@ export class SessionQueryBuilder {
    * @returns Matching AgentEntity results
    */
   async search(query: string): Promise<AgentEntity[]> {
-    const sessionIds = await this.resolveSessionIds();
-
-    let results: AgentEntity[];
-
     if (this.searchFunction) {
-      // Use custom search function
+      const sessionIds = await this.resolveSessionIds();
       const searchResults = await this.searchFunction(query);
-      results = searchResults
-        .map((r) => {
-          // Handle both Entity and SearchResult types
+      let results = searchResults
+        .map(r => {
           if ('entity' in r) return r.entity as AgentEntity;
           return r as AgentEntity;
         })
         .filter(isAgentEntity);
-    } else {
-      // Default: search all entities in storage
-      const graph = await this.storage.loadGraph();
-      const queryLower = query.toLowerCase();
-      results = graph.entities
-        .filter((e) => {
-          if (!isAgentEntity(e)) return false;
-          // Simple text search on name and observations
-          const nameMatch = e.name.toLowerCase().includes(queryLower);
-          const obsMatch = e.observations.some((o) =>
-            o.toLowerCase().includes(queryLower)
-          );
-          return nameMatch || obsMatch;
-        })
-        .map((e) => e as AgentEntity);
+      results = this.applyFilters(results, sessionIds);
+      return this.paginate(results);
     }
 
-    // Apply filters
-    results = this.applyFilters(results, sessionIds);
-
-    // Apply pagination
-    if (this.offset) {
-      results = results.slice(this.offset);
-    }
-    if (this.limit) {
-      results = results.slice(0, this.limit);
-    }
-
-    return results;
+    const queryLower = query.toLowerCase();
+    return this.collectFiltered(e => {
+      if (!isAgentEntity(e)) return false;
+      const nameMatch = e.name.toLowerCase().includes(queryLower);
+      const obsMatch = e.observations.some(o => o.toLowerCase().includes(queryLower));
+      return nameMatch || obsMatch;
+    });
   }
 
   /**
@@ -479,21 +456,26 @@ export class SessionQueryBuilder {
    * @returns Matching AgentEntity results
    */
   async execute(): Promise<AgentEntity[]> {
+    return this.collectFiltered(isAgentEntity);
+  }
+
+  private async collectFiltered(predicate: (entity: Entity) => boolean): Promise<AgentEntity[]> {
     const sessionIds = await this.resolveSessionIds();
     const graph = await this.storage.loadGraph();
-
-    let results = graph.entities.filter(isAgentEntity) as AgentEntity[];
+    let results = graph.entities.filter(predicate).filter(isAgentEntity) as AgentEntity[];
     results = this.applyFilters(results, sessionIds);
+    return this.paginate(results);
+  }
 
-    // Apply pagination
+  private paginate(results: AgentEntity[]): AgentEntity[] {
+    let page = results;
     if (this.offset) {
-      results = results.slice(this.offset);
+      page = page.slice(this.offset);
     }
     if (this.limit) {
-      results = results.slice(0, this.limit);
+      page = page.slice(0, this.limit);
     }
-
-    return results;
+    return page;
   }
 
   /**
