@@ -526,7 +526,7 @@ Reachable from a root: **312** of 312 files. Dormant: **0** (0 orphaned, 0 test-
 |------|---------|------|
 | `../types/types.js` | `Entity, IGraphStorage` | Import (type-only) |
 | `../types/agent-memory.js` | `DecisionEntity, DecisionId, DecisionLifecycle, DecisionRecord, DecisionStatus` | Import (type-only) |
-| `../types/agent-memory.js` | `isDecisionMemory, toIsoDateTime` | Import |
+| `../types/agent-memory.js` | `isDecisionMemory, toIsoDateTime, IsoDateTime` | Import |
 | `../core/EntityManager.js` | `EntityManager` | Import (type-only) |
 | `../utils/errors.js` | `VersionConflictError, EntityNotFoundError` | Import |
 | `../utils/index.js` | `validateNonEmpty` | Import |
@@ -5916,7 +5916,7 @@ graph TD
 |----------|-------|
 | Total TypeScript Files | 312 |
 | Total Modules | 12 |
-| Total Lines of Code | 105538 |
+| Total Lines of Code | 105555 |
 | Total Exports | 2099 |
 | Total Re-exports | 1349 |
 | Total Classes | 237 |

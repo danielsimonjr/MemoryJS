@@ -228,7 +228,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 425
+      "loc": 442
     },
     {
       "file": "src/agent/DistillationPipeline.ts",
@@ -2776,7 +2776,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 403
+      "loc": 407
     },
     {
       "file": "tests/unit/agent/delta-services-wiring.test.ts",

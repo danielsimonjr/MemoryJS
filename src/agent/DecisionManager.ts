@@ -23,7 +23,7 @@ import type {
   DecisionRecord,
   DecisionStatus,
 } from '../types/agent-memory.js';
-import { isDecisionMemory, toIsoDateTime } from '../types/agent-memory.js';
+import { isDecisionMemory, toIsoDateTime, type IsoDateTime } from '../types/agent-memory.js';
 import type { EntityManager } from '../core/EntityManager.js';
 import { VersionConflictError, EntityNotFoundError } from '../utils/errors.js';
 import { validateNonEmpty } from '../utils/index.js';
@@ -222,30 +222,47 @@ export class DecisionManager {
   // ==================== Lifecycle ====================
 
   async accept(id: DecisionId | string): Promise<AcceptDecisionResult> {
-    const entity = this.storage.getEntityByName(id);
-    if (!isDecisionMemory(entity)) return 'not-found';
-    const cur = entity.decisionRecord;
-    if (cur.status === 'accepted') return 'already-accepted';
-    if (cur.status !== 'proposed') return 'illegal-transition';
-    const now = toIsoDateTime(new Date());
-    const lifecycle: DecisionLifecycle = { status: 'accepted', acceptedAt: now };
-    return this.applyUpdate(id, entity.version, lifecycle, 'accepted') as Promise<AcceptDecisionResult>;
+    return this.closeProposed(
+      id,
+      'accepted',
+      'already-accepted',
+      'accepted',
+      (now: IsoDateTime) => ({ status: 'accepted', acceptedAt: now }),
+    ) as Promise<AcceptDecisionResult>;
   }
 
   async reject(id: DecisionId | string, reason: string): Promise<RejectDecisionResult> {
     validateNonEmpty(reason, 'reason', 'DecisionManager');
+    return this.closeProposed(
+      id,
+      'rejected',
+      'already-rejected',
+      'rejected',
+      now => ({
+        status: 'rejected',
+        rejectedAt: now,
+        rejectedReason: reason,
+      }),
+    ) as Promise<RejectDecisionResult>;
+  }
+
+  private async closeProposed(
+    id: DecisionId | string,
+    alreadyStatus: 'accepted' | 'rejected',
+    alreadyResult: 'already-accepted' | 'already-rejected',
+    success: 'accepted' | 'rejected',
+    buildLifecycle: (now: IsoDateTime) => DecisionLifecycle,
+  ): Promise<AcceptDecisionResult | RejectDecisionResult> {
     const entity = this.storage.getEntityByName(id);
     if (!isDecisionMemory(entity)) return 'not-found';
     const cur = entity.decisionRecord;
-    if (cur.status === 'rejected') return 'already-rejected';
+    if (cur.status === alreadyStatus) return alreadyResult;
     if (cur.status !== 'proposed') return 'illegal-transition';
     const now = toIsoDateTime(new Date());
-    const lifecycle: DecisionLifecycle = {
-      status: 'rejected',
-      rejectedAt: now,
-      rejectedReason: reason,
-    };
-    return this.applyUpdate(id, entity.version, lifecycle, 'rejected') as Promise<RejectDecisionResult>;
+    const lifecycle = buildLifecycle(now);
+    return this.applyUpdate(id, entity.version, lifecycle, success) as Promise<
+      AcceptDecisionResult | RejectDecisionResult
+    >;
   }
 
   async supersede(

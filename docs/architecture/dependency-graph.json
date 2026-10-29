@@ -1687,7 +1687,8 @@
             "file": "../types/agent-memory.js",
             "imports": [
               "isDecisionMemory",
-              "toIsoDateTime"
+              "toIsoDateTime",
+              "IsoDateTime"
             ]
           },
           {
@@ -21052,7 +21053,7 @@
   "statistics": {
     "totalTypeScriptFiles": 312,
     "totalModules": 12,
-    "totalLinesOfCode": 105538,
+    "totalLinesOfCode": 105555,
     "totalExports": 2099,
     "totalClasses": 237,
     "totalInterfaces": 632,

@@ -70,7 +70,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/ContextWindowManager.ts` | src | reachable | 1935 |
 | `src/agent/DecayEngine.ts` | src | reachable | 751 |
 | `src/agent/DecayScheduler.ts` | src | reachable | 233 |
-| `src/agent/DecisionManager.ts` | src | reachable | 425 |
+| `src/agent/DecisionManager.ts` | src | reachable | 442 |
 | `src/agent/DistillationPipeline.ts` | src | reachable | 204 |
 | `src/agent/DistillationPolicy.ts` | src | reachable | 339 |
 | `src/agent/DreamEngine.ts` | src | reachable | 646 |
@@ -434,7 +434,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/ContextWindowManager.test.ts` | tests | test | 1717 |
 | `tests/unit/agent/DecayEngine.test.ts` | tests | test | 1236 |
 | `tests/unit/agent/DecayScheduler.test.ts` | tests | test | 584 |
-| `tests/unit/agent/DecisionManager.test.ts` | tests | test | 403 |
+| `tests/unit/agent/DecisionManager.test.ts` | tests | test | 407 |
 | `tests/unit/agent/delta-services-wiring.test.ts` | tests | test | 61 |
 | `tests/unit/agent/DistillationPipeline.test.ts` | tests | test | 153 |
 | `tests/unit/agent/DistillationPolicy.test.ts` | tests | test | 850 |
