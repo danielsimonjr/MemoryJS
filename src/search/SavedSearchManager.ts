@@ -11,6 +11,10 @@ import type { SavedSearch, KnowledgeGraph } from '../types/index.js';
 import type { BasicSearch } from './BasicSearch.js';
 import { sanitizeObject } from '../utils/index.js';
 import { parseJsonlRecords } from '../utils/jsonlMapFile.js';
+import {
+  deleteRecordsByKey,
+  writeJsonlRecordsUpdatingCache,
+} from '../utils/jsonlRecordFile.js';
 
 /**
  * Manages saved search queries with usage tracking.
@@ -73,18 +77,20 @@ export class SavedSearchManager {
    * @param searches - Array of saved searches
    */
   private async saveSavedSearches(searches: SavedSearch[]): Promise<void> {
-    const lines = searches.map(s => JSON.stringify(s));
-    try {
-      await fs.writeFile(this.savedSearchesFilePath, lines.join('\n'));
-    } catch (err) {
-      // Write failed (e.g. EPERM under a Dropbox lock). A caller may have
-      // mutated a cached search object or array in place, so the cache now
-      // diverges from disk — drop it so the next read re-syncs from the file.
-      this.searchCache = null;
-      this.searchIndex = null;
-      throw err;
-    }
-    this.setCache(searches);
+    await writeJsonlRecordsUpdatingCache(
+      this.savedSearchesFilePath,
+      searches,
+      () => {
+        // Write failed (e.g. EPERM under a Dropbox lock). A caller may have
+        // mutated a cached search object or array in place, so the cache now
+        // diverges from disk — drop it so the next read re-syncs from the file.
+        this.searchCache = null;
+        this.searchIndex = null;
+      },
+      records => {
+        this.setCache(records);
+      },
+    );
   }
 
   /**
@@ -175,16 +181,12 @@ export class SavedSearchManager {
    * @returns True if deleted, false if not found
    */
   async deleteSavedSearch(name: string): Promise<boolean> {
-    const searches = await this.loadSavedSearches();
-    const initialLength = searches.length;
-    const filtered = searches.filter(s => s.name !== name);
-
-    if (filtered.length === initialLength) {
-      return false; // Search not found
-    }
-
-    await this.saveSavedSearches(filtered);
-    return true;
+    return deleteRecordsByKey(
+      () => this.loadSavedSearches(),
+      records => this.saveSavedSearches(records),
+      row => row.name,
+      name,
+    );
   }
 
   /**

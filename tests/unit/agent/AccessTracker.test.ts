@@ -10,6 +10,7 @@
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { AccessTracker, type AccessTrackerConfig } from '../../../src/agent/AccessTracker.js';
+import { DecayEngine } from '../../../src/agent/DecayEngine.js';
 import type { IGraphStorage } from '../../../src/types/types.js';
 import type { AgentEntity } from '../../../src/types/agent-memory.js';
 
@@ -188,6 +189,32 @@ describe('AccessTracker.recordAccess', () => {
 
     expect(statsA.totalAccesses).toBe(2);
     expect(statsB.totalAccesses).toBe(1);
+  });
+});
+
+describe('AccessTracker.recordAccessBatch', () => {
+  it('does not call recordAccess for an empty list', async () => {
+    const storage = createMockStorage();
+    const tracker = new AccessTracker(storage);
+    const spy = vi.spyOn(tracker, 'recordAccess');
+    const context = { sessionId: 's', retrievalMethod: 'traversal' as const };
+    await tracker.recordAccessBatch([], context);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('records two names with the same context object', async () => {
+    const storage = createMockStorage({
+      a: createAgentEntity('a'),
+      b: createAgentEntity('b'),
+    });
+    const tracker = new AccessTracker(storage);
+    const spy = vi.spyOn(tracker, 'recordAccess');
+    const context = { sessionId: 's', taskId: 't', retrievalMethod: 'traversal' as const };
+    await tracker.recordAccessBatch(['a', 'b'], context);
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(spy.mock.calls[0][1]).toBe(context);
+    expect(spy.mock.calls[1][1]).toBe(context);
+    expect(context.retrievalMethod).toBe('traversal');
   });
 });
 
@@ -396,6 +423,34 @@ describe('AccessTracker.calculateRecencyScoreFromTimestamp', () => {
     const pastTime = new Date(now - 24 * 60 * 60 * 1000).toISOString();
     const score = AccessTracker.calculateRecencyScoreFromTimestamp(pastTime);
     expect(score).toBeCloseTo(0.5, 1);
+  });
+
+  it('matches DecayEngine when timestamp and half-life are the same', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-29T18:00:00.000Z'));
+    const ts = '2026-01-15T12:00:00.000Z';
+    expect(AccessTracker.calculateRecencyScoreFromTimestamp(ts, 48)).toBe(
+      DecayEngine.calculateDecayFactorStatic(ts, 48),
+    );
+  });
+
+  it('defaults 24 and 168 still differ at 24 hours ago', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-16T12:00:00.000Z'));
+    const ts = '2026-01-15T12:00:00.000Z';
+    expect(AccessTracker.calculateRecencyScoreFromTimestamp(ts)).toBeCloseTo(0.5, 5);
+    expect(DecayEngine.calculateDecayFactorStatic(ts)).toBeGreaterThan(0.9);
+  });
+
+  it('clamps a timestamp one hour ahead to 1', () => {
+    const future = new Date(Date.now() + 3600000).toISOString();
+    expect(AccessTracker.calculateRecencyScoreFromTimestamp(future)).toBe(1);
+    expect(DecayEngine.calculateDecayFactorStatic(future)).toBe(1);
+  });
+
+  it('returns NaN for an unparseable timestamp', () => {
+    expect(Number.isNaN(AccessTracker.calculateRecencyScoreFromTimestamp('not-a-date'))).toBe(true);
+    expect(Number.isNaN(DecayEngine.calculateDecayFactorStatic('not-a-date'))).toBe(true);
   });
 });
 

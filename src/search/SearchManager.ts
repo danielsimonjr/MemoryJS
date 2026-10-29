@@ -221,10 +221,8 @@ export class SearchManager {
       retrievalMethod: 'search',
     };
 
-    // Batch record all results
-    await Promise.all(
-      entities.map((entity) => this.accessTracker!.recordAccess(entity.name, context))
-    );
+    const names = entities.map(entity => entity.name);
+    await this.accessTracker.recordAccessBatch(names, context);
   }
 
   /** Open specific nodes by name. */

@@ -20,6 +20,7 @@ import { DecayEngine } from './DecayEngine.js';
 import { SummarizationService } from './SummarizationService.js';
 import { FreshnessManager } from '../features/FreshnessManager.js';
 import { computeDegreeMap, normalizedDegree, type DegreeMap } from './connectivity.js';
+import { fillDefaults } from '../utils/fillDefaults.js';
 
 // S10: `SalienceEngineConfig` moved to src/types/agent-memory.ts (the types
 // layer references it via `RoleProfile` and must stay a leaf). Re-exported
@@ -79,20 +80,21 @@ export class SalienceEngine {
     this.decayEngine = decayEngine;
     this.summarizationService = new SummarizationService();
     this.freshnessManager = new FreshnessManager(storage);
-    this.config = {
-      importanceWeight: config.importanceWeight ?? 0.25,
-      recencyWeight: config.recencyWeight ?? 0.25,
-      frequencyWeight: config.frequencyWeight ?? 0.2,
-      contextWeight: config.contextWeight ?? 0.2,
-      noveltyWeight: config.noveltyWeight ?? 0.1,
-      recencyDecayHours: config.recencyDecayHours ?? 24,
-      sessionBoostFactor: config.sessionBoostFactor ?? 1.0,
-      recentEntityBoostFactor: config.recentEntityBoostFactor ?? 0.7,
-      useSemanticSimilarity: config.useSemanticSimilarity ?? true,
-      uniquenessThreshold: config.uniquenessThreshold ?? 0.5,
-      freshnessWeight: config.freshnessWeight ?? 0.15,
-      connectivityWeight: config.connectivityWeight ?? 0,
+    const defaults: Required<SalienceEngineConfig> = {
+      importanceWeight: 0.25,
+      recencyWeight: 0.25,
+      frequencyWeight: 0.2,
+      contextWeight: 0.2,
+      noveltyWeight: 0.1,
+      recencyDecayHours: 24,
+      sessionBoostFactor: 1.0,
+      recentEntityBoostFactor: 0.7,
+      useSemanticSimilarity: true,
+      uniquenessThreshold: 0.5,
+      freshnessWeight: 0.15,
+      connectivityWeight: 0,
     };
+    this.config = fillDefaults(config, defaults);
   }
 
   // ==================== Main Salience Calculation ====================
