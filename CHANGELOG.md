@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Clones refactor P2: `loadProjectedRecords` and `matchesDefined` for agent record list filtering (K002).
 - Phase 2 clone cleanup: merged episodic adjacent-event navigation, procedural-graph monotonic timestamps, and tiered-store flush rollback helpers; documented remaining pairs in `docs/analysis/CLONES_REMAINING.md`.
 
 ### Added
