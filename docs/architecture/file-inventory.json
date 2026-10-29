@@ -2636,7 +2636,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 554
+      "loc": 578
     },
     {
       "file": "tests/unit/agent/ArtifactManager.test.ts",
@@ -2748,7 +2748,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 394
+      "loc": 403
     },
     {
       "file": "tests/unit/agent/delta-services-wiring.test.ts",
