@@ -501,7 +501,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/SalienceEngine-heap-pins.test.ts` | tests | test | 179 |
 | `tests/unit/agent/SalienceEngine.test.ts` | tests | test | 812 |
 | `tests/unit/agent/SessionCheckpoint.test.ts` | tests | test | 698 |
-| `tests/unit/agent/SessionManager.test.ts` | tests | test | 827 |
+| `tests/unit/agent/SessionManager.test.ts` | tests | test | 848 |
 | `tests/unit/agent/SessionQueryBuilder.test.ts` | tests | test | 526 |
 | `tests/unit/agent/SQLiteBackend.test.ts` | tests | test | 154 |
 | `tests/unit/agent/SummarizationService.test.ts` | tests | test | 531 |
