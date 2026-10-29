@@ -15,6 +15,7 @@ import type {
 import { isAgentEntity } from '../types/agent-memory.js';
 import { passesEntropyFilter, type EntropyFilterConfig } from './EntropyFilter.js';
 import { LowEntropyContentError, MemoryWriteBlockedError } from '../utils/errors.js';
+import { fillDefaults } from '../utils/fillDefaults.js';
 import { hash31 } from '../utils/entityUtils.js';
 import type { ExclusionManager } from './ExclusionManager.js';
 import { requireWorkingMemoryEntity } from './workingMemoryGuard.js';
@@ -163,12 +164,15 @@ export class WorkingMemoryManager {
 
   constructor(storage: IGraphStorage, config: WorkingMemoryConfig = {}) {
     this.storage = storage;
+    const filled = fillDefaults(config, {
+      defaultTTLHours: 24,
+      maxPerSession: 100,
+      autoPromote: false,
+      autoPromoteConfidenceThreshold: 0.8,
+      autoPromoteConfirmationThreshold: 2,
+    });
     this.config = {
-      defaultTTLHours: config.defaultTTLHours ?? 24,
-      maxPerSession: config.maxPerSession ?? 100,
-      autoPromote: config.autoPromote ?? false,
-      autoPromoteConfidenceThreshold: config.autoPromoteConfidenceThreshold ?? 0.8,
-      autoPromoteConfirmationThreshold: config.autoPromoteConfirmationThreshold ?? 2,
+      ...filled,
       entropyFilter: config.entropyFilter,
       exclusionManager: config.exclusionManager,
     };

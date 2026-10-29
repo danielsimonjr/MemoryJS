@@ -10,6 +10,7 @@
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { AccessTracker, type AccessTrackerConfig } from '../../../src/agent/AccessTracker.js';
+import { DecayEngine } from '../../../src/agent/DecayEngine.js';
 import type { IGraphStorage } from '../../../src/types/types.js';
 import type { AgentEntity } from '../../../src/types/agent-memory.js';
 
@@ -422,6 +423,34 @@ describe('AccessTracker.calculateRecencyScoreFromTimestamp', () => {
     const pastTime = new Date(now - 24 * 60 * 60 * 1000).toISOString();
     const score = AccessTracker.calculateRecencyScoreFromTimestamp(pastTime);
     expect(score).toBeCloseTo(0.5, 1);
+  });
+
+  it('matches DecayEngine when timestamp and half-life are the same', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-29T18:00:00.000Z'));
+    const ts = '2026-01-15T12:00:00.000Z';
+    expect(AccessTracker.calculateRecencyScoreFromTimestamp(ts, 48)).toBe(
+      DecayEngine.calculateDecayFactorStatic(ts, 48),
+    );
+  });
+
+  it('defaults 24 and 168 still differ at 24 hours ago', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-16T12:00:00.000Z'));
+    const ts = '2026-01-15T12:00:00.000Z';
+    expect(AccessTracker.calculateRecencyScoreFromTimestamp(ts)).toBeCloseTo(0.5, 5);
+    expect(DecayEngine.calculateDecayFactorStatic(ts)).toBeGreaterThan(0.9);
+  });
+
+  it('clamps a timestamp one hour ahead to 1', () => {
+    const future = new Date(Date.now() + 3600000).toISOString();
+    expect(AccessTracker.calculateRecencyScoreFromTimestamp(future)).toBe(1);
+    expect(DecayEngine.calculateDecayFactorStatic(future)).toBe(1);
+  });
+
+  it('returns NaN for an unparseable timestamp', () => {
+    expect(Number.isNaN(AccessTracker.calculateRecencyScoreFromTimestamp('not-a-date'))).toBe(true);
+    expect(Number.isNaN(DecayEngine.calculateDecayFactorStatic('not-a-date'))).toBe(true);
   });
 });
 
