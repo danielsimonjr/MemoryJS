@@ -543,7 +543,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/BatchTransaction.test.ts` | tests | test | 695 |
 | `tests/unit/core/columns/columns-review-fixes.test.ts` | tests | test | 338 |
 | `tests/unit/core/columns/IColumnStore.test.ts` | tests | test | 132 |
-| `tests/unit/core/columns/JsonlColumnStore.test.ts` | tests | test | 390 |
+| `tests/unit/core/columns/JsonlColumnStore.test.ts` | tests | test | 408 |
 | `tests/unit/core/columns/ObservationColumnStore-wiring.test.ts` | tests | test | 266 |
 | `tests/unit/core/columns/shadow-write-drain.test.ts` | tests | test | 109 |
 | `tests/unit/core/ConcurrencyControl.test.ts` | tests | test | 459 |
@@ -704,7 +704,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/search/TFIDFIndexManager.test.ts` | tests | test | 564 |
 | `tests/unit/search/tiered/BrotliColdTier.test.ts` | tests | test | 599 |
 | `tests/unit/search/tiered/disk-tier-concurrency.test.ts` | tests | test | 69 |
-| `tests/unit/search/tiered/DiskWarmTier.test.ts` | tests | test | 537 |
+| `tests/unit/search/tiered/DiskWarmTier.test.ts` | tests | test | 558 |
 | `tests/unit/search/tiered/ITieredIndex.test.ts` | tests | test | 175 |
 | `tests/unit/search/tiered/LRUHotTier.test.ts` | tests | test | 235 |
 | `tests/unit/search/tiered/tiered-review-fixes.test.ts` | tests | test | 275 |

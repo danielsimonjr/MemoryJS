@@ -3539,7 +3539,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 390
+      "loc": 408
     },
     {
       "file": "tests/unit/core/columns/ObservationColumnStore-wiring.test.ts",
@@ -4666,7 +4666,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 537
+      "loc": 558
     },
     {
       "file": "tests/unit/search/tiered/ITieredIndex.test.ts",
