@@ -1,4 +1,5 @@
 import * as fs from 'fs/promises';
+import { durableWriteFile } from './durableWriteFile.js';
 
 /**
  * Writes JSONL records to a file and updates the in-memory cache on success.
@@ -11,7 +12,7 @@ export async function writeJsonlRecordsUpdatingCache<T>(
 ): Promise<void> {
   const text = records.map(record => JSON.stringify(record)).join('\n');
   try {
-    await fs.writeFile(filePath, text);
+    await durableWriteFile(filePath, text);
   } catch (err) {
     onWriteFailure();
     throw err;
