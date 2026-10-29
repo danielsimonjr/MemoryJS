@@ -1089,7 +1089,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 238
+      "loc": 230
     },
     {
       "file": "src/core/EntityManager.ts",
@@ -1754,7 +1754,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 153
+      "loc": 146
     },
     {
       "file": "src/search/tiered/TieredIndex.ts",
@@ -2083,7 +2083,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 21
+      "loc": 44
     },
     {
       "file": "src/utils/nextMonotonicIsoTimestamp.ts",
