@@ -188,6 +188,8 @@ export interface PGRoundRecord {
   repairs: Array<{ source: string; target: string; relation: string }>;
   startedAt: string;
   finishedAt: string;
+  /** FailureRecord.id when this round was written by `applyGuardedEdit`. */
+  causedByFailureId?: string;
 }
 
 /**

@@ -79,6 +79,16 @@ export {
 } from './FailureManager.js';
 
 export {
+  applyGuardedEdit,
+  GuardedEditError,
+  type GuardedChange,
+  type GuardedEditContext,
+  type GuardedEditErrorCode,
+  type GuardedEditResult,
+  type GuardedScalarField,
+} from './GuardedComponentEdit.js';
+
+export {
   PlanManager,
   type PlanManagerConfig,
   type CreatePlanOptions,

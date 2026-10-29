@@ -64,4 +64,22 @@ describe('ContradictionDetector.supersede', () => {
     expect(v3.parentEntityName).toBe('alice-v2');
     expect(v3.rootEntityName).toBe('alice');
   });
+
+  it('preserveBody keeps every observation and stores causedByFailureId and lifecycleStatus', async () => {
+    const detector = new ContradictionDetector(mockSearch(), 0.85);
+    const old = (await ctx.entityManager.getEntity('alice'))!;
+    const updated = await detector.supersede(
+      old,
+      ['Extra fact'],
+      ctx.entityManager,
+      {
+        preserveBody: true,
+        causedByFailureId: 'failure-test-id',
+        lifecycleStatus: 'draft',
+      },
+    );
+    expect(updated.observations).toEqual(['Lives in NYC', 'Likes coffee', 'Extra fact']);
+    expect(updated.causedByFailureId).toBe('failure-test-id');
+    expect(updated.lifecycleStatus).toBe('draft');
+  });
 });

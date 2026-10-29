@@ -313,7 +313,7 @@ Three candidate ideas were checked against `src/`. Each one already has a store,
 
 Effort: **S**.
 
-#### M2. One guarded edit, saved as a new version and linked to that failure
+#### M2. ~~One guarded edit, saved as a new version and linked to that failure~~ — ✅ shipped
 
 **Already covered.** Versions, history, and audit retention already exist. M2 writes through those chains. Existing delete APIs stay available to their current callers.
 
@@ -380,7 +380,7 @@ Suggested order: **M1 → M2 → M3**. No new store, no new status enum, no work
 | **Enterprise** | Distributed coordinator, cloud-native artefacts, GDPR tooling, encryption layer |
 | **Long horizon** | GPU, GraphSAGE, KG completion, real-time WS transport, affective tagging (deferred P3) |
 | **Latent memory (Memorilla)** | Two enhancements, not new modules: E1 wire `semanticSearch` to the existing `embeddings` table and re-embed on `contentHash` change; E2 `sourceTokens` / `compressionRatio` / optional `maxSlots` on `ContextPackage`, ranking via `HybridSearchManager`. E3 finishes the `SummarizationService` provider and adds an optional excluded-entity summary; no production code calls it yet. Soft tokens and GRPO dropped. See [`MEMORILLA_LATENT_MEMORY_PLAN.md`](./MEMORILLA_LATENT_MEMORY_PLAN.md). |
-| **Failure-edit loop (EMMA)** | M2 `applyGuardedEdit`: one bounded change, new version, `causedByFailureId`, previous version kept. M3 that version starts `draft`, `noteHelped` publishes it, `retire` archives it. M1 shipped. See the EMMA research track above. |
+| **Failure-edit loop (EMMA)** | M3 draft/publish/retire on M2 versions. M2 shipped (`applyGuardedEdit`, `causedByFailureId`, guarded supersede). M1 shipped. See the EMMA research track above. |
 | **Out of scope** | Clawvault (sibling repo), sensory buffer (covered by ingest pipeline), Memorilla soft-token injection and in-core GRPO |
 
 **Genuinely active P1/P2 items: 6.** Everything else is gated, strategic, or long-horizon.

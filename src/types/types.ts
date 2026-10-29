@@ -135,6 +135,12 @@ export interface Entity {
   /** Name of the entity that superseded this one. */
   supersededBy?: string;
 
+  /**
+   * `FailureRecord.id` when this version was created by `applyGuardedEdit`.
+   * Absent on entities written before this field existed.
+   */
+  causedByFailureId?: string;
+
   // ==================== v1.11.0: Memory Engine ====================
 
   /**

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- EMMA M2: `applyGuardedEdit` for one failure-linked bounded edit, optional `causedByFailureId` on version entities and `PGRoundRecord`, `ContradictionDetector.supersede` `SupersedeOptions` (`preserveBody`, draft lifecycle), and audit `metadata.failureId`.
 - EMMA M1: optional `blamedComponent` on `FailureRecord`, `FailureManager.lookupByComponent`, and `PlanManager.findNodeOwners` for resolving plan-node blame at record time.
 - `uniqueTimeSuffix()` in `src/utils/ids.ts` returns the time in milliseconds, an underscore and 8 hex characters of a random UUID. Generated entity names use it, so two entries created in one millisecond get two names.
 - Pin test in `tests/unit/search/SemanticSearch.test.ts` ("replaces a row that another model wrote"). A row of another embedding model, such as the model `unknown` that older releases stored for turn embeddings, stays in SQLite but not in the vector store. `indexAll` embeds the entity again and the write replaces the row under the current model, so no separate migration is needed.
