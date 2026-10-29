@@ -72,16 +72,23 @@ export class LRUHotTier<K, V> implements IIndexTier<K, V> {
   private evictionCount = 0;
 
   constructor(options: LRUHotTierOptions<K, V> = {}) {
-    const filled = fillDefaults(options, {
+    const defaults: {
+      name: string;
+      maxEntries: number;
+      maxBytes: number;
+      estimateBytes: (key: K, value: V) => number;
+    } = {
       name: 'hot',
       maxEntries: DEFAULT_MAX_ENTRIES,
       maxBytes: Number.POSITIVE_INFINITY,
-    });
+      estimateBytes: (key, value) => defaultEstimateBytes(key, value),
+    };
+    const filled = fillDefaults(options, defaults);
     this.name = filled.name;
     this.maxEntries = filled.maxEntries;
     this.maxBytes = filled.maxBytes;
     this.onEvict = options.onEvict;
-    this.estimateBytesFn = options.estimateBytes ?? defaultEstimateBytes;
+    this.estimateBytesFn = filled.estimateBytes;
   }
 
   async get(key: K): Promise<V | undefined> {
