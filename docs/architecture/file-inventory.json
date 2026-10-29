@@ -1,12 +1,12 @@
 {
   "generated": "2026-10-29",
-  "totalFiles": 737,
+  "totalFiles": 739,
   "byDisposition": {
-    "reachable": 303,
+    "reachable": 304,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 414,
+    "test": 415,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -14,8 +14,8 @@
   },
   "byArea": {
     "benchmarks": 4,
-    "src": 307,
-    "tests": 414,
+    "src": 308,
+    "tests": 415,
     "tools": 10,
     "config": 2
   },
@@ -1383,7 +1383,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 253
+      "loc": 255
     },
     {
       "file": "src/index.ts",
@@ -1649,7 +1649,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 218
+      "loc": 220
     },
     {
       "file": "src/search/SearchFilterChain.ts",
@@ -2063,6 +2063,13 @@
       "area": "src",
       "disposition": "reachable",
       "loc": 113
+    },
+    {
+      "file": "src/utils/jsonlRecordFile.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 40
     },
     {
       "file": "src/utils/logger.ts",
@@ -4961,6 +4968,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 162
+    },
+    {
+      "file": "tests/unit/utils/jsonlRecordFile.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 81
     },
     {
       "file": "tests/unit/utils/logger.test.ts",
