@@ -347,6 +347,20 @@ export class PlanManager {
     return findNodeInTree(plan.rootGoal as GoalNode, nodeId as GoalNodeId);
   }
 
+  /**
+   * Plan ids whose goal tree contains `nodeId`. Empty when none do.
+   * Two plans can both contain one id; the caller decides what that means.
+   */
+  async findNodeOwners(nodeId: string): Promise<string[]> {
+    const plans = await this.listPlans();
+    const owners: string[] = [];
+    for (const plan of plans) {
+      const node = findNodeInTree(plan.rootGoal as GoalNode, nodeId as GoalNodeId);
+      if (node) owners.push(plan.id);
+    }
+    return owners;
+  }
+
   /** Return the root → currentNode path. */
   async getCurrentPath(planId: PlanId | string): Promise<Readonly<GoalNode>[]> {
     const plan = this.loadPlanReadonly(planId);

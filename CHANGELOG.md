@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- EMMA M1: optional `blamedComponent` on `FailureRecord`, `FailureManager.lookupByComponent`, and `PlanManager.findNodeOwners` for resolving plan-node blame at record time.
 - `uniqueTimeSuffix()` in `src/utils/ids.ts` returns the time in milliseconds, an underscore and 8 hex characters of a random UUID. Generated entity names use it, so two entries created in one millisecond get two names.
 - Pin test in `tests/unit/search/SemanticSearch.test.ts` ("replaces a row that another model wrote"). A row of another embedding model, such as the model `unknown` that older releases stored for turn embeddings, stays in SQLite but not in the vector store. `indexAll` embeds the entity again and the write replaces the row under the current model, so no separate migration is needed.
 - Pin tests for the time at which `runAction` (`src/cli/commands/helpers.ts`) logs a body error and calls `process.exit` (`tests/unit/cli/actionFrame.test.ts`, "time of the log and the exit"). A synchronous throw in the async body reaches the catch in the first microtask after `program.parse()` returns. The `runAction` JSDoc states why the CLI output and exit code do not change. No source behaviour changed.

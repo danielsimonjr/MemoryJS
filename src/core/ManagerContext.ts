@@ -1244,6 +1244,7 @@ export class ManagerContext {
     if (!this._failureManager) {
       this._failureManager = new FailureManager(this.storage, this.entityManager, {
         defaultLookupLimit: this.getEnvNumber('MEMORY_FAILURE_LOOKUP_LIMIT', 5, { integer: true, min: 1 }),
+        findPlanNodeOwners: (nodeId) => this.plan.findNodeOwners(nodeId),
       });
     }
     return this._failureManager;

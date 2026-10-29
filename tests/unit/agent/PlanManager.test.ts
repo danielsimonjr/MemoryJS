@@ -351,6 +351,36 @@ describe('PlanManager', () => {
     });
   });
 
+  describe('findNodeOwners', () => {
+    it('returns the plan id when the node is the root', async () => {
+      const plan = await pm.createPlan('root goal');
+      const owners = await pm.findNodeOwners(plan.rootGoal.id);
+      expect(owners).toEqual([plan.id]);
+    });
+
+    it('returns an empty list for an unknown node id', async () => {
+      await pm.createPlan('p');
+      expect(await pm.findNodeOwners('node-unknown')).toEqual([]);
+    });
+
+    it('returns both plan ids when two stored plans contain the same node id', async () => {
+      const plan = await pm.createPlan('shared');
+      const sharedNodeId = plan.rootGoal.id;
+      const stored = storage.getEntityByName(plan.id) as PlanEntity;
+      const copy: PlanEntity = {
+        ...stored,
+        name: 'plan-copy-id',
+        planRecord: {
+          ...stored.planRecord,
+          id: 'plan-copy-id',
+        },
+      };
+      await storage.appendEntity(copy as unknown as Entity);
+      const owners = await pm.findNodeOwners(sharedNodeId);
+      expect(owners.sort()).toEqual([plan.id, 'plan-copy-id'].sort());
+    });
+  });
+
   // ==================== getActivePlan / listPlans ====================
 
   describe('getActivePlan / listPlans', () => {

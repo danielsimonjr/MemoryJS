@@ -31,15 +31,31 @@ import type {
   FailureRecord,
   MarkResolvedResult,
 } from '../types/agent-memory.js';
-import { isFailureMemory, toIsoDateTime } from '../types/agent-memory.js';
+import {
+  BLAMED_COMPONENT_KINDS,
+  isFailureMemory,
+  isHeuristicMemory,
+  toIsoDateTime,
+} from '../types/agent-memory.js';
+import type { BlamedComponent, BlamedComponentKind } from '../types/agent-memory.js';
 import type { EntityManager } from '../core/EntityManager.js';
 import { versionedWriteFailure } from './versionedWriteFailure.js';
 import { validateNonEmpty } from '../utils/index.js';
+import {
+  PROCEDURE_ENTITY_TYPE,
+  PROCEDURE_STEP_ENTITY_TYPE,
+} from './procedural/ProcedureStore.js';
+import type { PGSnapshot } from '../types/proceduralGraph.js';
 
 /** Configuration for `FailureManager`. */
 export interface FailureManagerConfig {
   /** Default limit for `lookupForTask` results. Default: 5. */
   defaultLookupLimit?: number;
+  /**
+   * Required only when a record blames a `plan-node`.
+   * Return every plan id whose tree contains the node id.
+   */
+  findPlanNodeOwners?: (nodeId: string) => Promise<readonly string[]>;
 }
 
 /** Input shape for `record()` — id / timestamp / lifecycle are manager-managed. */
@@ -53,6 +69,11 @@ export interface FailureEntityOptions {
   importance?: number;
   /** Agent that recorded this failure. */
   agentId?: string;
+  /**
+   * Required when `blamedComponent.kind` is `pg-node`.
+   * `record` checks `snapshot.nodes` and does not store the snapshot.
+   */
+  pgSnapshot?: PGSnapshot;
 }
 
 /** Options for `lookupForTask`. */
@@ -100,6 +121,7 @@ export class FailureManager {
   private readonly storage: IGraphStorage;
   private readonly entityManager: EntityManager;
   private readonly defaultLookupLimit: number;
+  private readonly findPlanNodeOwners?: (nodeId: string) => Promise<readonly string[]>;
 
   constructor(
     storage: IGraphStorage,
@@ -109,6 +131,7 @@ export class FailureManager {
     this.storage = storage;
     this.entityManager = entityManager;
     this.defaultLookupLimit = config.defaultLookupLimit ?? 5;
+    this.findPlanNodeOwners = config.findPlanNodeOwners;
   }
 
   // ==================== Create ====================
@@ -132,6 +155,11 @@ export class FailureManager {
     validateNonEmpty(input.root_cause, 'root_cause', 'FailureManager');
     validateNonEmpty(input.applicability_hint, 'applicability_hint', 'FailureManager');
 
+    const blamedComponent = await this.resolveBlamedComponent(
+      input.blamedComponent,
+      options,
+    );
+
     const now = new Date();
     const nowIso = toIsoDateTime(now);
     const id = `failure-${randomUUID()}`;
@@ -146,6 +174,7 @@ export class FailureManager {
       applicability_hint: input.applicability_hint,
       lifecycle: { status: 'open' },
       sourceSessionId: input.sourceSessionId,
+      ...(blamedComponent !== undefined ? { blamedComponent } : {}),
     };
 
     const entity: FailureEntity = {
@@ -222,6 +251,32 @@ export class FailureManager {
     return scored.map((s) => s.rec);
   }
 
+  /**
+   * Failures whose `blamedComponent.id` equals `id`.
+   * Records that omit the field are absent.
+   * `options.status` matches `lookupForTask` (default `'open'`, or `'resolved'`, or `'all'`).
+   * `options.limit` caps the result. Omit it and the method returns every match.
+   * It does not use `defaultLookupLimit`.
+   * Match is on the id string only. Kind is ignored.
+   * Order is the order `loadAllFailureRecords` already returns.
+   */
+  async lookupByComponent(id: string, options: LookupOptions = {}): Promise<FailureRecord[]> {
+    if (typeof id !== 'string' || id.length === 0) return [];
+
+    const statusFilter = options.status ?? 'open';
+    const all = await this.loadAllFailureRecords();
+    let matched = all.filter(
+      (rec) => rec.blamedComponent !== undefined && rec.blamedComponent.id === id,
+    );
+    if (statusFilter !== 'all') {
+      matched = matched.filter((rec) => rec.lifecycle.status === statusFilter);
+    }
+    if (options.limit !== undefined) {
+      matched = matched.slice(0, options.limit);
+    }
+    return matched;
+  }
+
   // ==================== Lifecycle ====================
 
   /**
@@ -285,6 +340,97 @@ export class FailureManager {
   private async loadAllFailureRecords(): Promise<FailureRecord[]> {
     const graph = await this.storage.loadGraph();
     return graph.entities.filter(isFailureMemory).map((e) => e.failureRecord);
+  }
+
+  private async resolveBlamedComponent(
+    raw: FailureInput['blamedComponent'],
+    options: FailureEntityOptions,
+  ): Promise<BlamedComponent | undefined> {
+    if (raw === undefined) return undefined;
+
+    if (Array.isArray(raw) || raw === null || typeof raw !== 'object') {
+      throw new Error('FailureManager.record: blamedComponent must be a plain object');
+    }
+
+    const kind = (raw as { kind?: unknown }).kind;
+    const id = (raw as { id?: unknown }).id;
+
+    if (typeof kind !== 'string' || !(BLAMED_COMPONENT_KINDS as readonly string[]).includes(kind)) {
+      throw new Error('FailureManager.record: blamedComponent kind is invalid');
+    }
+    const blamedKind = kind as BlamedComponentKind;
+
+    if (typeof id !== 'string') {
+      throw new Error('FailureManager.record: blamedComponent.id must be a non-empty string');
+    }
+    validateNonEmpty(id, 'blamedComponent.id', 'FailureManager');
+    const componentId = id;
+
+    await this.assertBlamedComponentExists(blamedKind, componentId, options);
+
+    return { kind: blamedKind, id: componentId };
+  }
+
+  private async assertBlamedComponentExists(
+    kind: BlamedComponentKind,
+    id: string,
+    options: FailureEntityOptions,
+  ): Promise<void> {
+    switch (kind) {
+      case 'entity': {
+        if (this.storage.getEntityByName(id) === undefined) {
+          throw new Error(`FailureManager.record: unknown blamedComponent id '${id}' for kind '${kind}'`);
+        }
+        return;
+      }
+      case 'heuristic': {
+        const entity = this.storage.getEntityByName(id);
+        if (entity === undefined || !isHeuristicMemory(entity)) {
+          throw new Error(`FailureManager.record: unknown blamedComponent id '${id}' for kind '${kind}'`);
+        }
+        return;
+      }
+      case 'procedure': {
+        const entity = this.storage.getEntityByName(id);
+        if (
+          entity === undefined ||
+          (entity.entityType !== PROCEDURE_ENTITY_TYPE &&
+            entity.entityType !== PROCEDURE_STEP_ENTITY_TYPE)
+        ) {
+          throw new Error(`FailureManager.record: unknown blamedComponent id '${id}' for kind '${kind}'`);
+        }
+        return;
+      }
+      case 'plan-node': {
+        if (this.findPlanNodeOwners === undefined) {
+          throw new Error(
+            'FailureManager.record: plan-node blame requires findPlanNodeOwners on FailureManager config',
+          );
+        }
+        const owners = await this.findPlanNodeOwners(id);
+        if (owners.length === 0) {
+          throw new Error(`FailureManager.record: unknown blamedComponent id '${id}' for kind '${kind}'`);
+        }
+        if (owners.length >= 2) {
+          throw new Error(`FailureManager.record: plan-node id '${id}' is owned by multiple plans`);
+        }
+        return;
+      }
+      case 'pg-node': {
+        const snapshot = options.pgSnapshot;
+        if (snapshot === undefined) {
+          throw new Error('FailureManager.record: pg-node blame requires pgSnapshot in options');
+        }
+        const hits = snapshot.nodes.filter((n) => n.id === id);
+        if (hits.length !== 1) {
+          throw new Error(`FailureManager.record: unknown blamedComponent id '${id}' for kind '${kind}'`);
+        }
+        return;
+      }
+      default: {
+        throw new Error('FailureManager.record: blamedComponent kind is invalid');
+      }
+    }
   }
 }
 

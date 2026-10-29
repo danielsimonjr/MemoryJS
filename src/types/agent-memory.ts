@@ -1317,6 +1317,23 @@ export type FailureLifecycle =
   | { status: 'open' }
   | { status: 'resolved'; resolvedAt: IsoDateTime; resolvedReason?: string };
 
+export const BLAMED_COMPONENT_KINDS = [
+  'entity',
+  'heuristic',
+  'procedure',
+  'plan-node',
+  'pg-node',
+] as const;
+
+/** Allowed `BlamedComponent.kind` values for failure blame. */
+export type BlamedComponentKind = (typeof BLAMED_COMPONENT_KINDS)[number];
+
+/** One component a failure blames. The object holds one id. */
+export interface BlamedComponent {
+  kind: BlamedComponentKind;
+  id: string;
+}
+
 /**
  * Structured failure-memory record per the Agentic Memory Library
  * design catalog (Type 9). Designed for **pre-task semantic lookup**:
@@ -1365,6 +1382,11 @@ export interface FailureRecord {
    * `FailureDistillation`. Optional for manual `record()` calls.
    */
   sourceSessionId?: string;
+  /**
+   * The one component this failure blames. Absent on records written
+   * before this field existed. `record` stores `{ kind, id }` only.
+   */
+  blamedComponent?: BlamedComponent;
 }
 
 /**
