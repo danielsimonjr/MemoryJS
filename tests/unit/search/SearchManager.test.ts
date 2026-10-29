@@ -550,7 +550,7 @@ describe('SearchManager', () => {
 
     it('should search with tracking options', async () => {
       const mockTracker = {
-        recordAccess: vi.fn().mockResolvedValue(undefined),
+        recordAccessBatch: vi.fn().mockResolvedValue(undefined),
         getAccessHistory: async () => [],
       };
       manager.setAccessTracker(mockTracker as any);
@@ -561,7 +561,9 @@ describe('SearchManager', () => {
         taskId: 'test-task',
       });
 
-      expect(mockTracker.recordAccess).toHaveBeenCalled();
+      expect(mockTracker.recordAccessBatch).toHaveBeenCalled();
+      const [, context] = mockTracker.recordAccessBatch.mock.calls[0];
+      expect(context.retrievalMethod).toBe('search');
     });
   });
 });
