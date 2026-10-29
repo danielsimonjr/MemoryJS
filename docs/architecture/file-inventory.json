@@ -1306,7 +1306,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 196
+      "loc": 208
     },
     {
       "file": "src/features/FactExtractor.ts",
@@ -2244,7 +2244,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 86
+      "loc": 109
     },
     {
       "file": "tests/integration/features/governance-enforcement.test.ts",
@@ -2811,7 +2811,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 292
+      "loc": 424
     },
     {
       "file": "tests/unit/agent/HeuristicExtractionStage.test.ts",
