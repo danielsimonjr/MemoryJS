@@ -46,6 +46,12 @@ async function secureExistingOutput(filePath: string): Promise<void> {
   }
 }
 
+/** IO surface passed to streaming export body callbacks. */
+interface StreamWriteIo {
+  writeRaw(line: string): void;
+  writeItem(line: string, phase: string, bucket: 'entity' | 'relation'): void;
+}
+
 /**
  * Result summary from a streaming export operation.
  *
@@ -141,78 +147,23 @@ export class StreamingExporter {
     graph: ReadonlyKnowledgeGraph,
     options?: StreamingExportOptions
   ): Promise<StreamResult> {
-    // Check for early cancellation
-    checkCancellation(options?.signal, 'streamJSONL');
-
-    // Setup progress reporter
-    const reportProgress = createProgressReporter(options?.onProgress);
     const total = graph.entities.length + graph.relations.length;
-    let processed = 0;
-    reportProgress?.(createProgress(0, total, 'streamJSONL'));
-
-    const start = Date.now();
-    let bytesWritten = 0;
-    let entitiesWritten = 0;
-    let relationsWritten = 0;
-
-    await secureExistingOutput(this.filePath);
-    const writeStream = createWriteStream(this.filePath, { mode: 0o600 });
-
-    // Register error handler before any writes
-    let writeError: Error | null = null;
-    writeStream.on('error', (err) => { writeError = err; });
-
-    // Write entities
-    for (const entity of graph.entities) {
-      if (writeError) throw writeError;
-      checkCancellation(options?.signal, 'streamJSONL');
-
-      // Sec6: redact on a per-line copy; `entity` itself is never mutated.
-      const outEntity = options?.redactPii
-        ? { ...entity, observations: entity.observations.map((o) => STREAM_REDACTOR.redact(o)) }
-        : entity;
-      const line = JSON.stringify(outEntity) + '\n';
-      writeStream.write(line);
-      bytesWritten += Buffer.byteLength(line, 'utf-8');
-      entitiesWritten++;
-      processed++;
-      reportProgress?.(createProgress(processed, total, 'writing entities'));
-    }
-
-    // Write relations
-    for (const relation of graph.relations) {
-      if (writeError) throw writeError;
-      checkCancellation(options?.signal, 'streamJSONL');
-
-      const line = JSON.stringify(relation) + '\n';
-      writeStream.write(line);
-      bytesWritten += Buffer.byteLength(line, 'utf-8');
-      relationsWritten++;
-      processed++;
-      reportProgress?.(createProgress(processed, total, 'writing relations'));
-    }
-
-    checkCancellation(options?.signal, 'streamJSONL');
-
-    // Wait for stream to finish
-    await new Promise<void>((resolve, reject) => {
-      writeStream.end(() => {
-        if (writeError) reject(writeError);
-        else resolve();
-      });
-      writeStream.on('error', reject);
+    return this.writeStreamed({
+      operationName: 'streamJSONL',
+      total,
+      options,
+      writeBody: io => {
+        for (const entity of graph.entities) {
+          const outEntity = options?.redactPii
+            ? { ...entity, observations: entity.observations.map(o => STREAM_REDACTOR.redact(o)) }
+            : entity;
+          io.writeItem(JSON.stringify(outEntity) + '\n', 'writing entities', 'entity');
+        }
+        for (const relation of graph.relations) {
+          io.writeItem(JSON.stringify(relation) + '\n', 'writing relations', 'relation');
+        }
+      },
     });
-    await restrictSensitiveFilePermissions(this.filePath);
-
-    // Report completion
-    reportProgress?.(createProgress(total, total, 'streamJSONL'));
-
-    return {
-      bytesWritten,
-      entitiesWritten,
-      relationsWritten,
-      durationMs: Date.now() - start,
-    };
   }
 
   /**
@@ -244,52 +195,75 @@ export class StreamingExporter {
     graph: ReadonlyKnowledgeGraph,
     options?: StreamingExportOptions
   ): Promise<StreamResult> {
-    // Check for early cancellation
-    checkCancellation(options?.signal, 'streamCSV');
-
-    // Setup progress reporter
-    const reportProgress = createProgressReporter(options?.onProgress);
     const total = graph.entities.length;
-    let processed = 0;
-    reportProgress?.(createProgress(0, total, 'streamCSV'));
+    return this.writeStreamed({
+      operationName: 'streamCSV',
+      total,
+      options,
+      writeBody: io => {
+        const header = 'name,type,observations,tags,importance,createdAt,lastModified\n';
+        io.writeRaw(header);
+        for (const entity of graph.entities) {
+          const outEntity = options?.redactPii
+            ? { ...entity, observations: entity.observations.map(o => STREAM_REDACTOR.redact(o)) }
+            : entity;
+          io.writeItem(this.entityToCSVRow(outEntity) + '\n', 'writing entities', 'entity');
+        }
+      },
+    });
+  }
+
+  /**
+   * Shared streaming export frame for JSONL and CSV writers.
+   */
+  private async writeStreamed(args: {
+    operationName: string;
+    total: number;
+    options?: StreamingExportOptions;
+    writeBody: (io: StreamWriteIo) => void;
+  }): Promise<StreamResult> {
+    const { operationName, total, options, writeBody } = args;
+    checkCancellation(options?.signal, operationName);
+
+    const reportProgress = createProgressReporter(options?.onProgress);
+    reportProgress?.(createProgress(0, total, operationName));
 
     const start = Date.now();
     let bytesWritten = 0;
+    let processed = 0;
     let entitiesWritten = 0;
-    const relationsWritten = 0; // CSV format doesn't export relations
+    let relationsWritten = 0;
 
     await secureExistingOutput(this.filePath);
     const writeStream = createWriteStream(this.filePath, { mode: 0o600 });
 
-    // Register error handler before any writes
     let writeError: Error | null = null;
-    writeStream.on('error', (err) => { writeError = err; });
+    writeStream.on('error', err => {
+      writeError = err;
+    });
 
-    // Write header
-    const header = 'name,type,observations,tags,importance,createdAt,lastModified\n';
-    writeStream.write(header);
-    bytesWritten += Buffer.byteLength(header, 'utf-8');
+    const io: StreamWriteIo = {
+      writeRaw: line => {
+        if (writeError) throw writeError;
+        writeStream.write(line);
+        bytesWritten += Buffer.byteLength(line, 'utf-8');
+      },
+      writeItem: (line, phase, bucket) => {
+        if (writeError) throw writeError;
+        checkCancellation(options?.signal, operationName);
+        writeStream.write(line);
+        bytesWritten += Buffer.byteLength(line, 'utf-8');
+        processed++;
+        if (bucket === 'entity') entitiesWritten++;
+        if (bucket === 'relation') relationsWritten++;
+        reportProgress?.(createProgress(processed, total, phase));
+      },
+    };
 
-    // Write entity rows
-    for (const entity of graph.entities) {
-      if (writeError) throw writeError;
-      checkCancellation(options?.signal, 'streamCSV');
+    writeBody(io);
 
-      // Sec6: redact on a per-row copy; `entity` itself is never mutated.
-      const outEntity = options?.redactPii
-        ? { ...entity, observations: entity.observations.map((o) => STREAM_REDACTOR.redact(o)) }
-        : entity;
-      const row = this.entityToCSVRow(outEntity) + '\n';
-      writeStream.write(row);
-      bytesWritten += Buffer.byteLength(row, 'utf-8');
-      entitiesWritten++;
-      processed++;
-      reportProgress?.(createProgress(processed, total, 'writing entities'));
-    }
+    checkCancellation(options?.signal, operationName);
 
-    checkCancellation(options?.signal, 'streamCSV');
-
-    // Wait for stream to finish
     await new Promise<void>((resolve, reject) => {
       writeStream.end(() => {
         if (writeError) reject(writeError);
@@ -299,8 +273,7 @@ export class StreamingExporter {
     });
     await restrictSensitiveFilePermissions(this.filePath);
 
-    // Report completion
-    reportProgress?.(createProgress(total, total, 'streamCSV'));
+    reportProgress?.(createProgress(total, total, operationName));
 
     return {
       bytesWritten,
