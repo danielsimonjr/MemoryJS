@@ -40,6 +40,7 @@ import {
 import type { BlamedComponent, BlamedComponentKind } from '../types/agent-memory.js';
 import type { EntityManager } from '../core/EntityManager.js';
 import { versionedWriteFailure } from './versionedWriteFailure.js';
+import { loadProjectedRecords, matchesDefined } from './recordQuery.js';
 import { validateNonEmpty } from '../utils/index.js';
 import {
   PROCEDURE_ENTITY_TYPE,
@@ -328,18 +329,18 @@ export class FailureManager {
   /** Get all failures, optionally filtered. */
   async getAll(options: GetAllOptions = {}): Promise<FailureRecord[]> {
     const all = await this.loadAllFailureRecords();
-    return all.filter((rec) => {
-      if (options.status !== undefined && rec.lifecycle.status !== options.status) return false;
-      if (options.sourceSessionId !== undefined && rec.sourceSessionId !== options.sourceSessionId) return false;
-      return true;
-    });
+    return all.filter((rec) =>
+      matchesDefined([
+        [options.status, rec.lifecycle.status],
+        [options.sourceSessionId, rec.sourceSessionId],
+      ]),
+    );
   }
 
   // ==================== Internal ====================
 
   private async loadAllFailureRecords(): Promise<FailureRecord[]> {
-    const graph = await this.storage.loadGraph();
-    return graph.entities.filter(isFailureMemory).map((e) => e.failureRecord);
+    return loadProjectedRecords(this.storage, isFailureMemory, (e) => e.failureRecord);
   }
 
   private async resolveBlamedComponent(

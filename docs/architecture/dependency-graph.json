@@ -3,9 +3,9 @@
     "name": "@danielsimonjr/memoryjs",
     "version": "4.3.0",
     "lastUpdated": "2026-10-29",
-    "totalFiles": 307,
+    "totalFiles": 308,
     "totalModules": 12,
-    "totalExports": 2089
+    "totalExports": 2091
   },
   "entryPoints": [
     {
@@ -830,6 +830,12 @@
             ]
           },
           {
+            "file": "./recordQuery.js",
+            "imports": [
+              "matchesDefined"
+            ]
+          },
+          {
             "file": "../utils/index.js",
             "imports": [
               "validateNonEmpty",
@@ -1649,6 +1655,13 @@
             "imports": [
               "validateNonEmpty"
             ]
+          },
+          {
+            "file": "./recordQuery.js",
+            "imports": [
+              "loadProjectedRecords",
+              "matchesDefined"
+            ]
           }
         ],
         "exports": [
@@ -2160,6 +2173,13 @@
             "file": "./versionedWriteFailure.js",
             "imports": [
               "versionedWriteFailure"
+            ]
+          },
+          {
+            "file": "./recordQuery.js",
+            "imports": [
+              "loadProjectedRecords",
+              "matchesDefined"
             ]
           },
           {
@@ -2848,6 +2868,13 @@
             "imports": [
               "isPlanMemory",
               "toIsoDateTime"
+            ]
+          },
+          {
+            "file": "./recordQuery.js",
+            "imports": [
+              "loadProjectedRecords",
+              "matchesDefined"
             ]
           },
           {
@@ -8084,6 +8111,29 @@
           "ReconstructiveMemoryConfig",
           "ReconstructiveBacking",
           "BridgePersistResult"
+        ]
+      },
+      "src/agent/recordQuery.ts": {
+        "description": "Loads entities from storage, keeps those matching `isRecord`, and maps each to `project`.",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "Entity",
+              "IGraphStorage"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "loadProjectedRecords",
+          "matchesDefined"
+        ],
+        "functions": [
+          "loadProjectedRecords",
+          "matchesDefined"
         ]
       },
       "src/agent/retrieval/ActiveRetrievalController.ts": {
@@ -20539,6 +20589,7 @@
           "src/agent/reconstruction/MemoryToolkit.ts",
           "src/agent/reconstruction/ReconstructiveMemory.ts",
           "src/agent/reconstruction/index.ts",
+          "src/agent/recordQuery.ts",
           "src/agent/retrieval/ActiveRetrievalController.ts",
           "src/agent/retrieval/QueryRewriter.ts",
           "src/agent/retrieval/index.ts",
@@ -20799,28 +20850,28 @@
       "src/sqlite.ts",
       "src/workers/levenshteinWorker.ts"
     ],
-    "reachableCount": 307,
+    "reachableCount": 308,
     "dormantCount": 0,
     "orphaned": [],
     "testOnly": []
   },
   "statistics": {
-    "totalTypeScriptFiles": 307,
+    "totalTypeScriptFiles": 308,
     "totalModules": 12,
-    "totalLinesOfCode": 105380,
-    "totalExports": 2089,
+    "totalLinesOfCode": 105410,
+    "totalExports": 2091,
     "totalClasses": 237,
     "totalInterfaces": 631,
-    "totalFunctions": 364,
+    "totalFunctions": 366,
     "totalTypeGuards": 31,
     "totalEnums": 4,
     "totalConstants": 124,
     "totalReExports": 1349,
-    "totalTypeOnlyImports": 497,
+    "totalTypeOnlyImports": 498,
     "runtimeCircularDeps": 0,
     "typeOnlyCircularDeps": 8,
     "entryRoots": 4,
-    "reachableFiles": 307,
+    "reachableFiles": 308,
     "dormantFiles": 0,
     "orphanedFiles": 0,
     "testOnlyFiles": 0,
