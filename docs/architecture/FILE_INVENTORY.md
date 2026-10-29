@@ -158,7 +158,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/VisibilityResolver.ts` | src | reachable | 104 |
 | `src/agent/workingMemoryGuard.ts` | src | reachable | 39 |
 | `src/agent/WorkingMemoryManager.ts` | src | reachable | 817 |
-| `src/agent/WorkThreadManager.ts` | src | reachable | 812 |
+| `src/agent/WorkThreadManager.ts` | src | reachable | 801 |
 | `src/agent/world/index.ts` | src | reachable | 17 |
 | `src/agent/world/WorldModelManager.ts` | src | reachable | 128 |
 | `src/agent/world/WorldStateSnapshot.ts` | src | reachable | 125 |
@@ -516,7 +516,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/VisibilityResolver.test.ts` | tests | test | 462 |
 | `tests/unit/agent/workingMemoryGuard.test.ts` | tests | test | 104 |
 | `tests/unit/agent/WorkingMemoryManager.test.ts` | tests | test | 1269 |
-| `tests/unit/agent/WorkThreadManager.test.ts` | tests | test | 1197 |
+| `tests/unit/agent/WorkThreadManager.test.ts` | tests | test | 1209 |
 | `tests/unit/agent/WorldModel.test.ts` | tests | test | 176 |
 | `tests/unit/cli/actionFrame.test.ts` | tests | test | 446 |
 | `tests/unit/cli/audit.test.ts` | tests | test | 420 |

@@ -844,7 +844,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 812
+      "loc": 801
     },
     {
       "file": "src/agent/world/index.ts",
@@ -3350,7 +3350,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 1197
+      "loc": 1209
     },
     {
       "file": "tests/unit/agent/WorldModel.test.ts",
