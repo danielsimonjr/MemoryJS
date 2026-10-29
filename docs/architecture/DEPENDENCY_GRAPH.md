@@ -48,7 +48,7 @@ The codebase is organized into the following modules:
 - **security**: 5 files
 - **root**: 1 file
 - **types**: 12 files
-- **utils**: 44 files
+- **utils**: 45 files
 - **workers**: 1 file
 
 ---
@@ -63,7 +63,7 @@ Seeded build/entry roots (package `exports`, `bin` targets, tsup entries, script
 - `src/sqlite.ts`
 - `src/workers/levenshteinWorker.ts`
 
-Reachable from a root: **310** of 310 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
+Reachable from a root: **311** of 311 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
 
 ---
 
@@ -187,6 +187,7 @@ Reachable from a root: **310** of 310 files. Dormant: **0** (0 orphaned, 0 test-
 | `../types/types.js` | `IGraphStorage` | Import (type-only) |
 | `../types/agent-memory.js` | `AgentEntity, AccessContext, AccessPattern` | Import (type-only) |
 | `../utils/halfLife.js` | `clampedHalfLifeScore, halfLifeFactor` | Import |
+| `../utils/fillDefaults.js` | `fillDefaults` | Import |
 | `../types/agent-memory.js` | `AccessContext` | Re-export (type-only) |
 
 **Exports:**
@@ -454,6 +455,7 @@ Reachable from a root: **310** of 310 files. Dormant: **0** (0 orphaned, 0 test-
 | `../search/HybridSearchManager.js` | `HybridSearchManager` | Import (type-only) |
 | `./SummarizationService.js` | `SummarizationService` | Import (type-only) |
 | `../types/agent-memory.js` | `ContextWindowManagerConfig` | Import (type-only) |
+| `../utils/fillDefaults.js` | `fillDefaults` | Import |
 | `./ProjectContextManager.js` | `ProjectContextManager` | Dynamic import |
 | `../core/EntityManager.js` | `EntityManager` | Dynamic import |
 | `./ProfileManager.js` | `ProfileManager` | Dynamic import |
@@ -838,6 +840,7 @@ Reachable from a root: **310** of 310 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `../types/agent-memory.js` | `AgentEntity, ContextPackage` | Import (type-only) |
+| `../utils/fillDefaults.js` | `fillDefaults` | Import |
 
 **Exports:**
 - Classes: `MemoryFormatter`
@@ -1085,6 +1088,7 @@ Reachable from a root: **310** of 310 files. Dormant: **0** (0 orphaned, 0 test-
 | `./SummarizationService.js` | `SummarizationService` | Import |
 | `../features/FreshnessManager.js` | `FreshnessManager` | Import |
 | `./connectivity.js` | `computeDegreeMap, normalizedDegree, DegreeMap` | Import |
+| `../utils/fillDefaults.js` | `fillDefaults` | Import |
 | `../types/agent-memory.js` | `SalienceEngineConfig` | Import (type-only) |
 
 **Exports:**
@@ -1130,6 +1134,7 @@ Reachable from a root: **310** of 310 files. Dormant: **0** (0 orphaned, 0 test-
 | `../types/agent-memory.js` | `isSessionEntity` | Import |
 | `./WorkingMemoryManager.js` | `WorkingMemoryManager` | Import |
 | `./EpisodicMemoryManager.js` | `EpisodicMemoryManager` | Import (type-only) |
+| `../utils/fillDefaults.js` | `fillDefaults` | Import |
 
 **Exports:**
 - Classes: `SessionManager`
@@ -5276,6 +5281,13 @@ Reachable from a root: **310** of 310 files. Dormant: **0** (0 orphaned, 0 test-
 
 ---
 
+### `src/utils/fillDefaults.ts` - Copies each key of `defaults` onto a new object.
+
+**Exports:**
+- Functions: `fillDefaults`
+
+---
+
 ### `src/utils/formatters.ts` - Response and Pagination Formatters
 
 **Internal Dependencies:**
@@ -5619,8 +5631,8 @@ Reachable from a root: **310** of 310 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/agent/ConsolidationPipeline` | 16 files | 7 files |
 | `src/cli/formatters` | 2 files | 20 files |
 | `src/utils/textSimilarity` | 0 files | 21 files |
+| `src/agent/ContextWindowManager` | 15 files | 5 files |
 | `src/types/proceduralGraph` | 0 files | 20 files |
-| `src/agent/ContextWindowManager` | 14 files | 5 files |
 | `src/search/SearchManager` | 16 files | 3 files |
 | `src/utils/constants` | 0 files | 19 files |
 | `src/utils/entityUtils` | 3 files | 16 files |
@@ -5632,9 +5644,9 @@ Reachable from a root: **310** of 310 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/core/RelationManager` | 6 files | 11 files |
 | `src/features/index` | 16 files | 1 file |
 | `src/core/ObservationManager` | 10 files | 6 files |
+| `src/agent/SalienceEngine` | 8 files | 7 files |
 | `src/search/HybridSearchManager` | 10 files | 5 files |
 | `src/agent/MemoryEngine` | 10 files | 4 files |
-| `src/agent/SalienceEngine` | 7 files | 7 files |
 | `src/agent/WorkingMemoryManager` | 7 files | 7 files |
 | `src/core/SQLiteStorage` | 11 files | 3 files |
 | `src/core/index` | 13 files | 1 file |
@@ -5794,7 +5806,7 @@ graph TD
         N87[MemoryMonitor]
         N88[SchemaValidator]
         N89[WorkerPoolManager]
-        N90[...34 more]
+        N90[...35 more]
     end
 
     subgraph Workers
@@ -5885,21 +5897,21 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 310 |
+| Total TypeScript Files | 311 |
 | Total Modules | 12 |
-| Total Lines of Code | 105471 |
-| Total Exports | 2096 |
+| Total Lines of Code | 105499 |
+| Total Exports | 2097 |
 | Total Re-exports | 1349 |
 | Total Classes | 237 |
 | Total Interfaces | 631 |
-| Total Functions | 371 |
+| Total Functions | 372 |
 | Total Type Guards | 31 |
 | Total Enums | 4 |
 | Type-only Imports | 498 |
 | Runtime Circular Deps | 0 |
 | Type-only Circular Deps | 8 |
 | Entry/Build Roots | 4 |
-| Reachable Files | 310 |
+| Reachable Files | 311 |
 | Dormant Files (orphaned / test-only) | 0 (0 / 0) |
 
 ---

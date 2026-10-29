@@ -3,9 +3,9 @@
     "name": "@danielsimonjr/memoryjs",
     "version": "4.3.0",
     "lastUpdated": "2026-10-29",
-    "totalFiles": 310,
+    "totalFiles": 311,
     "totalModules": 12,
-    "totalExports": 2096
+    "totalExports": 2097
   },
   "entryPoints": [
     {
@@ -399,6 +399,12 @@
             "imports": [
               "clampedHalfLifeScore",
               "halfLifeFactor"
+            ]
+          },
+          {
+            "file": "../utils/fillDefaults.js",
+            "imports": [
+              "fillDefaults"
             ]
           },
           {
@@ -1397,6 +1403,12 @@
               "ContextWindowManagerConfig"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../utils/fillDefaults.js",
+            "imports": [
+              "fillDefaults"
+            ]
           },
           {
             "file": "./ProjectContextManager.js",
@@ -2598,6 +2610,12 @@
               "ContextPackage"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../utils/fillDefaults.js",
+            "imports": [
+              "fillDefaults"
+            ]
           }
         ],
         "exports": [
@@ -3333,6 +3351,12 @@
             ]
           },
           {
+            "file": "../utils/fillDefaults.js",
+            "imports": [
+              "fillDefaults"
+            ]
+          },
+          {
             "file": "../types/agent-memory.js",
             "imports": [
               "SalienceEngineConfig"
@@ -3489,6 +3513,12 @@
               "EpisodicMemoryManager"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../utils/fillDefaults.js",
+            "imports": [
+              "fillDefaults"
+            ]
           }
         ],
         "exports": [
@@ -18736,6 +18766,18 @@
           "getFieldByDotPath"
         ]
       },
+      "src/utils/fillDefaults.ts": {
+        "description": "Copies each key of `defaults` onto a new object.",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "fillDefaults"
+        ],
+        "functions": [
+          "fillDefaults"
+        ]
+      },
       "src/utils/formatters.ts": {
         "description": "Response and Pagination Formatters",
         "externalDependencies": [],
@@ -20885,6 +20927,7 @@
           "src/utils/errorSuggestions.ts",
           "src/utils/errors.ts",
           "src/utils/fieldPath.ts",
+          "src/utils/fillDefaults.ts",
           "src/utils/formatters.ts",
           "src/utils/graphCopy.ts",
           "src/utils/halfLife.ts",
@@ -20925,19 +20968,19 @@
       "src/sqlite.ts",
       "src/workers/levenshteinWorker.ts"
     ],
-    "reachableCount": 310,
+    "reachableCount": 311,
     "dormantCount": 0,
     "orphaned": [],
     "testOnly": []
   },
   "statistics": {
-    "totalTypeScriptFiles": 310,
+    "totalTypeScriptFiles": 311,
     "totalModules": 12,
-    "totalLinesOfCode": 105471,
-    "totalExports": 2096,
+    "totalLinesOfCode": 105499,
+    "totalExports": 2097,
     "totalClasses": 237,
     "totalInterfaces": 631,
-    "totalFunctions": 371,
+    "totalFunctions": 372,
     "totalTypeGuards": 31,
     "totalEnums": 4,
     "totalConstants": 124,
@@ -20946,7 +20989,7 @@
     "runtimeCircularDeps": 0,
     "typeOnlyCircularDeps": 8,
     "entryRoots": 4,
-    "reachableFiles": 310,
+    "reachableFiles": 311,
     "dormantFiles": 0,
     "orphanedFiles": 0,
     "testOnlyFiles": 0,

@@ -1,12 +1,12 @@
 {
   "generated": "2026-10-29",
-  "totalFiles": 742,
+  "totalFiles": 744,
   "byDisposition": {
-    "reachable": 306,
+    "reachable": 307,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 416,
+    "test": 417,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -14,8 +14,8 @@
   },
   "byArea": {
     "benchmarks": 4,
-    "src": 310,
-    "tests": 416,
+    "src": 311,
+    "tests": 417,
     "tools": 10,
     "config": 2
   },
@@ -102,7 +102,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 423
+      "loc": 425
     },
     {
       "file": "src/agent/AgentMemoryConfig.ts",
@@ -207,7 +207,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1933
+      "loc": 1935
     },
     {
       "file": "src/agent/DecayEngine.ts",
@@ -368,7 +368,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 516
+      "loc": 518
     },
     {
       "file": "src/agent/MemoryValidator.ts",
@@ -753,7 +753,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 747
+      "loc": 749
     },
     {
       "file": "src/agent/SessionCheckpoint.ts",
@@ -767,7 +767,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 683
+      "loc": 685
     },
     {
       "file": "src/agent/SessionQueryBuilder.ts",
@@ -2007,6 +2007,13 @@
       "area": "src",
       "disposition": "reachable",
       "loc": 35
+    },
+    {
+      "file": "src/utils/fillDefaults.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 18
     },
     {
       "file": "src/utils/formatters.ts",
@@ -3266,7 +3273,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 827
+      "loc": 848
     },
     {
       "file": "tests/unit/agent/SessionQueryBuilder.test.ts",
@@ -4954,6 +4961,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 50
+    },
+    {
+      "file": "tests/unit/utils/fillDefaults.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 22
     },
     {
       "file": "tests/unit/utils/formatters.test.ts",
