@@ -94,22 +94,7 @@ export class ObservationDedupManager {
     const maxGroups = options.maxGroups ?? 100;
 
     const candidates = await this.loadCandidateEntities(options);
-    const byHash = new Map<string, { observation: string; occurrences: DuplicateObservationOccurrence[] }>();
-
-    for (const entity of candidates) {
-      const obs = entity.observations ?? [];
-      for (let i = 0; i < obs.length; i++) {
-        const normalized = normalizeObservation(obs[i]);
-        if (normalized.length === 0) continue;
-        const hash = sha256(normalized);
-        let bucket = byHash.get(hash);
-        if (!bucket) {
-          bucket = { observation: normalized, occurrences: [] };
-          byHash.set(hash, bucket);
-        }
-        bucket.occurrences.push({ entityName: entity.name, observationIndex: i });
-      }
-    }
+    const byHash = this.bucketObservationsByHash(candidates);
 
     const groups: DuplicateObservationGroup[] = [];
     for (const b of byHash.values()) {
@@ -139,30 +124,13 @@ export class ObservationDedupManager {
       hash: string;
       occurrences: DuplicateObservationOccurrence[];
     };
-    // First pass: bucket exact duplicates so each unique normalized text
-    // appears once, with all its occurrences attached.
-    const byHash = new Map<string, Indexed>();
-    for (const entity of candidates) {
-      const obs = entity.observations ?? [];
-      for (let i = 0; i < obs.length; i++) {
-        const normalized = normalizeObservation(obs[i]);
-        if (normalized.length === 0) continue;
-        const hash = sha256(normalized);
-        let bucket = byHash.get(hash);
-        if (!bucket) {
-          bucket = {
-            normalized,
-            tokens: tokenSet(normalized),
-            hash,
-            occurrences: [],
-          };
-          byHash.set(hash, bucket);
-        }
-        bucket.occurrences.push({ entityName: entity.name, observationIndex: i });
-      }
-    }
-
-    const all = [...byHash.values()];
+    const byHash = this.bucketObservationsByHash(candidates);
+    const all: Indexed[] = [...byHash.entries()].map(([hash, bucket]) => ({
+      normalized: bucket.observation,
+      tokens: tokenSet(bucket.observation),
+      hash,
+      occurrences: bucket.occurrences,
+    }));
     // Pair-wise Jaccard; group transitively by union-find.
     const parent = new Map<string, string>();
     const find = (h: string): string => {
@@ -211,6 +179,27 @@ export class ObservationDedupManager {
   }
 
   // ==================== Internal ====================
+
+  private bucketObservationsByHash(
+    candidates: Entity[],
+  ): Map<string, { observation: string; occurrences: DuplicateObservationOccurrence[] }> {
+    const byHash = new Map<string, { observation: string; occurrences: DuplicateObservationOccurrence[] }>();
+    for (const entity of candidates) {
+      const obs = entity.observations ?? [];
+      for (let i = 0; i < obs.length; i++) {
+        const normalized = normalizeObservation(obs[i]);
+        if (normalized.length === 0) continue;
+        const hash = sha256(normalized);
+        let bucket = byHash.get(hash);
+        if (!bucket) {
+          bucket = { observation: normalized, occurrences: [] };
+          byHash.set(hash, bucket);
+        }
+        bucket.occurrences.push({ entityName: entity.name, observationIndex: i });
+      }
+    }
+    return byHash;
+  }
 
   private async loadCandidateEntities(filter: ObservationDedupFilter): Promise<Entity[]> {
     const graph = await this.storage.loadGraph();
