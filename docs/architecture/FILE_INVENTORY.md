@@ -47,7 +47,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `benchmarks/synthetic-bench.ts` | benchmarks | bench | 142 |
 | `src/adapters/ApiKeyAuthMiddleware.ts` | src | reachable | 193 |
 | `src/adapters/index.ts` | src | reachable | 51 |
-| `src/adapters/LangChainMemoryAdapter.ts` | src | reachable | 185 |
+| `src/adapters/LangChainMemoryAdapter.ts` | src | reachable | 194 |
 | `src/adapters/MCPToolObserverAdapter.ts` | src | reachable | 78 |
 | `src/adapters/pagination.ts` | src | reachable | 92 |
 | `src/adapters/RateLimiter.ts` | src | reachable | 206 |
@@ -64,12 +64,12 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/CollaborativeSynthesis.ts` | src | reachable | 355 |
 | `src/agent/ConflictResolver.ts` | src | reachable | 467 |
 | `src/agent/connectivity.ts` | src | reachable | 66 |
-| `src/agent/ConsolidationPipeline.ts` | src | reachable | 1885 |
-| `src/agent/ConsolidationScheduler.ts` | src | reachable | 239 |
+| `src/agent/ConsolidationPipeline.ts` | src | reachable | 1889 |
+| `src/agent/ConsolidationScheduler.ts` | src | reachable | 243 |
 | `src/agent/ContextProfileManager.ts` | src | reachable | 301 |
 | `src/agent/ContextWindowManager.ts` | src | reachable | 1935 |
 | `src/agent/DecayEngine.ts` | src | reachable | 751 |
-| `src/agent/DecayScheduler.ts` | src | reachable | 242 |
+| `src/agent/DecayScheduler.ts` | src | reachable | 246 |
 | `src/agent/DecisionManager.ts` | src | reachable | 425 |
 | `src/agent/DistillationPipeline.ts` | src | reachable | 204 |
 | `src/agent/DistillationPolicy.ts` | src | reachable | 339 |
@@ -139,7 +139,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/reconstruction/MemoryToolkit.ts` | src | reachable | 111 |
 | `src/agent/reconstruction/ReconstructiveMemory.ts` | src | reachable | 151 |
 | `src/agent/recordQuery.ts` | src | reachable | 30 |
-| `src/agent/RelationConsolidator.ts` | src | reachable | 956 |
+| `src/agent/RelationConsolidator.ts` | src | reachable | 962 |
 | `src/agent/retrieval/ActiveRetrievalController.ts` | src | reachable | 189 |
 | `src/agent/retrieval/index.ts` | src | reachable | 20 |
 | `src/agent/retrieval/QueryRewriter.ts` | src | reachable | 83 |
@@ -157,7 +157,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/versionedWriteFailure.ts` | src | reachable | 26 |
 | `src/agent/VisibilityResolver.ts` | src | reachable | 104 |
 | `src/agent/workingMemoryGuard.ts` | src | reachable | 39 |
-| `src/agent/WorkingMemoryManager.ts` | src | reachable | 813 |
+| `src/agent/WorkingMemoryManager.ts` | src | reachable | 817 |
 | `src/agent/WorkThreadManager.ts` | src | reachable | 812 |
 | `src/agent/world/index.ts` | src | reachable | 17 |
 | `src/agent/world/WorldModelManager.ts` | src | reachable | 128 |
@@ -288,7 +288,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/search/tiered/BrotliColdTier.ts` | src | reachable | 169 |
 | `src/search/tiered/DiskWarmTier.ts` | src | reachable | 168 |
 | `src/search/tiered/ITieredIndex.ts` | src | reachable | 225 |
-| `src/search/tiered/LRUHotTier.ts` | src | reachable | 164 |
+| `src/search/tiered/LRUHotTier.ts` | src | reachable | 177 |
 | `src/search/tiered/MapFileTier.ts` | src | reachable | 146 |
 | `src/search/tiered/TieredIndex.ts` | src | reachable | 319 |
 | `src/search/VectorStore.ts` | src | reachable | 473 |
@@ -425,8 +425,8 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/CollaborativeSynthesis.test.ts` | tests | test | 710 |
 | `tests/unit/agent/ConflictResolver.test.ts` | tests | test | 466 |
 | `tests/unit/agent/ConnectivitySignals.test.ts` | tests | test | 478 |
-| `tests/unit/agent/ConsolidationPipeline.test.ts` | tests | test | 2361 |
-| `tests/unit/agent/ConsolidationScheduler.test.ts` | tests | test | 363 |
+| `tests/unit/agent/ConsolidationPipeline.test.ts` | tests | test | 2371 |
+| `tests/unit/agent/ConsolidationScheduler.test.ts` | tests | test | 371 |
 | `tests/unit/agent/context-window-manager-compress.test.ts` | tests | test | 166 |
 | `tests/unit/agent/context-window-manager-wakeup.test.ts` | tests | test | 226 |
 | `tests/unit/agent/ContextProfileManager.test.ts` | tests | test | 526 |
@@ -499,7 +499,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/reconstruction/ReconstructiveMemory.test.ts` | tests | test | 135 |
 | `tests/unit/agent/recordQuery.test.ts` | tests | test | 23 |
 | `tests/unit/agent/ReflectionStage.test.ts` | tests | test | 344 |
-| `tests/unit/agent/RelationConsolidator.test.ts` | tests | test | 670 |
+| `tests/unit/agent/RelationConsolidator.test.ts` | tests | test | 678 |
 | `tests/unit/agent/RoleProfiles.test.ts` | tests | test | 255 |
 | `tests/unit/agent/RuleEvaluator.test.ts` | tests | test | 310 |
 | `tests/unit/agent/SalienceEngine-heap-pins.test.ts` | tests | test | 179 |
@@ -711,7 +711,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/search/tiered/disk-tier-concurrency.test.ts` | tests | test | 69 |
 | `tests/unit/search/tiered/DiskWarmTier.test.ts` | tests | test | 558 |
 | `tests/unit/search/tiered/ITieredIndex.test.ts` | tests | test | 175 |
-| `tests/unit/search/tiered/LRUHotTier.test.ts` | tests | test | 235 |
+| `tests/unit/search/tiered/LRUHotTier.test.ts` | tests | test | 252 |
 | `tests/unit/search/tiered/tiered-review-fixes.test.ts` | tests | test | 275 |
 | `tests/unit/search/tiered/TieredIndex-wiring.test.ts` | tests | test | 142 |
 | `tests/unit/search/tiered/TieredIndex.test.ts` | tests | test | 270 |

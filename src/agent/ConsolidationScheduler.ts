@@ -19,6 +19,7 @@ import { logger } from '../utils/logger.js';
 import type { ConsolidationPipeline } from './ConsolidationPipeline.js';
 import type { CompressionManager } from '../features/CompressionManager.js';
 import type { ConsolidationResult } from '../types/agent-memory.js';
+import { fillDefaults } from '../utils/fillDefaults.js';
 
 // ==================== Types ====================
 
@@ -103,10 +104,13 @@ export class ConsolidationScheduler extends EventEmitter {
     super();
     this.pipeline = pipeline;
     this.compressionManager = compressionManager;
+    const filled = fillDefaults(config, {
+      consolidationIntervalMs: 60 * 60 * 1000,
+      autoMergeDuplicates: false,
+      duplicateThreshold: 0.9,
+    });
     this.config = {
-      consolidationIntervalMs: config.consolidationIntervalMs ?? 60 * 60 * 1000,
-      autoMergeDuplicates: config.autoMergeDuplicates ?? false,
-      duplicateThreshold: config.duplicateThreshold ?? 0.9,
+      ...filled,
       onConsolidationComplete: config.onConsolidationComplete,
       onError: config.onError,
     };

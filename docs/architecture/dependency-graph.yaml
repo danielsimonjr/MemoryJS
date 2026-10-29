@@ -61,6 +61,9 @@ modules:
           imports:
             - MemoryEngine
           typeOnly: true
+        - file: ../utils/fillDefaults.js
+          imports:
+            - fillDefaults
         - file: ../types/agent-memory.js
           imports:
             - AgentEntity
@@ -772,6 +775,9 @@ modules:
           imports:
             - ReflectionScope
           typeOnly: true
+        - file: ../utils/fillDefaults.js
+          imports:
+            - fillDefaults
       exports:
         - ConsolidationPipeline
         - ProspectivePromotionStage
@@ -814,6 +820,9 @@ modules:
           imports:
             - ConsolidationResult
           typeOnly: true
+        - file: ../utils/fillDefaults.js
+          imports:
+            - fillDefaults
       exports:
         - ConsolidationScheduler
       classes:
@@ -1010,6 +1019,9 @@ modules:
         - file: ../utils/logger.js
           imports:
             - logger
+        - file: ../utils/fillDefaults.js
+          imports:
+            - fillDefaults
         - file: ../types/agent-memory.js
           imports:
             - DecayResult
@@ -1997,6 +2009,9 @@ modules:
             - AgentEntity
             - ConsolidateOptions
           typeOnly: true
+        - file: ../utils/fillDefaults.js
+          imports:
+            - fillDefaults
       exports:
         - normalizeRelationType
         - relationKey
@@ -2466,6 +2481,9 @@ modules:
           imports:
             - LowEntropyContentError
             - MemoryWriteBlockedError
+        - file: ../utils/fillDefaults.js
+          imports:
+            - fillDefaults
         - file: ../utils/entityUtils.js
           imports:
             - hash31
@@ -11041,6 +11059,9 @@ modules:
           imports:
             - IIndexTier
           typeOnly: true
+        - file: ../../utils/fillDefaults.js
+          imports:
+            - fillDefaults
       exports:
         - LRUHotTier
       classes:
@@ -14865,7 +14886,7 @@ reachability:
 statistics:
   totalTypeScriptFiles: 311
   totalModules: 12
-  totalLinesOfCode: 105499
+  totalLinesOfCode: 105543
   totalExports: 2097
   totalClasses: 237
   totalInterfaces: 631

@@ -94,6 +94,7 @@ Reachable from a root: **311** of 311 files. Dormant: **0** (0 orphaned, 0 test-
 |------|---------|------|
 | `../core/ManagerContext.js` | `ManagerContext` | Import (type-only) |
 | `../agent/MemoryEngine.js` | `MemoryEngine` | Import (type-only) |
+| `../utils/fillDefaults.js` | `fillDefaults` | Import |
 | `../types/agent-memory.js` | `AgentEntity` | Import (type-only) |
 
 **Exports:**
@@ -398,6 +399,7 @@ Reachable from a root: **311** of 311 files. Dormant: **0** (0 orphaned, 0 test-
 | `../types/agent-memory.js` | `HeuristicId` | Import (type-only) |
 | `./ObservationDedupManager.js` | `ObservationDedupManager, ObservationDedupFilter` | Import (type-only) |
 | `../types/agent-memory.js` | `ReflectionScope` | Import (type-only) |
+| `../utils/fillDefaults.js` | `fillDefaults` | Import |
 
 **Exports:**
 - Classes: `ConsolidationPipeline`, `ProspectivePromotionStage`, `ReflectionStage`, `HeuristicExtractionStage`, `ObservationDedupReportStage`
@@ -419,6 +421,7 @@ Reachable from a root: **311** of 311 files. Dormant: **0** (0 orphaned, 0 test-
 | `./ConsolidationPipeline.js` | `ConsolidationPipeline` | Import (type-only) |
 | `../features/CompressionManager.js` | `CompressionManager` | Import (type-only) |
 | `../types/agent-memory.js` | `ConsolidationResult` | Import (type-only) |
+| `../utils/fillDefaults.js` | `fillDefaults` | Import |
 
 **Exports:**
 - Classes: `ConsolidationScheduler`
@@ -499,6 +502,7 @@ Reachable from a root: **311** of 311 files. Dormant: **0** (0 orphaned, 0 test-
 | `../types/agent-memory.js` | `DecayResult, ForgetResult, ForgetOptions` | Import (type-only) |
 | `./DecayEngine.js` | `DecayEngine` | Import (type-only) |
 | `../utils/logger.js` | `logger` | Import |
+| `../utils/fillDefaults.js` | `fillDefaults` | Import |
 | `../types/agent-memory.js` | `DecayResult, ForgetResult` | Re-export (type-only) |
 
 **Exports:**
@@ -1025,6 +1029,7 @@ Reachable from a root: **311** of 311 files. Dormant: **0** (0 orphaned, 0 test-
 | `../utils/textSimilarity.js` | `cosineParts` | Import |
 | `./ConsolidationPipeline.js` | `PipelineStage, StageResult` | Import (type-only) |
 | `../types/agent-memory.js` | `AgentEntity, ConsolidateOptions` | Import (type-only) |
+| `../utils/fillDefaults.js` | `fillDefaults` | Import |
 
 **Exports:**
 - Classes: `RelationConsolidator`, `RelationConsolidationStage`
@@ -1270,6 +1275,7 @@ Reachable from a root: **311** of 311 files. Dormant: **0** (0 orphaned, 0 test-
 | `../types/agent-memory.js` | `isAgentEntity` | Import |
 | `./EntropyFilter.js` | `passesEntropyFilter, EntropyFilterConfig` | Import |
 | `../utils/errors.js` | `LowEntropyContentError, MemoryWriteBlockedError` | Import |
+| `../utils/fillDefaults.js` | `fillDefaults` | Import |
 | `../utils/entityUtils.js` | `hash31` | Import |
 | `./ExclusionManager.js` | `ExclusionManager` | Import (type-only) |
 | `./workingMemoryGuard.js` | `requireWorkingMemoryEntity` | Import |
@@ -4732,6 +4738,7 @@ Reachable from a root: **311** of 311 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `./ITieredIndex.js` | `IIndexTier` | Import (type-only) |
+| `../../utils/fillDefaults.js` | `fillDefaults` | Import |
 
 **Exports:**
 - Classes: `LRUHotTier`
@@ -5628,7 +5635,7 @@ Reachable from a root: **311** of 311 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/utils/errors` | 0 files | 28 files |
 | `src/cli/commands/helpers` | 4 files | 23 files |
 | `src/cli/commands/index` | 24 files | 1 file |
-| `src/agent/ConsolidationPipeline` | 16 files | 7 files |
+| `src/agent/ConsolidationPipeline` | 17 files | 7 files |
 | `src/cli/formatters` | 2 files | 20 files |
 | `src/utils/textSimilarity` | 0 files | 21 files |
 | `src/agent/ContextWindowManager` | 15 files | 5 files |
@@ -5645,9 +5652,9 @@ Reachable from a root: **311** of 311 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/features/index` | 16 files | 1 file |
 | `src/core/ObservationManager` | 10 files | 6 files |
 | `src/agent/SalienceEngine` | 8 files | 7 files |
+| `src/agent/WorkingMemoryManager` | 8 files | 7 files |
 | `src/search/HybridSearchManager` | 10 files | 5 files |
 | `src/agent/MemoryEngine` | 10 files | 4 files |
-| `src/agent/WorkingMemoryManager` | 7 files | 7 files |
 | `src/core/SQLiteStorage` | 11 files | 3 files |
 | `src/core/index` | 13 files | 1 file |
 | `src/agent/GuardedComponentEdit` | 12 files | 1 file |
@@ -5899,7 +5906,7 @@ graph TD
 |----------|-------|
 | Total TypeScript Files | 311 |
 | Total Modules | 12 |
-| Total Lines of Code | 105499 |
+| Total Lines of Code | 105543 |
 | Total Exports | 2097 |
 | Total Re-exports | 1349 |
 | Total Classes | 237 |

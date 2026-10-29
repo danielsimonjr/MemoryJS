@@ -91,6 +91,12 @@
             "typeOnly": true
           },
           {
+            "file": "../utils/fillDefaults.js",
+            "imports": [
+              "fillDefaults"
+            ]
+          },
+          {
             "file": "../types/agent-memory.js",
             "imports": [
               "AgentEntity"
@@ -1214,6 +1220,12 @@
               "ReflectionScope"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../utils/fillDefaults.js",
+            "imports": [
+              "fillDefaults"
+            ]
           }
         ],
         "exports": [
@@ -1277,6 +1289,12 @@
               "ConsolidationResult"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../utils/fillDefaults.js",
+            "imports": [
+              "fillDefaults"
+            ]
           }
         ],
         "exports": [
@@ -1583,6 +1601,12 @@
             "file": "../utils/logger.js",
             "imports": [
               "logger"
+            ]
+          },
+          {
+            "file": "../utils/fillDefaults.js",
+            "imports": [
+              "fillDefaults"
             ]
           },
           {
@@ -3148,6 +3172,12 @@
               "ConsolidateOptions"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../utils/fillDefaults.js",
+            "imports": [
+              "fillDefaults"
+            ]
           }
         ],
         "exports": [
@@ -3870,6 +3900,12 @@
             "imports": [
               "LowEntropyContentError",
               "MemoryWriteBlockedError"
+            ]
+          },
+          {
+            "file": "../utils/fillDefaults.js",
+            "imports": [
+              "fillDefaults"
             ]
           },
           {
@@ -16417,6 +16453,12 @@
               "IIndexTier"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../../utils/fillDefaults.js",
+            "imports": [
+              "fillDefaults"
+            ]
           }
         ],
         "exports": [
@@ -20976,7 +21018,7 @@
   "statistics": {
     "totalTypeScriptFiles": 311,
     "totalModules": 12,
-    "totalLinesOfCode": 105499,
+    "totalLinesOfCode": 105543,
     "totalExports": 2097,
     "totalClasses": 237,
     "totalInterfaces": 631,

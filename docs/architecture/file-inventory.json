@@ -67,7 +67,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 185
+      "loc": 194
     },
     {
       "file": "src/adapters/MCPToolObserverAdapter.ts",
@@ -186,14 +186,14 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1885
+      "loc": 1889
     },
     {
       "file": "src/agent/ConsolidationScheduler.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 239
+      "loc": 243
     },
     {
       "file": "src/agent/ContextProfileManager.ts",
@@ -221,7 +221,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 242
+      "loc": 246
     },
     {
       "file": "src/agent/DecisionManager.ts",
@@ -711,7 +711,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 956
+      "loc": 962
     },
     {
       "file": "src/agent/retrieval/ActiveRetrievalController.ts",
@@ -837,7 +837,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 813
+      "loc": 817
     },
     {
       "file": "src/agent/WorkThreadManager.ts",
@@ -1754,7 +1754,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 164
+      "loc": 177
     },
     {
       "file": "src/search/tiered/MapFileTier.ts",
@@ -2713,14 +2713,14 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 2361
+      "loc": 2371
     },
     {
       "file": "tests/unit/agent/ConsolidationScheduler.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 363
+      "loc": 371
     },
     {
       "file": "tests/unit/agent/context-window-manager-compress.test.ts",
@@ -3231,7 +3231,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 670
+      "loc": 678
     },
     {
       "file": "tests/unit/agent/RoleProfiles.test.ts",
@@ -4715,7 +4715,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 235
+      "loc": 252
     },
     {
       "file": "tests/unit/search/tiered/tiered-review-fixes.test.ts",
