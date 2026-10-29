@@ -527,6 +527,42 @@ describe('SalienceEngine', () => {
       // With keyword matching, name match returns 1.0
       expect(relevance).toBe(1.0);
     });
+
+    it('keeps keyword tiers apart when semantic similarity is off', () => {
+      const keywordEngine = new SalienceEngine(storage, accessTracker, decayEngine, {
+        useSemanticSimilarity: false,
+      });
+      const named = createTestEntity({ name: 'hotel_preferences', observations: ['x'] });
+      expect(keywordEngine.calculateTaskRelevance(named, 'hotel')).toBe(0.8);
+      expect(keywordEngine.calculateQueryRelevance(named, 'hotel')).toBe(1.0);
+
+      const typed = createTestEntity({ name: 'other', entityType: 'booking', observations: [] });
+      expect(keywordEngine.calculateQueryRelevance(typed, 'booking')).toBe(0.7);
+
+      const intentName = createTestEntity({ name: 'purchase tickets', observations: [] });
+      expect(keywordEngine.calculateIntentRelevance(intentName, 'purchase')).toBe(0);
+      const intentObs = createTestEntity({ name: 'other', observations: ['purchase tickets'] });
+      expect(keywordEngine.calculateIntentRelevance(intentObs, 'purchase')).toBe(0.8);
+    });
+
+    it('returns a stub similarity for all three methods when semantic is on', () => {
+      const stub = vi.fn().mockReturnValue(0.42);
+      const engine = new SalienceEngine(storage, accessTracker, decayEngine, {
+        useSemanticSimilarity: true,
+      });
+      (engine as unknown as { summarizationService: { calculateSimilarity: typeof stub } }).summarizationService = {
+        calculateSimilarity: stub,
+      };
+      const entity = createTestEntity({
+        name: 'hotel_preferences',
+        entityType: 'booking',
+        observations: ['purchase tickets'],
+      });
+      expect(engine.calculateTaskRelevance(entity, 'hotel')).toBe(0.42);
+      expect(engine.calculateQueryRelevance(entity, 'hotel')).toBe(0.42);
+      expect(engine.calculateIntentRelevance(entity, 'purchase')).toBe(0.42);
+      expect(stub).toHaveBeenCalledTimes(3);
+    });
   });
 
   describe('Sprint 17: enhanced novelty calculation', () => {
