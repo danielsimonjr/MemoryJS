@@ -364,7 +364,7 @@ export class AgentMemoryManager extends EventEmitter {
 
   async retrieveForContext(options: RetrieveContextOptions = {}): Promise<ContextPackage> {
     const retrievalOptions: ContextRetrievalOptions = {
-      maxTokens: options.maxTokens ?? 4000,
+      maxTokens: options.maxTokens ?? this.config.contextWindow?.defaultMaxTokens ?? 4000,
       context: {
         currentSession: options.sessionId,
         currentTask: options.taskId,
