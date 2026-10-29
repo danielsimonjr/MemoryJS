@@ -3,9 +3,9 @@
     "name": "@danielsimonjr/memoryjs",
     "version": "4.3.0",
     "lastUpdated": "2026-10-29",
-    "totalFiles": 308,
+    "totalFiles": 309,
     "totalModules": 12,
-    "totalExports": 2091
+    "totalExports": 2092
   },
   "entryPoints": [
     {
@@ -14380,7 +14380,14 @@
         "description": "N-gram Index",
         "externalDependencies": [],
         "nodeDependencies": [],
-        "internalDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../utils/postingIndex.js",
+            "imports": [
+              "removeIdFromPostings"
+            ]
+          }
+        ],
         "exports": [
           "NGramIndex"
         ],
@@ -19778,6 +19785,12 @@
               "Relation"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "./postingIndex.js",
+            "imports": [
+              "removeIdFromPostings"
+            ]
           }
         ],
         "exports": [
@@ -19922,6 +19935,18 @@
           "parallelMap",
           "parallelFilter",
           "getPoolStats"
+        ]
+      },
+      "src/utils/postingIndex.ts": {
+        "description": "Deletes `id` from each posting set named by `terms`, and drops empty sets.",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "removeIdFromPostings"
+        ],
+        "functions": [
+          "removeIdFromPostings"
         ]
       },
       "src/utils/relationHelpers.ts": {
@@ -20824,6 +20849,7 @@
           "src/utils/nextMonotonicIsoTimestamp.ts",
           "src/utils/operationUtils.ts",
           "src/utils/parallelUtils.ts",
+          "src/utils/postingIndex.ts",
           "src/utils/relationHelpers.ts",
           "src/utils/relationValidation.ts",
           "src/utils/schemas.ts",
@@ -20850,19 +20876,19 @@
       "src/sqlite.ts",
       "src/workers/levenshteinWorker.ts"
     ],
-    "reachableCount": 308,
+    "reachableCount": 309,
     "dormantCount": 0,
     "orphaned": [],
     "testOnly": []
   },
   "statistics": {
-    "totalTypeScriptFiles": 308,
+    "totalTypeScriptFiles": 309,
     "totalModules": 12,
-    "totalLinesOfCode": 105410,
-    "totalExports": 2091,
+    "totalLinesOfCode": 105417,
+    "totalExports": 2092,
     "totalClasses": 237,
     "totalInterfaces": 631,
-    "totalFunctions": 366,
+    "totalFunctions": 367,
     "totalTypeGuards": 31,
     "totalEnums": 4,
     "totalConstants": 124,
@@ -20871,7 +20897,7 @@
     "runtimeCircularDeps": 0,
     "typeOnlyCircularDeps": 8,
     "entryRoots": 4,
-    "reachableFiles": 308,
+    "reachableFiles": 309,
     "dormantFiles": 0,
     "orphanedFiles": 0,
     "testOnlyFiles": 0,

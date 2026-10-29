@@ -48,7 +48,7 @@ The codebase is organized into the following modules:
 - **security**: 5 files
 - **root**: 1 file
 - **types**: 12 files
-- **utils**: 42 files
+- **utils**: 43 files
 - **workers**: 1 file
 
 ---
@@ -63,7 +63,7 @@ Seeded build/entry roots (package `exports`, `bin` targets, tsup entries, script
 - `src/sqlite.ts`
 - `src/workers/levenshteinWorker.ts`
 
-Reachable from a root: **308** of 308 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
+Reachable from a root: **309** of 309 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
 
 ---
 
@@ -4154,6 +4154,11 @@ Reachable from a root: **308** of 308 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/search/NGramIndex.ts` - N-gram Index
 
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../utils/postingIndex.js` | `removeIdFromPostings` | Import |
+
 **Exports:**
 - Classes: `NGramIndex`
 - Interfaces: `NGramIndexStats`
@@ -5352,6 +5357,7 @@ Reachable from a root: **308** of 308 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `../types/index.js` | `Entity, LowercaseData, Relation` | Import (type-only) |
+| `./postingIndex.js` | `removeIdFromPostings` | Import |
 
 **Exports:**
 - Classes: `NameIndex`, `TypeIndex`, `LowercaseCache`, `RelationIndex`, `ObservationIndex`
@@ -5416,6 +5422,13 @@ Reachable from a root: **308** of 308 files. Dormant: **0** (0 orphaned, 0 test-
 
 **Exports:**
 - Functions: `shutdownParallelUtils`, `parallelMap`, `parallelFilter`, `getPoolStats`
+
+---
+
+### `src/utils/postingIndex.ts` - Deletes `id` from each posting set named by `terms`, and drops empty sets.
+
+**Exports:**
+- Functions: `removeIdFromPostings`
 
 ---
 
@@ -5766,7 +5779,7 @@ graph TD
         N87[MemoryMonitor]
         N88[SchemaValidator]
         N89[WorkerPoolManager]
-        N90[...32 more]
+        N90[...33 more]
     end
 
     subgraph Workers
@@ -5857,21 +5870,21 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 308 |
+| Total TypeScript Files | 309 |
 | Total Modules | 12 |
-| Total Lines of Code | 105410 |
-| Total Exports | 2091 |
+| Total Lines of Code | 105417 |
+| Total Exports | 2092 |
 | Total Re-exports | 1349 |
 | Total Classes | 237 |
 | Total Interfaces | 631 |
-| Total Functions | 366 |
+| Total Functions | 367 |
 | Total Type Guards | 31 |
 | Total Enums | 4 |
 | Type-only Imports | 498 |
 | Runtime Circular Deps | 0 |
 | Type-only Circular Deps | 8 |
 | Entry/Build Roots | 4 |
-| Reachable Files | 308 |
+| Reachable Files | 309 |
 | Dormant Files (orphaned / test-only) | 0 (0 / 0) |
 
 ---

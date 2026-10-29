@@ -10,13 +10,13 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 739
+**Total files**: 740
 
 ## Disposition counts
 
 | Disposition | Count | Meaning |
 | --- | --: | --- |
-| `reachable` | 304 | A `src/` file in the module graph, reachable from a root. |
+| `reachable` | 305 | A `src/` file in the module graph, reachable from a root. |
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
@@ -25,7 +25,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 4 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 0 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **739** | |
+| **Total** | **740** | |
 
 ## Per-area counts
 
@@ -33,7 +33,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | --- | --: |
 | `benchmarks` | 4 |
 | `config` | 2 |
-| `src` | 308 |
+| `src` | 309 |
 | `tests` | 415 |
 | `tools` | 10 |
 
@@ -259,7 +259,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/search/LLMQueryPlanner.ts` | src | reachable | 383 |
 | `src/search/LLMSearchExecutor.ts` | src | reachable | 226 |
 | `src/search/MaterializedViews.ts` | src | reachable | 177 |
-| `src/search/NGramIndex.ts` | src | reachable | 271 |
+| `src/search/NGramIndex.ts` | src | reachable | 262 |
 | `src/search/OptimizedInvertedIndex.ts` | src | reachable | 489 |
 | `src/search/ParallelSearchExecutor.ts` | src | reachable | 581 |
 | `src/search/PartialIndexAdvisor.ts` | src | reachable | 209 |
@@ -331,7 +331,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/utils/ids.ts` | src | reachable | 23 |
 | `src/utils/IIndexHealth.ts` | src | reachable | 47 |
 | `src/utils/index.ts` | src | reachable | 391 |
-| `src/utils/indexes.ts` | src | reachable | 438 |
+| `src/utils/indexes.ts` | src | reachable | 430 |
 | `src/utils/IndexHealthMonitor.ts` | src | reachable | 78 |
 | `src/utils/jsonlMapFile.ts` | src | reachable | 113 |
 | `src/utils/logger.ts` | src | reachable | 45 |
@@ -340,6 +340,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/utils/nextMonotonicIsoTimestamp.ts` | src | reachable | 15 |
 | `src/utils/operationUtils.ts` | src | reachable | 224 |
 | `src/utils/parallelUtils.ts` | src | reachable | 148 |
+| `src/utils/postingIndex.ts` | src | reachable | 24 |
 | `src/utils/relationHelpers.ts` | src | reachable | 286 |
 | `src/utils/relationValidation.ts` | src | reachable | 257 |
 | `src/utils/schemas.ts` | src | reachable | 782 |
@@ -664,7 +665,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/search/LLMSearchExecutorExplain.test.ts` | tests | test | 193 |
 | `tests/unit/search/MaterializedViews.test.ts` | tests | test | 94 |
 | `tests/unit/search/NGramFuzzyIntegration.test.ts` | tests | test | 298 |
-| `tests/unit/search/NGramIndex.test.ts` | tests | test | 461 |
+| `tests/unit/search/NGramIndex.test.ts` | tests | test | 470 |
 | `tests/unit/search/OptimizedInvertedIndex.test.ts` | tests | test | 276 |
 | `tests/unit/search/ParallelSearchExecutor.test.ts` | tests | test | 551 |
 | `tests/unit/search/PartialIndexAdvisor.test.ts` | tests | test | 111 |
@@ -747,7 +748,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/utils/formatters.test.ts` | tests | test | 470 |
 | `tests/unit/utils/halfLife.test.ts` | tests | test | 27 |
 | `tests/unit/utils/ids.test.ts` | tests | test | 35 |
-| `tests/unit/utils/indexes.test.ts` | tests | test | 885 |
+| `tests/unit/utils/indexes.test.ts` | tests | test | 898 |
 | `tests/unit/utils/jsonlMapFile.test.ts` | tests | test | 162 |
 | `tests/unit/utils/logger.test.ts` | tests | test | 253 |
 | `tests/unit/utils/MemoryMonitor.test.ts` | tests | test | 413 |
