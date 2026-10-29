@@ -301,6 +301,24 @@ describe('JsonlColumnStore', () => {
       expect((await store.entries()).map((e) => e.name)).toEqual(['b', 'c', 'a']);
     });
 
+    it('restores previous entry order when clear flush throws', async () => {
+      const store = new JsonlColumnStore<number>(sidecar);
+      await store.put('a', 1);
+      await store.put('b', 2);
+      await store.put('c', 3);
+      injectFlushFailure(sidecar);
+      await expect(store.clear()).rejects.toThrow(/synthetic/);
+      vi.restoreAllMocks();
+      expect((await store.entries()).map((e) => e.name)).toEqual(['a', 'b', 'c']);
+    });
+
+    it('does not flush when clear runs on an empty store', async () => {
+      const store = new JsonlColumnStore<number>(sidecar);
+      const rename = vi.spyOn(fs, 'rename');
+      await store.clear();
+      expect(rename).not.toHaveBeenCalled();
+    });
+
     it('loads the good line, skips a bad line and a numeric name, and warns with the exact texts', async () => {
       await fs.writeFile(sidecar, '{"name":"a","value":1}\n{not json\n{"name":5,"value":2}\n', 'utf-8');
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});

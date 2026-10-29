@@ -70,6 +70,14 @@ describe('RelationConsolidator (R3)', () => {
     return graph.relations;
   }
 
+  it('stores thresholds.semantic and defaults it to 0.9', () => {
+    const ops = { getAllRelations: async () => [] };
+    const custom = new RelationConsolidator(ops, undefined, { thresholds: { semantic: 0.5 } });
+    const missing = new RelationConsolidator(ops);
+    expect((custom as unknown as { semanticThreshold: number }).semanticThreshold).toBe(0.5);
+    expect((missing as unknown as { semanticThreshold: number }).semanticThreshold).toBe(0.9);
+  });
+
   // ==================== helpers under test ====================
 
   it('normalizeRelationType collapses case/hyphen/underscore/camelCase variants', () => {

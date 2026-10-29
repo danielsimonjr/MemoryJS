@@ -37,6 +37,7 @@ import type {
   GetWeightedOptions,
 } from './MemoryBackend.js';
 import type { AgentEntity } from '../types/agent-memory.js';
+import { selectWeightedTurns } from './selectWeightedTurns.js';
 
 /**
  * Options for `SQLiteBackend`.
@@ -123,15 +124,10 @@ export class SQLiteBackend implements IMemoryBackend {
     const threshold = options?.threshold ?? this.decayEngine.prdMinImportanceThreshold;
     const limit = options?.limit ?? 10;
 
-    const scored: WeightedTurn[] = turns.map((entity) => {
+    return selectWeightedTurns(turns, entity => {
       const score = this.decayEngine.calculatePrdEffectiveImportance(entity, query);
       return { turn: entityToTurn(entity), score };
-    });
-
-    return scored
-      .filter((wt) => wt.score >= threshold)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, limit);
+    }, threshold, limit);
   }
 
   async delete_session(sessionId: string): Promise<void> {
