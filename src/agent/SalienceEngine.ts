@@ -350,29 +350,18 @@ export class SalienceEngine {
    * @returns Score between 0 and 1
    */
   calculateTaskRelevance(entity: AgentEntity, taskDescription: string): number {
-    // Exact task ID match
     if (entity.taskId === taskDescription) {
       return 1.0;
     }
-
-    // Build entity text for comparison
-    const entityText = this.buildEntityText(entity);
-
-    if (this.config.useSemanticSimilarity) {
-      // Use TF-IDF cosine similarity
-      return this.summarizationService.calculateSimilarity(entityText, taskDescription);
-    }
-
-    // Fallback to keyword matching
-    const taskLower = taskDescription.toLowerCase();
-    if (entity.name.toLowerCase().includes(taskLower)) {
-      return 0.8;
-    }
-    if (entity.observations?.some((o) => o.toLowerCase().includes(taskLower))) {
-      return 0.5;
-    }
-
-    return 0;
+    return this.semanticOr(entity, taskDescription, (e, taskLower) => {
+      if (e.name.toLowerCase().includes(taskLower)) {
+        return 0.8;
+      }
+      if (e.observations?.some(o => o.toLowerCase().includes(taskLower))) {
+        return 0.5;
+      }
+      return 0;
+    });
   }
 
   /**
@@ -399,27 +388,18 @@ export class SalienceEngine {
    * @returns Score between 0 and 1
    */
   calculateQueryRelevance(entity: AgentEntity, queryText: string): number {
-    // Build entity text for comparison
-    const entityText = this.buildEntityText(entity);
-
-    if (this.config.useSemanticSimilarity) {
-      // Use TF-IDF cosine similarity for semantic matching
-      return this.summarizationService.calculateSimilarity(entityText, queryText);
-    }
-
-    // Fallback to keyword matching
-    const queryLower = queryText.toLowerCase();
-    if (entity.name.toLowerCase().includes(queryLower)) {
-      return 1.0;
-    }
-    if (entity.entityType.toLowerCase().includes(queryLower)) {
-      return 0.7;
-    }
-    if (entity.observations?.some((o) => o.toLowerCase().includes(queryLower))) {
-      return 0.5;
-    }
-
-    return 0;
+    return this.semanticOr(entity, queryText, (e, queryLower) => {
+      if (e.name.toLowerCase().includes(queryLower)) {
+        return 1.0;
+      }
+      if (e.entityType.toLowerCase().includes(queryLower)) {
+        return 0.7;
+      }
+      if (e.observations?.some(o => o.toLowerCase().includes(queryLower))) {
+        return 0.5;
+      }
+      return 0;
+    });
   }
 
   /**
@@ -431,19 +411,23 @@ export class SalienceEngine {
    * @returns Score between 0 and 1
    */
   calculateIntentRelevance(entity: AgentEntity, userIntent: string): number {
-    const entityText = this.buildEntityText(entity);
+    return this.semanticOr(entity, userIntent, (e, intentLower) => {
+      if (e.observations?.some(o => o.toLowerCase().includes(intentLower))) {
+        return 0.8;
+      }
+      return 0;
+    });
+  }
 
+  private semanticOr(
+    entity: AgentEntity,
+    text: string,
+    fallback: (entity: AgentEntity, lowered: string) => number,
+  ): number {
     if (this.config.useSemanticSimilarity) {
-      return this.summarizationService.calculateSimilarity(entityText, userIntent);
+      return this.summarizationService.calculateSimilarity(this.buildEntityText(entity), text);
     }
-
-    // Fallback to keyword matching
-    const intentLower = userIntent.toLowerCase();
-    if (entity.observations?.some((o) => o.toLowerCase().includes(intentLower))) {
-      return 0.8;
-    }
-
-    return 0;
+    return fallback(entity, text.toLowerCase());
   }
 
   /**
