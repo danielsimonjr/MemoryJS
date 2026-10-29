@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Share observation hash bucketing in `ObservationDedupManager` (CLONES P20).
 - Clones refactor P3: `removeIdFromPostings` for inverted-index removal (K004).
 - Clones refactor P2: `loadProjectedRecords` and `matchesDefined` for agent record list filtering (K002).
 - Clones refactor P1: shared `failureChainText` prelude for failure descriptions and lessons in `FailureDistillation`.

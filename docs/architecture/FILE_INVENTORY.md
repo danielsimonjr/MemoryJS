@@ -93,7 +93,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/MemoryFormatter.ts` | src | reachable | 518 |
 | `src/agent/MemoryValidator.ts` | src | reachable | 332 |
 | `src/agent/MultiAgentMemoryManager.ts` | src | reachable | 1150 |
-| `src/agent/ObservationDedupManager.ts` | src | reachable | 261 |
+| `src/agent/ObservationDedupManager.ts` | src | reachable | 250 |
 | `src/agent/ObserverPipeline.ts` | src | reachable | 380 |
 | `src/agent/PatternDetector.ts` | src | reachable | 372 |
 | `src/agent/PlanManager.ts` | src | reachable | 543 |
