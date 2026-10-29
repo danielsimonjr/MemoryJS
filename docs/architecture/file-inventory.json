@@ -2601,7 +2601,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 689
+      "loc": 715
     },
     {
       "file": "tests/unit/agent/ActiveRetrieval.test.ts",
@@ -4533,7 +4533,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 570
+      "loc": 589
     },
     {
       "file": "tests/unit/search/SearchSuggestions.test.ts",
