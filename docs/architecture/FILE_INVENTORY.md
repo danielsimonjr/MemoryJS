@@ -210,7 +210,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/core/ObservationManager.ts` | src | reachable | 981 |
 | `src/core/ObservationStore.ts` | src | reachable | 195 |
 | `src/core/PostgreSQLStorage.ts` | src | reachable | 636 |
-| `src/core/RefIndex.ts` | src | reachable | 372 |
+| `src/core/RefIndex.ts` | src | reachable | 371 |
 | `src/core/RelationManager.ts` | src | reachable | 491 |
 | `src/core/segments/FileSegmentStorage.ts` | src | reachable | 685 |
 | `src/core/segments/ISegmentStorage.ts` | src | reachable | 279 |
@@ -589,7 +589,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/optimistic-concurrency.test.ts` | tests | test | 133 |
 | `tests/unit/core/PostgreSQLStorage.test.ts` | tests | test | 420 |
 | `tests/unit/core/rebuild-native.test.ts` | tests | test | 42 |
-| `tests/unit/core/RefIndex.test.ts` | tests | test | 561 |
+| `tests/unit/core/RefIndex.test.ts` | tests | test | 580 |
 | `tests/unit/core/relation-manager-temporal.test.ts` | tests | test | 157 |
 | `tests/unit/core/RelationManager-metadata.test.ts` | tests | test | 127 |
 | `tests/unit/core/RelationManager.test.ts` | tests | test | 339 |
