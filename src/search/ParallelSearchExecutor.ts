@@ -250,8 +250,15 @@ export class ParallelSearchExecutor {
     let success = true;
     let error: string | undefined;
     const timeout = createTimeout<never>(timeoutMs, timeoutMessage);
+    // Race the search+score work on a scratch map. Promise.race does not cancel
+    // `run`, so writing the live `results` inside `run` would let a timed-out
+    // layer still populate the map the caller already returned.
+    const pending = new Map<string, number>();
     try {
-      await Promise.race([run(results), timeout.promise]);
+      await Promise.race([run(pending), timeout.promise]);
+      for (const [name, score] of pending) {
+        results.set(name, score);
+      }
     } catch (err) {
       success = false;
       error = err instanceof Error ? err.message : String(err);
