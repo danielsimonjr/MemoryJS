@@ -27,6 +27,7 @@ import { isDecisionMemory, toIsoDateTime, type IsoDateTime } from '../types/agen
 import type { EntityManager } from '../core/EntityManager.js';
 import { VersionConflictError, EntityNotFoundError } from '../utils/errors.js';
 import { validateNonEmpty } from '../utils/index.js';
+import { loadProjectedRecords, matchesDefined } from './recordQuery.js';
 
 /** Input shape for `propose()`. */
 export interface DecisionInput {
@@ -168,16 +169,13 @@ export class DecisionManager {
   /** All decisions, optionally filtered. */
   async list(options: ListDecisionsOptions = {}): Promise<DecisionRecord[]> {
     const all = await this.loadAllDecisions();
-    let filtered = all;
-    if (options.status !== undefined) {
-      filtered = filtered.filter((r) => r.status === options.status);
-    }
-    if (options.sourceSessionId !== undefined) {
-      filtered = filtered.filter((r) => r.sourceSessionId === options.sourceSessionId);
-    }
-    if (options.sourceProjectId !== undefined) {
-      filtered = filtered.filter((r) => r.sourceProjectId === options.sourceProjectId);
-    }
+    let filtered = all.filter((r) =>
+      matchesDefined([
+        [options.status, r.status],
+        [options.sourceSessionId, r.sourceSessionId],
+        [options.sourceProjectId, r.sourceProjectId],
+      ]),
+    );
     if (options.limit !== undefined) filtered = filtered.slice(0, options.limit);
     return filtered;
   }
@@ -407,8 +405,7 @@ export class DecisionManager {
   }
 
   private async loadAllDecisions(): Promise<DecisionRecord[]> {
-    const graph = await this.storage.loadGraph();
-    return graph.entities.filter(isDecisionMemory).map((e) => e.decisionRecord);
+    return loadProjectedRecords(this.storage, isDecisionMemory, (e) => e.decisionRecord);
   }
 }
 

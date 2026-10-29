@@ -69,6 +69,23 @@ describe('LRUHotTier — name', () => {
   });
 });
 
+describe('LRUHotTier — constructor fillDefaults pins', () => {
+  it('keeps onEvict: null and maxBytes: 0', async () => {
+    const evicted = vi.fn();
+    const nullCb = new LRUHotTier<string, number>({ onEvict: null as unknown as undefined });
+    expect((nullCb as unknown as { onEvict: unknown }).onEvict).toBeNull();
+
+    const tier = new LRUHotTier<string, number>({
+      maxBytes: 0,
+      estimateBytes: () => 1,
+      onEvict: evicted,
+    });
+    await tier.put('a', 1);
+    expect(evicted).toHaveBeenCalledWith('a', 1);
+    expect(await tier.size()).toBe(0);
+  });
+});
+
 describe('LRUHotTier — LRU ordering', () => {
   it('evicts least-recently-used entry when maxEntries is exceeded', async () => {
     const tier = new LRUHotTier<string, number>({ maxEntries: 2 });

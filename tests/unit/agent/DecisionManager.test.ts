@@ -296,6 +296,15 @@ describe('DecisionManager', () => {
       expect(await mgr.list({ status: 'accepted' })).toHaveLength(1);
       expect(await mgr.list({ status: 'proposed' })).toHaveLength(1);
     });
+
+    it('treats null status as a real filter and ANDs a mismatched session', async () => {
+      const rec = await mgr.propose({ context: 'c', decision: 'c', alternatives: [], consequences: [] });
+      expect(await mgr.list({ status: null as unknown as 'proposed' })).toEqual([]);
+      expect(await mgr.list({ status: 'proposed', sourceSessionId: 'other' })).toEqual([]);
+      expect(await mgr.list({ status: 'proposed' })).toEqual(
+        expect.arrayContaining([expect.objectContaining({ id: rec.id })]),
+      );
+    });
   });
 
   // ==================== ADR markdown dual-write (Phase Dec B) ====================

@@ -18,6 +18,7 @@
  */
 
 import type { IIndexTier } from './ITieredIndex.js';
+import { fillDefaults } from '../../utils/fillDefaults.js';
 
 /**
  * Options for `LRUHotTier`: entry and byte bounds, size estimator, name and eviction callback.
@@ -71,11 +72,23 @@ export class LRUHotTier<K, V> implements IIndexTier<K, V> {
   private evictionCount = 0;
 
   constructor(options: LRUHotTierOptions<K, V> = {}) {
-    this.name = options.name ?? 'hot';
-    this.maxEntries = options.maxEntries ?? DEFAULT_MAX_ENTRIES;
-    this.maxBytes = options.maxBytes ?? Number.POSITIVE_INFINITY;
+    const defaults: {
+      name: string;
+      maxEntries: number;
+      maxBytes: number;
+      estimateBytes: (key: K, value: V) => number;
+    } = {
+      name: 'hot',
+      maxEntries: DEFAULT_MAX_ENTRIES,
+      maxBytes: Number.POSITIVE_INFINITY,
+      estimateBytes: (key, value) => defaultEstimateBytes(key, value),
+    };
+    const filled = fillDefaults(options, defaults);
+    this.name = filled.name;
+    this.maxEntries = filled.maxEntries;
+    this.maxBytes = filled.maxBytes;
     this.onEvict = options.onEvict;
-    this.estimateBytesFn = options.estimateBytes ?? defaultEstimateBytes;
+    this.estimateBytesFn = filled.estimateBytes;
   }
 
   async get(key: K): Promise<V | undefined> {
