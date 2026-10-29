@@ -185,18 +185,30 @@ describe('WorkThreadManager', () => {
 
       await expect(
         manager.claim(thread.id, 'agent_2')
-      ).rejects.toThrow('already owned');
+      ).rejects.toThrow(`Thread ${thread.id} is already owned by agent_1`);
     });
 
     it('should reject claiming from terminal state', async () => {
       const thread = await manager.create('Task');
-      await manager.claim(thread.id, 'agent_1');
-      await manager.complete(thread.id);
+      await manager.cancel(thread.id);
 
-      // Reset owner to test transition validation
       await expect(
         manager.claim(thread.id, 'agent_2')
-      ).rejects.toThrow();
+      ).rejects.toThrow(`Cannot transition thread ${thread.id} from 'cancelled' to 'active'`);
+    });
+
+    it('leaves updatedAt and the persisted entity unchanged when claim is refused', async () => {
+      const storage = createMockStorage();
+      const local = new WorkThreadManager(storage);
+      const thread = await local.create('Task');
+      await local.claim(thread.id, 'agent_1');
+      const before = local.get(thread.id)!;
+      (storage.updateEntity as ReturnType<typeof vi.fn>).mockClear();
+      await expect(local.claim(thread.id, 'agent_2')).rejects.toThrow(
+        `Thread ${thread.id} is already owned by agent_1`,
+      );
+      expect(local.get(thread.id)!.updatedAt).toBe(before.updatedAt);
+      expect(storage.updateEntity).not.toHaveBeenCalled();
     });
   });
 
@@ -223,7 +235,7 @@ describe('WorkThreadManager', () => {
 
       await expect(
         manager.release(thread.id)
-      ).rejects.toThrow('Cannot release');
+      ).rejects.toThrow(`Cannot release thread ${thread.id} from 'open' status`);
     });
   });
 
@@ -1079,11 +1091,11 @@ describe('WorkThreadManager (decomposed graph shape)', () => {
  * A different count changes the order in which waiting callers resume.
  */
 const THREAD_TICKS = {
-  complete: 4,
-  cancel: 4,
-  illegal: 3,
-  notFound: 3,
-  persistRejected: 4,
+  complete: 3,
+  cancel: 3,
+  illegal: 1,
+  notFound: 1,
+  persistRejected: 3,
 };
 
 describe('WorkThreadManager complete and cancel', () => {

@@ -306,7 +306,7 @@ export class WorkThreadManager {
    * @returns Updated work thread
    * @throws Error if thread not found, already owned, or invalid transition
    */
-  async claim(threadId: string, agentId: string): Promise<WorkThread> {
+  claim(threadId: string, agentId: string): Promise<WorkThread> {
     return this.updateThread(threadId, thread => {
       if (thread.owner) {
         throw new Error(`Thread ${threadId} is already owned by ${thread.owner}`);
@@ -326,7 +326,7 @@ export class WorkThreadManager {
    * @returns Updated work thread
    * @throws Error if thread not found or not active
    */
-  async release(threadId: string): Promise<WorkThread> {
+  release(threadId: string): Promise<WorkThread> {
     return this.updateThread(threadId, thread => {
       if (!this.canTransition(threadId, 'open')) {
         throw new Error(`Cannot release thread ${threadId} from '${thread.status}' status`);
@@ -542,7 +542,7 @@ export class WorkThreadManager {
    * @returns Updated work thread
    * @throws Error if thread not found or invalid transition
    */
-  private async finish(threadId: string, target: 'done' | 'cancelled', verb: 'complete' | 'cancel'): Promise<WorkThread> {
+  private finish(threadId: string, target: 'done' | 'cancelled', verb: 'complete' | 'cancel'): Promise<WorkThread> {
     return this.updateThread(threadId, thread => {
       if (!this.canTransition(threadId, target)) {
         throw new Error(`Cannot ${verb} thread ${threadId} from '${thread.status}' status`);
