@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Phase 2 clone cleanup: merged episodic adjacent-event navigation, procedural-graph monotonic timestamps, and tiered-store flush rollback helpers; documented remaining pairs in `docs/analysis/CLONES_REMAINING.md`.
 - Add `RefIndex.rewriteReverseBucket` for purge and rename (CLONES P16).
 
 ### Added
