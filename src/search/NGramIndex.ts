@@ -10,6 +10,8 @@
  * @module search/NGramIndex
  */
 
+import { removeIdFromPostings } from '../utils/postingIndex.js';
+
 /**
  * Statistics for the NGramIndex.
  */
@@ -254,17 +256,6 @@ export class NGramIndex {
    */
   private removeFromInvertedIndex(id: string): void {
     const ngrams = this.docToNgrams.get(id);
-    if (!ngrams) return;
-
-    for (const ng of ngrams) {
-      const docs = this.ngramToDocIds.get(ng);
-      if (docs) {
-        docs.delete(id);
-        // Clean up empty posting sets to avoid memory leaks
-        if (docs.size === 0) {
-          this.ngramToDocIds.delete(ng);
-        }
-      }
-    }
+    removeIdFromPostings(this.ngramToDocIds, ngrams, id);
   }
 }
