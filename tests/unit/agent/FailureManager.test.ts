@@ -369,6 +369,21 @@ describe('FailureManager', () => {
       expect(fromA.length).toBe(1);
       expect(fromA[0].id).toBe(a.id);
     });
+
+    it('returns empty when status matches but sourceSessionId does not', async () => {
+      await fm.record(validInput({ sourceSessionId: 'sess-A' }));
+      const none = await fm.getAll({ status: 'open', sourceSessionId: 'other' });
+      expect(none).toEqual([]);
+    });
+
+    it('does not filter by status when status option is omitted', async () => {
+      const r1 = await fm.record(validInput());
+      const r2 = await fm.record(validInput({ context: 'second' }));
+      await fm.markResolved(r2.id);
+      const all = await fm.getAll({});
+      expect(all.length).toBe(2);
+      expect(all.some((r) => r.id === r1.id)).toBe(true);
+    });
   });
 
   // ==================== type guard ====================

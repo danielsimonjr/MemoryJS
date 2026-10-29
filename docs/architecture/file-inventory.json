@@ -1,12 +1,12 @@
 {
   "generated": "2026-10-29",
-  "totalFiles": 739,
+  "totalFiles": 742,
   "byDisposition": {
-    "reachable": 304,
+    "reachable": 306,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 415,
+    "test": 416,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -14,8 +14,8 @@
   },
   "byArea": {
     "benchmarks": 4,
-    "src": 308,
-    "tests": 415,
+    "src": 310,
+    "tests": 416,
     "tools": 10,
     "config": 2
   },
@@ -123,7 +123,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 305
+      "loc": 306
     },
     {
       "file": "src/agent/ArtifactManager.ts",
@@ -228,7 +228,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 428
+      "loc": 425
     },
     {
       "file": "src/agent/DistillationPipeline.ts",
@@ -298,14 +298,14 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 301
+      "loc": 314
     },
     {
       "file": "src/agent/FailureManager.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 456
+      "loc": 457
     },
     {
       "file": "src/agent/GuardedComponentEdit.ts",
@@ -410,7 +410,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 542
+      "loc": 543
     },
     {
       "file": "src/agent/procedural/graph/backing/index.ts",
@@ -698,6 +698,13 @@
       "area": "src",
       "disposition": "reachable",
       "loc": 151
+    },
+    {
+      "file": "src/agent/recordQuery.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 30
     },
     {
       "file": "src/agent/RelationConsolidator.ts",
@@ -1544,7 +1551,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 271
+      "loc": 262
     },
     {
       "file": "src/search/OptimizedInvertedIndex.ts",
@@ -2048,7 +2055,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 438
+      "loc": 430
     },
     {
       "file": "src/utils/IndexHealthMonitor.ts",
@@ -2112,6 +2119,13 @@
       "area": "src",
       "disposition": "reachable",
       "loc": 148
+    },
+    {
+      "file": "src/utils/postingIndex.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 24
     },
     {
       "file": "src/utils/relationHelpers.ts",
@@ -2636,7 +2650,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 554
+      "loc": 578
     },
     {
       "file": "tests/unit/agent/ArtifactManager.test.ts",
@@ -2748,7 +2762,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 394
+      "loc": 403
     },
     {
       "file": "tests/unit/agent/delta-services-wiring.test.ts",
@@ -2818,14 +2832,14 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 539
+      "loc": 617
     },
     {
       "file": "tests/unit/agent/FailureManager.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 722
+      "loc": 737
     },
     {
       "file": "tests/unit/agent/GuardedComponentEdit.test.ts",
@@ -2951,7 +2965,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 592
+      "loc": 600
     },
     {
       "file": "tests/unit/agent/procedural/graph/appendixF.test.ts",
@@ -3190,6 +3204,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 135
+    },
+    {
+      "file": "tests/unit/agent/recordQuery.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 23
     },
     {
       "file": "tests/unit/agent/ReflectionStage.test.ts",
@@ -4379,7 +4400,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 461
+      "loc": 470
     },
     {
       "file": "tests/unit/search/OptimizedInvertedIndex.test.ts",
@@ -4960,7 +4981,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 885
+      "loc": 898
     },
     {
       "file": "tests/unit/utils/jsonlMapFile.test.ts",

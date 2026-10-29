@@ -39,7 +39,7 @@ This document provides a comprehensive dependency graph of all files, components
 The codebase is organized into the following modules:
 
 - **adapters**: 7 files
-- **agent**: 109 files
+- **agent**: 110 files
 - **cli**: 31 files
 - **core**: 26 files
 - **features**: 18 files
@@ -48,7 +48,7 @@ The codebase is organized into the following modules:
 - **security**: 5 files
 - **root**: 1 file
 - **types**: 12 files
-- **utils**: 43 files
+- **utils**: 44 files
 - **workers**: 1 file
 
 ---
@@ -63,7 +63,7 @@ Seeded build/entry roots (package `exports`, `bin` targets, tsup entries, script
 - `src/sqlite.ts`
 - `src/workers/levenshteinWorker.ts`
 
-Reachable from a root: **308** of 308 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
+Reachable from a root: **310** of 310 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
 
 ---
 
@@ -284,6 +284,7 @@ Reachable from a root: **308** of 308 files. Dormant: **0** (0 orphaned, 0 test-
 | `../types/agent-memory.js` | `isReflectionMemory, toIsoDateTime` | Import |
 | `../core/EntityManager.js` | `EntityManager` | Import (type-only) |
 | `./versionedWriteFailure.js` | `versionedWriteFailure` | Import |
+| `./recordQuery.js` | `matchesDefined` | Import |
 | `../utils/index.js` | `validateNonEmpty, validateNonEmptyArray` | Import |
 
 **Exports:**
@@ -521,6 +522,7 @@ Reachable from a root: **308** of 308 files. Dormant: **0** (0 orphaned, 0 test-
 | `../core/EntityManager.js` | `EntityManager` | Import (type-only) |
 | `../utils/errors.js` | `VersionConflictError, EntityNotFoundError` | Import |
 | `../utils/index.js` | `validateNonEmpty` | Import |
+| `./recordQuery.js` | `loadProjectedRecords, matchesDefined` | Import |
 
 **Exports:**
 - Classes: `DecisionManager`
@@ -704,6 +706,7 @@ Reachable from a root: **308** of 308 files. Dormant: **0** (0 orphaned, 0 test-
 | `../types/agent-memory.js` | `BlamedComponent, BlamedComponentKind` | Import (type-only) |
 | `../core/EntityManager.js` | `EntityManager` | Import (type-only) |
 | `./versionedWriteFailure.js` | `versionedWriteFailure` | Import |
+| `./recordQuery.js` | `loadProjectedRecords, matchesDefined` | Import |
 | `../utils/index.js` | `validateNonEmpty` | Import |
 | `./procedural/ProcedureStore.js` | `PROCEDURE_ENTITY_TYPE, PROCEDURE_STEP_ENTITY_TYPE` | Import |
 | `../types/proceduralGraph.js` | `PGSnapshot` | Import (type-only) |
@@ -941,6 +944,7 @@ Reachable from a root: **308** of 308 files. Dormant: **0** (0 orphaned, 0 test-
 | `../types/types.js` | `Entity, IGraphStorage` | Import (type-only) |
 | `../types/agent-memory.js` | `GoalNode, GoalNodeId, GoalNodeLifecycle, GoalNodeTransition, MarkResolvedResult, PlanEntity, PlanId, PlanLifecycle, PlanRecord` | Import (type-only) |
 | `../types/agent-memory.js` | `isPlanMemory, toIsoDateTime` | Import |
+| `./recordQuery.js` | `loadProjectedRecords, matchesDefined` | Import |
 | `../utils/index.js` | `validateNonEmpty` | Import |
 
 **Exports:**
@@ -2104,6 +2108,18 @@ Reachable from a root: **308** of 308 files. Dormant: **0** (0 orphaned, 0 test-
 
 **Exports:**
 - Re-exports: `CueTagContentGraph`, `normalizeKey`, `MemoryToolkit`, `MemoryDistiller`, `extractJson`, `MemoryReconstructor`, `ReconstructiveMemory`, `MemoryGraphBridge`, `TOPIC_SUMMARIZES`, `EventKeywords`, `ReconstructiveMemoryConfig`, `ReconstructiveBacking`, `BridgePersistResult`
+
+---
+
+### `src/agent/recordQuery.ts` - Loads entities from storage, keeps those matching `isRecord`, and maps each to `project`.
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../types/types.js` | `Entity, IGraphStorage` | Import (type-only) |
+
+**Exports:**
+- Functions: `loadProjectedRecords`, `matchesDefined`
 
 ---
 
@@ -4139,6 +4155,11 @@ Reachable from a root: **308** of 308 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/search/NGramIndex.ts` - N-gram Index
 
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../utils/postingIndex.js` | `removeIdFromPostings` | Import |
+
 **Exports:**
 - Classes: `NGramIndex`
 - Interfaces: `NGramIndexStats`
@@ -5338,6 +5359,7 @@ Reachable from a root: **308** of 308 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `../types/index.js` | `Entity, LowercaseData, Relation` | Import (type-only) |
+| `./postingIndex.js` | `removeIdFromPostings` | Import |
 
 **Exports:**
 - Classes: `NameIndex`, `TypeIndex`, `LowercaseCache`, `RelationIndex`, `ObservationIndex`
@@ -5414,6 +5436,13 @@ Reachable from a root: **308** of 308 files. Dormant: **0** (0 orphaned, 0 test-
 
 **Exports:**
 - Functions: `shutdownParallelUtils`, `parallelMap`, `parallelFilter`, `getPoolStats`
+
+---
+
+### `src/utils/postingIndex.ts` - Deletes `id` from each posting set named by `terms`, and drops empty sets.
+
+**Exports:**
+- Functions: `removeIdFromPostings`
 
 ---
 
@@ -5574,7 +5603,7 @@ Reachable from a root: **308** of 308 files. Dormant: **0** (0 orphaned, 0 test-
 |------|--------------|------------|
 | `src/core/ManagerContext` | 91 files | 9 files |
 | `src/types/index` | 10 files | 66 files |
-| `src/types/types` | 1 file | 67 files |
+| `src/types/types` | 1 file | 68 files |
 | `src/agent/index` | 63 files | 1 file |
 | `src/utils/index` | 27 files | 27 files |
 | `src/types/agent-memory` | 1 file | 48 files |
@@ -5664,7 +5693,7 @@ graph TD
         N14[ConflictResolver]
         N15[ConsolidationPipeline]
         N16[ConsolidationScheduler]
-        N17[...99 more]
+        N17[...100 more]
     end
 
     subgraph Cli
@@ -5764,7 +5793,7 @@ graph TD
         N87[MemoryMonitor]
         N88[SchemaValidator]
         N89[WorkerPoolManager]
-        N90[...33 more]
+        N90[...34 more]
     end
 
     subgraph Workers
@@ -5855,21 +5884,21 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 308 |
+| Total TypeScript Files | 310 |
 | Total Modules | 12 |
-| Total Lines of Code | 105411 |
-| Total Exports | 2091 |
+| Total Lines of Code | 105461 |
+| Total Exports | 2094 |
 | Total Re-exports | 1349 |
 | Total Classes | 237 |
 | Total Interfaces | 631 |
-| Total Functions | 366 |
+| Total Functions | 369 |
 | Total Type Guards | 31 |
 | Total Enums | 4 |
-| Type-only Imports | 497 |
+| Type-only Imports | 498 |
 | Runtime Circular Deps | 0 |
 | Type-only Circular Deps | 8 |
 | Entry/Build Roots | 4 |
-| Reachable Files | 308 |
+| Reachable Files | 310 |
 | Dormant Files (orphaned / test-only) | 0 (0 / 0) |
 
 ---
