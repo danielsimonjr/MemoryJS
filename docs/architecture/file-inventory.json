@@ -389,7 +389,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 261
+      "loc": 250
     },
     {
       "file": "src/agent/ObserverPipeline.ts",
