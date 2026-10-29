@@ -2,9 +2,9 @@ metadata:
   name: "@danielsimonjr/memoryjs"
   version: 4.3.0
   lastUpdated: "2026-10-29"
-  totalFiles: 309
+  totalFiles: 310
   totalModules: 12
-  totalExports: 2092
+  totalExports: 2094
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -8756,6 +8756,10 @@ modules:
         - file: ../utils/jsonlMapFile.js
           imports:
             - parseJsonlRecords
+        - file: ../utils/jsonlRecordFile.js
+          imports:
+            - deleteRecordsByKey
+            - writeJsonlRecordsUpdatingCache
       exports:
         - TagManager
       classes:
@@ -9991,6 +9995,10 @@ modules:
         - file: ../utils/jsonlMapFile.js
           imports:
             - parseJsonlRecords
+        - file: ../utils/jsonlRecordFile.js
+          imports:
+            - deleteRecordsByKey
+            - writeJsonlRecordsUpdatingCache
       exports:
         - SavedSearchManager
       classes:
@@ -13963,6 +13971,20 @@ modules:
         - parseJsonlMapLines
         - serializeJsonlMap
         - parseJsonlRecords
+    src/utils/jsonlRecordFile.ts:
+      description: Writes JSONL records to a file and updates the in-memory cache on success.
+      externalDependencies: []
+      nodeDependencies:
+        - module: fs/promises
+          imports:
+            - "* as fs"
+      internalDependencies: []
+      exports:
+        - writeJsonlRecordsUpdatingCache
+        - deleteRecordsByKey
+      functions:
+        - writeJsonlRecordsUpdatingCache
+        - deleteRecordsByKey
     src/utils/logger.ts:
       description: Simple logging utility for the Memory MCP Server
       externalDependencies: []
@@ -14776,6 +14798,7 @@ dependencyGraph:
         - src/utils/index.ts
         - src/utils/indexes.ts
         - src/utils/jsonlMapFile.ts
+        - src/utils/jsonlRecordFile.ts
         - src/utils/logger.ts
         - src/utils/mutateMapWithFlushRollback.ts
         - src/utils/nextMonotonicIsoTimestamp.ts
@@ -14800,18 +14823,18 @@ reachability:
     - src/index.ts
     - src/sqlite.ts
     - src/workers/levenshteinWorker.ts
-  reachableCount: 309
+  reachableCount: 310
   dormantCount: 0
   orphaned: []
   testOnly: []
 statistics:
-  totalTypeScriptFiles: 309
+  totalTypeScriptFiles: 310
   totalModules: 12
-  totalLinesOfCode: 105417
-  totalExports: 2092
+  totalLinesOfCode: 105461
+  totalExports: 2094
   totalClasses: 237
   totalInterfaces: 631
-  totalFunctions: 367
+  totalFunctions: 369
   totalTypeGuards: 31
   totalEnums: 4
   totalConstants: 124
@@ -14820,7 +14843,7 @@ statistics:
   runtimeCircularDeps: 0
   typeOnlyCircularDeps: 8
   entryRoots: 4
-  reachableFiles: 309
+  reachableFiles: 310
   dormantFiles: 0
   orphanedFiles: 0
   testOnlyFiles: 0

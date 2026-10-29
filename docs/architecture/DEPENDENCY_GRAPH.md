@@ -48,7 +48,7 @@ The codebase is organized into the following modules:
 - **security**: 5 files
 - **root**: 1 file
 - **types**: 12 files
-- **utils**: 43 files
+- **utils**: 44 files
 - **workers**: 1 file
 
 ---
@@ -63,7 +63,7 @@ Seeded build/entry roots (package `exports`, `bin` targets, tsup entries, script
 - `src/sqlite.ts`
 - `src/workers/levenshteinWorker.ts`
 
-Reachable from a root: **309** of 309 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
+Reachable from a root: **310** of 310 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
 
 ---
 
@@ -3788,6 +3788,7 @@ Reachable from a root: **309** of 309 files. Dormant: **0** (0 orphaned, 0 test-
 |------|---------|------|
 | `../types/index.js` | `TagAlias` | Import (type-only) |
 | `../utils/jsonlMapFile.js` | `parseJsonlRecords` | Import |
+| `../utils/jsonlRecordFile.js` | `deleteRecordsByKey, writeJsonlRecordsUpdatingCache` | Import |
 
 **Exports:**
 - Classes: `TagManager`
@@ -4380,6 +4381,7 @@ Reachable from a root: **309** of 309 files. Dormant: **0** (0 orphaned, 0 test-
 | `./BasicSearch.js` | `BasicSearch` | Import (type-only) |
 | `../utils/index.js` | `sanitizeObject` | Import |
 | `../utils/jsonlMapFile.js` | `parseJsonlRecords` | Import |
+| `../utils/jsonlRecordFile.js` | `deleteRecordsByKey, writeJsonlRecordsUpdatingCache` | Import |
 
 **Exports:**
 - Classes: `SavedSearchManager`
@@ -5378,6 +5380,18 @@ Reachable from a root: **309** of 309 files. Dormant: **0** (0 orphaned, 0 test-
 
 ---
 
+### `src/utils/jsonlRecordFile.ts` - Writes JSONL records to a file and updates the in-memory cache on success.
+
+**Node.js Built-in Dependencies:**
+| Module | Import |
+|--------|--------|
+| `fs/promises` | `* as fs` |
+
+**Exports:**
+- Functions: `writeJsonlRecordsUpdatingCache`, `deleteRecordsByKey`
+
+---
+
 ### `src/utils/logger.ts` - Simple logging utility for the Memory MCP Server
 
 **Exports:**
@@ -5779,7 +5793,7 @@ graph TD
         N87[MemoryMonitor]
         N88[SchemaValidator]
         N89[WorkerPoolManager]
-        N90[...33 more]
+        N90[...34 more]
     end
 
     subgraph Workers
@@ -5870,21 +5884,21 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 309 |
+| Total TypeScript Files | 310 |
 | Total Modules | 12 |
-| Total Lines of Code | 105417 |
-| Total Exports | 2092 |
+| Total Lines of Code | 105461 |
+| Total Exports | 2094 |
 | Total Re-exports | 1349 |
 | Total Classes | 237 |
 | Total Interfaces | 631 |
-| Total Functions | 367 |
+| Total Functions | 369 |
 | Total Type Guards | 31 |
 | Total Enums | 4 |
 | Type-only Imports | 498 |
 | Runtime Circular Deps | 0 |
 | Type-only Circular Deps | 8 |
 | Entry/Build Roots | 4 |
-| Reachable Files | 309 |
+| Reachable Files | 310 |
 | Dormant Files (orphaned / test-only) | 0 (0 / 0) |
 
 ---
