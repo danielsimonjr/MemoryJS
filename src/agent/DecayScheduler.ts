@@ -12,6 +12,7 @@ import type { DecayResult, ForgetResult, ForgetOptions } from '../types/agent-me
 import type { DecayEngine } from './DecayEngine.js';
 import { logger } from '../utils/logger.js';
 import { fillDefaults } from '../utils/fillDefaults.js';
+import { beginUnrefInterval, stopUnrefInterval, type IntervalRunState } from '../utils/unrefInterval.js';
 
 // Re-export for convenience
 export type { DecayResult, ForgetResult } from '../types/agent-memory.js';
@@ -93,8 +94,7 @@ export class DecayScheduler {
       DecaySchedulerConfig,
       'forgetOptions' | 'onDecayComplete' | 'onForgetComplete' | 'onError'
     >;
-  private intervalId?: ReturnType<typeof setInterval>;
-  private running: boolean = false;
+  private readonly intervalState: IntervalRunState = { running: false };
 
   constructor(decayEngine: DecayEngine, config: DecaySchedulerConfig = {}) {
     this.decayEngine = decayEngine;
@@ -120,18 +120,9 @@ export class DecayScheduler {
    * Multiple calls to start() are idempotent - only the first starts the scheduler.
    */
   start(): void {
-    if (this.running) return;
-
-    this.running = true;
-    this.intervalId = setInterval(
-      () => { void this.runDecayCycle(); },
-      this.config.decayIntervalMs
-    );
-    // Prevent the interval from keeping the Node.js process alive when the
-    // event loop would otherwise exit (mirrors ConsolidationScheduler pattern).
-    this.intervalId.unref();
-
-    // Run immediately on start (fire-and-forget; cycle catches its own errors)
+    if (!beginUnrefInterval(this.intervalState, this.config.decayIntervalMs, () => this.runDecayCycle())) {
+      return;
+    }
     void this.runDecayCycle();
   }
 
@@ -142,11 +133,7 @@ export class DecayScheduler {
    * but no new cycles will be started.
    */
   stop(): void {
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-      this.intervalId = undefined;
-    }
-    this.running = false;
+    stopUnrefInterval(this.intervalState);
   }
 
   /**
@@ -155,7 +142,7 @@ export class DecayScheduler {
    * @returns True if the scheduler is active
    */
   isRunning(): boolean {
-    return this.running;
+    return this.intervalState.running;
   }
 
   /**

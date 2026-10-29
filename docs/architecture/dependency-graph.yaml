@@ -2,9 +2,9 @@ metadata:
   name: "@danielsimonjr/memoryjs"
   version: 4.3.0
   lastUpdated: "2026-10-29"
-  totalFiles: 311
+  totalFiles: 312
   totalModules: 12
-  totalExports: 2097
+  totalExports: 2099
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -808,6 +808,11 @@ modules:
         - file: ../utils/logger.js
           imports:
             - logger
+        - file: ../utils/unrefInterval.js
+          imports:
+            - beginUnrefInterval
+            - stopUnrefInterval
+            - IntervalRunState
         - file: ./ConsolidationPipeline.js
           imports:
             - ConsolidationPipeline
@@ -1022,6 +1027,11 @@ modules:
         - file: ../utils/fillDefaults.js
           imports:
             - fillDefaults
+        - file: ../utils/unrefInterval.js
+          imports:
+            - beginUnrefInterval
+            - stopUnrefInterval
+            - IntervalRunState
         - file: ../types/agent-memory.js
           imports:
             - DecayResult
@@ -14414,6 +14424,19 @@ modules:
         - sleep
         - createTimeout
         - withTimeout
+    src/utils/unrefInterval.ts:
+      description: unrefInterval module
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies: []
+      exports:
+        - beginUnrefInterval
+        - stopUnrefInterval
+      interfaces:
+        - IntervalRunState
+      functions:
+        - beginUnrefInterval
+        - stopUnrefInterval
     src/utils/validators.ts:
       description: Built-in Validators
       externalDependencies: []
@@ -14869,6 +14892,7 @@ dependencyGraph:
         - src/utils/taskScheduler.ts
         - src/utils/textSimilarity.ts
         - src/utils/timing.ts
+        - src/utils/unrefInterval.ts
         - src/utils/validators.ts
     - name: Workers
       files:
@@ -14879,18 +14903,18 @@ reachability:
     - src/index.ts
     - src/sqlite.ts
     - src/workers/levenshteinWorker.ts
-  reachableCount: 311
+  reachableCount: 312
   dormantCount: 0
   orphaned: []
   testOnly: []
 statistics:
-  totalTypeScriptFiles: 311
+  totalTypeScriptFiles: 312
   totalModules: 12
-  totalLinesOfCode: 105543
-  totalExports: 2097
+  totalLinesOfCode: 105549
+  totalExports: 2099
   totalClasses: 237
-  totalInterfaces: 631
-  totalFunctions: 372
+  totalInterfaces: 632
+  totalFunctions: 374
   totalTypeGuards: 31
   totalEnums: 4
   totalConstants: 124
@@ -14899,7 +14923,7 @@ statistics:
   runtimeCircularDeps: 0
   typeOnlyCircularDeps: 8
   entryRoots: 4
-  reachableFiles: 311
+  reachableFiles: 312
   dormantFiles: 0
   orphanedFiles: 0
   testOnlyFiles: 0

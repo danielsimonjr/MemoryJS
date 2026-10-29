@@ -48,7 +48,7 @@ The codebase is organized into the following modules:
 - **security**: 5 files
 - **root**: 1 file
 - **types**: 12 files
-- **utils**: 45 files
+- **utils**: 46 files
 - **workers**: 1 file
 
 ---
@@ -63,7 +63,7 @@ Seeded build/entry roots (package `exports`, `bin` targets, tsup entries, script
 - `src/sqlite.ts`
 - `src/workers/levenshteinWorker.ts`
 
-Reachable from a root: **311** of 311 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
+Reachable from a root: **312** of 312 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
 
 ---
 
@@ -418,6 +418,7 @@ Reachable from a root: **311** of 311 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `../utils/logger.js` | `logger` | Import |
+| `../utils/unrefInterval.js` | `beginUnrefInterval, stopUnrefInterval, IntervalRunState` | Import |
 | `./ConsolidationPipeline.js` | `ConsolidationPipeline` | Import (type-only) |
 | `../features/CompressionManager.js` | `CompressionManager` | Import (type-only) |
 | `../types/agent-memory.js` | `ConsolidationResult` | Import (type-only) |
@@ -503,6 +504,7 @@ Reachable from a root: **311** of 311 files. Dormant: **0** (0 orphaned, 0 test-
 | `./DecayEngine.js` | `DecayEngine` | Import (type-only) |
 | `../utils/logger.js` | `logger` | Import |
 | `../utils/fillDefaults.js` | `fillDefaults` | Import |
+| `../utils/unrefInterval.js` | `beginUnrefInterval, stopUnrefInterval, IntervalRunState` | Import |
 | `../types/agent-memory.js` | `DecayResult, ForgetResult` | Re-export (type-only) |
 
 **Exports:**
@@ -5575,6 +5577,14 @@ Reachable from a root: **311** of 311 files. Dormant: **0** (0 orphaned, 0 test-
 
 ---
 
+### `src/utils/unrefInterval.ts` - unrefInterval module
+
+**Exports:**
+- Interfaces: `IntervalRunState`
+- Functions: `beginUnrefInterval`, `stopUnrefInterval`
+
+---
+
 ### `src/utils/validators.ts` - Built-in Validators
 
 **Internal Dependencies:**
@@ -5813,7 +5823,7 @@ graph TD
         N87[MemoryMonitor]
         N88[SchemaValidator]
         N89[WorkerPoolManager]
-        N90[...35 more]
+        N90[...36 more]
     end
 
     subgraph Workers
@@ -5904,21 +5914,21 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 311 |
+| Total TypeScript Files | 312 |
 | Total Modules | 12 |
-| Total Lines of Code | 105543 |
-| Total Exports | 2097 |
+| Total Lines of Code | 105549 |
+| Total Exports | 2099 |
 | Total Re-exports | 1349 |
 | Total Classes | 237 |
-| Total Interfaces | 631 |
-| Total Functions | 372 |
+| Total Interfaces | 632 |
+| Total Functions | 374 |
 | Total Type Guards | 31 |
 | Total Enums | 4 |
 | Type-only Imports | 498 |
 | Runtime Circular Deps | 0 |
 | Type-only Circular Deps | 8 |
 | Entry/Build Roots | 4 |
-| Reachable Files | 311 |
+| Reachable Files | 312 |
 | Dormant Files (orphaned / test-only) | 0 (0 / 0) |
 
 ---

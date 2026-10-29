@@ -10,13 +10,13 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 744
+**Total files**: 745
 
 ## Disposition counts
 
 | Disposition | Count | Meaning |
 | --- | --: | --- |
-| `reachable` | 307 | A `src/` file in the module graph, reachable from a root. |
+| `reachable` | 308 | A `src/` file in the module graph, reachable from a root. |
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
@@ -25,7 +25,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 4 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 0 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **744** | |
+| **Total** | **745** | |
 
 ## Per-area counts
 
@@ -33,7 +33,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | --- | --: |
 | `benchmarks` | 4 |
 | `config` | 2 |
-| `src` | 311 |
+| `src` | 312 |
 | `tests` | 417 |
 | `tools` | 10 |
 
@@ -65,11 +65,11 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/ConflictResolver.ts` | src | reachable | 467 |
 | `src/agent/connectivity.ts` | src | reachable | 66 |
 | `src/agent/ConsolidationPipeline.ts` | src | reachable | 1889 |
-| `src/agent/ConsolidationScheduler.ts` | src | reachable | 243 |
+| `src/agent/ConsolidationScheduler.ts` | src | reachable | 230 |
 | `src/agent/ContextProfileManager.ts` | src | reachable | 301 |
 | `src/agent/ContextWindowManager.ts` | src | reachable | 1935 |
 | `src/agent/DecayEngine.ts` | src | reachable | 751 |
-| `src/agent/DecayScheduler.ts` | src | reachable | 246 |
+| `src/agent/DecayScheduler.ts` | src | reachable | 233 |
 | `src/agent/DecisionManager.ts` | src | reachable | 425 |
 | `src/agent/DistillationPipeline.ts` | src | reachable | 204 |
 | `src/agent/DistillationPolicy.ts` | src | reachable | 339 |
@@ -352,6 +352,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/utils/taskScheduler.ts` | src | reachable | 642 |
 | `src/utils/textSimilarity.ts` | src | reachable | 158 |
 | `src/utils/timing.ts` | src | reachable | 100 |
+| `src/utils/unrefInterval.ts` | src | reachable | 32 |
 | `src/utils/validators.ts` | src | reachable | 335 |
 | `src/utils/WorkerPoolManager.ts` | src | reachable | 402 |
 | `src/utils/WorkerTaskManager.ts` | src | reachable | 359 |
@@ -426,13 +427,13 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/ConflictResolver.test.ts` | tests | test | 466 |
 | `tests/unit/agent/ConnectivitySignals.test.ts` | tests | test | 478 |
 | `tests/unit/agent/ConsolidationPipeline.test.ts` | tests | test | 2371 |
-| `tests/unit/agent/ConsolidationScheduler.test.ts` | tests | test | 371 |
+| `tests/unit/agent/ConsolidationScheduler.test.ts` | tests | test | 396 |
 | `tests/unit/agent/context-window-manager-compress.test.ts` | tests | test | 166 |
 | `tests/unit/agent/context-window-manager-wakeup.test.ts` | tests | test | 226 |
 | `tests/unit/agent/ContextProfileManager.test.ts` | tests | test | 526 |
 | `tests/unit/agent/ContextWindowManager.test.ts` | tests | test | 1717 |
 | `tests/unit/agent/DecayEngine.test.ts` | tests | test | 1236 |
-| `tests/unit/agent/DecayScheduler.test.ts` | tests | test | 567 |
+| `tests/unit/agent/DecayScheduler.test.ts` | tests | test | 584 |
 | `tests/unit/agent/DecisionManager.test.ts` | tests | test | 403 |
 | `tests/unit/agent/delta-services-wiring.test.ts` | tests | test | 61 |
 | `tests/unit/agent/DistillationPipeline.test.ts` | tests | test | 153 |
