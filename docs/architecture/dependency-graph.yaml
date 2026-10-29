@@ -2,9 +2,9 @@ metadata:
   name: "@danielsimonjr/memoryjs"
   version: 4.3.0
   lastUpdated: "2026-10-29"
-  totalFiles: 308
+  totalFiles: 311
   totalModules: 12
-  totalExports: 2090
+  totalExports: 2097
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -280,6 +280,7 @@ modules:
           typeOnly: true
         - file: ../utils/halfLife.js
           imports:
+            - clampedHalfLifeScore
             - halfLifeFactor
         - file: ../utils/fillDefaults.js
           imports:
@@ -539,6 +540,9 @@ modules:
         - file: ./versionedWriteFailure.js
           imports:
             - versionedWriteFailure
+        - file: ./recordQuery.js
+          imports:
+            - matchesDefined
         - file: ../utils/index.js
           imports:
             - validateNonEmpty
@@ -959,6 +963,7 @@ modules:
             - tokenizeToSet
         - file: ../utils/halfLife.js
           imports:
+            - clampedHalfLifeScore
             - halfLifeFactor
         - file: ./connectivity.js
           imports:
@@ -1059,6 +1064,10 @@ modules:
         - file: ../utils/index.js
           imports:
             - validateNonEmpty
+        - file: ./recordQuery.js
+          imports:
+            - loadProjectedRecords
+            - matchesDefined
       exports:
         - DecisionManager
       classes:
@@ -1379,6 +1388,10 @@ modules:
         - file: ./versionedWriteFailure.js
           imports:
             - versionedWriteFailure
+        - file: ./recordQuery.js
+          imports:
+            - loadProjectedRecords
+            - matchesDefined
         - file: ../utils/index.js
           imports:
             - validateNonEmpty
@@ -1821,6 +1834,10 @@ modules:
           imports:
             - isPlanMemory
             - toIsoDateTime
+        - file: ./recordQuery.js
+          imports:
+            - loadProjectedRecords
+            - matchesDefined
         - file: ../utils/index.js
           imports:
             - validateNonEmpty
@@ -5703,6 +5720,22 @@ modules:
         - ReconstructiveMemoryConfig
         - ReconstructiveBacking
         - BridgePersistResult
+    src/agent/recordQuery.ts:
+      description: Loads entities from storage, keeps those matching `isRecord`, and maps each to `project`.
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../types/types.js
+          imports:
+            - Entity
+            - IGraphStorage
+          typeOnly: true
+      exports:
+        - loadProjectedRecords
+        - matchesDefined
+      functions:
+        - loadProjectedRecords
+        - matchesDefined
     src/agent/retrieval/ActiveRetrievalController.ts:
       description: Active Retrieval Controller (3B.5)
       externalDependencies: []
@@ -7814,6 +7847,7 @@ modules:
             - serializeJsonlMap
         - file: ../../utils/mutateMapWithFlushRollback.js
           imports:
+            - clearMapWithFlushRollback
             - mutateMapWithFlushRollback
         - file: ./IColumnStore.js
           imports:
@@ -8740,6 +8774,10 @@ modules:
         - file: ../utils/jsonlMapFile.js
           imports:
             - parseJsonlRecords
+        - file: ../utils/jsonlRecordFile.js
+          imports:
+            - deleteRecordsByKey
+            - writeJsonlRecordsUpdatingCache
       exports:
         - TagManager
       classes:
@@ -9618,7 +9656,10 @@ modules:
       description: N-gram Index
       externalDependencies: []
       nodeDependencies: []
-      internalDependencies: []
+      internalDependencies:
+        - file: ../utils/postingIndex.js
+          imports:
+            - removeIdFromPostings
       exports:
         - NGramIndex
       classes:
@@ -9972,6 +10013,10 @@ modules:
         - file: ../utils/jsonlMapFile.js
           imports:
             - parseJsonlRecords
+        - file: ../utils/jsonlRecordFile.js
+          imports:
+            - deleteRecordsByKey
+            - writeJsonlRecordsUpdatingCache
       exports:
         - SavedSearchManager
       classes:
@@ -11010,6 +11055,9 @@ modules:
             - Mutex
       nodeDependencies: []
       internalDependencies:
+        - file: ../../utils/mutateMapWithFlushRollback.js
+          imports:
+            - clearMapWithFlushRollback
         - file: ../../utils/jsonlMapFile.js
           imports:
             - parseJsonlMapLines
@@ -13002,8 +13050,10 @@ modules:
       internalDependencies: []
       exports:
         - halfLifeFactor
+        - clampedHalfLifeScore
       functions:
         - halfLifeFactor
+        - clampedHalfLifeScore
     src/utils/ids.ts:
       description: Unique name suffix
       externalDependencies: []
@@ -13916,6 +13966,9 @@ modules:
             - LowercaseData
             - Relation
           typeOnly: true
+        - file: ./postingIndex.js
+          imports:
+            - removeIdFromPostings
       exports:
         - computeLowercase
         - NameIndex
@@ -13950,6 +14003,20 @@ modules:
         - parseJsonlMapLines
         - serializeJsonlMap
         - parseJsonlRecords
+    src/utils/jsonlRecordFile.ts:
+      description: Writes JSONL records to a file and updates the in-memory cache on success.
+      externalDependencies: []
+      nodeDependencies:
+        - module: fs/promises
+          imports:
+            - "* as fs"
+      internalDependencies: []
+      exports:
+        - writeJsonlRecordsUpdatingCache
+        - deleteRecordsByKey
+      functions:
+        - writeJsonlRecordsUpdatingCache
+        - deleteRecordsByKey
     src/utils/logger.ts:
       description: Simple logging utility for the Memory MCP Server
       externalDependencies: []
@@ -13966,8 +14033,10 @@ modules:
       internalDependencies: []
       exports:
         - mutateMapWithFlushRollback
+        - clearMapWithFlushRollback
       functions:
         - mutateMapWithFlushRollback
+        - clearMapWithFlushRollback
     src/utils/nextMonotonicIsoTimestamp.ts:
       description: Returns the next ISO-8601 timestamp strictly after `lastTimestamp`.
       externalDependencies: []
@@ -14021,6 +14090,15 @@ modules:
         - parallelMap
         - parallelFilter
         - getPoolStats
+    src/utils/postingIndex.ts:
+      description: Deletes `id` from each posting set named by `terms`, and drops empty sets.
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies: []
+      exports:
+        - removeIdFromPostings
+      functions:
+        - removeIdFromPostings
     src/utils/relationHelpers.ts:
       description: Relation Helper Utilities
       externalDependencies: []
@@ -14551,6 +14629,7 @@ dependencyGraph:
         - src/agent/reconstruction/MemoryToolkit.ts
         - src/agent/reconstruction/ReconstructiveMemory.ts
         - src/agent/reconstruction/index.ts
+        - src/agent/recordQuery.ts
         - src/agent/retrieval/ActiveRetrievalController.ts
         - src/agent/retrieval/QueryRewriter.ts
         - src/agent/retrieval/index.ts
@@ -14754,11 +14833,13 @@ dependencyGraph:
         - src/utils/index.ts
         - src/utils/indexes.ts
         - src/utils/jsonlMapFile.ts
+        - src/utils/jsonlRecordFile.ts
         - src/utils/logger.ts
         - src/utils/mutateMapWithFlushRollback.ts
         - src/utils/nextMonotonicIsoTimestamp.ts
         - src/utils/operationUtils.ts
         - src/utils/parallelUtils.ts
+        - src/utils/postingIndex.ts
         - src/utils/relationHelpers.ts
         - src/utils/relationValidation.ts
         - src/utils/schemas.ts
@@ -14777,27 +14858,27 @@ reachability:
     - src/index.ts
     - src/sqlite.ts
     - src/workers/levenshteinWorker.ts
-  reachableCount: 308
+  reachableCount: 311
   dormantCount: 0
   orphaned: []
   testOnly: []
 statistics:
-  totalTypeScriptFiles: 308
+  totalTypeScriptFiles: 311
   totalModules: 12
-  totalLinesOfCode: 105395
-  totalExports: 2090
+  totalLinesOfCode: 105499
+  totalExports: 2097
   totalClasses: 237
   totalInterfaces: 631
-  totalFunctions: 365
+  totalFunctions: 372
   totalTypeGuards: 31
   totalEnums: 4
   totalConstants: 124
   totalReExports: 1349
-  totalTypeOnlyImports: 497
+  totalTypeOnlyImports: 498
   runtimeCircularDeps: 0
   typeOnlyCircularDeps: 8
   entryRoots: 4
-  reachableFiles: 308
+  reachableFiles: 311
   dormantFiles: 0
   orphanedFiles: 0
   testOnlyFiles: 0

@@ -12,6 +12,7 @@
  * @module search/tiered/MapFileTier
  */
 
+import { clearMapWithFlushRollback } from '../../utils/mutateMapWithFlushRollback.js';
 import { Mutex } from 'async-mutex';
 import {
   parseJsonlMapLines,
@@ -94,15 +95,7 @@ export abstract class MapFileTier<V> implements IIndexTier<string, V> {
   async clear(): Promise<void> {
     return this.mutex.runExclusive(async () => {
       const cache = await this.ensureLoaded();
-      if (cache.size === 0) return;
-      const priorSnapshot = new Map(cache);
-      cache.clear();
-      try {
-        await this.flush(cache);
-      } catch (err) {
-        for (const [k, v] of priorSnapshot) cache.set(k, v);
-        throw err;
-      }
+      await clearMapWithFlushRollback(cache, c => this.flush(c));
     });
   }
 
