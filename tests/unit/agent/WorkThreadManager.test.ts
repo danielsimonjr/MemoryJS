@@ -1079,11 +1079,11 @@ describe('WorkThreadManager (decomposed graph shape)', () => {
  * A different count changes the order in which waiting callers resume.
  */
 const THREAD_TICKS = {
-  complete: 3,
-  cancel: 3,
-  illegal: 1,
-  notFound: 1,
-  persistRejected: 3,
+  complete: 4,
+  cancel: 4,
+  illegal: 3,
+  notFound: 3,
+  persistRejected: 4,
 };
 
 describe('WorkThreadManager complete and cancel', () => {
