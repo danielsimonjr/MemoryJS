@@ -5,7 +5,7 @@
 **Baseline branch**: `cursor/emma-m3-63f4` (Phase 2 branched from M3 head)  
 **Baseline run**: 4 exact groups, 8 units in them, 1 text-identical group, 54 near pairs, 1381 units (`files=305`)  
 **After cleanup**: 1 exact group, 2 units in them, 0 text-identical groups, 51 near pairs, 1375 units  
-**Cleanup commit**: `af6793b1ca4fa9e14d84e655773c817dc8c77cb1`
+**Cleanup commit**: `d3413b82d5d38add291a88abd4cb5c776cab919a`
 
 A row is a pair or an exact group this cleanup did not merge. A same-algorithm pair is not a row.
 
