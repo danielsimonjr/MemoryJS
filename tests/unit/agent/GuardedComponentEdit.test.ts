@@ -270,6 +270,138 @@ describe('applyGuardedEdit', () => {
       [parentRevision, result.kind === 'pg-revision' ? result.revision.revisionId : ''].sort(),
     );
   });
+
+  it('rejects NaN confidence before any write', async () => {
+    await ctx.entityManager.createEntities([
+      { name: 'widget', entityType: 'concept', observations: ['a'] },
+    ]);
+    const rec = await ctx.failureManager.record({
+      ...validFailureInput(),
+      blamedComponent: { kind: 'entity', id: 'widget' },
+    });
+    await expect(
+      applyGuardedEdit(
+        rec.id,
+        { targetId: 'widget', field: 'confidence', value: Number.NaN },
+        deps,
+      ),
+    ).rejects.toMatchObject({ code: 'empty-change' });
+    const unchanged = (await ctx.entityManager.getEntity('widget'))!;
+    expect(unchanged.isLatest).not.toBe(false);
+  });
+
+  it('rejects a colliding version name before any write', async () => {
+    await ctx.entityManager.createEntities([
+      { name: 'widget', entityType: 'concept', observations: ['a'] },
+      { name: 'widget-v2', entityType: 'concept', observations: ['taken'] },
+    ]);
+    const rec = await ctx.failureManager.record({
+      ...validFailureInput(),
+      blamedComponent: { kind: 'entity', id: 'widget' },
+    });
+    await expect(
+      applyGuardedEdit(rec.id, { targetId: 'widget', observation: 'b' }, deps),
+    ).rejects.toMatchObject({ code: 'name-collision' });
+    const original = (await ctx.entityManager.getEntity('widget'))!;
+    expect(original.isLatest).not.toBe(false);
+    expect(original.observations).toEqual(['a']);
+  });
+
+  it('rejects a procedure observation that uses a reserved prefix', async () => {
+    await ctx.entityManager.createEntities([
+      { name: 'proc', entityType: 'procedure', observations: ['[success-rate]: 0.5'] },
+    ]);
+    const rec = await ctx.failureManager.record({
+      ...validFailureInput(),
+      blamedComponent: { kind: 'procedure', id: 'proc' },
+    });
+    await expect(
+      applyGuardedEdit(
+        rec.id,
+        { targetId: 'proc', observation: '[success-rate]: 0.9' },
+        deps,
+      ),
+    ).rejects.toMatchObject({ code: 'unbounded' });
+    const unchanged = (await ctx.entityManager.getEntity('proc'))!;
+    expect(unchanged.isLatest).not.toBe(false);
+  });
+
+  it('plan-node edit versions the plan and patches only that node field', async () => {
+    const plan = await ctx.plan.createPlan('Ship widget');
+    const rec = await ctx.failureManager.record({
+      ...validFailureInput(),
+      blamedComponent: { kind: 'plan-node', id: plan.rootGoal.id },
+    });
+    const result = await applyGuardedEdit(
+      rec.id,
+      {
+        targetId: plan.rootGoal.id,
+        planNodeField: 'description',
+        planNodeValue: 'Ship widget after review',
+      },
+      deps,
+    );
+    expect(result.kind).toBe('entity');
+    if (result.kind !== 'entity') return;
+    expect(result.previousName).toBe(plan.id);
+    expect(result.entity.lifecycleStatus).toBe('draft');
+    expect(result.entity.causedByFailureId).toBe(rec.id);
+    const newPlan = result.entity as unknown as { planRecord: { rootGoal: { description: string } } };
+    expect(newPlan.planRecord.rootGoal.description).toBe('Ship widget after review');
+    const oldPlan = (await ctx.entityManager.getEntity(plan.id))!;
+    expect(oldPlan.isLatest).toBe(false);
+    const oldRecord = oldPlan as unknown as { planRecord: { rootGoal: { description: string } } };
+    expect(oldRecord.planRecord.rootGoal.description).toBe('Ship widget');
+  });
+
+  it('stores causedByFailureId on the pg round and writes no audit on conflict', async () => {
+    const backing = new InMemoryProceduralGraphBacking();
+    const manager = new ProceduralGraphManager({ backing, ownsBacking: false });
+    const created = await manager.createGraph({
+      graphId: GRAPH_ID,
+      nodes: [{ id: 'Do', type: 'ACTION', description: 'old text', actionName: 'do' }],
+      edges: [],
+      entryNodeId: 'Do',
+      relationVocabulary: [...PG_BUILT_IN_RELATIONS],
+    });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const head = await backing.loadHead(GRAPH_ID);
+    const snapshot = (await backing.loadRevision(GRAPH_ID, head!.revisionId))!;
+    const rec = await ctx.failureManager.record(
+      {
+        ...validFailureInput(),
+        blamedComponent: { kind: 'pg-node', id: 'Do' },
+      },
+      { pgSnapshot: snapshot },
+    );
+    const pgDeps: GuardedEditContext = {
+      ...deps,
+      pg: { backing, graphId: GRAPH_ID },
+    };
+
+    const commitSpy = vi.spyOn(backing, 'commitRetainedRevision');
+    const result = await applyGuardedEdit(
+      rec.id,
+      { targetId: 'Do', pgNodeDescription: 'new text' },
+      pgDeps,
+    );
+    expect(result.kind).toBe('pg-revision');
+    const committedRound = commitSpy.mock.calls[0]?.[0]?.round;
+    expect(committedRound?.causedByFailureId).toBe(rec.id);
+
+    commitSpy.mockResolvedValueOnce({
+      status: 'conflict',
+      currentHead: (await backing.loadHead(GRAPH_ID))!,
+    });
+    const beforeAudit = await auditLog.query({});
+    await expect(
+      applyGuardedEdit(rec.id, { targetId: 'Do', pgNodeDescription: 'other text' }, pgDeps),
+    ).rejects.toMatchObject({ code: 'conflict' });
+    const afterAudit = await auditLog.query({});
+    expect(afterAudit).toHaveLength(beforeAudit.length);
+  });
 });
 
 function validFailureInput() {
