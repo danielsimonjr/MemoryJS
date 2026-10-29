@@ -10,22 +10,22 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 739
+**Total files**: 744
 
 ## Disposition counts
 
 | Disposition | Count | Meaning |
 | --- | --: | --- |
-| `reachable` | 304 | A `src/` file in the module graph, reachable from a root. |
+| `reachable` | 307 | A `src/` file in the module graph, reachable from a root. |
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 415 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 417 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 4 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 0 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **739** | |
+| **Total** | **744** | |
 
 ## Per-area counts
 
@@ -33,8 +33,8 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | --- | --: |
 | `benchmarks` | 4 |
 | `config` | 2 |
-| `src` | 308 |
-| `tests` | 415 |
+| `src` | 311 |
+| `tests` | 417 |
 | `tools` | 10 |
 
 ## All files
@@ -52,10 +52,10 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/adapters/pagination.ts` | src | reachable | 92 |
 | `src/adapters/RateLimiter.ts` | src | reachable | 206 |
 | `src/adapters/RestRouter.ts` | src | reachable | 751 |
-| `src/agent/AccessTracker.ts` | src | reachable | 433 |
+| `src/agent/AccessTracker.ts` | src | reachable | 425 |
 | `src/agent/AgentMemoryConfig.ts` | src | reachable | 265 |
 | `src/agent/AgentMemoryManager.ts` | src | reachable | 702 |
-| `src/agent/AgentReflectionManager.ts` | src | reachable | 305 |
+| `src/agent/AgentReflectionManager.ts` | src | reachable | 306 |
 | `src/agent/ArtifactManager.ts` | src | reachable | 236 |
 | `src/agent/causal/CausalReasoner.ts` | src | reachable | 254 |
 | `src/agent/causal/index.ts` | src | reachable | 15 |
@@ -68,9 +68,9 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/ConsolidationScheduler.ts` | src | reachable | 243 |
 | `src/agent/ContextProfileManager.ts` | src | reachable | 301 |
 | `src/agent/ContextWindowManager.ts` | src | reachable | 1935 |
-| `src/agent/DecayEngine.ts` | src | reachable | 757 |
+| `src/agent/DecayEngine.ts` | src | reachable | 751 |
 | `src/agent/DecayScheduler.ts` | src | reachable | 246 |
-| `src/agent/DecisionManager.ts` | src | reachable | 428 |
+| `src/agent/DecisionManager.ts` | src | reachable | 425 |
 | `src/agent/DistillationPipeline.ts` | src | reachable | 204 |
 | `src/agent/DistillationPolicy.ts` | src | reachable | 339 |
 | `src/agent/DreamEngine.ts` | src | reachable | 646 |
@@ -80,8 +80,8 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/events/index.ts` | src | reachable | 20 |
 | `src/agent/ExclusionManager.ts` | src | reachable | 210 |
 | `src/agent/ExperienceExtractor.ts` | src | reachable | 435 |
-| `src/agent/FailureDistillation.ts` | src | reachable | 301 |
-| `src/agent/FailureManager.ts` | src | reachable | 456 |
+| `src/agent/FailureDistillation.ts` | src | reachable | 314 |
+| `src/agent/FailureManager.ts` | src | reachable | 457 |
 | `src/agent/GuardedComponentEdit.ts` | src | reachable | 711 |
 | `src/agent/HeuristicManager.ts` | src | reachable | 354 |
 | `src/agent/ImportanceScorer.ts` | src | reachable | 99 |
@@ -96,7 +96,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/ObservationDedupManager.ts` | src | reachable | 261 |
 | `src/agent/ObserverPipeline.ts` | src | reachable | 380 |
 | `src/agent/PatternDetector.ts` | src | reachable | 372 |
-| `src/agent/PlanManager.ts` | src | reachable | 542 |
+| `src/agent/PlanManager.ts` | src | reachable | 543 |
 | `src/agent/procedural/graph/backing/index.ts` | src | reachable | 17 |
 | `src/agent/procedural/graph/backing/InMemoryProceduralGraphBacking.ts` | src | reachable | 25 |
 | `src/agent/procedural/graph/backing/IProceduralGraphBacking.ts` | src | reachable | 102 |
@@ -138,6 +138,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/reconstruction/MemoryReconstructor.ts` | src | reachable | 394 |
 | `src/agent/reconstruction/MemoryToolkit.ts` | src | reachable | 111 |
 | `src/agent/reconstruction/ReconstructiveMemory.ts` | src | reachable | 151 |
+| `src/agent/recordQuery.ts` | src | reachable | 30 |
 | `src/agent/RelationConsolidator.ts` | src | reachable | 962 |
 | `src/agent/retrieval/ActiveRetrievalController.ts` | src | reachable | 189 |
 | `src/agent/retrieval/index.ts` | src | reachable | 20 |
@@ -193,7 +194,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/cli/interactive.ts` | src | reachable | 439 |
 | `src/cli/options.ts` | src | reachable | 58 |
 | `src/core/columns/IColumnStore.ts` | src | reachable | 177 |
-| `src/core/columns/JsonlColumnStore.ts` | src | reachable | 238 |
+| `src/core/columns/JsonlColumnStore.ts` | src | reachable | 230 |
 | `src/core/EntityManager.ts` | src | reachable | 1604 |
 | `src/core/EntityStateMachine.ts` | src | reachable | 104 |
 | `src/core/GraphEventEmitter.ts` | src | reachable | 463 |
@@ -235,7 +236,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/features/ObservationNormalizer.ts` | src | reachable | 266 |
 | `src/features/SemanticForget.ts` | src | reachable | 189 |
 | `src/features/StreamingExporter.ts` | src | reachable | 339 |
-| `src/features/TagManager.ts` | src | reachable | 253 |
+| `src/features/TagManager.ts` | src | reachable | 255 |
 | `src/index.ts` | src | build-entry | 36 |
 | `src/search/BasicSearch.ts` | src | reachable | 171 |
 | `src/search/BloomFilter.ts` | src | reachable | 130 |
@@ -258,7 +259,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/search/LLMQueryPlanner.ts` | src | reachable | 383 |
 | `src/search/LLMSearchExecutor.ts` | src | reachable | 226 |
 | `src/search/MaterializedViews.ts` | src | reachable | 177 |
-| `src/search/NGramIndex.ts` | src | reachable | 271 |
+| `src/search/NGramIndex.ts` | src | reachable | 262 |
 | `src/search/OptimizedInvertedIndex.ts` | src | reachable | 489 |
 | `src/search/ParallelSearchExecutor.ts` | src | reachable | 581 |
 | `src/search/PartialIndexAdvisor.ts` | src | reachable | 209 |
@@ -273,7 +274,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/search/QueryPlanner.ts` | src | reachable | 124 |
 | `src/search/RankedSearch.ts` | src | reachable | 532 |
 | `src/search/ReflectionManager.ts` | src | reachable | 374 |
-| `src/search/SavedSearchManager.ts` | src | reachable | 218 |
+| `src/search/SavedSearchManager.ts` | src | reachable | 220 |
 | `src/search/SearchFilterChain.ts` | src | reachable | 335 |
 | `src/search/SearchManager.ts` | src | reachable | 555 |
 | `src/search/SearchSuggestions.ts` | src | reachable | 240 |
@@ -288,7 +289,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/search/tiered/DiskWarmTier.ts` | src | reachable | 168 |
 | `src/search/tiered/ITieredIndex.ts` | src | reachable | 225 |
 | `src/search/tiered/LRUHotTier.ts` | src | reachable | 177 |
-| `src/search/tiered/MapFileTier.ts` | src | reachable | 153 |
+| `src/search/tiered/MapFileTier.ts` | src | reachable | 146 |
 | `src/search/tiered/TieredIndex.ts` | src | reachable | 319 |
 | `src/search/VectorStore.ts` | src | reachable | 473 |
 | `src/security/ABACPolicy.ts` | src | reachable | 271 |
@@ -327,19 +328,21 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/utils/fillDefaults.ts` | src | reachable | 18 |
 | `src/utils/formatters.ts` | src | reachable | 197 |
 | `src/utils/graphCopy.ts` | src | reachable | 96 |
-| `src/utils/halfLife.ts` | src | reachable | 24 |
+| `src/utils/halfLife.ts` | src | reachable | 40 |
 | `src/utils/ids.ts` | src | reachable | 23 |
 | `src/utils/IIndexHealth.ts` | src | reachable | 47 |
 | `src/utils/index.ts` | src | reachable | 391 |
-| `src/utils/indexes.ts` | src | reachable | 438 |
+| `src/utils/indexes.ts` | src | reachable | 430 |
 | `src/utils/IndexHealthMonitor.ts` | src | reachable | 78 |
 | `src/utils/jsonlMapFile.ts` | src | reachable | 113 |
+| `src/utils/jsonlRecordFile.ts` | src | reachable | 40 |
 | `src/utils/logger.ts` | src | reachable | 45 |
 | `src/utils/MemoryMonitor.ts` | src | reachable | 411 |
-| `src/utils/mutateMapWithFlushRollback.ts` | src | reachable | 21 |
+| `src/utils/mutateMapWithFlushRollback.ts` | src | reachable | 44 |
 | `src/utils/nextMonotonicIsoTimestamp.ts` | src | reachable | 15 |
 | `src/utils/operationUtils.ts` | src | reachable | 224 |
 | `src/utils/parallelUtils.ts` | src | reachable | 148 |
+| `src/utils/postingIndex.ts` | src | reachable | 24 |
 | `src/utils/relationHelpers.ts` | src | reachable | 286 |
 | `src/utils/relationValidation.ts` | src | reachable | 257 |
 | `src/utils/schemas.ts` | src | reachable | 782 |
@@ -410,11 +413,11 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/adapters/rest-tenancy.test.ts` | tests | test | 347 |
 | `tests/unit/adapters/rest-unscoped-warning.test.ts` | tests | test | 46 |
 | `tests/unit/adapters/RestRouter.test.ts` | tests | test | 203 |
-| `tests/unit/agent/AccessTracker.test.ts` | tests | test | 689 |
+| `tests/unit/agent/AccessTracker.test.ts` | tests | test | 718 |
 | `tests/unit/agent/ActiveRetrieval.test.ts` | tests | test | 194 |
 | `tests/unit/agent/agent-memory-manager-diary.test.ts` | tests | test | 70 |
 | `tests/unit/agent/AgentMemoryManager.test.ts` | tests | test | 668 |
-| `tests/unit/agent/AgentReflectionManager.test.ts` | tests | test | 554 |
+| `tests/unit/agent/AgentReflectionManager.test.ts` | tests | test | 578 |
 | `tests/unit/agent/ArtifactManager.test.ts` | tests | test | 616 |
 | `tests/unit/agent/CausalReasoner.test.ts` | tests | test | 339 |
 | `tests/unit/agent/CognitiveLoadAnalyzer.test.ts` | tests | test | 362 |
@@ -428,9 +431,9 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/context-window-manager-wakeup.test.ts` | tests | test | 226 |
 | `tests/unit/agent/ContextProfileManager.test.ts` | tests | test | 526 |
 | `tests/unit/agent/ContextWindowManager.test.ts` | tests | test | 1717 |
-| `tests/unit/agent/DecayEngine.test.ts` | tests | test | 1227 |
+| `tests/unit/agent/DecayEngine.test.ts` | tests | test | 1236 |
 | `tests/unit/agent/DecayScheduler.test.ts` | tests | test | 567 |
-| `tests/unit/agent/DecisionManager.test.ts` | tests | test | 394 |
+| `tests/unit/agent/DecisionManager.test.ts` | tests | test | 403 |
 | `tests/unit/agent/delta-services-wiring.test.ts` | tests | test | 61 |
 | `tests/unit/agent/DistillationPipeline.test.ts` | tests | test | 153 |
 | `tests/unit/agent/DistillationPolicy.test.ts` | tests | test | 850 |
@@ -440,8 +443,8 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/EventManager.test.ts` | tests | test | 512 |
 | `tests/unit/agent/ExclusionManager.test.ts` | tests | test | 237 |
 | `tests/unit/agent/ExperienceExtractor.test.ts` | tests | test | 178 |
-| `tests/unit/agent/FailureDistillation.test.ts` | tests | test | 539 |
-| `tests/unit/agent/FailureManager.test.ts` | tests | test | 722 |
+| `tests/unit/agent/FailureDistillation.test.ts` | tests | test | 617 |
+| `tests/unit/agent/FailureManager.test.ts` | tests | test | 737 |
 | `tests/unit/agent/GuardedComponentEdit.test.ts` | tests | test | 598 |
 | `tests/unit/agent/HeuristicExtractionStage.test.ts` | tests | test | 326 |
 | `tests/unit/agent/HeuristicManager.test.ts` | tests | test | 206 |
@@ -459,7 +462,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/ObservationDedupReportStage.test.ts` | tests | test | 111 |
 | `tests/unit/agent/ObserverPipeline.test.ts` | tests | test | 556 |
 | `tests/unit/agent/PatternDetector.test.ts` | tests | test | 413 |
-| `tests/unit/agent/PlanManager.test.ts` | tests | test | 592 |
+| `tests/unit/agent/PlanManager.test.ts` | tests | test | 600 |
 | `tests/unit/agent/procedural/graph/appendixF.test.ts` | tests | test | 97 |
 | `tests/unit/agent/procedural/graph/backing/backingContract.ts` | tests | test | 383 |
 | `tests/unit/agent/procedural/graph/backing/jsonl.test.ts` | tests | test | 118 |
@@ -494,6 +497,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/reconstruction/MemoryGraphBridge.test.ts` | tests | test | 120 |
 | `tests/unit/agent/reconstruction/MemoryToolkit.test.ts` | tests | test | 61 |
 | `tests/unit/agent/reconstruction/ReconstructiveMemory.test.ts` | tests | test | 135 |
+| `tests/unit/agent/recordQuery.test.ts` | tests | test | 23 |
 | `tests/unit/agent/ReflectionStage.test.ts` | tests | test | 344 |
 | `tests/unit/agent/RelationConsolidator.test.ts` | tests | test | 678 |
 | `tests/unit/agent/RoleProfiles.test.ts` | tests | test | 255 |
@@ -544,7 +548,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/BatchTransaction.test.ts` | tests | test | 695 |
 | `tests/unit/core/columns/columns-review-fixes.test.ts` | tests | test | 338 |
 | `tests/unit/core/columns/IColumnStore.test.ts` | tests | test | 132 |
-| `tests/unit/core/columns/JsonlColumnStore.test.ts` | tests | test | 390 |
+| `tests/unit/core/columns/JsonlColumnStore.test.ts` | tests | test | 408 |
 | `tests/unit/core/columns/ObservationColumnStore-wiring.test.ts` | tests | test | 266 |
 | `tests/unit/core/columns/shadow-write-drain.test.ts` | tests | test | 109 |
 | `tests/unit/core/ConcurrencyControl.test.ts` | tests | test | 459 |
@@ -663,7 +667,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/search/LLMSearchExecutorExplain.test.ts` | tests | test | 193 |
 | `tests/unit/search/MaterializedViews.test.ts` | tests | test | 94 |
 | `tests/unit/search/NGramFuzzyIntegration.test.ts` | tests | test | 298 |
-| `tests/unit/search/NGramIndex.test.ts` | tests | test | 461 |
+| `tests/unit/search/NGramIndex.test.ts` | tests | test | 470 |
 | `tests/unit/search/OptimizedInvertedIndex.test.ts` | tests | test | 276 |
 | `tests/unit/search/ParallelSearchExecutor.test.ts` | tests | test | 551 |
 | `tests/unit/search/PartialIndexAdvisor.test.ts` | tests | test | 111 |
@@ -705,7 +709,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/search/TFIDFIndexManager.test.ts` | tests | test | 564 |
 | `tests/unit/search/tiered/BrotliColdTier.test.ts` | tests | test | 599 |
 | `tests/unit/search/tiered/disk-tier-concurrency.test.ts` | tests | test | 69 |
-| `tests/unit/search/tiered/DiskWarmTier.test.ts` | tests | test | 537 |
+| `tests/unit/search/tiered/DiskWarmTier.test.ts` | tests | test | 558 |
 | `tests/unit/search/tiered/ITieredIndex.test.ts` | tests | test | 175 |
 | `tests/unit/search/tiered/LRUHotTier.test.ts` | tests | test | 252 |
 | `tests/unit/search/tiered/tiered-review-fixes.test.ts` | tests | test | 275 |
@@ -747,8 +751,9 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/utils/formatters.test.ts` | tests | test | 470 |
 | `tests/unit/utils/halfLife.test.ts` | tests | test | 27 |
 | `tests/unit/utils/ids.test.ts` | tests | test | 35 |
-| `tests/unit/utils/indexes.test.ts` | tests | test | 885 |
+| `tests/unit/utils/indexes.test.ts` | tests | test | 898 |
 | `tests/unit/utils/jsonlMapFile.test.ts` | tests | test | 162 |
+| `tests/unit/utils/jsonlRecordFile.test.ts` | tests | test | 81 |
 | `tests/unit/utils/logger.test.ts` | tests | test | 253 |
 | `tests/unit/utils/MemoryMonitor.test.ts` | tests | test | 413 |
 | `tests/unit/utils/mutateMapWithFlushRollback.test.ts` | tests | test | 34 |

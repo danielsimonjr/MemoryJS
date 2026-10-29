@@ -3,9 +3,9 @@
     "name": "@danielsimonjr/memoryjs",
     "version": "4.3.0",
     "lastUpdated": "2026-10-29",
-    "totalFiles": 308,
+    "totalFiles": 311,
     "totalModules": 12,
-    "totalExports": 2090
+    "totalExports": 2097
   },
   "entryPoints": [
     {
@@ -403,6 +403,7 @@
           {
             "file": "../utils/halfLife.js",
             "imports": [
+              "clampedHalfLifeScore",
               "halfLifeFactor"
             ]
           },
@@ -839,6 +840,12 @@
             "file": "./versionedWriteFailure.js",
             "imports": [
               "versionedWriteFailure"
+            ]
+          },
+          {
+            "file": "./recordQuery.js",
+            "imports": [
+              "matchesDefined"
             ]
           },
           {
@@ -1526,6 +1533,7 @@
           {
             "file": "../utils/halfLife.js",
             "imports": [
+              "clampedHalfLifeScore",
               "halfLifeFactor"
             ]
           },
@@ -1684,6 +1692,13 @@
             "file": "../utils/index.js",
             "imports": [
               "validateNonEmpty"
+            ]
+          },
+          {
+            "file": "./recordQuery.js",
+            "imports": [
+              "loadProjectedRecords",
+              "matchesDefined"
             ]
           }
         ],
@@ -2196,6 +2211,13 @@
             "file": "./versionedWriteFailure.js",
             "imports": [
               "versionedWriteFailure"
+            ]
+          },
+          {
+            "file": "./recordQuery.js",
+            "imports": [
+              "loadProjectedRecords",
+              "matchesDefined"
             ]
           },
           {
@@ -2890,6 +2912,13 @@
             "imports": [
               "isPlanMemory",
               "toIsoDateTime"
+            ]
+          },
+          {
+            "file": "./recordQuery.js",
+            "imports": [
+              "loadProjectedRecords",
+              "matchesDefined"
             ]
           },
           {
@@ -8152,6 +8181,29 @@
           "BridgePersistResult"
         ]
       },
+      "src/agent/recordQuery.ts": {
+        "description": "Loads entities from storage, keeps those matching `isRecord`, and maps each to `project`.",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "Entity",
+              "IGraphStorage"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "loadProjectedRecords",
+          "matchesDefined"
+        ],
+        "functions": [
+          "loadProjectedRecords",
+          "matchesDefined"
+        ]
+      },
       "src/agent/retrieval/ActiveRetrievalController.ts": {
         "description": "Active Retrieval Controller (3B.5)",
         "externalDependencies": [],
@@ -11671,6 +11723,7 @@
           {
             "file": "../../utils/mutateMapWithFlushRollback.js",
             "imports": [
+              "clearMapWithFlushRollback",
               "mutateMapWithFlushRollback"
             ]
           },
@@ -13086,6 +13139,13 @@
             "imports": [
               "parseJsonlRecords"
             ]
+          },
+          {
+            "file": "../utils/jsonlRecordFile.js",
+            "imports": [
+              "deleteRecordsByKey",
+              "writeJsonlRecordsUpdatingCache"
+            ]
           }
         ],
         "exports": [
@@ -14396,7 +14456,14 @@
         "description": "N-gram Index",
         "externalDependencies": [],
         "nodeDependencies": [],
-        "internalDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../utils/postingIndex.js",
+            "imports": [
+              "removeIdFromPostings"
+            ]
+          }
+        ],
         "exports": [
           "NGramIndex"
         ],
@@ -14940,6 +15007,13 @@
             "file": "../utils/jsonlMapFile.js",
             "imports": [
               "parseJsonlRecords"
+            ]
+          },
+          {
+            "file": "../utils/jsonlRecordFile.js",
+            "imports": [
+              "deleteRecordsByKey",
+              "writeJsonlRecordsUpdatingCache"
             ]
           }
         ],
@@ -16409,6 +16483,12 @@
         ],
         "nodeDependencies": [],
         "internalDependencies": [
+          {
+            "file": "../../utils/mutateMapWithFlushRollback.js",
+            "imports": [
+              "clearMapWithFlushRollback"
+            ]
+          },
           {
             "file": "../../utils/jsonlMapFile.js",
             "imports": [
@@ -18800,10 +18880,12 @@
         "nodeDependencies": [],
         "internalDependencies": [],
         "exports": [
-          "halfLifeFactor"
+          "halfLifeFactor",
+          "clampedHalfLifeScore"
         ],
         "functions": [
-          "halfLifeFactor"
+          "halfLifeFactor",
+          "clampedHalfLifeScore"
         ]
       },
       "src/utils/ids.ts": {
@@ -19812,6 +19894,12 @@
               "Relation"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "./postingIndex.js",
+            "imports": [
+              "removeIdFromPostings"
+            ]
           }
         ],
         "exports": [
@@ -19860,6 +19948,27 @@
           "parseJsonlRecords"
         ]
       },
+      "src/utils/jsonlRecordFile.ts": {
+        "description": "Writes JSONL records to a file and updates the in-memory cache on success.",
+        "externalDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "fs/promises",
+            "imports": [
+              "* as fs"
+            ]
+          }
+        ],
+        "internalDependencies": [],
+        "exports": [
+          "writeJsonlRecordsUpdatingCache",
+          "deleteRecordsByKey"
+        ],
+        "functions": [
+          "writeJsonlRecordsUpdatingCache",
+          "deleteRecordsByKey"
+        ]
+      },
       "src/utils/logger.ts": {
         "description": "Simple logging utility for the Memory MCP Server",
         "externalDependencies": [],
@@ -19878,10 +19987,12 @@
         "nodeDependencies": [],
         "internalDependencies": [],
         "exports": [
-          "mutateMapWithFlushRollback"
+          "mutateMapWithFlushRollback",
+          "clearMapWithFlushRollback"
         ],
         "functions": [
-          "mutateMapWithFlushRollback"
+          "mutateMapWithFlushRollback",
+          "clearMapWithFlushRollback"
         ]
       },
       "src/utils/nextMonotonicIsoTimestamp.ts": {
@@ -19956,6 +20067,18 @@
           "parallelMap",
           "parallelFilter",
           "getPoolStats"
+        ]
+      },
+      "src/utils/postingIndex.ts": {
+        "description": "Deletes `id` from each posting set named by `terms`, and drops empty sets.",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "removeIdFromPostings"
+        ],
+        "functions": [
+          "removeIdFromPostings"
         ]
       },
       "src/utils/relationHelpers.ts": {
@@ -20623,6 +20746,7 @@
           "src/agent/reconstruction/MemoryToolkit.ts",
           "src/agent/reconstruction/ReconstructiveMemory.ts",
           "src/agent/reconstruction/index.ts",
+          "src/agent/recordQuery.ts",
           "src/agent/retrieval/ActiveRetrievalController.ts",
           "src/agent/retrieval/QueryRewriter.ts",
           "src/agent/retrieval/index.ts",
@@ -20853,11 +20977,13 @@
           "src/utils/index.ts",
           "src/utils/indexes.ts",
           "src/utils/jsonlMapFile.ts",
+          "src/utils/jsonlRecordFile.ts",
           "src/utils/logger.ts",
           "src/utils/mutateMapWithFlushRollback.ts",
           "src/utils/nextMonotonicIsoTimestamp.ts",
           "src/utils/operationUtils.ts",
           "src/utils/parallelUtils.ts",
+          "src/utils/postingIndex.ts",
           "src/utils/relationHelpers.ts",
           "src/utils/relationValidation.ts",
           "src/utils/schemas.ts",
@@ -20884,28 +21010,28 @@
       "src/sqlite.ts",
       "src/workers/levenshteinWorker.ts"
     ],
-    "reachableCount": 308,
+    "reachableCount": 311,
     "dormantCount": 0,
     "orphaned": [],
     "testOnly": []
   },
   "statistics": {
-    "totalTypeScriptFiles": 308,
+    "totalTypeScriptFiles": 311,
     "totalModules": 12,
-    "totalLinesOfCode": 105439,
-    "totalExports": 2090,
+    "totalLinesOfCode": 105543,
+    "totalExports": 2097,
     "totalClasses": 237,
     "totalInterfaces": 631,
-    "totalFunctions": 365,
+    "totalFunctions": 372,
     "totalTypeGuards": 31,
     "totalEnums": 4,
     "totalConstants": 124,
     "totalReExports": 1349,
-    "totalTypeOnlyImports": 497,
+    "totalTypeOnlyImports": 498,
     "runtimeCircularDeps": 0,
     "typeOnlyCircularDeps": 8,
     "entryRoots": 4,
-    "reachableFiles": 308,
+    "reachableFiles": 311,
     "dormantFiles": 0,
     "orphanedFiles": 0,
     "testOnlyFiles": 0,
