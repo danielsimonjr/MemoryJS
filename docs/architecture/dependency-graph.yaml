@@ -4,7 +4,7 @@ metadata:
   lastUpdated: "2026-10-29"
   totalFiles: 313
   totalModules: 12
-  totalExports: 2100
+  totalExports: 2101
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -7106,10 +7106,12 @@ modules:
             - streamLines
         - file: ./storageCache.js
           imports:
+            - bindStorageCacheState
             - relationKeyOf
             - removeEntitiesFromIndexes
             - upsertEntityInCache
             - upsertRelationInCache
+            - StorageCacheOwner
             - StorageCacheState
       exports:
         - GraphStorage
@@ -7737,10 +7739,12 @@ modules:
             - GraphEventEmitter
         - file: ./storageCache.js
           imports:
+            - bindStorageCacheState
             - relationKeyOf
             - removeEntitiesFromIndexes
             - upsertEntityInCache
             - upsertRelationInCache
+            - StorageCacheOwner
             - StorageCacheState
       exports:
         - __resetDatabaseCtorForTests
@@ -8219,6 +8223,7 @@ modules:
             - ObservationIndex
           typeOnly: true
       exports:
+        - bindStorageCacheState
         - relationKeyOf
         - upsertEntityInCache
         - upsertRelationInCache
@@ -8226,6 +8231,7 @@ modules:
       interfaces:
         - StorageCacheState
       functions:
+        - bindStorageCacheState
         - relationKeyOf
         - upsertEntityInCache
         - upsertRelationInCache
@@ -14931,11 +14937,11 @@ reachability:
 statistics:
   totalTypeScriptFiles: 313
   totalModules: 12
-  totalLinesOfCode: 105476
-  totalExports: 2100
+  totalLinesOfCode: 105512
+  totalExports: 2101
   totalClasses: 237
   totalInterfaces: 632
-  totalFunctions: 375
+  totalFunctions: 376
   totalTypeGuards: 31
   totalEnums: 4
   totalConstants: 124

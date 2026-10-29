@@ -38,6 +38,67 @@ export interface StorageCacheState {
   removeLowercase(entity: Entity): void;
 }
 
+type CacheStateOwner = {
+  cache: KnowledgeGraph | null;
+  nameIndex: NameIndex;
+  typeIndex: TypeIndex;
+  relationIndex: RelationIndex;
+  relationKeyMap: Map<string, Relation>;
+  observationIndex?: ObservationIndex;
+};
+
+/**
+ * Cache and index fields owned by a storage backend for {@link bindStorageCacheState}.
+ * @internal Storage classes cast `this` to this shape.
+ */
+export type StorageCacheOwner = CacheStateOwner;
+
+/**
+ * Wires a storage owner's cache fields into a {@link StorageCacheState} facade with live getters.
+ */
+export function bindStorageCacheState(
+  owner: CacheStateOwner,
+  lowercase: {
+    set(entity: Entity): void;
+    remove(entity: Entity): void;
+  },
+  options?: { includeObservationIndex?: boolean },
+): StorageCacheState {
+  const state: StorageCacheState = {
+    get cache() {
+      return owner.cache;
+    },
+    get nameIndex() {
+      return owner.nameIndex;
+    },
+    get typeIndex() {
+      return owner.typeIndex;
+    },
+    get relationIndex() {
+      return owner.relationIndex;
+    },
+    get relationKeyMap() {
+      return owner.relationKeyMap;
+    },
+    setLowercase(entity: Entity): void {
+      lowercase.set(entity);
+    },
+    removeLowercase(entity: Entity): void {
+      lowercase.remove(entity);
+    },
+  };
+  if (options?.includeObservationIndex) {
+    Object.defineProperty(state, 'observationIndex', {
+      enumerable: true,
+      configurable: true,
+      get(): ObservationIndex {
+        return owner.observationIndex!;
+      },
+    });
+  }
+  return state;
+}
+
 /**
  * Composite key uniquely identifying a relation (`from`/`to`/`relationType`
  * triple). The `\u0000` separator matches the keys that `RelationManager`

@@ -5,7 +5,7 @@
     "lastUpdated": "2026-10-29",
     "totalFiles": 313,
     "totalModules": 12,
-    "totalExports": 2100
+    "totalExports": 2101
   },
   "entryPoints": [
     {
@@ -10420,10 +10420,12 @@
           {
             "file": "./storageCache.js",
             "imports": [
+              "bindStorageCacheState",
               "relationKeyOf",
               "removeEntitiesFromIndexes",
               "upsertEntityInCache",
               "upsertRelationInCache",
+              "StorageCacheOwner",
               "StorageCacheState"
             ]
           }
@@ -11531,10 +11533,12 @@
           {
             "file": "./storageCache.js",
             "imports": [
+              "bindStorageCacheState",
               "relationKeyOf",
               "removeEntitiesFromIndexes",
               "upsertEntityInCache",
               "upsertRelationInCache",
+              "StorageCacheOwner",
               "StorageCacheState"
             ]
           }
@@ -12248,6 +12252,7 @@
           }
         ],
         "exports": [
+          "bindStorageCacheState",
           "relationKeyOf",
           "upsertEntityInCache",
           "upsertRelationInCache",
@@ -12257,6 +12262,7 @@
           "StorageCacheState"
         ],
         "functions": [
+          "bindStorageCacheState",
           "relationKeyOf",
           "upsertEntityInCache",
           "upsertRelationInCache",
@@ -21086,11 +21092,11 @@
   "statistics": {
     "totalTypeScriptFiles": 313,
     "totalModules": 12,
-    "totalLinesOfCode": 105476,
-    "totalExports": 2100,
+    "totalLinesOfCode": 105512,
+    "totalExports": 2101,
     "totalClasses": 237,
     "totalInterfaces": 632,
-    "totalFunctions": 375,
+    "totalFunctions": 376,
     "totalTypeGuards": 31,
     "totalEnums": 4,
     "totalConstants": 124,
