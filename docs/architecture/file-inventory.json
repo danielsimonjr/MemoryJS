@@ -389,7 +389,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 250
+      "loc": 251
     },
     {
       "file": "src/agent/ObserverPipeline.ts",
@@ -2958,7 +2958,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 229
+      "loc": 237
     },
     {
       "file": "tests/unit/agent/ObservationDedupReportStage.test.ts",
