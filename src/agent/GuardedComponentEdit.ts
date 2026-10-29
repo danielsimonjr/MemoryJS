@@ -234,7 +234,7 @@ function validateScalarPatch(field: GuardedScalarField | undefined, value: numbe
     return;
   }
   if (field === 'confidence') {
-    if (typeof value !== 'number' || value < 0 || value > 1) {
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1) {
       throw new GuardedEditError('empty-change', 'confidence must be a number from 0 to 1');
     }
     return;

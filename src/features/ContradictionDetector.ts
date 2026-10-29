@@ -143,9 +143,21 @@ export class ContradictionDetector {
       parentEntityName: oldEntity.name,
       rootEntityName: rootName,
       isLatest: true,
-      confidence: options?.patch?.confidence ?? oldEntity.confidence,
-      ttl: options?.patch?.ttl ?? oldEntity.ttl,
     };
+
+    // Default supersede copies only the fields it copied before options existed.
+    // confidence/ttl come from an explicit patch, or from the old entity when
+    // preserveBody keeps the rest of the body.
+    if (options?.patch?.confidence !== undefined) {
+      newEntity.confidence = options.patch.confidence;
+    } else if (preserveBody && oldEntity.confidence !== undefined) {
+      newEntity.confidence = oldEntity.confidence;
+    }
+    if (options?.patch?.ttl !== undefined) {
+      newEntity.ttl = options.patch.ttl;
+    } else if (preserveBody && oldEntity.ttl !== undefined) {
+      newEntity.ttl = oldEntity.ttl;
+    }
 
     if (options?.causedByFailureId !== undefined) {
       newEntity.causedByFailureId = options.causedByFailureId;
