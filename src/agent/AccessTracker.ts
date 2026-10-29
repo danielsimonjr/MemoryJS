@@ -149,6 +149,11 @@ export class AccessTracker {
     await this.updateEntityAccessFields(entityName, record);
   }
 
+  /** Records the same access context for many entity names in parallel. */
+  async recordAccessBatch(names: readonly string[], context: AccessContext): Promise<void> {
+    await Promise.all(names.map(name => this.recordAccess(name, context)));
+  }
+
   /**
    * Get access statistics for an entity.
    *
