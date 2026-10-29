@@ -409,7 +409,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/adapters/rest-tenancy.test.ts` | tests | test | 347 |
 | `tests/unit/adapters/rest-unscoped-warning.test.ts` | tests | test | 46 |
 | `tests/unit/adapters/RestRouter.test.ts` | tests | test | 203 |
-| `tests/unit/agent/AccessTracker.test.ts` | tests | test | 716 |
+| `tests/unit/agent/AccessTracker.test.ts` | tests | test | 718 |
 | `tests/unit/agent/ActiveRetrieval.test.ts` | tests | test | 194 |
 | `tests/unit/agent/agent-memory-manager-diary.test.ts` | tests | test | 70 |
 | `tests/unit/agent/AgentMemoryManager.test.ts` | tests | test | 668 |
@@ -427,7 +427,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/context-window-manager-wakeup.test.ts` | tests | test | 226 |
 | `tests/unit/agent/ContextProfileManager.test.ts` | tests | test | 526 |
 | `tests/unit/agent/ContextWindowManager.test.ts` | tests | test | 1717 |
-| `tests/unit/agent/DecayEngine.test.ts` | tests | test | 1234 |
+| `tests/unit/agent/DecayEngine.test.ts` | tests | test | 1236 |
 | `tests/unit/agent/DecayScheduler.test.ts` | tests | test | 567 |
 | `tests/unit/agent/DecisionManager.test.ts` | tests | test | 394 |
 | `tests/unit/agent/delta-services-wiring.test.ts` | tests | test | 61 |

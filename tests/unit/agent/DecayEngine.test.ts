@@ -219,6 +219,8 @@ describe('DecayEngine.calculateDecayFactorStatic', () => {
   });
 
   it('matches AccessTracker when timestamp and half-life are the same', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-29T18:00:00.000Z'));
     const ts = '2026-01-15T12:00:00.000Z';
     expect(DecayEngine.calculateDecayFactorStatic(ts, 48)).toBe(
       AccessTracker.calculateRecencyScoreFromTimestamp(ts, 48),

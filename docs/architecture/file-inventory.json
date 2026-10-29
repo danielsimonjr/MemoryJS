@@ -2601,7 +2601,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 716
+      "loc": 718
     },
     {
       "file": "tests/unit/agent/ActiveRetrieval.test.ts",
@@ -2727,7 +2727,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 1234
+      "loc": 1236
     },
     {
       "file": "tests/unit/agent/DecayScheduler.test.ts",
