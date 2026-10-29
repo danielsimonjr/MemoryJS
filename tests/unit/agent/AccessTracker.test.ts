@@ -191,6 +191,32 @@ describe('AccessTracker.recordAccess', () => {
   });
 });
 
+describe('AccessTracker.recordAccessBatch', () => {
+  it('does not call recordAccess for an empty list', async () => {
+    const storage = createMockStorage();
+    const tracker = new AccessTracker(storage);
+    const spy = vi.spyOn(tracker, 'recordAccess');
+    const context = { sessionId: 's', retrievalMethod: 'traversal' as const };
+    await tracker.recordAccessBatch([], context);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('records two names with the same context object', async () => {
+    const storage = createMockStorage({
+      a: createAgentEntity('a'),
+      b: createAgentEntity('b'),
+    });
+    const tracker = new AccessTracker(storage);
+    const spy = vi.spyOn(tracker, 'recordAccess');
+    const context = { sessionId: 's', taskId: 't', retrievalMethod: 'traversal' as const };
+    await tracker.recordAccessBatch(['a', 'b'], context);
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(spy.mock.calls[0][1]).toBe(context);
+    expect(spy.mock.calls[1][1]).toBe(context);
+    expect(context.retrievalMethod).toBe('traversal');
+  });
+});
+
 // ==================== getAccessStats Tests ====================
 
 describe('AccessTracker.getAccessStats', () => {
