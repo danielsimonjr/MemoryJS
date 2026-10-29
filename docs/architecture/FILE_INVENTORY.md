@@ -260,7 +260,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/search/MaterializedViews.ts` | src | reachable | 177 |
 | `src/search/NGramIndex.ts` | src | reachable | 271 |
 | `src/search/OptimizedInvertedIndex.ts` | src | reachable | 489 |
-| `src/search/ParallelSearchExecutor.ts` | src | reachable | 556 |
+| `src/search/ParallelSearchExecutor.ts` | src | reachable | 563 |
 | `src/search/PartialIndexAdvisor.ts` | src | reachable | 209 |
 | `src/search/ProximitySearch.ts` | src | reachable | 234 |
 | `src/search/QuantizedVectorStore.ts` | src | reachable | 408 |
@@ -664,7 +664,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/search/NGramFuzzyIntegration.test.ts` | tests | test | 298 |
 | `tests/unit/search/NGramIndex.test.ts` | tests | test | 461 |
 | `tests/unit/search/OptimizedInvertedIndex.test.ts` | tests | test | 276 |
-| `tests/unit/search/ParallelSearchExecutor.test.ts` | tests | test | 551 |
+| `tests/unit/search/ParallelSearchExecutor.test.ts` | tests | test | 578 |
 | `tests/unit/search/PartialIndexAdvisor.test.ts` | tests | test | 111 |
 | `tests/unit/search/ProximitySearch.test.ts` | tests | test | 530 |
 | `tests/unit/search/QuantizedVectorStore-topk-pins.test.ts` | tests | test | 93 |
