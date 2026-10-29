@@ -423,13 +423,13 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/ConflictResolver.test.ts` | tests | test | 466 |
 | `tests/unit/agent/ConnectivitySignals.test.ts` | tests | test | 478 |
 | `tests/unit/agent/ConsolidationPipeline.test.ts` | tests | test | 2361 |
-| `tests/unit/agent/ConsolidationScheduler.test.ts` | tests | test | 363 |
+| `tests/unit/agent/ConsolidationScheduler.test.ts` | tests | test | 388 |
 | `tests/unit/agent/context-window-manager-compress.test.ts` | tests | test | 166 |
 | `tests/unit/agent/context-window-manager-wakeup.test.ts` | tests | test | 226 |
 | `tests/unit/agent/ContextProfileManager.test.ts` | tests | test | 526 |
 | `tests/unit/agent/ContextWindowManager.test.ts` | tests | test | 1717 |
 | `tests/unit/agent/DecayEngine.test.ts` | tests | test | 1227 |
-| `tests/unit/agent/DecayScheduler.test.ts` | tests | test | 567 |
+| `tests/unit/agent/DecayScheduler.test.ts` | tests | test | 584 |
 | `tests/unit/agent/DecisionManager.test.ts` | tests | test | 394 |
 | `tests/unit/agent/delta-services-wiring.test.ts` | tests | test | 61 |
 | `tests/unit/agent/DistillationPipeline.test.ts` | tests | test | 153 |
