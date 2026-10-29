@@ -88,6 +88,14 @@ describe('ConsolidationScheduler Constructor', () => {
     expect(config.autoMergeDuplicates).toBe(true);
     expect(config.duplicateThreshold).toBe(0.85);
   });
+
+  it('keeps onError: null instead of dropping it', () => {
+    const pipeline = createMockPipeline();
+    const scheduler = new ConsolidationScheduler(pipeline, undefined, {
+      onError: null as unknown as undefined,
+    });
+    expect((scheduler as unknown as { config: { onError: unknown } }).config.onError).toBeNull();
+  });
 });
 
 // ==================== Start/Stop ====================
@@ -128,6 +136,31 @@ describe('ConsolidationScheduler.start/stop', () => {
     scheduler.start();
     expect(pipeline.triggerManualConsolidation).toHaveBeenCalledTimes(1);
     scheduler.stop();
+  });
+
+  it('arms an unrefed interval at the configured ms and ignores a second start', () => {
+    const pipeline = createMockPipeline();
+    const scheduler = new ConsolidationScheduler(pipeline, undefined, {
+      consolidationIntervalMs: 1234,
+    });
+    const setIntervalSpy = vi.spyOn(globalThis, 'setInterval');
+    scheduler.start();
+    expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+    expect(setIntervalSpy.mock.calls[0][1]).toBe(1234);
+    const handle = setIntervalSpy.mock.results[0]?.value as { hasRef?: () => boolean } | undefined;
+    if (handle && typeof handle.hasRef === 'function') {
+      expect(handle.hasRef()).toBe(false);
+    }
+    const firstPromise = scheduler.initialCyclePromise;
+    expect(firstPromise).toBeDefined();
+    scheduler.start();
+    expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+    expect(scheduler.initialCyclePromise).toBe(firstPromise);
+    scheduler.stop();
+    scheduler.start();
+    expect(setIntervalSpy).toHaveBeenCalledTimes(2);
+    scheduler.stop();
+    setIntervalSpy.mockRestore();
   });
 
   it('should be safe to stop when not running', () => {

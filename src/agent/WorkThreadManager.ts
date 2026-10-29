@@ -306,26 +306,17 @@ export class WorkThreadManager {
    * @returns Updated work thread
    * @throws Error if thread not found, already owned, or invalid transition
    */
-  async claim(threadId: string, agentId: string): Promise<WorkThread> {
-    const thread = this.threads.get(threadId);
-    if (!thread) {
-      throw new Error(`Thread not found: ${threadId}`);
-    }
-
-    if (thread.owner) {
-      throw new Error(`Thread ${threadId} is already owned by ${thread.owner}`);
-    }
-
-    if (!this.canTransition(threadId, 'active')) {
-      throw new Error(`Cannot transition thread ${threadId} from '${thread.status}' to 'active'`);
-    }
-
-    thread.owner = agentId;
-    thread.status = 'active';
-    thread.updatedAt = new Date().toISOString();
-
-    await this.persistThread(thread);
-    return { ...thread };
+  claim(threadId: string, agentId: string): Promise<WorkThread> {
+    return this.updateThread(threadId, thread => {
+      if (thread.owner) {
+        throw new Error(`Thread ${threadId} is already owned by ${thread.owner}`);
+      }
+      if (!this.canTransition(threadId, 'active')) {
+        throw new Error(`Cannot transition thread ${threadId} from '${thread.status}' to 'active'`);
+      }
+      thread.owner = agentId;
+      thread.status = 'active';
+    });
   }
 
   /**
@@ -335,22 +326,14 @@ export class WorkThreadManager {
    * @returns Updated work thread
    * @throws Error if thread not found or not active
    */
-  async release(threadId: string): Promise<WorkThread> {
-    const thread = this.threads.get(threadId);
-    if (!thread) {
-      throw new Error(`Thread not found: ${threadId}`);
-    }
-
-    if (!this.canTransition(threadId, 'open')) {
-      throw new Error(`Cannot release thread ${threadId} from '${thread.status}' status`);
-    }
-
-    thread.owner = undefined;
-    thread.status = 'open';
-    thread.updatedAt = new Date().toISOString();
-
-    await this.persistThread(thread);
-    return { ...thread };
+  release(threadId: string): Promise<WorkThread> {
+    return this.updateThread(threadId, thread => {
+      if (!this.canTransition(threadId, 'open')) {
+        throw new Error(`Cannot release thread ${threadId} from '${thread.status}' status`);
+      }
+      thread.owner = undefined;
+      thread.status = 'open';
+    });
   }
 
   /**
@@ -559,19 +542,25 @@ export class WorkThreadManager {
    * @returns Updated work thread
    * @throws Error if thread not found or invalid transition
    */
-  private async finish(threadId: string, target: 'done' | 'cancelled', verb: 'complete' | 'cancel'): Promise<WorkThread> {
+  private finish(threadId: string, target: 'done' | 'cancelled', verb: 'complete' | 'cancel'): Promise<WorkThread> {
+    return this.updateThread(threadId, thread => {
+      if (!this.canTransition(threadId, target)) {
+        throw new Error(`Cannot ${verb} thread ${threadId} from '${thread.status}' status`);
+      }
+      thread.status = target;
+    });
+  }
+
+  private async updateThread(
+    threadId: string,
+    apply: (thread: WorkThread) => void,
+  ): Promise<WorkThread> {
     const thread = this.threads.get(threadId);
     if (!thread) {
       throw new Error(`Thread not found: ${threadId}`);
     }
-
-    if (!this.canTransition(threadId, target)) {
-      throw new Error(`Cannot ${verb} thread ${threadId} from '${thread.status}' status`);
-    }
-
-    thread.status = target;
+    apply(thread);
     thread.updatedAt = new Date().toISOString();
-
     await this.persistThread(thread);
     return { ...thread };
   }

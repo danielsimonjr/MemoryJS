@@ -768,6 +768,19 @@ describe('ObservationIndex', () => {
       // Original entity should still be there
       expect(index.getEntitiesWithWord('hello').has('Entity1')).toBe(true);
     });
+
+    it('second remove is a no-op', () => {
+      index.add('Entity1', ['hello']);
+      index.remove('Entity1');
+      expect(index.getEntitiesWithWord('hello').size).toBe(0);
+      expect(() => index.remove('Entity1')).not.toThrow();
+    });
+
+    it('remove clears forward map after add with empty observations', () => {
+      index.add('Entity1', []);
+      index.remove('Entity1');
+      expect(index.getStats().entityCount).toBe(0);
+    });
   });
 
   describe('getEntitiesWithAnyWord', () => {

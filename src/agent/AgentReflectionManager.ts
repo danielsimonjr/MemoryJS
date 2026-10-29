@@ -33,6 +33,7 @@ import type {
 import { isReflectionMemory, toIsoDateTime } from '../types/agent-memory.js';
 import type { EntityManager } from '../core/EntityManager.js';
 import { versionedWriteFailure } from './versionedWriteFailure.js';
+import { matchesDefined } from './recordQuery.js';
 import { validateNonEmpty, validateNonEmptyArray } from '../utils/index.js';
 
 /** Discriminated return from `archive`. Mirrors `MarkResolvedResult`. */
@@ -189,17 +190,17 @@ export class AgentReflectionManager {
   async list(options: ListReflectionsOptions = {}): Promise<ReflectionRecord[]> {
     const all = await this.loadAllRecords(options.includeArchived ?? false);
     const filtered = all.filter((r) => {
-      if (options.scope !== undefined && r.scope !== options.scope) return false;
-      if (options.sourceSessionId !== undefined && r.sourceSessionId !== options.sourceSessionId)
-        return false;
-      if (options.sourceProjectId !== undefined && r.sourceProjectId !== options.sourceProjectId)
-        return false;
       if (
         options.minConfidence !== undefined &&
         r.generalization_confidence < options.minConfidence
-      )
+      ) {
         return false;
-      return true;
+      }
+      return matchesDefined([
+        [options.scope, r.scope],
+        [options.sourceSessionId, r.sourceSessionId],
+        [options.sourceProjectId, r.sourceProjectId],
+      ]);
     });
     return options.limit !== undefined ? filtered.slice(0, options.limit) : filtered;
   }
