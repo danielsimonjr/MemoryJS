@@ -2174,7 +2174,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 30
+      "loc": 32
     },
     {
       "file": "src/utils/validators.ts",
