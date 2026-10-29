@@ -528,7 +528,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/cli/heuristic.test.ts` | tests | test | 70 |
 | `tests/unit/cli/hierarchy.test.ts` | tests | test | 65 |
 | `tests/unit/cli/index.test.ts` | tests | test | 255 |
-| `tests/unit/cli/inspect.test.ts` | tests | test | 184 |
+| `tests/unit/cli/inspect.test.ts` | tests | test | 212 |
 | `tests/unit/cli/interactive.test.ts` | tests | test | 925 |
 | `tests/unit/cli/maintenance-cli.test.ts` | tests | test | 78 |
 | `tests/unit/cli/observation.test.ts` | tests | test | 66 |

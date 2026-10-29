@@ -3434,7 +3434,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 184
+      "loc": 212
     },
     {
       "file": "tests/unit/cli/interactive.test.ts",
