@@ -233,6 +233,17 @@ describe('AgentReflectionManager', () => {
       const limited = await rm.list({ limit: 2 });
       expect(limited).toHaveLength(2);
     });
+
+    it('keeps a row whose confidence equals minConfidence', async () => {
+      await rm.create({
+        scope: 'global',
+        evidence: ['floor'],
+        summary: 'exactly the floor',
+        generalization_confidence: 0.5,
+      });
+      const atFloor = await rm.list({ minConfidence: 0.5 });
+      expect(atFloor.some((r) => r.summary === 'exactly the floor')).toBe(true);
+    });
   });
 
   describe('getRelevantForSession', () => {
@@ -311,6 +322,19 @@ describe('AgentReflectionManager', () => {
       });
       await rm.archive(rec.id);
       expect(await rm.archive(rec.id)).toBe('already-archived');
+    });
+
+    it('hides archived rows from list unless includeArchived is set', async () => {
+      const rec = await rm.create({
+        scope: 'session',
+        evidence: ['e'],
+        summary: 'to-archive',
+        generalization_confidence: 0.8,
+      });
+      await rm.archive(rec.id);
+      expect((await rm.list()).some((r) => r.id === rec.id)).toBe(false);
+      expect((await rm.list({ includeArchived: true })).some((r) => r.id === rec.id)).toBe(true);
+      expect((await rm.getAll()).some((r) => r.id === rec.id)).toBe(true);
     });
 
     it('returns "vanished-mid-update" when storage.updateEntity returns false', async () => {

@@ -209,6 +209,23 @@ export class FailureDistillation {
   // ==================== Lesson Generation ====================
 
   /**
+   * Resolves episode content and optional root-cause text from a traced chain.
+   * @internal
+   */
+  private failureChainText(
+    episode: AgentEntity,
+    causeChain: readonly AgentEntity[],
+  ): { content: string; rootContent: string | undefined } {
+    const content = episode.observations[0] ?? episode.name;
+    if (causeChain.length === 0) {
+      return { content, rootContent: undefined };
+    }
+    const rootCause = causeChain[causeChain.length - 1];
+    const rootContent = rootCause.observations[0] ?? rootCause.name;
+    return { content, rootContent };
+  }
+
+  /**
    * Build a human-readable failure description from an episode and its cause chain.
    * @internal
    */
@@ -216,12 +233,10 @@ export class FailureDistillation {
     episode: AgentEntity,
     causeChain: AgentEntity[]
   ): string {
-    const content = episode.observations[0] ?? episode.name;
-    if (causeChain.length === 0) {
+    const { content, rootContent } = this.failureChainText(episode, causeChain);
+    if (rootContent === undefined) {
       return `Failure: ${content}`;
     }
-    const rootCause = causeChain[causeChain.length - 1];
-    const rootContent = rootCause.observations[0] ?? rootCause.name;
     return `Failure: ${content} (root cause: ${rootContent})`;
   }
 
@@ -230,12 +245,10 @@ export class FailureDistillation {
    * @internal
    */
   private buildLesson(episode: AgentEntity, causeChain: AgentEntity[]): string {
-    const content = episode.observations[0] ?? episode.name;
-    if (causeChain.length === 0) {
+    const { content, rootContent } = this.failureChainText(episode, causeChain);
+    if (rootContent === undefined) {
       return `Avoid: ${content}`;
     }
-    const rootCause = causeChain[causeChain.length - 1];
-    const rootContent = rootCause.observations[0] ?? rootCause.name;
     return `To prevent "${content}", address root cause: "${rootContent}"`;
   }
 
