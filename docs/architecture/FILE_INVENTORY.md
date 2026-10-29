@@ -447,7 +447,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/HeuristicManager.test.ts` | tests | test | 206 |
 | `tests/unit/agent/IMemoryBackend.contract.test.ts` | tests | test | 229 |
 | `tests/unit/agent/ImportanceScorer.test.ts` | tests | test | 79 |
-| `tests/unit/agent/InMemoryBackend.test.ts` | tests | test | 99 |
+| `tests/unit/agent/InMemoryBackend.test.ts` | tests | test | 131 |
 | `tests/unit/agent/keyValueLine.test.ts` | tests | test | 60 |
 | `tests/unit/agent/memoryBackend-wiring.test.ts` | tests | test | 71 |
 | `tests/unit/agent/MemoryEngine.test.ts` | tests | test | 858 |
