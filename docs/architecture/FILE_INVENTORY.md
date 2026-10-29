@@ -10,13 +10,13 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 745
+**Total files**: 746
 
 ## Disposition counts
 
 | Disposition | Count | Meaning |
 | --- | --: | --- |
-| `reachable` | 308 | A `src/` file in the module graph, reachable from a root. |
+| `reachable` | 309 | A `src/` file in the module graph, reachable from a root. |
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
@@ -25,7 +25,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 4 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 0 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **745** | |
+| **Total** | **746** | |
 
 ## Per-area counts
 
@@ -33,7 +33,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | --- | --: |
 | `benchmarks` | 4 |
 | `config` | 2 |
-| `src` | 312 |
+| `src` | 313 |
 | `tests` | 417 |
 | `tools` | 10 |
 
@@ -86,7 +86,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/HeuristicManager.ts` | src | reachable | 354 |
 | `src/agent/ImportanceScorer.ts` | src | reachable | 99 |
 | `src/agent/index.ts` | src | reachable | 620 |
-| `src/agent/InMemoryBackend.ts` | src | reachable | 125 |
+| `src/agent/InMemoryBackend.ts` | src | reachable | 115 |
 | `src/agent/keyValueLine.ts` | src | reachable | 63 |
 | `src/agent/MemoryBackend.ts` | src | reachable | 156 |
 | `src/agent/MemoryEngine.ts` | src | reachable | 597 |
@@ -146,10 +146,11 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/RoleProfiles.ts` | src | reachable | 237 |
 | `src/agent/RuleEvaluator.ts` | src | reachable | 149 |
 | `src/agent/SalienceEngine.ts` | src | reachable | 733 |
+| `src/agent/selectWeightedTurns.ts` | src | reachable | 18 |
 | `src/agent/SessionCheckpoint.ts` | src | reachable | 692 |
 | `src/agent/SessionManager.ts` | src | reachable | 685 |
 | `src/agent/SessionQueryBuilder.ts` | src | reachable | 558 |
-| `src/agent/SQLiteBackend.ts` | src | reachable | 176 |
+| `src/agent/SQLiteBackend.ts` | src | reachable | 172 |
 | `src/agent/SummarizationService.ts` | src | reachable | 341 |
 | `src/agent/ToolAffordanceManager.ts` | src | reachable | 279 |
 | `src/agent/ToolCallObserver.ts` | src | reachable | 155 |
@@ -451,7 +452,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/HeuristicManager.test.ts` | tests | test | 206 |
 | `tests/unit/agent/IMemoryBackend.contract.test.ts` | tests | test | 229 |
 | `tests/unit/agent/ImportanceScorer.test.ts` | tests | test | 79 |
-| `tests/unit/agent/InMemoryBackend.test.ts` | tests | test | 99 |
+| `tests/unit/agent/InMemoryBackend.test.ts` | tests | test | 137 |
 | `tests/unit/agent/keyValueLine.test.ts` | tests | test | 60 |
 | `tests/unit/agent/memoryBackend-wiring.test.ts` | tests | test | 71 |
 | `tests/unit/agent/MemoryEngine.test.ts` | tests | test | 858 |

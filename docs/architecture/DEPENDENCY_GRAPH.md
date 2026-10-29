@@ -39,7 +39,7 @@ This document provides a comprehensive dependency graph of all files, components
 The codebase is organized into the following modules:
 
 - **adapters**: 7 files
-- **agent**: 110 files
+- **agent**: 111 files
 - **cli**: 31 files
 - **core**: 26 files
 - **features**: 18 files
@@ -63,7 +63,7 @@ Seeded build/entry roots (package `exports`, `bin` targets, tsup entries, script
 - `src/sqlite.ts`
 - `src/workers/levenshteinWorker.ts`
 
-Reachable from a root: **312** of 312 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
+Reachable from a root: **313** of 313 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
 
 ---
 
@@ -798,6 +798,7 @@ Reachable from a root: **312** of 312 files. Dormant: **0** (0 orphaned, 0 test-
 | `./DecayEngine.js` | `DecayEngine` | Import (type-only) |
 | `./MemoryBackend.js` | `IMemoryBackend, MemoryTurn, WeightedTurn, GetWeightedOptions` | Import (type-only) |
 | `../types/agent-memory.js` | `AgentEntity` | Import (type-only) |
+| `./selectWeightedTurns.js` | `selectWeightedTurns` | Import |
 
 **Exports:**
 - Classes: `InMemoryBackend`
@@ -1075,6 +1076,7 @@ Reachable from a root: **312** of 312 files. Dormant: **0** (0 orphaned, 0 test-
 | `./MemoryEngine.js` | `MemoryEngine` | Import (type-only) |
 | `./MemoryBackend.js` | `IMemoryBackend, MemoryTurn, WeightedTurn, GetWeightedOptions` | Import (type-only) |
 | `../types/agent-memory.js` | `AgentEntity` | Import (type-only) |
+| `./selectWeightedTurns.js` | `selectWeightedTurns` | Import |
 
 **Exports:**
 - Classes: `SQLiteBackend`
@@ -2174,6 +2176,18 @@ Reachable from a root: **312** of 312 files. Dormant: **0** (0 orphaned, 0 test-
 
 **Exports:**
 - Re-exports: `QueryRewriter`, `RewriteResult`, `ActiveRetrievalController`, `RetrievalContext`, `RetrievalDecision`, `RetrievalRound`, `AdaptiveResult`, `ActiveRetrievalConfig`
+
+---
+
+### `src/agent/selectWeightedTurns.ts` - Scores items, filters by threshold, sorts descending, and applies limit.
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `./MemoryBackend.js` | `WeightedTurn` | Import (type-only) |
+
+**Exports:**
+- Functions: `selectWeightedTurns`
 
 ---
 
@@ -5723,7 +5737,7 @@ graph TD
         N14[ConflictResolver]
         N15[ConsolidationPipeline]
         N16[ConsolidationScheduler]
-        N17[...100 more]
+        N17[...101 more]
     end
 
     subgraph Cli
@@ -5914,21 +5928,21 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 312 |
+| Total TypeScript Files | 313 |
 | Total Modules | 12 |
-| Total Lines of Code | 105511 |
-| Total Exports | 2099 |
+| Total Lines of Code | 105515 |
+| Total Exports | 2100 |
 | Total Re-exports | 1349 |
 | Total Classes | 237 |
 | Total Interfaces | 632 |
-| Total Functions | 374 |
+| Total Functions | 375 |
 | Total Type Guards | 31 |
 | Total Enums | 4 |
-| Type-only Imports | 498 |
+| Type-only Imports | 499 |
 | Runtime Circular Deps | 0 |
 | Type-only Circular Deps | 8 |
 | Entry/Build Roots | 4 |
-| Reachable Files | 312 |
+| Reachable Files | 313 |
 | Dormant Files (orphaned / test-only) | 0 (0 / 0) |
 
 ---

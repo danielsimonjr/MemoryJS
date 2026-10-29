@@ -1,8 +1,8 @@
 {
   "generated": "2026-10-29",
-  "totalFiles": 745,
+  "totalFiles": 746,
   "byDisposition": {
-    "reachable": 308,
+    "reachable": 309,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
@@ -14,7 +14,7 @@
   },
   "byArea": {
     "benchmarks": 4,
-    "src": 312,
+    "src": 313,
     "tests": 417,
     "tools": 10,
     "config": 2
@@ -340,7 +340,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 125
+      "loc": 115
     },
     {
       "file": "src/agent/keyValueLine.ts",
@@ -756,6 +756,13 @@
       "loc": 733
     },
     {
+      "file": "src/agent/selectWeightedTurns.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 18
+    },
+    {
       "file": "src/agent/SessionCheckpoint.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
@@ -781,7 +788,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 176
+      "loc": 172
     },
     {
       "file": "src/agent/SummarizationService.ts",
@@ -2895,7 +2902,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 99
+      "loc": 137
     },
     {
       "file": "tests/unit/agent/keyValueLine.test.ts",

@@ -3,9 +3,9 @@
     "name": "@danielsimonjr/memoryjs",
     "version": "4.3.0",
     "lastUpdated": "2026-10-29",
-    "totalFiles": 312,
+    "totalFiles": 313,
     "totalModules": 12,
-    "totalExports": 2099
+    "totalExports": 2100
   },
   "entryPoints": [
     {
@@ -2515,6 +2515,12 @@
               "AgentEntity"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "./selectWeightedTurns.js",
+            "imports": [
+              "selectWeightedTurns"
+            ]
           }
         ],
         "exports": [
@@ -3325,6 +3331,12 @@
               "AgentEntity"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "./selectWeightedTurns.js",
+            "imports": [
+              "selectWeightedTurns"
+            ]
           }
         ],
         "exports": [
@@ -8328,6 +8340,26 @@
           "RetrievalRound",
           "AdaptiveResult",
           "ActiveRetrievalConfig"
+        ]
+      },
+      "src/agent/selectWeightedTurns.ts": {
+        "description": "Scores items, filters by threshold, sorts descending, and applies limit.",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./MemoryBackend.js",
+            "imports": [
+              "WeightedTurn"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "selectWeightedTurns"
+        ],
+        "functions": [
+          "selectWeightedTurns"
         ]
       },
       "src/agent/versionedWriteFailure.ts": {
@@ -20784,6 +20816,7 @@
           "src/agent/retrieval/ActiveRetrievalController.ts",
           "src/agent/retrieval/QueryRewriter.ts",
           "src/agent/retrieval/index.ts",
+          "src/agent/selectWeightedTurns.ts",
           "src/agent/versionedWriteFailure.ts",
           "src/agent/workingMemoryGuard.ts",
           "src/agent/world/WorldModelManager.ts",
@@ -21045,28 +21078,28 @@
       "src/sqlite.ts",
       "src/workers/levenshteinWorker.ts"
     ],
-    "reachableCount": 312,
+    "reachableCount": 313,
     "dormantCount": 0,
     "orphaned": [],
     "testOnly": []
   },
   "statistics": {
-    "totalTypeScriptFiles": 312,
+    "totalTypeScriptFiles": 313,
     "totalModules": 12,
-    "totalLinesOfCode": 105511,
-    "totalExports": 2099,
+    "totalLinesOfCode": 105515,
+    "totalExports": 2100,
     "totalClasses": 237,
     "totalInterfaces": 632,
-    "totalFunctions": 374,
+    "totalFunctions": 375,
     "totalTypeGuards": 31,
     "totalEnums": 4,
     "totalConstants": 124,
     "totalReExports": 1349,
-    "totalTypeOnlyImports": 498,
+    "totalTypeOnlyImports": 499,
     "runtimeCircularDeps": 0,
     "typeOnlyCircularDeps": 8,
     "entryRoots": 4,
-    "reachableFiles": 312,
+    "reachableFiles": 313,
     "dormantFiles": 0,
     "orphanedFiles": 0,
     "testOnlyFiles": 0,
