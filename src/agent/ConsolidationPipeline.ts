@@ -51,6 +51,7 @@ import type {
 } from './ObservationDedupManager.js';
 import { createHash } from 'crypto';
 import type { ReflectionScope } from '../types/agent-memory.js';
+import { fillDefaults } from '../utils/fillDefaults.js';
 
 /**
  * Configuration for ConsolidationPipeline.
@@ -146,16 +147,19 @@ export class ConsolidationPipeline {
     this.storage = storage;
     this.workingMemory = workingMemory;
     this.decayEngine = decayEngine;
+    const filled = fillDefaults(config, {
+      summarizationEnabled: true,
+      patternExtractionEnabled: true,
+      minPromotionConfidence: 0.7,
+      minPromotionConfirmations: 2,
+      preserveOriginals: false,
+      similarityThreshold: 0.8,
+    });
     this.summarizationService = new SummarizationService({
-      defaultSimilarityThreshold: config.similarityThreshold ?? 0.8,
+      defaultSimilarityThreshold: filled.similarityThreshold,
     });
     this.config = {
-      summarizationEnabled: config.summarizationEnabled ?? true,
-      patternExtractionEnabled: config.patternExtractionEnabled ?? true,
-      minPromotionConfidence: config.minPromotionConfidence ?? 0.7,
-      minPromotionConfirmations: config.minPromotionConfirmations ?? 2,
-      preserveOriginals: config.preserveOriginals ?? false,
-      similarityThreshold: config.similarityThreshold ?? 0.8,
+      ...filled,
       maxDuplicateComparisons:
         Number.isSafeInteger(config.maxDuplicateComparisons)
         && (config.maxDuplicateComparisons ?? 0) > 0

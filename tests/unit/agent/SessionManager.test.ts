@@ -770,6 +770,27 @@ describe('SessionManager with EpisodicMemoryManager', () => {
     expect(summaryContent).toContain('Status: completed');
   });
 
+  it('defaults createSummaryOnEnd to true when episodicMemory is passed', async () => {
+    const storage = createMockStorage();
+    const wmm = new WorkingMemoryManager(storage);
+    const emm = createMockEpisodicMemory();
+
+    const sm = new SessionManager(
+      storage,
+      wmm,
+      { promoteOnEnd: false },
+      emm as unknown as import('../../../src/agent/EpisodicMemoryManager.js').EpisodicMemoryManager
+    );
+
+    const session = await sm.startSession({
+      goalDescription: 'Default summary on',
+    });
+    const result = await sm.endSession(session.name, 'completed');
+
+    expect(result.summary).toBeDefined();
+    expect(emm.createEpisode).toHaveBeenCalled();
+  });
+
   it('should not create summary when createSummaryOnEnd is false', async () => {
     const storage = createMockStorage();
     const wmm = new WorkingMemoryManager(storage);
