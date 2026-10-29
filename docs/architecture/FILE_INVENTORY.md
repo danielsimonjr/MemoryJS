@@ -429,7 +429,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/ContextWindowManager.test.ts` | tests | test | 1717 |
 | `tests/unit/agent/DecayEngine.test.ts` | tests | test | 1227 |
 | `tests/unit/agent/DecayScheduler.test.ts` | tests | test | 567 |
-| `tests/unit/agent/DecisionManager.test.ts` | tests | test | 394 |
+| `tests/unit/agent/DecisionManager.test.ts` | tests | test | 398 |
 | `tests/unit/agent/delta-services-wiring.test.ts` | tests | test | 61 |
 | `tests/unit/agent/DistillationPipeline.test.ts` | tests | test | 153 |
 | `tests/unit/agent/DistillationPolicy.test.ts` | tests | test | 850 |

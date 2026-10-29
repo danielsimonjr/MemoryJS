@@ -2741,7 +2741,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 394
+      "loc": 398
     },
     {
       "file": "tests/unit/agent/delta-services-wiring.test.ts",
