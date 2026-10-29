@@ -11,6 +11,7 @@
 import type { DecayResult, ForgetResult, ForgetOptions } from '../types/agent-memory.js';
 import type { DecayEngine } from './DecayEngine.js';
 import { logger } from '../utils/logger.js';
+import { fillDefaults } from '../utils/fillDefaults.js';
 import { beginUnrefInterval, stopUnrefInterval, type IntervalRunState } from '../utils/unrefInterval.js';
 
 // Re-export for convenience
@@ -97,9 +98,12 @@ export class DecayScheduler {
 
   constructor(decayEngine: DecayEngine, config: DecaySchedulerConfig = {}) {
     this.decayEngine = decayEngine;
+    const filled = fillDefaults(config, {
+      decayIntervalMs: 60 * 60 * 1000,
+      autoForget: false,
+    });
     this.config = {
-      decayIntervalMs: config.decayIntervalMs ?? 60 * 60 * 1000, // Default 1 hour
-      autoForget: config.autoForget ?? false,
+      ...filled,
       forgetOptions: config.forgetOptions,
       onDecayComplete: config.onDecayComplete,
       onForgetComplete: config.onForgetComplete,

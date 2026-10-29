@@ -88,6 +88,14 @@ describe('ConsolidationScheduler Constructor', () => {
     expect(config.autoMergeDuplicates).toBe(true);
     expect(config.duplicateThreshold).toBe(0.85);
   });
+
+  it('keeps onError: null instead of dropping it', () => {
+    const pipeline = createMockPipeline();
+    const scheduler = new ConsolidationScheduler(pipeline, undefined, {
+      onError: null as unknown as undefined,
+    });
+    expect((scheduler as unknown as { config: { onError: unknown } }).config.onError).toBeNull();
+  });
 });
 
 // ==================== Start/Stop ====================
