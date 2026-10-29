@@ -270,7 +270,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 500
+      "loc": 508
     },
     {
       "file": "src/agent/events/index.ts",
