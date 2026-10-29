@@ -217,6 +217,13 @@ describe('DecayEngine.calculateDecayFactorStatic', () => {
 
     expect(factor).toBeCloseTo(0.5, 1);
   });
+
+  it('matches AccessTracker when timestamp and half-life are the same', () => {
+    const ts = '2026-01-15T12:00:00.000Z';
+    expect(DecayEngine.calculateDecayFactorStatic(ts, 48)).toBe(
+      AccessTracker.calculateRecencyScoreFromTimestamp(ts, 48),
+    );
+  });
 });
 
 // ==================== calculateEffectiveImportance Tests ====================
