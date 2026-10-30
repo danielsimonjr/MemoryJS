@@ -115,6 +115,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `JsonlColumnStore.delete` restores the full map snapshot on flush failure so key order matches the pre-delete iteration order.
 - `ObservationDedupManager.findJaccardDuplicates` skips groups whose occurrences share one normalized hash when `minOccurrences >= 2`, so case-only pairs stay in the exact tier only.
 - `JsonlColumnStore.clear` runs under the same mutex as `put`, `delete`, and `batchPut`, so a concurrent clear cannot flush an empty map while another mutation is still flushing.
 - `SQLiteStorage.fullTextSearch` returns the live matches when the full-text index holds a posting of a row that no longer exists. Before, the ranked query raised `SQLITE_CORRUPT_VTAB`, the catch block returned an empty list, and nothing was logged. A release that replaces a row with `INSERT OR REPLACE` leaves such a posting, and the repair at open runs only once per store. The ranked query now retries with the name read from the `entities` table, which skips the stale posting. The search logs one warning per storage that names `compact()`. `compact()` rebuilds the index and re-arms the warning. Any other search failure is now logged before the call returns an empty list.

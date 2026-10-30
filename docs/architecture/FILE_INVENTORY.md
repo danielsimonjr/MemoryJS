@@ -195,7 +195,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/cli/interactive.ts` | src | reachable | 439 |
 | `src/cli/options.ts` | src | reachable | 58 |
 | `src/core/columns/IColumnStore.ts` | src | reachable | 177 |
-| `src/core/columns/JsonlColumnStore.ts` | src | reachable | 232 |
+| `src/core/columns/JsonlColumnStore.ts` | src | reachable | 233 |
 | `src/core/EntityManager.ts` | src | reachable | 1604 |
 | `src/core/EntityStateMachine.ts` | src | reachable | 104 |
 | `src/core/GraphEventEmitter.ts` | src | reachable | 463 |
@@ -548,7 +548,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/cli/tag.test.ts` | tests | test | 66 |
 | `tests/unit/cli/toolAffordance.test.ts` | tests | test | 76 |
 | `tests/unit/core/BatchTransaction.test.ts` | tests | test | 695 |
-| `tests/unit/core/columns/columns-review-fixes.test.ts` | tests | test | 338 |
+| `tests/unit/core/columns/columns-review-fixes.test.ts` | tests | test | 355 |
 | `tests/unit/core/columns/IColumnStore.test.ts` | tests | test | 132 |
 | `tests/unit/core/columns/JsonlColumnStore.test.ts` | tests | test | 444 |
 | `tests/unit/core/columns/ObservationColumnStore-wiring.test.ts` | tests | test | 266 |

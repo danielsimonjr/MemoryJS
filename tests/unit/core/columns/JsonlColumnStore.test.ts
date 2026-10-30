@@ -290,15 +290,15 @@ describe('JsonlColumnStore', () => {
       expect([await store.get('a'), await store.get('b'), await store.get('c')]).toEqual([1, 2, 3]);
     });
 
-    it('moves a key restored after a failed delete to the end of entries()', async () => {
+    it('preserves entry order when a failed delete rolls back', async () => {
       const store = new JsonlColumnStore<number>(sidecar);
       await store.put('a', 1);
       await store.put('b', 2);
       await store.put('c', 3);
       injectFlushFailure(sidecar);
-      await expect(store.delete('a')).rejects.toThrow(/synthetic/);
+      await expect(store.delete('b')).rejects.toThrow(/synthetic/);
       vi.restoreAllMocks();
-      expect((await store.entries()).map((e) => e.name)).toEqual(['b', 'c', 'a']);
+      expect((await store.entries()).map((e) => e.name)).toEqual(['a', 'b', 'c']);
     });
 
     it('restores previous entry order when clear flush throws', async () => {
