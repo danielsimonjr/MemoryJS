@@ -115,6 +115,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `SessionQueryBuilder.searchWithRecencyRanking` applies `withOffset` / `withLimit` via `paginate`, matching `search` and `execute`.
 - `JsonlColumnStore.delete` restores the full map snapshot on flush failure so key order matches the pre-delete iteration order.
 - `ObservationDedupManager.findJaccardDuplicates` skips groups whose occurrences share one normalized hash when `minOccurrences >= 2`, so case-only pairs stay in the exact tier only.
 - `JsonlColumnStore.clear` runs under the same mutex as `put`, `delete`, and `batchPut`, so a concurrent clear cannot flush an empty map while another mutation is still flushing.
