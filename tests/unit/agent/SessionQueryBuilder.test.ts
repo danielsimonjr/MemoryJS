@@ -499,6 +499,27 @@ describe('SessionQueryBuilder.searchWithRecencyRanking', () => {
     // More recent session should be ranked higher
     expect(results[0].sessionId).toBe('session_1');
   });
+
+  it('applies offset then limit like search and execute', async () => {
+    const entities = [
+      createAgentEntity('mem_a', 'session_1'),
+      createAgentEntity('mem_b', 'session_1'),
+      createAgentEntity('mem_c', 'session_1'),
+      createAgentEntity('mem_d', 'session_1'),
+    ];
+    const storage = createMockStorage(entities);
+    const wmm = new WorkingMemoryManager(storage);
+    const sm = new SessionManager(storage, wmm);
+    const builder = new SessionQueryBuilder(storage, sm);
+
+    const results = await builder
+      .forSession('session_1')
+      .withOffset(1)
+      .withLimit(2)
+      .searchWithRecencyRanking('mem');
+
+    expect(results.map((e) => e.name)).toEqual(['mem_b', 'mem_c']);
+  });
 });
 
 // ==================== CLONES P21: collectFiltered pins ====================
