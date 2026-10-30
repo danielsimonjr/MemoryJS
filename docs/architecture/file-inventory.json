@@ -5023,7 +5023,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 84
+      "loc": 89
     },
     {
       "file": "tests/unit/utils/logger.test.ts",
