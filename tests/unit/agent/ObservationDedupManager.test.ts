@@ -168,22 +168,30 @@ describe('ObservationDedupManager', () => {
   });
 
   describe('findJaccardDuplicates', () => {
-    it('finds near-duplicates that exact tier misses', async () => {
+    it('does not report case-only pairs already covered by the exact tier', async () => {
       const storage = createMockStorage([
         makeEntity('Alice', ['User prefers Italian food']),
-        makeEntity('Bob', ['User prefers italian food']), // case variation
+        makeEntity('Bob', ['User prefers italian food']),
+      ]);
+      const mgr = new ObservationDedupManager(storage, { jaccardThreshold: 0.85 });
+      expect(await mgr.findJaccardDuplicates()).toEqual([]);
+      expect((await mgr.findDuplicateObservations()).length).toBe(1);
+    });
+
+    it('finds near-duplicates that exact tier misses', async () => {
+      const colors =
+        'red blue green yellow purple orange black white';
+      const storage = createMockStorage([
+        makeEntity('Alice', [colors]),
+        makeEntity('Bob', [`${colors} pink`]),
         makeEntity('Carol', ['Completely different observation here']),
       ]);
       const mgr = new ObservationDedupManager(storage, { jaccardThreshold: 0.85 });
       const groups = await mgr.findJaccardDuplicates();
-      expect(groups.length).toBeGreaterThan(0);
-      // The near-pair forms one group
-      const grp = groups.find((g) =>
-        g.occurrences.some((o) => o.entityName === 'Alice') &&
-        g.occurrences.some((o) => o.entityName === 'Bob'),
-      );
-      expect(grp).toBeDefined();
-      expect(grp!.tier).toBe('jaccard');
+      expect(groups).toHaveLength(1);
+      const grp = groups[0]!;
+      expect(grp.tier).toBe('jaccard');
+      expect(grp.occurrences.map((o) => o.entityName).sort()).toEqual(['Alice', 'Bob']);
     });
 
     it('respects jaccardThreshold (high threshold rejects loose matches)', async () => {
