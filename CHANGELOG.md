@@ -115,6 +115,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `EntityValidator.validateSync` attaches `void result.catch(() => {})` when a rule returns a Promise so later rejections are not unhandled.
 - `AgentMemoryManager.retrieveForContext` uses configured `contextWindow.defaultMaxTokens` when `maxTokens` is omitted instead of hard-coding 4000.
 - `SessionQueryBuilder.searchWithRecencyRanking` applies `withOffset` / `withLimit` via `paginate`, matching `search` and `execute`.
 - `JsonlColumnStore.delete` restores the full map snapshot on flush failure so key order matches the pre-delete iteration order.

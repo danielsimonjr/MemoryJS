@@ -1992,7 +1992,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 275
+      "loc": 276
     },
     {
       "file": "src/utils/errors.ts",
@@ -4953,7 +4953,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 492
+      "loc": 515
     },
     {
       "file": "tests/unit/utils/errors.test.ts",

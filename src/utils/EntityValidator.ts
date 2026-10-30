@@ -225,6 +225,7 @@ export class EntityValidator {
 
         // Check if async (returns Promise)
         if (result instanceof Promise) {
+          void result.catch(() => {});
           throw new Error(`Rule "${rule.name}" is async. Use validate() instead of validateSync()`);
         }
 
