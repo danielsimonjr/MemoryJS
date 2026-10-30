@@ -332,6 +332,42 @@ describe('JsonlColumnStore', () => {
       expect(warnText).toContain(`JsonlColumnStore: skipping line with non-string name in ${sidecar}`);
     });
 
+    it('clear() waits for an in-flight put and keeps memory aligned with the sidecar', async () => {
+      const store = new JsonlColumnStore<number>(sidecar);
+      await store.put('seed', 1);
+      const realRename = fs.rename;
+      let release: () => void = () => {};
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      vi.spyOn(fs, 'rename').mockImplementationOnce(async (from, to) => {
+        await gate;
+        return realRename(from, to);
+      });
+
+      const pendingPut = store.put('extra', 2);
+      await vi.waitFor(() => expect(fs.rename).toHaveBeenCalled());
+
+      let clearSettled = false;
+      const pendingClear = store.clear().then(() => {
+        clearSettled = true;
+      });
+      await new Promise((r) => setTimeout(r, 50));
+      expect(clearSettled).toBe(false);
+
+      release();
+      await pendingPut;
+      await pendingClear;
+
+      const memoryNames = (await store.entries()).map((e) => e.name);
+      const diskText = await fs.readFile(sidecar, 'utf-8');
+      const diskNames = diskText
+        .split('\n')
+        .filter((line) => line.length > 0)
+        .map((line) => (JSON.parse(line) as { name: string }).name);
+      expect(memoryNames).toEqual(diskNames);
+    });
+
     it('get() is not held up by a put() that is still flushing', async () => {
       const store = new JsonlColumnStore<number>(sidecar);
       await store.put('a', 1);
