@@ -126,6 +126,23 @@ describe('Review #1 + #10: JsonlColumnStore rollback on flush failure', () => {
     expect(await store.get('alice')).toEqual(['keepme']);
   });
 
+  it('delete: restores insertion order after flush failure rollback', async () => {
+    await store.put('a', ['v1']);
+    await store.put('b', ['v2']);
+    await store.put('c', ['v3']);
+    injectFlushFailure();
+    await expect(store.delete('b')).rejects.toThrow(/synthetic/);
+    vi.restoreAllMocks();
+    expect((await store.entries()).map((e) => e.name)).toEqual(['a', 'b', 'c']);
+    await store.put('d', ['v4']);
+    const diskText = await fs.readFile(sidecarPath, 'utf-8');
+    const diskNames = diskText
+      .split('\n')
+      .filter((line) => line.length > 0)
+      .map((line) => (JSON.parse(line) as { name: string }).name);
+    expect(diskNames).toEqual(['a', 'b', 'c', 'd']);
+  });
+
   it('batchPut: whole batch rolls back on flush failure (no partial state)', async () => {
     await store.put('existing', ['e-original']);
     injectFlushFailure();

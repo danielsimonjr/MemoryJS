@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-29",
+  "generated": "2026-10-30",
   "totalFiles": 746,
   "byDisposition": {
     "reachable": 309,
@@ -389,7 +389,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 250
+      "loc": 251
     },
     {
       "file": "src/agent/ObserverPipeline.ts",
@@ -1103,7 +1103,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 230
+      "loc": 233
     },
     {
       "file": "src/core/EntityManager.ts",
@@ -2958,7 +2958,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 229
+      "loc": 237
     },
     {
       "file": "tests/unit/agent/ObservationDedupReportStage.test.ts",
@@ -3574,7 +3574,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 338
+      "loc": 355
     },
     {
       "file": "tests/unit/core/columns/IColumnStore.test.ts",
@@ -3588,7 +3588,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 408
+      "loc": 444
     },
     {
       "file": "tests/unit/core/columns/ObservationColumnStore-wiring.test.ts",

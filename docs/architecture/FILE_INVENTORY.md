@@ -4,7 +4,7 @@
 
 # Complete File Inventory
 
-**Generated**: 2026-10-29 (by tools/create-dependency-graph)
+**Generated**: 2026-10-30 (by tools/create-dependency-graph)
 
 Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks/`, root-level `*.config.ts` — tagged with a disposition. A completeness census: no `.ts` may be silently missing. The self-check gate does a MAXIMAL, location-agnostic repo walk (broader than this census’s enumerated discovery) and fails the run if any `.ts` on disk is unaccounted.
 
@@ -93,7 +93,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/MemoryFormatter.ts` | src | reachable | 518 |
 | `src/agent/MemoryValidator.ts` | src | reachable | 332 |
 | `src/agent/MultiAgentMemoryManager.ts` | src | reachable | 1150 |
-| `src/agent/ObservationDedupManager.ts` | src | reachable | 250 |
+| `src/agent/ObservationDedupManager.ts` | src | reachable | 251 |
 | `src/agent/ObserverPipeline.ts` | src | reachable | 380 |
 | `src/agent/PatternDetector.ts` | src | reachable | 372 |
 | `src/agent/PlanManager.ts` | src | reachable | 543 |
@@ -195,7 +195,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/cli/interactive.ts` | src | reachable | 439 |
 | `src/cli/options.ts` | src | reachable | 58 |
 | `src/core/columns/IColumnStore.ts` | src | reachable | 177 |
-| `src/core/columns/JsonlColumnStore.ts` | src | reachable | 230 |
+| `src/core/columns/JsonlColumnStore.ts` | src | reachable | 233 |
 | `src/core/EntityManager.ts` | src | reachable | 1604 |
 | `src/core/EntityStateMachine.ts` | src | reachable | 104 |
 | `src/core/GraphEventEmitter.ts` | src | reachable | 463 |
@@ -460,7 +460,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/MemoryFormatterSalience.test.ts` | tests | test | 242 |
 | `tests/unit/agent/MemoryValidator.test.ts` | tests | test | 203 |
 | `tests/unit/agent/MultiAgentMemoryManager.test.ts` | tests | test | 1108 |
-| `tests/unit/agent/ObservationDedupManager.test.ts` | tests | test | 229 |
+| `tests/unit/agent/ObservationDedupManager.test.ts` | tests | test | 237 |
 | `tests/unit/agent/ObservationDedupReportStage.test.ts` | tests | test | 111 |
 | `tests/unit/agent/ObserverPipeline.test.ts` | tests | test | 556 |
 | `tests/unit/agent/PatternDetector.test.ts` | tests | test | 413 |
@@ -548,9 +548,9 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/cli/tag.test.ts` | tests | test | 66 |
 | `tests/unit/cli/toolAffordance.test.ts` | tests | test | 76 |
 | `tests/unit/core/BatchTransaction.test.ts` | tests | test | 695 |
-| `tests/unit/core/columns/columns-review-fixes.test.ts` | tests | test | 338 |
+| `tests/unit/core/columns/columns-review-fixes.test.ts` | tests | test | 355 |
 | `tests/unit/core/columns/IColumnStore.test.ts` | tests | test | 132 |
-| `tests/unit/core/columns/JsonlColumnStore.test.ts` | tests | test | 408 |
+| `tests/unit/core/columns/JsonlColumnStore.test.ts` | tests | test | 444 |
 | `tests/unit/core/columns/ObservationColumnStore-wiring.test.ts` | tests | test | 266 |
 | `tests/unit/core/columns/shadow-write-drain.test.ts` | tests | test | 109 |
 | `tests/unit/core/ConcurrencyControl.test.ts` | tests | test | 459 |
