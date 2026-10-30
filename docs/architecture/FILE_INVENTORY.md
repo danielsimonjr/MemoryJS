@@ -4,7 +4,7 @@
 
 # Complete File Inventory
 
-**Generated**: 2026-10-29 (by tools/create-dependency-graph)
+**Generated**: 2026-10-30 (by tools/create-dependency-graph)
 
 Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks/`, root-level `*.config.ts` — tagged with a disposition. A completeness census: no `.ts` may be silently missing. The self-check gate does a MAXIMAL, location-agnostic repo walk (broader than this census’s enumerated discovery) and fails the run if any `.ts` on disk is unaccounted.
 
@@ -195,7 +195,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/cli/interactive.ts` | src | reachable | 439 |
 | `src/cli/options.ts` | src | reachable | 58 |
 | `src/core/columns/IColumnStore.ts` | src | reachable | 177 |
-| `src/core/columns/JsonlColumnStore.ts` | src | reachable | 230 |
+| `src/core/columns/JsonlColumnStore.ts` | src | reachable | 232 |
 | `src/core/EntityManager.ts` | src | reachable | 1604 |
 | `src/core/EntityStateMachine.ts` | src | reachable | 104 |
 | `src/core/GraphEventEmitter.ts` | src | reachable | 463 |
@@ -550,7 +550,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/BatchTransaction.test.ts` | tests | test | 695 |
 | `tests/unit/core/columns/columns-review-fixes.test.ts` | tests | test | 338 |
 | `tests/unit/core/columns/IColumnStore.test.ts` | tests | test | 132 |
-| `tests/unit/core/columns/JsonlColumnStore.test.ts` | tests | test | 408 |
+| `tests/unit/core/columns/JsonlColumnStore.test.ts` | tests | test | 444 |
 | `tests/unit/core/columns/ObservationColumnStore-wiring.test.ts` | tests | test | 266 |
 | `tests/unit/core/columns/shadow-write-drain.test.ts` | tests | test | 109 |
 | `tests/unit/core/ConcurrencyControl.test.ts` | tests | test | 459 |
