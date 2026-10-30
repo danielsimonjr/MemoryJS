@@ -418,7 +418,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/AccessTracker.test.ts` | tests | test | 744 |
 | `tests/unit/agent/ActiveRetrieval.test.ts` | tests | test | 194 |
 | `tests/unit/agent/agent-memory-manager-diary.test.ts` | tests | test | 70 |
-| `tests/unit/agent/AgentMemoryManager.test.ts` | tests | test | 668 |
+| `tests/unit/agent/AgentMemoryManager.test.ts` | tests | test | 699 |
 | `tests/unit/agent/AgentReflectionManager.test.ts` | tests | test | 578 |
 | `tests/unit/agent/ArtifactManager.test.ts` | tests | test | 616 |
 | `tests/unit/agent/CausalReasoner.test.ts` | tests | test | 339 |
