@@ -209,6 +209,17 @@ describe('RefIndex', () => {
       expect(count).toBe(0);
       expect(await fs.readFile(indexPath)).toEqual(before);
     });
+
+    it('identity rename keeps reverse index and allows a later rename', async () => {
+      await index.register('alias', 'Alice');
+      const before = await fs.readFile(indexPath);
+      expect(await index.renameEntity('Alice', 'Alice')).toBe(1);
+      expect(await index.refsForEntity('Alice')).toEqual(['alias']);
+      expect(await index.resolve('alias')).toBe('Alice');
+      expect(await fs.readFile(indexPath)).toEqual(before);
+      expect(await index.renameEntity('Alice', 'Alicia')).toBe(1);
+      expect(await index.resolve('alias')).toBe('Alicia');
+    });
   });
 
   // -------------------------------------------------------------------------

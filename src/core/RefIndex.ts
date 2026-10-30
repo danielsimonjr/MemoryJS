@@ -179,6 +179,10 @@ export class RefIndex {
    */
   async renameEntity(oldName: string, newName: string): Promise<number> {
     return this.mutex.runExclusive(async () => {
+      if (oldName === newName) {
+        await this.ensureLoaded();
+        return this.reverseIndex.get(oldName)?.size ?? 0;
+      }
       return this.rewriteReverseBucket(oldName, ref => {
         const entry = this.entries.get(ref);
         if (entry) {
