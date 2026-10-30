@@ -755,7 +755,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/utils/ids.test.ts` | tests | test | 35 |
 | `tests/unit/utils/indexes.test.ts` | tests | test | 898 |
 | `tests/unit/utils/jsonlMapFile.test.ts` | tests | test | 162 |
-| `tests/unit/utils/jsonlRecordFile.test.ts` | tests | test | 81 |
+| `tests/unit/utils/jsonlRecordFile.test.ts` | tests | test | 89 |
 | `tests/unit/utils/logger.test.ts` | tests | test | 253 |
 | `tests/unit/utils/MemoryMonitor.test.ts` | tests | test | 413 |
 | `tests/unit/utils/mutateMapWithFlushRollback.test.ts` | tests | test | 34 |
