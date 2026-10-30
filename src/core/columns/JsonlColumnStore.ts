@@ -161,8 +161,10 @@ export class JsonlColumnStore<T> implements IColumnStore<T> {
   }
 
   async clear(): Promise<void> {
-    const cache = await this.ensureLoaded();
-    await clearMapWithFlushRollback(cache, c => this.flush(c));
+    return this.mutex.runExclusive(async () => {
+      const cache = await this.ensureLoaded();
+      await clearMapWithFlushRollback(cache, c => this.flush(c));
+    });
   }
 
   /**
