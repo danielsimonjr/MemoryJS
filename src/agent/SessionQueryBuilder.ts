@@ -442,12 +442,7 @@ export class SessionQueryBuilder {
       .sort((a, b) => b.score - a.score)
       .map((r) => r.entity);
 
-    // Apply limit
-    if (this.limit) {
-      return sorted.slice(0, this.limit);
-    }
-
-    return sorted;
+    return this.paginate(sorted);
   }
 
   /**

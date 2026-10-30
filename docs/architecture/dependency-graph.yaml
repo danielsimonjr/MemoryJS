@@ -14071,10 +14071,7 @@ modules:
     src/utils/jsonlRecordFile.ts:
       description: Writes JSONL records to a file and updates the in-memory cache on success.
       externalDependencies: []
-      nodeDependencies:
-        - module: fs/promises
-          imports:
-            - "* as fs"
+      nodeDependencies: []
       internalDependencies:
         - file: ./durableWriteFile.js
           imports:
@@ -14948,7 +14945,7 @@ reachability:
 statistics:
   totalTypeScriptFiles: 313
   totalModules: 12
-  totalLinesOfCode: 105545
+  totalLinesOfCode: 105544
   totalExports: 2103
   totalClasses: 237
   totalInterfaces: 632
