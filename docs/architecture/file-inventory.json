@@ -2090,7 +2090,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 41
+      "loc": 40
     },
     {
       "file": "src/utils/logger.ts",

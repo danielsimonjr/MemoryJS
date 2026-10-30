@@ -336,7 +336,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/utils/indexes.ts` | src | reachable | 430 |
 | `src/utils/IndexHealthMonitor.ts` | src | reachable | 78 |
 | `src/utils/jsonlMapFile.ts` | src | reachable | 113 |
-| `src/utils/jsonlRecordFile.ts` | src | reachable | 41 |
+| `src/utils/jsonlRecordFile.ts` | src | reachable | 40 |
 | `src/utils/logger.ts` | src | reachable | 45 |
 | `src/utils/MemoryMonitor.ts` | src | reachable | 411 |
 | `src/utils/mutateMapWithFlushRollback.ts` | src | reachable | 44 |
