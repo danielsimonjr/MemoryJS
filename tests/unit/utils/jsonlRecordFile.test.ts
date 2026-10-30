@@ -23,6 +23,7 @@ describe('jsonlRecordFile helpers (clone pins)', () => {
   });
 
   afterEach(async () => {
+    vi.restoreAllMocks();
     try {
       await fs.rm(testDir, { recursive: true, force: true });
     } catch {
@@ -57,7 +58,9 @@ describe('jsonlRecordFile helpers (clone pins)', () => {
     const before = await fs.readFile(tagPath);
     await tagManager.listTagAliases();
 
-    vi.spyOn(fs, 'rename').mockRejectedValueOnce(
+    // A persistent rejection: on Windows durableWriteFile retries a failed rename, so a single
+    // rejection would be retried and the write would succeed.
+    vi.spyOn(fs, 'rename').mockRejectedValue(
       Object.assign(new Error('EPERM'), { code: 'EPERM' }),
     );
 
@@ -71,7 +74,9 @@ describe('jsonlRecordFile helpers (clone pins)', () => {
     const before = await fs.readFile(searchPath);
     await searchManager.listSavedSearches();
 
-    vi.spyOn(fs, 'rename').mockRejectedValueOnce(
+    // A persistent rejection: on Windows durableWriteFile retries a failed rename, so a single
+    // rejection would be retried and the write would succeed.
+    vi.spyOn(fs, 'rename').mockRejectedValue(
       Object.assign(new Error('EPERM'), { code: 'EPERM' }),
     );
 
