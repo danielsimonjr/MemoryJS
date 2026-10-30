@@ -399,6 +399,37 @@ describe('AgentMemoryManager', () => {
   });
 
   describe('context retrieval + formatting', () => {
+    it('retrieveForContext uses contextWindow.defaultMaxTokens when maxTokens is omitted', async () => {
+      const localDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentmem-budget-'));
+      const localFile = path.join(localDir, 'memory.jsonl');
+      const localStorage = new GraphStorage(localFile);
+      const budgetManager = new AgentMemoryManager(localStorage, {
+        contextWindow: { defaultMaxTokens: 150, reserveBuffer: 0, tokenMultiplier: 1 },
+      });
+      try {
+        const session = await budgetManager.startSession();
+        const filler =
+          'word '.repeat(30).trim();
+        for (let i = 0; i < 12; i++) {
+          await budgetManager.addWorkingMemory({
+            sessionId: session.name,
+            content: `${filler} item ${i}`,
+          });
+        }
+        const defaulted = await budgetManager.retrieveForContext({ sessionId: session.name });
+        const explicit = await budgetManager.retrieveForContext({
+          sessionId: session.name,
+          maxTokens: 4000,
+        });
+        expect(defaulted.excluded.length).toBeGreaterThan(0);
+        expect(defaulted.totalTokens).toBeLessThanOrEqual(150);
+        expect(explicit.excluded.length).toBe(0);
+      } finally {
+        budgetManager.stop();
+        fs.rmSync(localDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      }
+    });
+
     it('retrieveForContext returns a ContextPackage', async () => {
       const session = await manager.startSession();
       await manager.addWorkingMemory({

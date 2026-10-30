@@ -108,12 +108,13 @@ export class JsonlColumnStore<T> implements IColumnStore<T> {
     return this.mutex.runExclusive(async () => {
       const cache = await this.ensureLoaded();
       if (!cache.has(name)) return false;
-      const priorValue = cache.get(name)!;
+      const snapshot = new Map(cache);
       cache.delete(name);
       try {
         await this.flush(cache);
       } catch (err) {
-        cache.set(name, priorValue);
+        cache.clear();
+        for (const [k, v] of snapshot) cache.set(k, v);
         throw err;
       }
       return true;
@@ -160,8 +161,10 @@ export class JsonlColumnStore<T> implements IColumnStore<T> {
   }
 
   async clear(): Promise<void> {
-    const cache = await this.ensureLoaded();
-    await clearMapWithFlushRollback(cache, c => this.flush(c));
+    return this.mutex.runExclusive(async () => {
+      const cache = await this.ensureLoaded();
+      await clearMapWithFlushRollback(cache, c => this.flush(c));
+    });
   }
 
   /**

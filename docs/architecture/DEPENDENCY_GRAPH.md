@@ -5419,10 +5419,10 @@ Reachable from a root: **313** of 313 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/utils/jsonlRecordFile.ts` - Writes JSONL records to a file and updates the in-memory cache on success.
 
-**Node.js Built-in Dependencies:**
-| Module | Import |
-|--------|--------|
-| `fs/promises` | `* as fs` |
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `./durableWriteFile.js` | `durableWriteFile` | Import |
 
 **Exports:**
 - Functions: `writeJsonlRecordsUpdatingCache`, `deleteRecordsByKey`

@@ -348,6 +348,29 @@ describe('EntityValidator', () => {
       expect(result.errors[0].message).toContain('async');
     });
 
+    it('validateSync swallows rejection from async rules', async () => {
+      const rejections: unknown[] = [];
+      const onRejection = (reason: unknown) => {
+        rejections.push(reason);
+      };
+      process.on('unhandledRejection', onRejection);
+      try {
+        validator.addRule({
+          name: 'async-reject',
+          field: 'name',
+          message: 'Async',
+          validate: () => Promise.reject(new Error('rule blew up')),
+        });
+        const result = validator.validateSync(createEntity());
+        expect(result.isValid).toBe(false);
+        expect(result.errors[0]?.message).toMatch(/async/i);
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        expect(rejections).toEqual([]);
+      } finally {
+        process.off('unhandledRejection', onRejection);
+      }
+    });
+
     it('should handle failFast in sync mode', () => {
       const v = new EntityValidator({ failFast: true });
       v.addRules([required('name'), required('entityType')]);
