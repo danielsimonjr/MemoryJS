@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.4.0] - 2026-10-30
+
 ### Changed
 
 - Share observation hash bucketing in `ObservationDedupManager` (CLONES P20).
