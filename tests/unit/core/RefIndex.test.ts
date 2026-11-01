@@ -6,7 +6,7 @@
  *         and the new error types in errors.ts.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -53,6 +53,7 @@ describe('RefIndex', () => {
   });
 
   afterEach(async () => {
+    vi.restoreAllMocks();
     await cleanup();
   });
 
@@ -165,6 +166,20 @@ describe('RefIndex', () => {
       await index.deregister('alias1');
       const refs = await index.refsForEntity('Alice');
       expect(refs).toEqual(['alias2']);
+    });
+
+    it('keeps ref sidecar bytes when durable replace fails', async () => {
+      await index.register('alias', 'Alice');
+      const before = await fs.readFile(indexPath);
+
+      // A persistent rejection: on Windows durableWriteFile retries a failed
+      // rename, so a single rejection would be retried and the write would succeed.
+      vi.spyOn(fs, 'rename').mockRejectedValue(
+        Object.assign(new Error('EPERM'), { code: 'EPERM' }),
+      );
+
+      await expect(index.deregister('alias')).rejects.toThrow(/EPERM|replace/);
+      expect(await fs.readFile(indexPath)).toEqual(before);
     });
   });
 

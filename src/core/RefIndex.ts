@@ -9,6 +9,7 @@
 
 import { promises as fs } from 'fs';
 import { Mutex } from 'async-mutex';
+import { durableWriteFile } from '../utils/durableWriteFile.js';
 import { RefConflictError } from '../utils/errors.js';
 
 /**
@@ -340,13 +341,15 @@ export class RefIndex {
    * Rewrite the full JSONL sidecar from the in-memory map.
    * Used after deregister/purge where a full rewrite is needed.
    * MUST be called inside mutex.runExclusive().
+   * Uses {@link durableWriteFile} so a crash or a failed rename leaves the
+   * previous sidecar generation intact (never an in-place truncate).
    */
   private async persistAll(): Promise<void> {
     const lines = Array.from(this.entries.values())
       .map(entry => JSON.stringify(entry))
       .join('\n');
 
-    await fs.writeFile(this.indexFilePath, lines.length > 0 ? lines + '\n' : '', 'utf-8');
+    await durableWriteFile(this.indexFilePath, lines.length > 0 ? lines + '\n' : '');
   }
 
   /**

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `RefIndex` rewrites its JSONL sidecar through `durableWriteFile` instead of truncating the live path with `fs.writeFile` on a failed `deregister`, `purgeEntity`, `purgeEntities`, or rename persist.
+
 ## [4.4.0] - 2026-10-30
 
 ### Changed
