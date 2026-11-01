@@ -4,7 +4,7 @@
 
 # Complete File Inventory
 
-**Generated**: 2026-10-30 (by tools/create-dependency-graph)
+**Generated**: 2026-11-01 (by tools/create-dependency-graph)
 
 Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks/`, root-level `*.config.ts` — tagged with a disposition. A completeness census: no `.ts` may be silently missing. The self-check gate does a MAXIMAL, location-agnostic repo walk (broader than this census’s enumerated discovery) and fails the run if any `.ts` on disk is unaccounted.
 
@@ -210,7 +210,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/core/ObservationManager.ts` | src | reachable | 981 |
 | `src/core/ObservationStore.ts` | src | reachable | 195 |
 | `src/core/PostgreSQLStorage.ts` | src | reachable | 636 |
-| `src/core/RefIndex.ts` | src | reachable | 375 |
+| `src/core/RefIndex.ts` | src | reachable | 378 |
 | `src/core/RelationManager.ts` | src | reachable | 491 |
 | `src/core/segments/FileSegmentStorage.ts` | src | reachable | 685 |
 | `src/core/segments/ISegmentStorage.ts` | src | reachable | 279 |
@@ -589,7 +589,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/optimistic-concurrency.test.ts` | tests | test | 133 |
 | `tests/unit/core/PostgreSQLStorage.test.ts` | tests | test | 420 |
 | `tests/unit/core/rebuild-native.test.ts` | tests | test | 42 |
-| `tests/unit/core/RefIndex.test.ts` | tests | test | 591 |
+| `tests/unit/core/RefIndex.test.ts` | tests | test | 609 |
 | `tests/unit/core/relation-manager-temporal.test.ts` | tests | test | 157 |
 | `tests/unit/core/RelationManager-metadata.test.ts` | tests | test | 127 |
 | `tests/unit/core/RelationManager.test.ts` | tests | test | 339 |

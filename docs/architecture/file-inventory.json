@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-30",
+  "generated": "2026-11-01",
   "totalFiles": 746,
   "byDisposition": {
     "reachable": 309,
@@ -1208,7 +1208,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 375
+      "loc": 378
     },
     {
       "file": "src/core/RelationManager.ts",
@@ -3861,7 +3861,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 591
+      "loc": 609
     },
     {
       "file": "tests/unit/core/relation-manager-temporal.test.ts",

@@ -6,7 +6,7 @@
  *         and the new error types in errors.ts.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -53,6 +53,7 @@ describe('RefIndex', () => {
   });
 
   afterEach(async () => {
+    vi.restoreAllMocks();
     await cleanup();
   });
 
@@ -353,6 +354,23 @@ describe('RefIndex', () => {
       const index2 = new RefIndex(indexPath);
       expect(await index2.resolve('ref1')).toBeNull();
       expect(await index2.resolve('ref2')).toBeNull();
+    });
+
+    it('keeps sidecar bytes when persistAll durable replace fails', async () => {
+      await index.register('keep', 'Alice');
+      const before = await fs.readFile(indexPath);
+
+      // Persistent rejection: on Windows durableWriteFile retries a failed
+      // rename, so a single rejection would be retried and the write would succeed.
+      vi.spyOn(fs, 'rename').mockRejectedValue(
+        Object.assign(new Error('EPERM'), { code: 'EPERM' }),
+      );
+
+      await expect(index.deregister('keep')).rejects.toThrow(/EPERM|replace/);
+      expect(await fs.readFile(indexPath)).toEqual(before);
+
+      const reloaded = new RefIndex(indexPath);
+      expect(await reloaded.resolve('keep')).toBe('Alice');
     });
 
     it('starts empty when sidecar file does not exist', async () => {
