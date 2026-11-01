@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- `RefIndex.persistAll` writes the JSONL sidecar through `durableWriteFile` instead of truncating the live path with `fs.writeFile` on failure.
+- `RefIndex.persistAll` writes the JSONL sidecar through `durableWriteFile` instead of truncating the live path with `fs.writeFile` on failure. A failed write drops the in-memory maps so the next call reloads the sidecar.
 
 ## [4.4.0] - 2026-10-30
 

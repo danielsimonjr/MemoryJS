@@ -342,6 +342,9 @@ export class RefIndex {
    * Used after deregister/purge where a full rewrite is needed.
    * Writes through {@link durableWriteFile} so a crash or a failed
    * replace leaves the previous sidecar bytes in place.
+   * A failed write drops the in-memory maps so the next call reloads
+   * whatever is actually on disk (previous generation, or the new file
+   * if rename succeeded and only the directory sync failed).
    * MUST be called inside mutex.runExclusive().
    */
   private async persistAll(): Promise<void> {
@@ -349,7 +352,14 @@ export class RefIndex {
       .map(entry => JSON.stringify(entry))
       .join('\n');
 
-    await durableWriteFile(this.indexFilePath, lines.length > 0 ? lines + '\n' : '');
+    try {
+      await durableWriteFile(this.indexFilePath, lines.length > 0 ? lines + '\n' : '');
+    } catch (error) {
+      this.entries.clear();
+      this.reverseIndex.clear();
+      this.loaded = false;
+      throw error;
+    }
   }
 
   /**

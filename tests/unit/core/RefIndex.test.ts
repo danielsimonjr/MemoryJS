@@ -369,8 +369,19 @@ describe('RefIndex', () => {
       await expect(index.deregister('keep')).rejects.toThrow(/EPERM|replace/);
       expect(await fs.readFile(indexPath)).toEqual(before);
 
+      // The failed mutation is dropped so this instance reloads the sidecar.
+      // Without that, a second deregister would no-op (alias already gone
+      // from memory) and a later reload would resurrect it.
+      expect(await index.resolve('keep')).toBe('Alice');
+      expect(await index.refsForEntity('Alice')).toEqual(['keep']);
+
       const reloaded = new RefIndex(indexPath);
       expect(await reloaded.resolve('keep')).toBe('Alice');
+
+      vi.restoreAllMocks();
+      await index.deregister('keep');
+      expect(await index.resolve('keep')).toBeNull();
+      expect(await new RefIndex(indexPath).resolve('keep')).toBeNull();
     });
 
     it('starts empty when sidecar file does not exist', async () => {
