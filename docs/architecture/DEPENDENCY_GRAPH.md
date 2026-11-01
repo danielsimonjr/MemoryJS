@@ -4,7 +4,7 @@
 
 # @danielsimonjr/memoryjs - Dependency Graph
 
-**Version**: 4.3.0 | **Last Updated**: 2026-10-29
+**Version**: 4.4.0 | **Last Updated**: 2026-11-01
 
 This document provides a comprehensive dependency graph of all files, components, imports, functions, and variables in the codebase.
 
@@ -3224,6 +3224,7 @@ Reachable from a root: **313** of 313 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../utils/durableWriteFile.js` | `durableWriteFile` | Import |
 | `../utils/errors.js` | `RefConflictError` | Import |
 
 **Exports:**
@@ -5931,7 +5932,7 @@ graph TD
 |----------|-------|
 | Total TypeScript Files | 313 |
 | Total Modules | 12 |
-| Total Lines of Code | 105548 |
+| Total Lines of Code | 105561 |
 | Total Exports | 2103 |
 | Total Re-exports | 1349 |
 | Total Classes | 237 |
@@ -5948,5 +5949,5 @@ graph TD
 
 ---
 
-*Last Updated*: 2026-10-29
-*Version*: 4.3.0
+*Last Updated*: 2026-11-01
+*Version*: 4.4.0

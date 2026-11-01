@@ -6,7 +6,7 @@
  *         and the new error types in errors.ts.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -53,6 +53,7 @@ describe('RefIndex', () => {
   });
 
   afterEach(async () => {
+    vi.restoreAllMocks();
     await cleanup();
   });
 
@@ -353,6 +354,34 @@ describe('RefIndex', () => {
       const index2 = new RefIndex(indexPath);
       expect(await index2.resolve('ref1')).toBeNull();
       expect(await index2.resolve('ref2')).toBeNull();
+    });
+
+    it('keeps sidecar bytes when persistAll durable replace fails', async () => {
+      await index.register('keep', 'Alice');
+      const before = await fs.readFile(indexPath);
+
+      // Persistent rejection: on Windows durableWriteFile retries a failed
+      // rename, so a single rejection would be retried and the write would succeed.
+      vi.spyOn(fs, 'rename').mockRejectedValue(
+        Object.assign(new Error('EPERM'), { code: 'EPERM' }),
+      );
+
+      await expect(index.deregister('keep')).rejects.toThrow(/EPERM|replace/);
+      expect(await fs.readFile(indexPath)).toEqual(before);
+
+      // The failed mutation is dropped so this instance reloads the sidecar.
+      // Without that, a second deregister would no-op (alias already gone
+      // from memory) and a later reload would resurrect it.
+      expect(await index.resolve('keep')).toBe('Alice');
+      expect(await index.refsForEntity('Alice')).toEqual(['keep']);
+
+      const reloaded = new RefIndex(indexPath);
+      expect(await reloaded.resolve('keep')).toBe('Alice');
+
+      vi.restoreAllMocks();
+      await index.deregister('keep');
+      expect(await index.resolve('keep')).toBeNull();
+      expect(await new RefIndex(indexPath).resolve('keep')).toBeNull();
     });
 
     it('starts empty when sidecar file does not exist', async () => {

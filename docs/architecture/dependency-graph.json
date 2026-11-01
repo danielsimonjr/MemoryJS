@@ -1,8 +1,8 @@
 {
   "metadata": {
     "name": "@danielsimonjr/memoryjs",
-    "version": "4.3.0",
-    "lastUpdated": "2026-10-29",
+    "version": "4.4.0",
+    "lastUpdated": "2026-11-01",
     "totalFiles": 313,
     "totalModules": 12,
     "totalExports": 2103
@@ -11335,6 +11335,12 @@
         ],
         "internalDependencies": [
           {
+            "file": "../utils/durableWriteFile.js",
+            "imports": [
+              "durableWriteFile"
+            ]
+          },
+          {
             "file": "../utils/errors.js",
             "imports": [
               "RefConflictError"
@@ -21100,7 +21106,7 @@
   "statistics": {
     "totalTypeScriptFiles": 313,
     "totalModules": 12,
-    "totalLinesOfCode": 105548,
+    "totalLinesOfCode": 105561,
     "totalExports": 2103,
     "totalClasses": 237,
     "totalInterfaces": 632,
