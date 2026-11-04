@@ -2,10 +2,10 @@
   "metadata": {
     "name": "@danielsimonjr/memoryjs",
     "version": "4.4.0",
-    "lastUpdated": "2026-11-01",
+    "lastUpdated": "2026-11-04",
     "totalFiles": 313,
     "totalModules": 12,
-    "totalExports": 2103
+    "totalExports": 2149
   },
   "entryPoints": [
     {
@@ -891,6 +891,13 @@
             "typeOnly": true
           },
           {
+            "file": "../core/GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
             "file": "../core/EntityManager.js",
             "imports": [
               "EntityManager"
@@ -1501,6 +1508,13 @@
             "imports": [
               "IGraphStorage",
               "ReadonlyKnowledgeGraph"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../core/GraphStorage.js",
+            "imports": [
+              "GraphStorage"
             ],
             "typeOnly": true
           },
@@ -10194,6 +10208,12 @@
             "imports": [
               "GRAPH_LIMITS"
             ]
+          },
+          {
+            "file": "../utils/graphCopy.js",
+            "imports": [
+              "borrowGraphView"
+            ]
           }
         ],
         "exports": [
@@ -10538,6 +10558,13 @@
             "imports": [
               "EntityNotFoundError",
               "CycleDetectedError"
+            ]
+          },
+          {
+            "file": "../utils/graphCopy.js",
+            "imports": [
+              "borrowGraphView",
+              "deepCopyPlain"
             ]
           }
         ],
@@ -11124,6 +11151,12 @@
             ]
           },
           {
+            "file": "../search/BloomPreScreener.js",
+            "imports": [
+              "BloomPreScreener"
+            ]
+          },
+          {
             "file": "../features/GovernanceManager.js",
             "imports": [
               "GovernanceManager"
@@ -11221,6 +11254,12 @@
             "file": "../utils/textSimilarity.js",
             "imports": [
               "calculateTextSimilarity"
+            ]
+          },
+          {
+            "file": "../utils/graphCopy.js",
+            "imports": [
+              "borrowGraphView"
             ]
           },
           {
@@ -11918,6 +11957,25 @@
             "reExport": true
           },
           {
+            "file": "./ObservationStore.js",
+            "imports": [
+              "ObservationStore",
+              "ObservationStoreStats"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./EntityStateMachine.js",
+            "imports": [
+              "EntityStateMachine",
+              "IllegalStatusTransitionError",
+              "DEFAULT_ENTITY_STATUS",
+              "canTransition",
+              "effectiveStatus"
+            ],
+            "reExport": true
+          },
+          {
             "file": "./EntityManager.js",
             "imports": [
               "EntityManagerOptions"
@@ -11967,6 +12025,13 @@
           "RefEntry",
           "RefIndexStats",
           "TransitionLedger",
+          "ObservationStore",
+          "ObservationStoreStats",
+          "EntityStateMachine",
+          "IllegalStatusTransitionError",
+          "DEFAULT_ENTITY_STATUS",
+          "canTransition",
+          "effectiveStatus",
           "EntityManagerOptions",
           "ManagerContextOptions",
           "TransitionEvent",
@@ -11995,6 +12060,13 @@
           "RefEntry",
           "RefIndexStats",
           "TransitionLedger",
+          "ObservationStore",
+          "ObservationStoreStats",
+          "EntityStateMachine",
+          "IllegalStatusTransitionError",
+          "DEFAULT_ENTITY_STATUS",
+          "canTransition",
+          "effectiveStatus",
           "EntityManagerOptions",
           "ManagerContextOptions",
           "TransitionEvent",
@@ -14498,7 +14570,8 @@
           {
             "file": "../types/types.js",
             "imports": [
-              "Entity"
+              "Entity",
+              "EntityUpdatedEvent"
             ],
             "typeOnly": true
           },
@@ -14912,6 +14985,7 @@
           {
             "file": "../types/index.js",
             "imports": [
+              "DocumentVector",
               "Entity",
               "GraphEventType",
               "IGraphStorage",
@@ -15248,6 +15322,12 @@
               "CachePressureCoordinator"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../utils/constants.js",
+            "imports": [
+              "SEARCH_LIMITS"
+            ]
           }
         ],
         "exports": [
@@ -16067,6 +16147,82 @@
             "reExport": true
           },
           {
+            "file": "./MaterializedViews.js",
+            "imports": [
+              "MaterializedViewsManager",
+              "ViewDefinition",
+              "ViewSnapshot"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./BloomFilter.js",
+            "imports": [
+              "BloomFilter"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./BloomPreScreener.js",
+            "imports": [
+              "BloomPreScreener",
+              "BloomPreScreenerOptions"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./PartialIndexAdvisor.js",
+            "imports": [
+              "PartialIndexAdvisor",
+              "FilterObservation",
+              "IndexRecommendation",
+              "PartialIndexAdvisorOptions"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./QueryPlanFormatter.js",
+            "imports": [
+              "formatQueryPlanAscii",
+              "ExplainPlanResult"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./tiered/TieredIndex.js",
+            "imports": [
+              "TieredIndex",
+              "buildTieredIndex",
+              "TieredIndexOptions",
+              "TieredIndexBuildOptions"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./tiered/LRUHotTier.js",
+            "imports": [
+              "LRUHotTier",
+              "LRUHotTierOptions"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./tiered/DiskWarmTier.js",
+            "imports": [
+              "DiskWarmTier",
+              "DiskWarmTierOptions"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./tiered/BrotliColdTier.js",
+            "imports": [
+              "BrotliColdTier",
+              "BrotliColdTierOptions"
+            ],
+            "reExport": true
+          },
+          {
             "file": "../types/search.js",
             "imports": [
               "EvidenceLayer",
@@ -16082,6 +16238,16 @@
             "imports": [
               "ExplainHybridOptions",
               "ExplainedHybridSearchResult"
+            ],
+            "reExport": true,
+            "typeOnly": true
+          },
+          {
+            "file": "./tiered/ITieredIndex.js",
+            "imports": [
+              "ITieredIndex",
+              "IIndexTier",
+              "TierAccessStats"
             ],
             "reExport": true,
             "typeOnly": true
@@ -16222,12 +16388,37 @@
           "DEFAULT_EVIDENCE_MAX_PATHS_PER_RESULT",
           "EvidenceAnchor",
           "EvidencePathSet",
+          "MaterializedViewsManager",
+          "ViewDefinition",
+          "ViewSnapshot",
+          "BloomFilter",
+          "BloomPreScreener",
+          "BloomPreScreenerOptions",
+          "PartialIndexAdvisor",
+          "FilterObservation",
+          "IndexRecommendation",
+          "PartialIndexAdvisorOptions",
+          "formatQueryPlanAscii",
+          "ExplainPlanResult",
+          "TieredIndex",
+          "buildTieredIndex",
+          "TieredIndexOptions",
+          "TieredIndexBuildOptions",
+          "LRUHotTier",
+          "LRUHotTierOptions",
+          "DiskWarmTier",
+          "DiskWarmTierOptions",
+          "BrotliColdTier",
+          "BrotliColdTierOptions",
           "EvidenceLayer",
           "EvidencePath",
           "EvidencePathOptions",
           "EvidencePathRelation",
           "ExplainHybridOptions",
-          "ExplainedHybridSearchResult"
+          "ExplainedHybridSearchResult",
+          "ITieredIndex",
+          "IIndexTier",
+          "TierAccessStats"
         ],
         "reExported": [
           "BasicSearch",
@@ -16364,12 +16555,37 @@
           "DEFAULT_EVIDENCE_MAX_PATHS_PER_RESULT",
           "EvidenceAnchor",
           "EvidencePathSet",
+          "MaterializedViewsManager",
+          "ViewDefinition",
+          "ViewSnapshot",
+          "BloomFilter",
+          "BloomPreScreener",
+          "BloomPreScreenerOptions",
+          "PartialIndexAdvisor",
+          "FilterObservation",
+          "IndexRecommendation",
+          "PartialIndexAdvisorOptions",
+          "formatQueryPlanAscii",
+          "ExplainPlanResult",
+          "TieredIndex",
+          "buildTieredIndex",
+          "TieredIndexOptions",
+          "TieredIndexBuildOptions",
+          "LRUHotTier",
+          "LRUHotTierOptions",
+          "DiskWarmTier",
+          "DiskWarmTierOptions",
+          "BrotliColdTier",
+          "BrotliColdTierOptions",
           "EvidenceLayer",
           "EvidencePath",
           "EvidencePathOptions",
           "EvidencePathRelation",
           "ExplainHybridOptions",
-          "ExplainedHybridSearchResult"
+          "ExplainedHybridSearchResult",
+          "ITieredIndex",
+          "IIndexTier",
+          "TierAccessStats"
         ]
       },
       "src/search/inducedSubgraph.ts": {
@@ -19409,6 +19625,58 @@
               "calculateTextSimilarity"
             ],
             "reExport": true
+          },
+          {
+            "file": "./CachePressureCoordinator.js",
+            "imports": [
+              "CachePressureCoordinator",
+              "PressureAwareCache",
+              "CachePressureSnapshot"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./IndexHealthMonitor.js",
+            "imports": [
+              "IndexHealthMonitor",
+              "IndexHealthReport",
+              "IndexHealthSources"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./compression/CompressedMap.js",
+            "imports": [
+              "CompressedMap",
+              "CompressedMapOptions"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./compression/ICompressionAdapter.js",
+            "imports": [
+              "ZlibCompressionAdapter",
+              "ICompressionAdapter"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./Diagnostics.js",
+            "imports": [
+              "DiagnosticsReport",
+              "TieredIndexStatsSnapshot"
+            ],
+            "reExport": true,
+            "typeOnly": true
+          },
+          {
+            "file": "./IIndexHealth.js",
+            "imports": [
+              "IIndexHealth",
+              "IndexHealthSnapshot"
+            ],
+            "reExport": true,
+            "typeOnly": true
           }
         ],
         "exports": [
@@ -19679,7 +19947,21 @@
           "buildTFVector",
           "textCosineSimilarity",
           "calculateTextSimilarity",
-          "cosineSimilarity"
+          "CachePressureCoordinator",
+          "PressureAwareCache",
+          "CachePressureSnapshot",
+          "IndexHealthMonitor",
+          "IndexHealthReport",
+          "IndexHealthSources",
+          "CompressedMap",
+          "CompressedMapOptions",
+          "ZlibCompressionAdapter",
+          "ICompressionAdapter",
+          "cosineSimilarity",
+          "DiagnosticsReport",
+          "TieredIndexStatsSnapshot",
+          "IIndexHealth",
+          "IndexHealthSnapshot"
         ],
         "reExported": [
           "ErrorCode",
@@ -19947,7 +20229,21 @@
           "tokenizeStripped",
           "buildTFVector",
           "cosineSimilarity",
-          "calculateTextSimilarity"
+          "calculateTextSimilarity",
+          "CachePressureCoordinator",
+          "PressureAwareCache",
+          "CachePressureSnapshot",
+          "IndexHealthMonitor",
+          "IndexHealthReport",
+          "IndexHealthSources",
+          "CompressedMap",
+          "CompressedMapOptions",
+          "ZlibCompressionAdapter",
+          "ICompressionAdapter",
+          "DiagnosticsReport",
+          "TieredIndexStatsSnapshot",
+          "IIndexHealth",
+          "IndexHealthSnapshot"
         ]
       },
       "src/utils/indexes.ts": {
@@ -21106,16 +21402,16 @@
   "statistics": {
     "totalTypeScriptFiles": 313,
     "totalModules": 12,
-    "totalLinesOfCode": 105561,
-    "totalExports": 2103,
+    "totalLinesOfCode": 105883,
+    "totalExports": 2149,
     "totalClasses": 237,
     "totalInterfaces": 632,
     "totalFunctions": 378,
     "totalTypeGuards": 31,
     "totalEnums": 4,
     "totalConstants": 124,
-    "totalReExports": 1349,
-    "totalTypeOnlyImports": 499,
+    "totalReExports": 1395,
+    "totalTypeOnlyImports": 504,
     "runtimeCircularDeps": 0,
     "typeOnlyCircularDeps": 8,
     "entryRoots": 4,
@@ -21124,6 +21420,6 @@
     "orphanedFiles": 0,
     "testOnlyFiles": 0,
     "unusedFilesCount": 0,
-    "unusedExportsCount": 74
+    "unusedExportsCount": 59
   }
 }

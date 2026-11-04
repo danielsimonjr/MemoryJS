@@ -4,7 +4,7 @@
 
 # Unused Files and Exports Analysis
 
-**Generated**: 2026-11-01
+**Generated**: 2026-11-04
 
 ## Summary
 
@@ -12,9 +12,9 @@
 - **Dormant files** (runtime code on disk, unreachable from any entry/build root): 0
   - **Orphaned (reachable from nothing — delete/wire candidates)**: 0
   - **Test-only (exercised by a test, ships nothing)**: 0
-- **Potentially unused exports**: 74
+- **Potentially unused exports**: 59
   - **Unreferenced anywhere (deletion candidates)**: 0
-  - **Referenced in-module (type contracts / helpers backing live exports)**: 74
+  - **Referenced in-module (type contracts / helpers backing live exports)**: 59
 
 Seeded reachability roots (4):
 
@@ -131,10 +131,6 @@ support exports that ARE used, so they cannot be deleted in isolation.
 - `DEFAULT_ALL_PATHS_MAX_PATHS` (constant) — 1 in-file ref
 - `DEFAULT_ALL_PATHS_MAX_EXPANSIONS` (constant) — 1 in-file ref
 
-### `src/core/ObservationStore.ts`
-
-- `ObservationStoreStats` (interface) — 1 in-file ref
-
 ### `src/core/SQLiteStorage.ts`
 
 - `DatabaseCtor` (type) — 6 in-file refs
@@ -159,23 +155,9 @@ support exports that ARE used, so they cannot be deleted in isolation.
 - `IOManagerOptions` (interface) — 1 in-file ref
 - `IngestMode` (type) — 3 in-file refs
 
-### `src/search/BloomPreScreener.ts`
-
-- `BloomPreScreenerOptions` (interface) — 1 in-file ref
-
 ### `src/search/HybridSearchManager.ts`
 
 - `HybridExecutableLayer` (type) — 1 in-file ref
-
-### `src/search/MaterializedViews.ts`
-
-- `ViewDefinition` (interface) — 3 in-file refs
-- `ViewSnapshot` (interface) — 1 in-file ref
-
-### `src/search/PartialIndexAdvisor.ts`
-
-- `IndexRecommendation` (interface) — 2 in-file refs
-- `PartialIndexAdvisorOptions` (interface) — 1 in-file ref
 
 ### `src/search/SearchFilterChain.ts`
 
@@ -194,23 +176,6 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 - `SemanticSearchOptions` (interface) — 1 in-file ref
 
-### `src/search/tiered/BrotliColdTier.ts`
-
-- `BrotliColdTierOptions` (interface) — 1 in-file ref
-
-### `src/search/tiered/DiskWarmTier.ts`
-
-- `DiskWarmTierOptions` (interface) — 1 in-file ref
-
-### `src/search/tiered/LRUHotTier.ts`
-
-- `LRUHotTierOptions` (interface) — 1 in-file ref
-
-### `src/search/tiered/TieredIndex.ts`
-
-- `TieredIndexOptions` (interface) — 1 in-file ref
-- `TieredIndexBuildOptions` (interface) — 1 in-file ref
-
 ### `src/security/APIKeyStore.ts`
 
 - `MAX_KEY_PROJECT_IDS` (constant) — 1 in-file ref
@@ -223,26 +188,13 @@ support exports that ARE used, so they cannot be deleted in isolation.
 - `AtLeastOne` (type) — 1 in-file ref
 - `DEFAULT_TRUST_THRESHOLDS` (constant) — 4 in-file refs
 
-### `src/utils/CachePressureCoordinator.ts`
-
-- `CachePressureSnapshot` (interface) — 2 in-file refs
-
 ### `src/utils/Diagnostics.ts`
 
 - `EntityCounts` (interface) — 2 in-file refs
-- `TieredIndexStatsSnapshot` (interface) — 2 in-file refs
-
-### `src/utils/IndexHealthMonitor.ts`
-
-- `IndexHealthSources` (interface) — 1 in-file ref
 
 ### `src/utils/WorkerPoolManager.ts`
 
 - `WorkerPoolRuntimeStats` (interface) — 1 in-file ref
-
-### `src/utils/compression/CompressedMap.ts`
-
-- `CompressedMapOptions` (interface) — 1 in-file ref
 
 ### `src/utils/compressionUtil.ts`
 
