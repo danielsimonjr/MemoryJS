@@ -8,7 +8,7 @@
  * @module agent/DecayEngine
  */
 
-import type { IGraphStorage, ReadonlyKnowledgeGraph } from '../types/types.js';
+import type { IGraphStorage, ReadonlyKnowledgeGraph, Entity } from '../types/types.js';
 import type { GraphStorage } from '../core/GraphStorage.js';
 import type { AgentEntity, DecayResult, ForgetOptions, ForgetResult } from '../types/agent-memory.js';
 import { isAgentEntity } from '../types/agent-memory.js';
@@ -17,6 +17,7 @@ import { FreshnessManager } from '../features/FreshnessManager.js';
 import { tokenizeToSet } from '../utils/textSimilarity.js';
 import { clampedHalfLifeScore, halfLifeFactor } from '../utils/halfLife.js';
 import { computeDegreeMap, normalizedDegree, type DegreeMap } from './connectivity.js';
+import { hasDeltaPrimitives } from '../core/storageCapabilities.js';
 
 // Re-export for convenience
 export type { DecayResult, ForgetOptions, ForgetResult } from '../types/agent-memory.js';
@@ -115,6 +116,48 @@ export interface ReinforcementOptions {
   confirmationBoost?: number;
   /** Amount to boost confidence by (0-1 scale) */
   confidenceBoost?: number;
+}
+
+/**
+ * Options for batch reinforcement via `DecayEngine.reinforceMemories`.
+ */
+export interface BatchReinforcementOptions extends ReinforcementOptions {
+  /**
+   * The reinforcement fields were already persisted by the caller (for
+   * example, folded into a promotion write). Only access tracking runs.
+   */
+  alreadyApplied?: boolean;
+}
+
+/**
+ * Build the field updates a reinforcement applies to one entity.
+ * Pure: shared by `reinforceMemory` and `reinforceMemories`, and by callers
+ * that fold reinforcement into their own write.
+ *
+ * @internal
+ */
+export function buildReinforcementUpdates(
+  entity: AgentEntity,
+  now: string,
+  options?: ReinforcementOptions
+): Partial<AgentEntity> {
+  const updates: Partial<AgentEntity> = {
+    lastModified: now,
+    lastAccessedAt: now, // Reset decay timer
+  };
+
+  // Increment confirmation count
+  const currentConfirmations = entity.confirmationCount ?? 0;
+  const confirmationBoost = options?.confirmationBoost ?? 1;
+  updates.confirmationCount = currentConfirmations + confirmationBoost;
+
+  // Optionally boost confidence (capped at 1.0)
+  if (options?.confidenceBoost) {
+    const currentConfidence = entity.confidence ?? 0.5;
+    updates.confidence = Math.min(1, currentConfidence + options.confidenceBoost);
+  }
+
+  return updates;
 }
 
 /**
@@ -547,24 +590,7 @@ export class DecayEngine {
     }
 
     const now = new Date().toISOString();
-    const agentEntity = entity as AgentEntity;
-
-    const updates: Partial<AgentEntity> = {
-      lastModified: now,
-      lastAccessedAt: now, // Reset decay timer
-    };
-
-    // Increment confirmation count
-    const currentConfirmations = agentEntity.confirmationCount ?? 0;
-    const confirmationBoost = options?.confirmationBoost ?? 1;
-    updates.confirmationCount = currentConfirmations + confirmationBoost;
-
-    // Optionally boost confidence (capped at 1.0)
-    if (options?.confidenceBoost) {
-      const currentConfidence = agentEntity.confidence ?? 0.5;
-      const newConfidence = Math.min(1, currentConfidence + options.confidenceBoost);
-      updates.confidence = newConfidence;
-    }
+    const updates = buildReinforcementUpdates(entity as AgentEntity, now, options);
 
     // Record access via tracker
     await this.accessTracker.recordAccess(entityName, {
@@ -574,6 +600,60 @@ export class DecayEngine {
     // Persist updates
     // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- entity existence-checked at entry; closing this microtask-gap TOCTOU race needs storage-level atomic check-and-set (task #55)
     await this.storage.updateEntity(entityName, updates as Record<string, unknown>);
+  }
+
+  /**
+   * Reinforce many memories at once.
+   *
+   * Equivalent to calling `reinforceMemory` for each name, but with
+   * delta-capable storage the reinforcement fields are written in one
+   * `updateEntities` call and access tracking is batched too.
+   *
+   * All names must exist: a missing name throws before any write.
+   *
+   * @param entityNames - Names of entities to reinforce
+   * @param options - Reinforcement options; `alreadyApplied` skips the write
+   * @throws Error if any entity is not found
+   */
+  async reinforceMemories(
+    entityNames: readonly string[],
+    options?: BatchReinforcementOptions
+  ): Promise<void> {
+    if (entityNames.length === 0) return;
+
+    const entities = entityNames.map((name) => {
+      const entity = this.storage.getEntityByName(name);
+      if (!entity) {
+        throw new Error(`Entity not found: ${name}`);
+      }
+      return entity as AgentEntity;
+    });
+
+    const now = new Date().toISOString();
+    await this.accessTracker.recordAccessBatch(entityNames, { retrievalMethod: 'direct' });
+
+    if (options?.alreadyApplied) return;
+
+    const batch = entities.map((entity, i) => ({
+      name: entityNames[i],
+      updates: buildReinforcementUpdates(entity, now, options) as Record<string, unknown>,
+    }));
+
+    if (hasDeltaPrimitives(this.storage)) {
+      try {
+        await this.storage.updateEntities(batch as Array<{ name: string; updates: Partial<Entity> }>, {
+          timestamp: now,
+        });
+        return;
+      } catch {
+        // Batch is all-or-nothing: nothing was written, so retry per entity below.
+      }
+    }
+
+    for (const { name, updates } of batch) {
+      // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- existence checked above; per-entity fallback when the batch primitive is unavailable or failed
+      await this.storage.updateEntity(name, updates);
+    }
   }
 
   // ==================== Forgetting Operations ====================

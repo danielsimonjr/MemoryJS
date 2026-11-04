@@ -33,6 +33,8 @@ import { uniqueTimeSuffix } from '../utils/ids.js';
 import type { WorkingMemoryManager } from './WorkingMemoryManager.js';
 import { requireWorkingMemoryEntity } from './workingMemoryGuard.js';
 import type { DecayEngine } from './DecayEngine.js';
+import { buildReinforcementUpdates } from './DecayEngine.js';
+import { hasDeltaPrimitives } from '../core/storageCapabilities.js';
 import { SummarizationService } from './SummarizationService.js';
 import { PatternDetector } from './PatternDetector.js';
 import { RuleEvaluator } from './RuleEvaluator.js';
@@ -279,15 +281,13 @@ export class ConsolidationPipeline {
         }
       }
 
-      // Promote eligible memories
-      for (const candidate of candidates) {
-        try {
-          await this.promoteMemory(candidate.name, effectiveOptions.targetType);
-          result.memoriesPromoted++;
-        } catch (error) {
-          result.errors.push(`Promotion failed for ${candidate.name}: ${error instanceof Error ? error.message : String(error)}`);
-        }
-      }
+      // Promote eligible memories (per-candidate error isolation)
+      const { promoted, errors } = await this.promoteMemories(
+        candidates.map((c) => c.name),
+        effectiveOptions.targetType
+      );
+      result.memoriesPromoted += promoted.length;
+      result.errors.push(...errors.map((e) => `Promotion failed for ${e.entityName}: ${e.error}`));
 
       // Clean up originals if not preserving
       // Working memories will expire naturally via TTL,
@@ -328,35 +328,7 @@ export class ConsolidationPipeline {
     const agentEntity = requireWorkingMemoryEntity(this.storage, entityName);
 
     const now = new Date().toISOString();
-    const updates: Partial<AgentEntity> = {
-      // Change memory type
-      memoryType: targetType,
-
-      // Clear working memory fields
-      isWorkingMemory: false,
-      expiresAt: undefined,
-
-      // Set promotion metadata
-      promotedAt: now,
-      promotedFrom: agentEntity.sessionId,
-      markedForPromotion: false,
-
-      // Update timestamp
-      lastModified: now,
-    };
-
-    // Type-specific processing
-    if (targetType === 'semantic') {
-      // For semantic memory, we might want to:
-      // - Abstract away session-specific context
-      // - Generalize observations
-      // This is typically handled by summarization stages
-    } else if (targetType === 'episodic') {
-      // For episodic memory:
-      // - Preserve temporal context
-      // - Keep sessionId and timestamps intact
-      // This is the default behavior
-    }
+    const updates = buildPromotionUpdates(agentEntity, targetType, now);
 
     // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- entity existence-checked at entry; closing this microtask-gap TOCTOU race needs storage-level atomic check-and-set (task #55)
     await this.storage.updateEntity(entityName, updates as Partial<Entity>);
@@ -365,6 +337,96 @@ export class ConsolidationPipeline {
     await this.decayEngine.reinforceMemory(entityName);
 
     return { ...agentEntity, ...updates } as AgentEntity;
+  }
+
+  /**
+   * Promote many working memories. Each name is validated and reported on its
+   * own: one failing name never blocks the others.
+   *
+   * With delta-capable storage, every promotion (fields plus reinforcement) is
+   * written in one `updateEntities` call, and access tracking is batched.
+   * If the batch write fails it is all-or-nothing, so the valid names fall
+   * back to `promoteMemory` one at a time. Without delta primitives every name
+   * goes through `promoteMemory`.
+   *
+   * @param entityNames - Names of working memory entities to promote
+   * @param targetType - Target memory type (episodic or semantic)
+   * @returns Promoted entities and per-name errors (error text matches `promoteMemory`)
+   */
+  async promoteMemories(
+    entityNames: readonly string[],
+    targetType: MemoryType
+  ): Promise<{ promoted: AgentEntity[]; errors: Array<{ entityName: string; error: string }> }> {
+    const promoted: AgentEntity[] = [];
+    const errors: Array<{ entityName: string; error: string }> = [];
+
+    const promoteEach = async (names: readonly string[]): Promise<void> => {
+      for (const name of names) {
+        try {
+          promoted.push(await this.promoteMemory(name, targetType));
+        } catch (error) {
+          errors.push({ entityName: name, error: errorText(error) });
+        }
+      }
+    };
+
+    if (!hasDeltaPrimitives(this.storage)) {
+      await promoteEach(entityNames);
+      return { promoted, errors };
+    }
+
+    // Phase A: validate each name in isolation. A repeated name fails the same
+    // way a second promoteMemory call would (the first call already promoted it).
+    const valid: AgentEntity[] = [];
+    const seen = new Set<string>();
+    for (const name of entityNames) {
+      if (seen.has(name)) {
+        errors.push({ entityName: name, error: `Entity is not working memory: ${name}` });
+        continue;
+      }
+      seen.add(name);
+      try {
+        valid.push(requireWorkingMemoryEntity(this.storage, name));
+      } catch (error) {
+        errors.push({ entityName: name, error: errorText(error) });
+      }
+    }
+    if (valid.length === 0) return { promoted, errors };
+
+    // Phase B: one delta write for all promotions, reinforcement folded in.
+    const now = new Date().toISOString();
+    const batch = valid.map((agentEntity) => ({
+      name: agentEntity.name,
+      updates: {
+        ...buildPromotionUpdates(agentEntity, targetType, now),
+        ...buildReinforcementUpdates(agentEntity, now),
+      } as Partial<Entity>,
+    }));
+
+    try {
+      await this.storage.updateEntities(batch, { timestamp: now });
+    } catch {
+      // All-or-nothing: nothing was written. Retry each valid name on the per-entity path.
+      await promoteEach(valid.map((e) => e.name));
+      return { promoted, errors };
+    }
+
+    // Phase C: access tracking only; reinforcement fields were written in Phase B.
+    const names = valid.map((e) => e.name);
+    try {
+      await this.decayEngine.reinforceMemories(names, { alreadyApplied: true });
+    } catch (error) {
+      // Access tracking failed: report each name as the per-entity path would.
+      for (const name of names) {
+        errors.push({ entityName: name, error: errorText(error) });
+      }
+      return { promoted, errors };
+    }
+
+    for (const agentEntity of valid) {
+      promoted.push({ ...agentEntity, ...buildPromotionUpdates(agentEntity, targetType, now) } as AgentEntity);
+    }
+    return { promoted, errors };
   }
 
   // ==================== Batch Operations ====================
@@ -1881,6 +1943,37 @@ export class ObservationDedupReportStage implements PipelineStage {
     }
     return { processed: errors.length, transformed: 0, errors };
   }
+}
+
+/** Field updates applied to a working memory when it is promoted. */
+function buildPromotionUpdates(
+  agentEntity: AgentEntity,
+  targetType: MemoryType,
+  now: string
+): Partial<AgentEntity> {
+  // Semantic promotion abstracts session context and episodic keeps it; both
+  // are handled by the stages and by keeping sessionId/timestamps intact.
+  return {
+    // Change memory type
+    memoryType: targetType,
+
+    // Clear working memory fields
+    isWorkingMemory: false,
+    expiresAt: undefined,
+
+    // Set promotion metadata
+    promotedAt: now,
+    promotedFrom: agentEntity.sessionId,
+    markedForPromotion: false,
+
+    // Update timestamp
+    lastModified: now,
+  };
+}
+
+/** Message text used in promotion error reports. */
+function errorText(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function truncate(s: string, n: number): string {

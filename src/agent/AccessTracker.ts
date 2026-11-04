@@ -8,10 +8,11 @@
  * @module agent/AccessTracker
  */
 
-import type { IGraphStorage } from '../types/types.js';
+import type { IGraphStorage, Entity } from '../types/types.js';
 import type { AgentEntity, AccessContext, AccessPattern } from '../types/agent-memory.js';
 import { clampedHalfLifeScore, halfLifeFactor } from '../utils/halfLife.js';
 import { fillDefaults } from '../utils/fillDefaults.js';
+import { hasDeltaPrimitives } from '../core/storageCapabilities.js';
 
 // Re-export AccessContext for convenience
 export type { AccessContext } from '../types/agent-memory.js';
@@ -114,7 +115,56 @@ export class AccessTracker {
    */
   async recordAccess(entityName: string, context?: AccessContext): Promise<void> {
     const now = new Date().toISOString();
+    const record = this.applyAccess(entityName, context, now);
 
+    // Update entity in storage if it exists
+    await this.updateEntityAccessFields(entityName, record);
+  }
+
+  /**
+   * Records the same access context for many entity names.
+   *
+   * With delta-capable storage the access fields of every existing entity are
+   * written in one `updateEntities` call. If that write fails, each entity is
+   * retried on the per-entity path. Without delta primitives the names are
+   * recorded in parallel with `recordAccess`.
+   */
+  async recordAccessBatch(names: readonly string[], context: AccessContext): Promise<void> {
+    if (!hasDeltaPrimitives(this.storage)) {
+      await Promise.all(names.map(name => this.recordAccess(name, context)));
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const touched = new Map<string, AccessRecord>();
+    for (const name of names) {
+      touched.set(name, this.applyAccess(name, context, now));
+    }
+
+    const batch: Array<{ name: string; updates: Partial<Entity> }> = [];
+    for (const [name, record] of touched) {
+      if (!this.storage.getEntityByName(name)) continue;
+      batch.push({ name, updates: this.accessFieldUpdates(record, now) as Partial<Entity> });
+    }
+    if (batch.length === 0) return;
+
+    try {
+      await this.storage.updateEntities(batch, { timestamp: now });
+    } catch {
+      // Batch is all-or-nothing: nothing was written, so retry per entity.
+      await Promise.all(
+        batch.map(({ name }) => this.updateEntityAccessFields(name, touched.get(name)!))
+      );
+    }
+  }
+
+  /**
+   * Apply one access to the in-memory record for `entityName` and mark dirty.
+   * Does not touch storage.
+   *
+   * @internal
+   */
+  private applyAccess(entityName: string, context: AccessContext | undefined, now: string): AccessRecord {
     // Get or create access record
     let record = this.accessRecords.get(entityName);
     if (!record) {
@@ -147,13 +197,7 @@ export class AccessTracker {
     // Mark as dirty for batch persistence
     this.dirty = true;
 
-    // Update entity in storage if it exists
-    await this.updateEntityAccessFields(entityName, record);
-  }
-
-  /** Records the same access context for many entity names in parallel. */
-  async recordAccessBatch(names: readonly string[], context: AccessContext): Promise<void> {
-    await Promise.all(names.map(name => this.recordAccess(name, context)));
+    return record;
   }
 
   /**
@@ -377,11 +421,16 @@ export class AccessTracker {
     if (!entity) return;
 
     // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- best-effort access telemetry; nothing to update if the entity vanished
-    await this.storage.updateEntity(entityName, {
+    await this.storage.updateEntity(entityName, this.accessFieldUpdates(record, new Date().toISOString()));
+  }
+
+  /** The entity fields an access record persists. */
+  private accessFieldUpdates(record: AccessRecord, lastModified: string): Record<string, unknown> {
+    return {
       accessCount: record.totalAccesses,
       lastAccessedAt: record.lastAccessedAt,
-      lastModified: new Date().toISOString(),
-    } as Record<string, unknown>);
+      lastModified,
+    };
   }
 
   /**
