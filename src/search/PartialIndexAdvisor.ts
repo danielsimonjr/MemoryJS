@@ -4,7 +4,13 @@
  * Tracks the frequency of filter shapes coming through `simpleSearch` and
  * `fullTextSearch` and recommends SQLite partial indexes for the
  * patterns that exceed a support threshold. Activates only when the
- * `MEMORY_SQLITE_AUTO_INDEX` env var is set.
+ * `MEMORY_SQLITE_AUTO_INDEX` env var is set (or `enabled: true` is passed).
+ *
+ * @deprecated `MEMORY_SQLITE_AUTO_INDEX` has no effect on query plans (DES-9,
+ *   DESIGN_PASS_2026-11-04): full indexes already cover `entityType`,
+ *   `projectId`, `isLatest` and `contentHash`, and no in-tree read path
+ *   records filters. `SQLiteStorage` no longer calls `apply()`; this class is
+ *   kept for out-of-tree callers and will be removed in v5 if the owner agrees.
  *
  * v1 limits the recommendations to two index families that yield real
  * speedups against the existing `entities` schema:
@@ -15,8 +21,8 @@
  * created itself via the `idx_advisor_*` prefix.
  *
  * @module search/PartialIndexAdvisor
- * @experimental Gated behind `MEMORY_SQLITE_AUTO_INDEX`. The
- *   recommendation thresholds and index-naming scheme may evolve.
+ * @experimental Deprecated; see the note above. The recommendation
+ *   thresholds and index-naming scheme may evolve.
  */
 
 import type { Database as DatabaseType } from 'better-sqlite3';
@@ -47,10 +53,18 @@ export interface PartialIndexAdvisorOptions {
   minSupport?: number;
   /** Maximum number of advisor-managed indexes to keep live (default: 16). */
   maxIndexes?: number;
+  /**
+   * Explicitly enable or disable the advisor, bypassing the
+   * `MEMORY_SQLITE_AUTO_INDEX` env read. Omit to use the env var.
+   */
+  enabled?: boolean;
 }
 
 /**
  * Per-pattern frequency tracker plus partial-index materialiser.
+ *
+ * @deprecated See the module note. `MEMORY_SQLITE_AUTO_INDEX` no longer
+ *   affects query plans; construct with `{ enabled }` only in tests.
  *
  * The advisor is in-memory only — the counts reset when the process
  * restarts. That's intentional: persisting them would require touching
@@ -73,7 +87,7 @@ export class PartialIndexAdvisor {
 
   constructor(options: PartialIndexAdvisorOptions = {}) {
     const raw = process.env.MEMORY_SQLITE_AUTO_INDEX;
-    this.enabled = raw === 'true' || raw === '1';
+    this.enabled = options.enabled ?? (raw === 'true' || raw === '1');
     this.minSupport = options.minSupport ?? 25;
     this.maxIndexes = options.maxIndexes ?? 16;
   }

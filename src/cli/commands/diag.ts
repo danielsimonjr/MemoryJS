@@ -52,6 +52,8 @@ export const ENV_VAR_CATALOG: Array<{ name: string; defaultValue: string; descri
   { name: 'MEMORY_OPENAI_API_KEY', defaultValue: '(unset)', description: 'OpenAI API key (when provider=openai)', secret: true },
   { name: 'MEMORY_EMBEDDING_MODEL', defaultValue: '(provider default)', description: 'Override embedding model name' },
   { name: 'MEMORY_AUTO_INDEX_EMBEDDINGS', defaultValue: 'false', description: 'Auto-index new entities for semantic search' },
+  // Deprecated
+  { name: 'MEMORY_SQLITE_AUTO_INDEX', defaultValue: 'false', description: 'Deprecated — no effect (see DESIGN_PASS_2026-11-04 DES-9)' },
   // Read pool / coalescing
   { name: 'MEMORY_SQLITE_READ_POOL_SIZE', defaultValue: '4', description: 'SQLite read-connection pool size' },
   { name: 'MEMORY_INDEX_COALESCE_MS', defaultValue: '50', description: 'TF-IDF event-sync coalescing window (ms)' },
