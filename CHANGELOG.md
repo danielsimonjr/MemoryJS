@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `MemoryEngine.addTurn` accepts `skipDedup: true` to bypass the four-tier dedup chain (exclusion rules still apply). `SQLiteBackend` with `dedupOnAdd=false` now uses it instead of throwing, completing audit item CMP-7.
+
 - Audit CMP-1..5: new completeness/compat additions, including the opt-in `ctx.bloomPreScreener` (env `MEMORY_FUZZY_BLOOM_PRESCREEN`, strict `'true'`) and the related barrel exports. The pre-screener is approximate (speed over recall): typo queries can miss fuzzy matches when another entity contains the literal token.
 
 ### Changed

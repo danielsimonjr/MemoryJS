@@ -361,7 +361,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 597
+      "loc": 606
     },
     {
       "file": "src/agent/MemoryFormatter.ts",
@@ -788,7 +788,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 182
+      "loc": 175
     },
     {
       "file": "src/agent/SummarizationService.ts",
@@ -3308,7 +3308,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 196
+      "loc": 216
     },
     {
       "file": "tests/unit/agent/SummarizationService.test.ts",
