@@ -151,17 +151,15 @@ export class RelationManager {
       const graph = await this.storage.loadGraph();
       const timestamp = new Date().toISOString();
 
-      // Build set of existing entity names for O(1) lookup
-      const existingEntityNames = new Set(graph.entities.map(e => e.name));
-
       // Validate that all referenced entities exist
       const danglingRelations: string[] = [];
       for (const relation of relations) {
         const missingEntities: string[] = [];
-        if (!existingEntityNames.has(relation.from)) {
+        // OPT-2: O(1) NameIndex membership check (no per-call Set build).
+        if (!this.storage.hasEntity(relation.from)) {
           missingEntities.push(relation.from);
         }
-        if (!existingEntityNames.has(relation.to)) {
+        if (!this.storage.hasEntity(relation.to)) {
           missingEntities.push(relation.to);
         }
         if (missingEntities.length > 0) {

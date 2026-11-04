@@ -7,9 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Performance
+
+- Audit OPT-1..13 (docs/development/AUDIT_2026-11-04.md): hot-path and delta-write optimizations across storage, search, hierarchy, governance and compression. OPT-14/15 are deferred.
+
+### Added
+
+- Audit CMP-1..5: new completeness/compat additions, including the opt-in `ctx.bloomPreScreener` (env `MEMORY_FUZZY_BLOOM_PRESCREEN`, strict `'true'`) and the related barrel exports. The pre-screener is approximate (speed over recall): typo queries can miss fuzzy matches when another entity contains the literal token.
+
+### Changed
+
+- `HierarchyManager.setEntityParent` now emits `entity:updated` instead of `graph:saved`. Listeners that relied on `graph:saved` for parent changes must also subscribe to `entity:updated`.
+
 ### Fixed
 
 - `RefIndex.persistAll` writes the JSONL sidecar through `durableWriteFile` instead of truncating the live path with `fs.writeFile` on failure. A failed write drops the in-memory maps so the next call reloads the sidecar.
+- `GovernanceTransaction.createEntity/updateEntity/deleteEntity` call `storage.ensureLoaded()` before synchronous cache lookups, so the first governed op on a fresh storage no longer reports "not found" or skips the duplicate guard (JSONL and SQLite).
+- `SQLiteBackend` preserves caller-supplied ids (`preserveCallerIds`).
+- `ManagerContext.close()` now also drops the cached Bloom pre-screener and detaches it from the fuzzy searcher.
+- Performance test mocks (`merge-perf`, `query-execution-benchmarks`) updated to the current storage / `searchLayer` contracts.
+
+### Documentation
+
+- Audit DOC-1..8: documentation corrections from the 2026-11-04 audit, including RBAC being code-configured (no `MEMORY_RBAC_*` env vars) and the Bloom pre-screener trade-off.
 
 ## [4.4.0] - 2026-10-30
 

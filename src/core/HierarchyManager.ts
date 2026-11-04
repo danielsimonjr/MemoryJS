@@ -10,6 +10,7 @@
 import type { Entity, KnowledgeGraph, ReadonlyKnowledgeGraph } from '../types/index.js';
 import type { GraphStorage } from './GraphStorage.js';
 import { EntityNotFoundError, CycleDetectedError } from '../utils/errors.js';
+import { borrowGraphView, deepCopyPlain } from '../utils/graphCopy.js';
 
 /**
  * Manages hierarchical relationships between entities.
@@ -52,14 +53,18 @@ export class HierarchyManager {
       }
     }
 
-    // Get mutable copy for write operation
-    const graph = await this.storage.getGraphForMutation();
-    const entity = graph.entities.find(e => e.name === entityName)!;
-    entity.parentId = parentName || undefined;
-    entity.lastModified = new Date().toISOString();
-
-    await this.storage.saveGraph(graph);
-    return entity;
+    // OPT-7: single-entity delta write instead of deep-copying and rewriting
+    // the whole graph. Validation above already ran against the read view.
+    const updated = await this.storage.updateEntity(entityName, {
+      parentId: parentName || undefined,
+    });
+    if (!updated) {
+      throw new EntityNotFoundError(entityName);
+    }
+    // Return a mutable copy, matching the previous contract (callers never
+    // receive the live cache object).
+    const live = this.storage.getEntityByName(entityName)!;
+    return deepCopyPlain(live);
   }
 
   /**
@@ -118,8 +123,9 @@ export class HierarchyManager {
   async getChildren(entityName: string): Promise<Entity[]> {
     const graph = await this.storage.loadGraph();
 
-    // Verify entity exists
-    if (!graph.entities.find(e => e.name === entityName)) {
+    // Verify entity exists (O(1) NameIndex)
+    await this.storage.ensureLoaded();
+    if (!this.storage.hasEntity(entityName)) {
       throw new EntityNotFoundError(entityName);
     }
 
@@ -134,19 +140,20 @@ export class HierarchyManager {
    * @throws EntityNotFoundError If entity not found
    */
   async getParent(entityName: string): Promise<Entity | null> {
-    const graph = await this.storage.loadGraph();
-    const entity = graph.entities.find(e => e.name === entityName);
+    // OPT-6: O(1) NameIndex lookups instead of linear scans.
+    await this.storage.ensureLoaded();
+    const live = this.storage.getEntityByName(entityName);
 
-    if (!entity) {
+    if (!live) {
       throw new EntityNotFoundError(entityName);
     }
 
-    if (!entity.parentId) {
+    if (!live.parentId) {
       return null;
     }
 
-    const parent = graph.entities.find(e => e.name === entity.parentId);
-    return parent || null;
+    const parent = this.storage.getEntityByName(live.parentId);
+    return parent ? borrowGraphView(parent) : null;
   }
 
   /**
@@ -244,11 +251,13 @@ export class HierarchyManager {
    */
   async getSubtree(entityName: string): Promise<KnowledgeGraph> {
     const graph = await this.storage.loadGraph();
-    const entity = graph.entities.find(e => e.name === entityName);
+    await this.storage.ensureLoaded();
+    const live = this.storage.getEntityByName(entityName);
 
-    if (!entity) {
+    if (!live) {
       throw new EntityNotFoundError(entityName);
     }
+    const entity = borrowGraphView(live);
 
     const descendants = await this.getDescendants(entityName);
     const subtreeEntities = [entity, ...descendants];

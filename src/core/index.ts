@@ -39,3 +39,13 @@ export { RefIndex, type RefEntry, type RefIndexStats } from './RefIndex.js';
 // Phase 2B: Transition ledger for state change auditing
 export { TransitionLedger } from './TransitionLedger.js';
 export type { TransitionEvent, TransitionFilter } from './TransitionLedger.js';
+
+// CMP-4: types returned by public ManagerContext getters (observationStore, entity state machine)
+export { ObservationStore, type ObservationStoreStats } from './ObservationStore.js';
+export {
+  EntityStateMachine,
+  IllegalStatusTransitionError,
+  DEFAULT_ENTITY_STATUS,
+  canTransition,
+  effectiveStatus,
+} from './EntityStateMachine.js';

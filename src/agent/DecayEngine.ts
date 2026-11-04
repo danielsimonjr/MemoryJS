@@ -9,6 +9,7 @@
  */
 
 import type { IGraphStorage, ReadonlyKnowledgeGraph } from '../types/types.js';
+import type { GraphStorage } from '../core/GraphStorage.js';
 import type { AgentEntity, DecayResult, ForgetOptions, ForgetResult } from '../types/agent-memory.js';
 import { isAgentEntity } from '../types/agent-memory.js';
 import { AccessTracker } from './AccessTracker.js';
@@ -660,23 +661,24 @@ export class DecayEngine {
 
     // Execute forgetting if not dry run
     if (!options.dryRun && forgottenNames.length > 0) {
-      const forgottenSet = new Set(forgottenNames);
-
-      // Remove forgotten entities
-      const updatedEntities = graph.entities.filter(
-        e => !forgottenSet.has(e.name)
-      );
-
-      // Remove relations involving forgotten entities
-      const updatedRelations = graph.relations.filter(
-        r => !forgottenSet.has(r.from) && !forgottenSet.has(r.to)
-      );
-
-      // Save updated graph
-      await this.storage.saveGraph({
-        entities: updatedEntities,
-        relations: updatedRelations,
-      });
+      // Prefer the per-entity delete (O(deleted)); fall back to a full rewrite
+      // for backends that only expose saveGraph.
+      const s = this.storage as Partial<GraphStorage>;
+      if (typeof s.deleteEntities === 'function') {
+        await s.deleteEntities(forgottenNames);
+      } else {
+        const forgottenSet = new Set(forgottenNames);
+        const updatedEntities = graph.entities.filter(
+          e => !forgottenSet.has(e.name)
+        );
+        const updatedRelations = graph.relations.filter(
+          r => !forgottenSet.has(r.from) && !forgottenSet.has(r.to)
+        );
+        await this.storage.saveGraph({
+          entities: updatedEntities,
+          relations: updatedRelations,
+        });
+      }
     }
 
     return {

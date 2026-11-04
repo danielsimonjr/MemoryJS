@@ -17,6 +17,7 @@ import { ArtifactManager } from '../../../src/agent/ArtifactManager.js';
 import { EntityManager } from '../../../src/core/EntityManager.js';
 import { ManagerContext } from '../../../src/core/ManagerContext.js';
 import { RefIndex } from '../../../src/core/RefIndex.js';
+import { RefConflictError } from '../../../src/utils/errors.js';
 import type { IGraphStorage, Entity, KnowledgeGraph } from '../../../src/types/types.js';
 import { isArtifactEntity } from '../../../src/types/artifact.js';
 import type { ArtifactEntity } from '../../../src/types/artifact.js';
@@ -611,5 +612,47 @@ describe('ArtifactManager', () => {
       // Same instance on second access (lazy singleton)
       expect(ctx.artifactManager).toBe(ctx.artifactManager);
     }, 60_000);
+  });
+
+  describe('createArtifact — ref-collision retry', () => {
+    it('removes the colliding entity via deleteEntities (no full-graph saveGraph) and retries', async () => {
+      const deleteEntities = vi.fn(async (names: string[]) => ({
+        deletedEntities: names.map((n) => ({ name: n } as Entity)),
+        deletedRelations: [],
+      }));
+      const saveGraph = vi.fn(async () => {});
+      const backing = storage as unknown as Record<string, unknown>;
+      backing.deleteEntities = deleteEntities;
+      backing.saveGraph = saveGraph;
+
+      const registerSpy = vi.spyOn(entityManager, 'registerRef');
+      registerSpy.mockRejectedValueOnce(new RefConflictError('collide'));
+
+      const artifact = await manager.createArtifact({
+        content: 'retry me',
+        toolName: 'bash',
+        artifactType: 'tool_output',
+      });
+
+      expect(deleteEntities).toHaveBeenCalledTimes(1);
+      expect(deleteEntities.mock.calls[0][0]).toHaveLength(1);
+      expect(saveGraph).not.toHaveBeenCalled();
+      expect(registerSpy).toHaveBeenCalledTimes(2);
+      expect(isArtifactEntity(artifact)).toBe(true);
+    });
+
+    it('falls back to a full saveGraph rewrite when deleteEntities is absent', async () => {
+      const saveGraph = vi.fn(async () => {});
+      (storage as unknown as Record<string, unknown>).saveGraph = saveGraph;
+      vi.spyOn(entityManager, 'registerRef').mockRejectedValueOnce(new RefConflictError('collide'));
+
+      await manager.createArtifact({
+        content: 'retry me too',
+        toolName: 'bash',
+        artifactType: 'tool_output',
+      });
+
+      expect(saveGraph).toHaveBeenCalledTimes(1);
+    });
   });
 });

@@ -360,6 +360,27 @@ describe('AgentMemoryManager', () => {
       const stored = graph.entities.find((e) => e.name === mem.name) as { agentId?: string; visibility?: string } | undefined;
       expect(stored?.agentId).toBe('agent-x');
       expect(stored?.visibility).toBe('shared');
+      expect((mem as { agentId?: string }).agentId).toBe('agent-x');
+      expect((mem as { visibility?: string }).visibility).toBe('shared');
+      m.stop();
+    });
+
+    it('addWorkingMemory stamp uses updateEntity: no saveGraph and one entity:updated', async () => {
+      const m = new AgentMemoryManager(storage, {
+        enableMultiAgent: true,
+        defaultAgentId: 'agent-y',
+      });
+      const session = await m.startSession();
+      const saveSpy = vi.spyOn(storage, 'saveGraph');
+      const updated = vi.fn();
+      storage.events.on('entity:updated', updated);
+      const mem = await m.addWorkingMemory({
+        sessionId: session.name,
+        content: 'stamp only',
+        agentId: 'agent-y',
+      });
+      expect(saveSpy).not.toHaveBeenCalled();
+      expect(updated.mock.calls.filter((c) => c[0]?.entityName === mem.name)).toHaveLength(1);
       m.stop();
     });
 

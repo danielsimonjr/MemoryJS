@@ -16,6 +16,7 @@
 
 import { randomBytes } from 'crypto';
 import type { IGraphStorage, Entity } from '../types/types.js';
+import type { GraphStorage } from '../core/GraphStorage.js';
 import type { EntityManager } from '../core/EntityManager.js';
 import type { RefIndex } from '../core/RefIndex.js';
 import { RefConflictError } from '../utils/errors.js';
@@ -162,10 +163,16 @@ export class ArtifactManager {
         if (!(err instanceof RefConflictError)) {
           throw err;
         }
-        // Ref already exists — remove the entity we just appended and retry
-        const graph = await this.storage.getGraphForMutation();
-        graph.entities = graph.entities.filter((e) => e.name !== entityName);
-        await this.storage.saveGraph(graph);
+        // Ref already exists — remove the entity we just appended and retry.
+        // Prefer the O(1) per-entity delete when the backend offers it.
+        const s = this.storage as Partial<GraphStorage>;
+        if (typeof s.deleteEntities === 'function') {
+          await s.deleteEntities([entityName]);
+        } else {
+          const graph = await this.storage.getGraphForMutation();
+          graph.entities = graph.entities.filter((e) => e.name !== entityName);
+          await this.storage.saveGraph(graph);
+        }
         continue;
       }
 

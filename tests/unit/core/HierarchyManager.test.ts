@@ -4,9 +4,10 @@
  * Tests for entity hierarchy operations (parent-child relationships).
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { HierarchyManager } from '../../../src/core/HierarchyManager.js';
 import { GraphStorage } from '../../../src/core/GraphStorage.js';
+import { SQLiteStorage } from '../../../src/core/SQLiteStorage.js';
 import type { Entity } from '../../../src/types/index.js';
 import { EntityNotFoundError, CycleDetectedError } from '../../../src/utils/errors.js';
 import { promises as fs } from 'fs';
@@ -360,7 +361,12 @@ describe('HierarchyManager', () => {
     // setEntityParent rejects a cycle, so these states come from a stub
     // storage that returns the raw entities.
     function managerOver(entities: Entity[]): HierarchyManager {
-      const stub = { loadGraph: async () => ({ entities, relations: [] }) };
+      const stub = {
+        loadGraph: async () => ({ entities, relations: [] }),
+        ensureLoaded: async () => {},
+        getEntityByName: (name: string) => entities.find(e => e.name === name),
+        hasEntity: (name: string) => entities.some(e => e.name === name),
+      };
       return new HierarchyManager(stub as unknown as GraphStorage);
     }
 
@@ -419,4 +425,84 @@ describe('HierarchyManager', () => {
       expect(descendants.map(d => d.name)).toEqual(['X', 'Y']);
     });
   });
+
+  describe('OPT-6/OPT-7 delta write and NameIndex lookups', () => {
+    it('setEntityParent emits exactly one entity:updated and no graph:saved', async () => {
+      const updated: string[] = [];
+      let saved = 0;
+      storage.events.on('entity:updated', (e) => { updated.push(e.entityName); });
+      storage.events.on('graph:saved', () => { saved++; });
+      await hierarchyManager.setEntityParent('Root2', 'Root1');
+      expect(updated).toEqual(['Root2']);
+      expect(saved).toBe(0);
+    });
+
+    it('setEntityParent does not rewrite the whole graph', async () => {
+      const saveSpy = vi.spyOn(storage, 'saveGraph');
+      await hierarchyManager.setEntityParent('Root2', 'Root1');
+      expect(saveSpy).not.toHaveBeenCalled();
+      saveSpy.mockRestore();
+    });
+
+    it('getParent and getSubtree resolve through the NameIndex', async () => {
+      expect((await hierarchyManager.getParent('Child1'))?.name).toBe('Root1');
+      expect(await hierarchyManager.getParent('Root1')).toBeNull();
+      await expect(hierarchyManager.getParent('Nope')).rejects.toThrow(EntityNotFoundError);
+      const subtree = await hierarchyManager.getSubtree('Root1');
+      expect(subtree.entities.map(e => e.name).sort()).toEqual(['Child1', 'Child2', 'Grandchild1', 'Root1']);
+      await expect(hierarchyManager.getSubtree('Nope')).rejects.toThrow(EntityNotFoundError);
+    });
+
+    describe.each(['jsonl', 'sqlite'] as const)('parent writes survive clearCache + reload (%s)', (backend) => {
+      let dbPath: string;
+      let store: GraphStorage | SQLiteStorage;
+      let hm: HierarchyManager;
+
+      const reopen = (): GraphStorage | SQLiteStorage =>
+        backend === 'jsonl' ? new GraphStorage(testFilePath) : new SQLiteStorage(dbPath);
+
+      beforeEach(async () => {
+        if (backend === 'jsonl') {
+          store = storage;
+        } else {
+          dbPath = join(testDir, 'graph.db');
+          store = new SQLiteStorage(dbPath);
+          await store.saveGraph(await storage.getGraphForMutation());
+        }
+        hm = new HierarchyManager(store as unknown as GraphStorage);
+      });
+
+      afterEach(() => {
+        if (store instanceof SQLiteStorage) store.close();
+      });
+
+      it('setEntityParent(null) clears parentId and the reload does not resurrect it', async () => {
+        const result = await hm.setEntityParent('Child1', null);
+        expect(result.parentId).toBeUndefined();
+
+        store.clearCache();
+        const reloaded = reopen();
+        try {
+          const graph = await reloaded.loadGraph();
+          expect(graph.entities.find(e => e.name === 'Child1')!.parentId).toBeUndefined();
+          expect(graph.entities.find(e => e.name === 'Grandchild1')!.parentId).toBe('Child1');
+        } finally {
+          if (reloaded instanceof SQLiteStorage) reloaded.close();
+        }
+      });
+
+      it('setEntityParent(name) is durable across clearCache and reload', async () => {
+        await hm.setEntityParent('Root2', 'Root1');
+        store.clearCache();
+        const reloaded = reopen();
+        try {
+          const graph = await reloaded.loadGraph();
+          expect(graph.entities.find(e => e.name === 'Root2')!.parentId).toBe('Root1');
+        } finally {
+          if (reloaded instanceof SQLiteStorage) reloaded.close();
+        }
+      });
+    });
+  });
+
 });

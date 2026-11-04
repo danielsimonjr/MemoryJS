@@ -121,6 +121,7 @@ import {
   type ReconstructiveBacking,
 } from '../agent/reconstruction/index.js';
 // Sec1 — governance enforcement chokepoint (kept as separate import lines).
+import { BloomPreScreener } from '../search/BloomPreScreener.js';
 import { GovernanceManager } from '../features/GovernanceManager.js';
 import { AuditLog } from '../features/AuditLog.js';
 
@@ -191,6 +192,8 @@ export class ManagerContext {
   private _hierarchyManager?: HierarchyManager;
   private _graphTraversal?: GraphTraversal;
   private _searchManager?: SearchManager;
+  private _bloomPreScreener?: BloomPreScreener | null;
+  private _bloomPreScreenerUnsubscribe: Array<() => void> = [];
   private _rankedSearch?: RankedSearch;
   private _graphRankPrior?: GraphRankPrior;
   private _hybridSearchManager?: HybridSearchManager;
@@ -595,11 +598,51 @@ export class ManagerContext {
 
   /** SearchManager - All search operations */
   get searchManager(): SearchManager {
-    return (this._searchManager ??= new SearchManager(
-      this.storage,
-      this.savedSearchesFilePath,
-      this.cachePressure.enabled ? this.cachePressure : undefined,
-    ));
+    if (!this._searchManager) {
+      this._searchManager = new SearchManager(
+        this.storage,
+        this.savedSearchesFilePath,
+        this.cachePressure.enabled ? this.cachePressure : undefined,
+      );
+      if (process.env.MEMORY_FUZZY_BLOOM_PRESCREEN === 'true') {
+        const screener = this.bloomPreScreener;
+        if (screener) this._searchManager.fuzzySearcher.setBloomPreScreener(screener);
+      }
+    }
+    return this._searchManager;
+  }
+
+  /**
+   * Opt-in `BloomPreScreener` for fuzzy search candidate pre-screening.
+   *
+   * Enabled only when `MEMORY_FUZZY_BLOOM_PRESCREEN` is the strict literal
+   * `'true'` (read once, at first access). When disabled the getter returns
+   * `null` and nothing is constructed. When enabled it is attached to
+   * `searchManager.fuzzySearcher`; every entity write clears it and the next
+   * fuzzy search rebuilds it from the current graph.
+   *
+   * @experimental
+   */
+  get bloomPreScreener(): BloomPreScreener | null {
+    if (this._bloomPreScreener === undefined) {
+      if (process.env.MEMORY_FUZZY_BLOOM_PRESCREEN !== 'true') {
+        this._bloomPreScreener = null;
+        return null;
+      }
+      const screener = new BloomPreScreener(this.storage);
+      const events = this.storage.events;
+      if (events) {
+        const clear = (): void => screener.clear();
+        for (const type of ['entity:created', 'entity:updated', 'entity:deleted', 'entity:renamed', 'graph:saved'] as const) {
+          this._bloomPreScreenerUnsubscribe.push(events.on(type, clear));
+        }
+      }
+      this._bloomPreScreener = screener;
+      if (this._searchManager) {
+        this._searchManager.fuzzySearcher.setBloomPreScreener(screener);
+      }
+    }
+    return this._bloomPreScreener;
   }
 
   /** RankedSearch - TF-IDF/BM25 ranked search */
@@ -954,7 +997,9 @@ export class ManagerContext {
           // SQLiteBackend wraps MemoryEngine which works against either
           // JSONL or SQLite storage transparently — naming reflects PRD
           // intent (durable backend) more than the disk format.
-          this._memoryBackend = new SQLiteBackend(this.memoryEngine, this.decayEngine);
+          this._memoryBackend = new SQLiteBackend(this.memoryEngine, this.decayEngine, {
+            renameEntity: (oldName, newName) => this.entityManager.renameEntity(oldName, newName),
+          });
           break;
       }
     }
@@ -1763,6 +1808,12 @@ export class ManagerContext {
       });
     }
     this._proceduralGraphManagers = [];
+    for (const unsubscribe of this._bloomPreScreenerUnsubscribe) unsubscribe();
+    this._bloomPreScreenerUnsubscribe = [];
+    if (this._bloomPreScreener) {
+      this._searchManager?.fuzzySearcher.setBloomPreScreener(null);
+    }
+    this._bloomPreScreener = undefined;
     const storage = this.storage as unknown as { close?: () => void };
     if (typeof storage?.close === 'function') {
       storage.close();

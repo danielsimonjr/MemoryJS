@@ -7,6 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import { SearchFilterChain, type SearchFilters } from '../../../src/search/SearchFilterChain.js';
 import type { Entity } from '../../../src/types/index.js';
+import { normalizeTags } from '../../../src/utils/index.js';
 
 describe('SearchFilterChain', () => {
   const sampleEntities: Entity[] = [
@@ -519,5 +520,61 @@ describe('SearchFilterChain', () => {
         expect(SearchFilterChain.applyFilters([badDates], filters)).toEqual([]);
       }
     );
+  });
+});
+
+describe('SearchFilterChain OPT-3: early exit and resolved-filter parity', () => {
+  it('publishedAncestorsOfDraftHeads returns an empty set when no draft head has a parent', () => {
+    const entities: Entity[] = [
+      { name: 'A', entityType: 't', observations: [], lifecycleStatus: 'published' },
+      { name: 'B', entityType: 't', observations: [], lifecycleStatus: 'draft' },
+      { name: 'C', entityType: 't', observations: [], lifecycleStatus: 'draft', parentEntityName: 'A', isLatest: false },
+    ];
+    expect(SearchFilterChain.publishedAncestorsOfDraftHeads(entities).size).toBe(0);
+  });
+
+  it('a draft head whose published ancestor is two hops up is still visible', () => {
+    const entities: Entity[] = [
+      { name: 'Root', entityType: 't', observations: [], lifecycleStatus: 'published', isLatest: false },
+      { name: 'Mid', entityType: 't', observations: [], lifecycleStatus: 'archived', parentEntityName: 'Root', isLatest: false },
+      { name: 'Head', entityType: 't', observations: [], lifecycleStatus: 'draft', parentEntityName: 'Mid' },
+    ];
+    expect([...SearchFilterChain.publishedAncestorsOfDraftHeads(entities)]).toEqual(['Root']);
+  });
+
+  it('applyFilters matches per-entity entityPassesFilters over a mixed 200-entity fixture', () => {
+    const fixture: Entity[] = Array.from({ length: 200 }, (_, i) => ({
+      name: `E${i}`,
+      entityType: i % 3 === 0 ? 'person' : 'project',
+      observations: [`obs ${i}`],
+      tags: i % 4 === 0 ? ['Backend'] : i % 5 === 0 ? ['frontend', 'senior'] : undefined,
+      importance: i % 11,
+      createdAt: i % 7 === 0 ? undefined : new Date(Date.UTC(2024, 0, 1 + i)).toISOString(),
+      lastModified: i % 9 === 0 ? 'not-a-date' : new Date(Date.UTC(2024, 1, 1 + (i % 50))).toISOString(),
+      lifecycleStatus: (['draft', 'published', 'archived'] as const)[i % 3],
+      isLatest: i % 6 !== 0,
+      parentEntityName: i % 2 === 0 && i > 0 ? `E${i - 1}` : undefined,
+      projectId: i % 2 === 0 ? 'p1' : 'p2',
+    }));
+    const filterSets: SearchFilters[] = [
+      {},
+      { tags: ['backend'] },
+      { minImportance: 3, maxImportance: 8 },
+      { createdAfter: '2024-01-10T00:00:00Z', createdBefore: '2024-03-01T00:00:00Z' },
+      { modifiedAfter: 'garbage' },
+      { modifiedAfter: '2024-02-10T00:00:00Z', modifiedBefore: '2024-02-20T00:00:00Z' },
+      { projectId: 'p1', lifecycleStatus: ['draft', 'published', 'archived'] },
+      { includeSuperseded: true },
+      { entityType: 'person', tags: ['Senior'] },
+    ];
+    const visible = SearchFilterChain.publishedAncestorsOfDraftHeads(fixture);
+    for (const filters of filterSets) {
+      const normalized = filters.tags?.length ? normalizeTags(filters.tags) : undefined;
+      const expected = fixture
+        .filter(e => SearchFilterChain.entityPassesFilters(e, filters, normalized, visible))
+        .map(e => e.name);
+      const actual = SearchFilterChain.applyFilters(fixture, filters).map(e => e.name);
+      expect(actual).toEqual(expected);
+    }
   });
 });

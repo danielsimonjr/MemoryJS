@@ -586,3 +586,47 @@ describe('SearchManager', () => {
     });
   });
 });
+
+describe('SearchManager OPT-12: autoSearch limit pushdown', () => {
+  it('basic and fuzzy auto-search results equal the first `limit` of the unlimited call', async () => {
+    const dir = join(tmpdir(), `search-opt12-${Date.now()}-${Math.random()}`);
+    await fs.mkdir(dir, { recursive: true });
+    try {
+      const store = new GraphStorage(join(dir, 'graph.jsonl'));
+      const entities = Array.from({ length: 30 }, (_, i) => ({
+        name: `Widget ${i}`,
+        entityType: 'item',
+        observations: [`widget batch ${i % 3} entry`],
+        importance: i % 10,
+      }));
+      await store.saveGraph({ entities, relations: [] });
+      const sm = new SearchManager(store, join(dir, 'saved.jsonl'));
+
+      const seen = new Set<string>();
+      let compared = 0;
+      for (const query of ['widget', 'widget*']) {
+        for (const limit of [1, 3, 10, 30]) {
+          const auto = await sm.autoSearch(query, limit);
+          seen.add(auto.selectedMethod);
+          let full: string[];
+          if (auto.selectedMethod === 'basic') {
+            full = (await sm.basicSearch.searchNodes(query)).entities.map(e => e.name);
+          } else if (auto.selectedMethod === 'fuzzy') {
+            full = (await sm.fuzzySearcher.fuzzySearch(query)).entities.map(e => e.name);
+          } else {
+            continue;
+          }
+          compared++;
+          expect(auto.results.map(r => r.entity.name)).toEqual(full.slice(0, limit));
+        }
+      }
+      // Both pushed-down branches must be exercised, not skipped.
+      expect(seen).toContain('basic');
+      expect(seen).toContain('fuzzy');
+      expect(compared).toBe(8);
+      store.clearCache();
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+});

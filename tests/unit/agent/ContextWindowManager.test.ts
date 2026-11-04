@@ -215,6 +215,42 @@ describe('ContextWindowManager', () => {
   });
 
   describe('retrieveForContext', () => {
+    it('estimates tokens at most once per candidate and keeps totals consistent', async () => {
+      const entities = [
+        createTestEntity({ name: 'm1', memoryType: 'working', importance: 9 }),
+        createTestEntity({ name: 'm2', memoryType: 'episodic', importance: 1 }),
+        createTestEntity({ name: 'm3', memoryType: 'semantic', importance: 5 }),
+      ];
+      storage = createMockStorage(entities);
+      accessTracker = new AccessTracker(storage);
+      decayEngine = new DecayEngine(storage, accessTracker);
+      salienceEngine = new SalienceEngine(storage, accessTracker, decayEngine);
+      contextManager = new ContextWindowManager(storage, salienceEngine);
+
+      const spy = vi.spyOn(contextManager, 'estimateTokens');
+      const result = await contextManager.retrieveForContext({
+        maxTokens: 1000,
+        context: {},
+      });
+
+      const callsPerName = new Map<string, number>();
+      for (const [entity] of spy.mock.calls) {
+        callsPerName.set(entity.name, (callsPerName.get(entity.name) ?? 0) + 1);
+      }
+      for (const count of callsPerName.values()) {
+        expect(count).toBeLessThanOrEqual(1);
+      }
+      expect(spy.mock.calls.length).toBeLessThanOrEqual(entities.length);
+
+      // Totals equal the sum of per-entity estimates for the returned memories.
+      const expected = result.memories.reduce(
+        (sum, e) => sum + contextManager.estimateTokens(e as AgentEntity),
+        0,
+      );
+      expect(result.totalTokens).toBe(expected);
+      spy.mockRestore();
+    });
+
     it('should retrieve memories within token budget', async () => {
       const entities = [
         createTestEntity({ name: 'e1', memoryType: 'working' }),

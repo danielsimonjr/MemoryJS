@@ -2,7 +2,7 @@
  * RelationManager Unit Tests
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { RelationManager } from '../../../src/core/RelationManager.js';
 import { EntityManager } from '../../../src/core/EntityManager.js';
 import { GraphStorage } from '../../../src/core/GraphStorage.js';
@@ -333,6 +333,24 @@ describe('RelationManager', () => {
       expect(relations).toHaveLength(1);
       expect(relations[0].from).toBe('Alice');
       expect(relations[0].to).toBe('Alice');
+    });
+  });
+
+  describe('OPT-2 hasEntity endpoint validation', () => {
+    it('consults storage.hasEntity for both endpoints instead of scanning the graph', async () => {
+      const spy = vi.spyOn(storage, 'hasEntity');
+      await relationManager.createRelations([
+        { from: 'Alice', to: 'Bob', relationType: 'knows' },
+      ]);
+      expect(spy).toHaveBeenCalledWith('Alice');
+      expect(spy).toHaveBeenCalledWith('Bob');
+      spy.mockRestore();
+    });
+
+    it('still rejects a dangling endpoint through the hasEntity path', async () => {
+      await expect(
+        relationManager.createRelations([{ from: 'Alice', to: 'Ghost', relationType: 'knows' }])
+      ).rejects.toThrow(ValidationError);
     });
   });
 });

@@ -21,6 +21,8 @@ describe('Merge Performance', () => {
     const mergeNames = Array.from({ length: numMergeEntities }, (_, i) => `Entity${i * 10}`); // Spread out the ones we merge
 
     const mockStorage = {
+      cachedGraph: undefined,
+      loadGraph: async () => ({ entities, relations: [] }),
       getGraphForMutation: async () => ({
         entities,
         relations: []

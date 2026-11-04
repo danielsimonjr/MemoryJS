@@ -74,7 +74,7 @@ describe('SQLiteBackend specifics', () => {
     expect(result.length).toBe(1);
   });
 
-  it('preserveCallerIds=true throws (not yet implemented)', () => {
+  it('preserveCallerIds=true throws without a renameEntity hook', () => {
     const file = path.join(os.tmpdir(), `sqlite-backend-throw-${Date.now()}.jsonl`);
     activeFiles.push(file);
     const ctx = track(new ManagerContext(file));
@@ -90,7 +90,49 @@ describe('SQLiteBackend specifics', () => {
         importance: 2.0,
         createdAt: new Date().toISOString(),
       }),
-    ).rejects.toThrow(/preserveCallerIds=true requires storage.renameEntity/);
+    ).rejects.toThrow(/preserveCallerIds=true requires a renameEntity hook/);
+  });
+
+  it('preserveCallerIds=true renames the engine entity to the caller id via the hook', async () => {
+    const file = path.join(os.tmpdir(), `sqlite-backend-rename-${Date.now()}.jsonl`);
+    activeFiles.push(file);
+    const ctx = track(new ManagerContext(file));
+    const backend = new SQLiteBackend(ctx.memoryEngine, ctx.decayEngine, {
+      preserveCallerIds: true,
+      renameEntity: (a, b) => ctx.entityManager.renameEntity(a, b),
+    });
+    await backend.add({
+      id: 'turn-abc',
+      sessionId: 's',
+      content: 'hello caller ids',
+      role: 'user',
+      importance: 2.0,
+      createdAt: new Date().toISOString(),
+    });
+    const renamed = await ctx.entityManager.getEntity('turn-abc');
+    expect(renamed).not.toBeNull();
+  });
+
+  it('preserveCallerIds=true propagates a hook failure (colliding caller id)', async () => {
+    const file = path.join(os.tmpdir(), `sqlite-backend-collide-${Date.now()}.jsonl`);
+    activeFiles.push(file);
+    const ctx = track(new ManagerContext(file));
+    const backend = new SQLiteBackend(ctx.memoryEngine, ctx.decayEngine, {
+      preserveCallerIds: true,
+      renameEntity: (a, b) => ctx.entityManager.renameEntity(a, b),
+    });
+    await backend.add({
+      id: 'dup-id', sessionId: 's', content: 'first unique content', role: 'user',
+      importance: 2.0, createdAt: new Date().toISOString(),
+    });
+    // Second turn with different content but the same caller id must surface the
+    // rename conflict rather than being swallowed.
+    await expect(
+      backend.add({
+        id: 'dup-id', sessionId: 's', content: 'second totally different text', role: 'user',
+        importance: 2.0, createdAt: new Date().toISOString(),
+      }),
+    ).rejects.toThrow();
   });
 
   it('round-trips through actual SQLite storage when MEMORY_STORAGE_TYPE=sqlite', async () => {

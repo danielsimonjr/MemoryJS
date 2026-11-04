@@ -395,6 +395,11 @@ export class FuzzySearch {
     // therefore fall back to the larger candidate set rather than
     // trust the empty result; Levenshtein then has the chance to
     // find tolerant matches the Bloom filter couldn't see.
+    // Lazy build: a write clears the screener (see ManagerContext wiring), so
+    // the first search after a write rebuilds it from the current graph.
+    if (this.bloomPreScreener && !this.bloomPreScreener.isBuilt() && graph.entities.length > 0) {
+      await this.bloomPreScreener.build();
+    }
     if (this.bloomPreScreener && this.bloomPreScreener.isBuilt()) {
       const screened = new Set(this.bloomPreScreener.intersectCandidates(query));
       if (screened.size > 0 && screened.size < candidateEntities.length) {

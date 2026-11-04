@@ -304,3 +304,34 @@ describe('BM25Search', () => {
     });
   });
 });
+
+describe('BM25Search OPT-4: per-term IDF hoisting', () => {
+  it('a query term absent from the corpus leaves scores bit-identical', async () => {
+    const dir = join(tmpdir(), `bm25-opt4-${Date.now()}-${Math.random()}`);
+    await fs.mkdir(dir, { recursive: true });
+    try {
+      const store = new GraphStorage(join(dir, 'graph.jsonl'));
+      const entities = Array.from({ length: 50 }, (_, i) => ({
+        name: `Doc_${i}`,
+        entityType: i % 2 === 0 ? 'note' : 'document',
+        observations: [
+          `machine learning topic ${i % 5}`,
+          i % 3 === 0 ? 'neural networks and deep learning' : `filler words number ${i}`,
+          ...(i % 4 === 0 ? ['a much longer observation about many unrelated things and more words'] : []),
+        ],
+      }));
+      await store.saveGraph({ entities, relations: [] });
+      const engine = new BM25Search(store);
+
+      const plain = await engine.search('machine learning');
+      const withAbsent = await engine.search('machine zzzabsentzzz learning');
+      expect(plain.length).toBeGreaterThan(0);
+      expect(withAbsent.map(r => [r.entity.name, r.score])).toEqual(
+        plain.map(r => [r.entity.name, r.score]),
+      );
+      store.clearCache();
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+});

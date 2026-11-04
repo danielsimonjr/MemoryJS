@@ -308,12 +308,15 @@ export class AgentMemoryManager extends EventEmitter {
     );
 
     if (this.config.enableMultiAgent && options.agentId) {
-      const graph = await this.storage.getGraphForMutation();
-      const entity = graph.entities.find((e) => e.name === memory.name) as AgentEntity | undefined;
-      if (entity) {
-        entity.agentId = options.agentId;
-        entity.visibility = options.visibility ?? 'private';
-        await this.storage.saveGraph(graph);
+      const visibility = options.visibility ?? 'private';
+      // Stamp the two fields in place; a vanished entity is silently ignored.
+      const stamped = await this.storage.updateEntity(memory.name, {
+        agentId: options.agentId,
+        visibility,
+      } as Partial<Entity>);
+      if (stamped) {
+        (memory as AgentEntity).agentId = options.agentId;
+        (memory as AgentEntity).visibility = visibility;
       }
     }
 

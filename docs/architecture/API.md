@@ -109,6 +109,19 @@ const ctx = new ManagerContext('./memory.db');
 | `diagnostics` | `Diagnostics` | Query `explainPlan` + index health surface (v1.15.0 Phase 0/1) |
 | `graphRankPrior` | `GraphRankPrior` | Cached normalized-PageRank ranking signal, event-invalidated (v2.9.0, `@experimental`) |
 | `hybridSearchManager` | `HybridSearchManager` | Semantic + lexical + symbolic (+ optional graph) layered search (v2.9.0) |
+| `materializedViews` | `MaterializedViewsManager` | Pre-computed result sets for repeated filter-based queries; lazy, auto-invalidated on entity events: updates dirty only views whose filter keys intersect the changed keys, creates/deletes dirty all, date-bounded views are dirtied by every update (`@experimental`) |
+| `observationStore` | `ObservationStore` | Per-context, in-process interned observation store; not persisted, starts empty on each new context |
+| `tieredPostingsIndex` | `TieredIndex<unknown> \| null` | 3-tier LRU / disk / Brotli index composer, `null` unless `MEMORY_TIERED_INDEX='true'`. `@internal`: no in-tree consumer yet |
+| `cachePressure` | `CachePressureCoordinator` | Global cache-entry budget coordinator (`MEMORY_CACHE_BUDGET_ENTRIES`); caches register with it lazily (`@experimental`) |
+| `eventManager` | `EventManager` | Event reification: actions become `entityType: 'event'` hub entities with role relations; `whoDidWhat()` (`@experimental`) |
+| `reconstructiveMemory(config?)` | `ReconstructiveMemory` | **Method, not a getter.** MRAgent Cue–Tag–Content memory with active multi-step reconstruction; defaults its backing to this context's managers (`@experimental`) |
+| `prospectiveMemory` | `ProspectiveMemoryManager` | Intention-to-act (future-tense) memory; lazy |
+| `spellChecker` | `SpellChecker` | Spell correction over the `NGramIndex` vocabulary (entity names + tag values); `suggest(query)`; lazy |
+| `toolAffordanceManager` | `ToolAffordanceManager` | Per-tool rolling outcome statistics for adaptive tool selection; lazy |
+| `toolCallObserver` | `ToolCallObserver` | Canonical producer pipeline for `toolAffordanceManager` (`observeStart` / `observeComplete` / `observeError`). `@internal` |
+| `agentMemory(config?)` | `AgentMemoryManager` | **Method, not a getter.** Agent Memory System facade; `config` overrides the env-var defaults and re-instantiates the cached facade |
+| `queryNaturalLanguage(text)` | `Promise<Entity[]>` | **Method.** LLM-planned NL query decomposition; uses the default no-LLM planner unless a custom `llmQueryPlanner()` was initialised. The LLM provider is configured in code (`llmQueryPlanner()`), not by an env var |
+| `bloomPreScreener` | `BloomPreScreener \| null` | Bloom-filter pre-screen for `FuzzySearch` (`@experimental`). `null` unless `MEMORY_FUZZY_BLOOM_PRESCREEN='true'`; built lazily on the first fuzzy search and cleared on entity events. Approximate (speed over recall): typo queries can miss matches when another entity contains the literal token |
 | `createProceduralGraph(config)` | `Promise<ProceduralGraphManager>` | **Factory, not a lazy getter** (`@experimental`). See note below. |
 
 Procedural Graph is created via `createProceduralGraph(config)`, not a `ctx.proceduralGraph` getter:
@@ -1903,7 +1916,7 @@ async generateReport(): Promise<FreshnessReport>
 
 ## RbacMiddleware + RoleAssignmentStore
 
-(η.6.1) Wired via `ctx.rbacMiddleware` and `ctx.roleAssignmentStore` when `MEMORY_RBAC_ENABLED=true`.
+(η.6.1) Available in code via `ctx.rbacMiddleware` and `ctx.roleAssignmentStore` (lazy getters, always present); there is no `MEMORY_RBAC_ENABLED` env var (RBAC is not enabled by environment, and `checkPermission` is called by your own code).
 
 ```typescript
 ctx.rbacMiddleware.checkPermission(
@@ -1918,7 +1931,7 @@ ctx.roleAssignmentStore.revokeRole(agentId: string, role: string): Promise<void>
 ctx.roleAssignmentStore.listAssignments(agentId?: string): Promise<RoleAssignment[]>
 ```
 
-Optional JSONL persistence when `MEMORY_RBAC_ASSIGNMENTS_FILE` is set.
+`ctx.roleAssignmentStore` is in-memory; no `MEMORY_RBAC_ASSIGNMENTS_FILE` env var is read.
 
 ---
 

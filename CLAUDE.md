@@ -88,7 +88,7 @@ ctx.freshnessManager    // TTL/confidence freshness reporting
 ctx.governanceManager   // Governance policies + audit transactions; lazy getter always available. When MEMORY_GOVERNANCE_ENABLED='true' (strict literal, read at first entityManager access), ManagerContext also wires governance hooks into EntityManager so createEntities/updateEntity/batchUpdate/deleteEntities/renameEntity are policy-checked (GovernanceError on denial) + audited (fire-and-forget append; audit failure never fails the write). Audit log path: MEMORY_AUDIT_LOG_FILE, else <basename>-audit.jsonl sidecar.
 ctx.refIndex            // Named reference index for O(1) entity lookup
 ctx.semanticForget      // Two-tier deletion (exact → semantic fallback)
-ctx.queryNaturalLanguage() // LLM-planned query decomposition (optional provider)
+ctx.queryNaturalLanguage() // LLM-planned query decomposition (optional provider, passed in code; no env var)
 ctx.agentMemory()       // Agent Memory System facade
 ctx.procedureManager    // 3B.4 Procedural Memory (steps as procedure-step entities + has_step/precedes/has_fallback relations)
 ctx.createProceduralGraph(config) // Procedural Graph factory (sessions, guidance, offline evolve)
@@ -257,8 +257,7 @@ Vitest with 30s timeout. Coverage excludes `index.ts` barrel files. Custom `per-
 | `MEMORY_MAX_DECOMPRESSED_BYTES` | Integer > 0 | `268435456` (256 MB) | Decompression output cap (brotli/zlib) across `compressionUtil` and compression adapters — guards against decompression bombs. Exceeding throws a distinct error naming the limit. |
 | `MEMORY_SQLITE_READ_POOL_SIZE` | Integer ≥ 1 | `4` | Read connection pool size for `SQLiteStorage` (`fullTextSearch` / `simpleSearch`). Set to `0` or `1` to route reads through the writer connection. |
 | `MEMORY_INDEX_COALESCE_MS` | Integer ≥ 0 | `50` | TF-IDF event-sync coalescing window. Multiple writes to the same entity within the window collapse into a single index update. Set to `0` to disable coalescing (apply immediately). |
-| `MEMORY_SQLITE_AUTO_INDEX` | `true`, `false` | `false` | Enables `PartialIndexAdvisor` — tracks `entityType` / `projectId` filter frequency and creates `idx_advisor_*` partial SQLite indexes for hot patterns. Infrastructure-only as of Phase 2; wiring into `SQLiteStorage` is a follow-up. |
-| `MEMORY_SYNONYM_EXPANSION` | `true`, `false` | `false` | Enables `SynonymManager.expand()` and the auto-detect-from-graph step. When false, `add()` mappings are still stored but `lookup()` / `expand()` no-op. |
+| `MEMORY_SQLITE_AUTO_INDEX` | `true`, `false` | `false` | Storage-side hook (`SQLiteStorage.recordFilter`) is wired, but no in-tree search path records filters or issues SQL filtered by `entityType` / `projectId`, so the flag currently has no effect on query plans (it only makes `close()` drop advisor-created `idx_advisor_*` indexes). Call `recordFilter` yourself if you drive raw SQL. See `PartialIndexAdvisor`. |
 | `MEMORY_CACHE_BUDGET_ENTRIES` | Integer ≥ 1 | unset (disabled) | Global entry budget for caches registered with `CachePressureCoordinator`. When the sum of `currentEntries()` across registered caches exceeds the budget, `evictIfOverBudget()` shrinks each cache proportionally to its current share (with a small per-cache floor). |
 
 ### JSONL backend layout (Phase 7 + Phase 8)
@@ -297,7 +296,14 @@ Query logging: `MEMORY_QUERY_LOGGING` (false), `MEMORY_QUERY_LOG_FILE`, `MEMORY_
 | `MEMORY_GOVERNANCE_ENABLED` | `'true'` (strict literal match) | unset = manual-only | When `'true'`, `ManagerContext` wires `ctx.governanceManager`'s policy + audit log into `EntityManager` mutations (Sec1 enforcement chokepoint): denied ops throw `GovernanceError`, allowed ops append committed audit entries. Unset = `ctx.governanceManager` still usable manually via `withTransaction`, but plain `EntityManager` writes bypass governance (zero overhead). Read once at first `entityManager` access. |
 | `MEMORY_AUDIT_LOG_FILE` | Path for audit JSONL | `<basename>-audit.jsonl` sidecar next to the storage file |
 | `MEMORY_FRESHNESS_TTL_DEFAULT_HOURS` | Number | `168` |
-| `MEMORY_LLM_QUERY_PLANNER_PROVIDER` | Provider name string | - |
+
+### Search & observation-write toggles
+| Variable | Values | Default | Description |
+|----------|--------|---------|-------------|
+| `MEMORY_FUZZY_BLOOM_PRESCREEN` | `'true'` (strict literal match) | unset = off | Enables `ctx.bloomPreScreener`, a Bloom-filter pre-screen for `FuzzySearch`. The filter is built lazily on the first fuzzy search and cleared on entity events, so the next fuzzy search rebuilds it. **Approximate: speed over recall.** The screener requires all query tokens to be present exactly, and `FuzzySearch` only falls back to a full scan when the candidate set is empty, so a typo query (e.g. `Alise`) can miss a fuzzy match (`Alice`) when another entity contains the literal token. |
+| `MEMORY_AUTO_LINK` | `'true'` (strict literal match) | unset = off | Observation writes auto-link detected entity mentions into relations via `AutoLinker`. Takes effect only after `ctx.autoLinker` has been accessed once (lazy getter that wires `AutoLinker` into `ObservationManager`). A per-call `autoLink` option overrides it. |
+| `MEMORY_OBSERVATION_DEDUP` | `'true'` (strict literal match) | unset = off | Enables observation de-duplication on writes using the default dedup options, unless the call passes an explicit `dedup` option. |
+| `MEMORY_VALIDATE_ON_STORE` | `'true'` (strict literal match) | unset = off | Runs `MemoryValidator` before observation writes (when a validator provider is configured in code). |
 
 ### Role Profiles & Advanced Agent Features (v1.7.0)
 | Variable | Values | Default |
@@ -365,7 +371,7 @@ Modules added in Phase 0-4 carry a stability tag in their `@module` JSDoc. The c
 | `@experimental` | Functional but the contract may evolve based on real-world feedback | Minor changes possible in a minor-version bump; document each change in CHANGELOG |
 | `@internal` | Implementation detail — do not import from outside the project | May change at any time without notice |
 
-**Tagged modules** (Phase 0-4 additions): 19 modules — `src/adapters/*`, `src/agent/HeuristicManager`, `src/core/{EntityStateMachine, ObservationStore}`, `src/search/{BackgroundIndexer, BloomFilter, BloomPreScreener, MaterializedViews, PartialIndexAdvisor, PartitionedInvertedIndex, QueryPlanFormatter, SearchStream, SynonymManager}`, `src/utils/{CachePressureCoordinator, Diagnostics, IIndexHealth, IndexHealthMonitor}`.
+**Tagged modules** (Phase 0-4 additions): 13 entries — `src/adapters/*`, `src/agent/HeuristicManager`, `src/core/{EntityStateMachine, ObservationStore}`, `src/search/{BloomFilter, BloomPreScreener, MaterializedViews, PartialIndexAdvisor, QueryPlanFormatter}`, `src/utils/{CachePressureCoordinator, Diagnostics, IIndexHealth, IndexHealthMonitor}`.
 
 **Existing modules** (pre-Phase-0) are implicitly `@public` and follow the project's SemVer contract. A full audit + per-symbol tiering of those will require a v2.0.0 cut and is deliberately deferred.
 
@@ -396,6 +402,11 @@ Located in `tools/` directory:
 | `chunking-for-files` | Splits large files (markdown, JSON, TypeScript) into editable chunks, then merges back |
 | `migrate-from-jsonl-to-sqlite` | Migrates existing JSONL storage to SQLite backend |
 | `compress-for-context` | Compresses graph data for LLM context windows |
+| `observations-to-columns` | Migration: bulk-extracts observations into a column sidecar for `JsonlColumnStore` (run `node tools/observations-to-columns/observations-to-columns.ts`) |
+| `segment-jsonl` | Converts between a single-file JSONL graph and the N-segment layout used by `FileSegmentStorage` (run `node tools/segment-jsonl/segment-jsonl.ts`) |
+| `plan-doc-audit` | Static check that plan-doc task symbols exist in the codebase (run `bun run audit:plans`) |
+
+Only the four tools with a `package.json` (`chunking-for-files`, `compress-for-context`, `create-dependency-graph`, `migrate-from-jsonl-to-sqlite`) take part in `bun run tools:install` / `tools:build`. The three newer tools have no package of their own and run directly.
 
 ## Claude Code Automations
 

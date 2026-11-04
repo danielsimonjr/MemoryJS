@@ -22,6 +22,7 @@ import {
   type GovernanceHooks,
 } from './EntityManager.js';
 import { calculateTextSimilarity } from '../utils/textSimilarity.js';
+import { borrowGraphView } from '../utils/graphCopy.js';
 import type { IColumnStore, ObservationColumn } from './columns/IColumnStore.js';
 import type {
   EntityCreatedEvent,
@@ -963,9 +964,11 @@ export class ObservationManager {
     if (!/^\d{4}-\d{2}-\d{2}/.test(asOf)) {
       throw new ValidationError(`asOf must be an ISO 8601 date string, got: '${asOf}'`, []);
     }
-    const graph = await this.storage.loadGraph();
-    const entity = graph.entities.find(e => e.name === entityName);
-    if (!entity) return [];
+    // OPT-6: O(1) NameIndex lookup instead of a linear scan.
+    await this.storage.ensureLoaded();
+    const live = this.storage.getEntityByName(entityName);
+    if (!live) return [];
+    const entity = borrowGraphView(live);
     const metaByContent = new Map(
       (entity.observationMeta ?? []).map(m => [m.content, m]),
     );

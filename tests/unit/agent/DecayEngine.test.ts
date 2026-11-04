@@ -11,8 +11,12 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { DecayEngine, type DecayEngineConfig } from '../../../src/agent/DecayEngine.js';
 import { AccessTracker } from '../../../src/agent/AccessTracker.js';
-import type { IGraphStorage } from '../../../src/types/types.js';
+import type { IGraphStorage, Entity } from '../../../src/types/types.js';
 import type { AgentEntity } from '../../../src/types/agent-memory.js';
+import { GraphStorage } from '../../../src/core/GraphStorage.js';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 
 // ==================== Mock Storage ====================
 
@@ -770,8 +774,9 @@ describe('DecayEngine.forgetWeakMemories', () => {
     ];
 
     storage = createMockStorage(entities);
-    // Add saveGraph mock
+    // Add saveGraph + deleteEntities mocks
     storage.saveGraph = vi.fn(async () => {});
+    storage.deleteEntities = vi.fn(async () => ({ deletedEntities: [], deletedRelations: [] }));
 
     tracker = new AccessTracker(storage);
     const decay = new DecayEngine(storage, tracker, {
@@ -785,6 +790,7 @@ describe('DecayEngine.forgetWeakMemories', () => {
     });
 
     expect(storage.saveGraph).not.toHaveBeenCalled();
+    expect(storage.deleteEntities).not.toHaveBeenCalled();
   });
 
   it('should actually delete in non-dry-run mode', async () => {
@@ -801,6 +807,7 @@ describe('DecayEngine.forgetWeakMemories', () => {
 
     storage = createMockStorage(entities);
     storage.saveGraph = vi.fn(async () => {});
+    storage.deleteEntities = vi.fn(async () => ({ deletedEntities: [], deletedRelations: [] }));
 
     tracker = new AccessTracker(storage);
     const decay = new DecayEngine(storage, tracker, {
@@ -813,7 +820,8 @@ describe('DecayEngine.forgetWeakMemories', () => {
       dryRun: false,
     });
 
-    expect(storage.saveGraph).toHaveBeenCalled();
+    expect(storage.deleteEntities).toHaveBeenCalledWith(['weak']);
+    expect(storage.saveGraph).not.toHaveBeenCalled();
     expect(result.dryRun).toBe(false);
   });
 
@@ -839,6 +847,7 @@ describe('DecayEngine.forgetWeakMemories', () => {
 
     storage = createMockStorage(entities);
     storage.saveGraph = vi.fn(async () => {});
+    storage.deleteEntities = vi.fn(async () => ({ deletedEntities: [], deletedRelations: [] }));
 
     tracker = new AccessTracker(storage);
     const decay = new DecayEngine(storage, tracker, {
@@ -1007,6 +1016,7 @@ describe('DecayEngine.forgetWeakMemories', () => {
 
     storage = createMockStorage(entities);
     storage.saveGraph = vi.fn(async () => {});
+    storage.deleteEntities = vi.fn(async () => ({ deletedEntities: [], deletedRelations: [] }));
 
     tracker = new AccessTracker(storage);
     const decay = new DecayEngine(storage, tracker, {
@@ -1019,7 +1029,40 @@ describe('DecayEngine.forgetWeakMemories', () => {
     });
 
     expect(result.dryRun).toBe(false);
-    expect(storage.saveGraph).toHaveBeenCalled();
+    expect(storage.deleteEntities).toHaveBeenCalledWith(['weak']);
+    expect(storage.saveGraph).not.toHaveBeenCalled();
+  });
+
+  it('falls back to a full saveGraph rewrite when the backend has no deleteEntities', async () => {
+    vi.useFakeTimers();
+    const now = Date.now();
+    vi.setSystemTime(now);
+
+    const entities = [
+      createAgentEntity('weak', {
+        importance: 0.1,
+        lastAccessedAt: new Date(now - 1000 * 60 * 60 * 1000).toISOString(),
+      }),
+      createAgentEntity('strong', { importance: 9.0, lastAccessedAt: new Date(now).toISOString() }),
+    ];
+
+    storage = createMockStorage(entities);
+    storage.saveGraph = vi.fn(async () => {});
+    // No deleteEntities member: legacy backend path.
+
+    tracker = new AccessTracker(storage);
+    const decay = new DecayEngine(storage, tracker, {
+      halfLifeHours: 24,
+      minImportance: 0.01,
+    });
+
+    await decay.forgetWeakMemories({ effectiveImportanceThreshold: 5.0 });
+
+    expect(storage.saveGraph).toHaveBeenCalledTimes(1);
+    const saved = (storage.saveGraph as ReturnType<typeof vi.fn>).mock.calls[0][0] as {
+      entities: AgentEntity[];
+    };
+    expect(saved.entities.map((e) => e.name)).toEqual(['strong']);
   });
 });
 
@@ -1231,5 +1274,45 @@ describe('DecayEngine half-life factors (pins)', () => {
     const storage = createMockStorage([]);
     const decay = new DecayEngine(storage, new AccessTracker(storage));
     expect(decay.calculateDecayFactor(hoursBefore(1), 168)).toBe(0.9958826236582974);
+  });
+
+  describe('forgetWeakMemories on a real GraphStorage', () => {
+    it('deletes the forgotten entity and its relations, and survives reload', async () => {
+      vi.useFakeTimers();
+      const now = Date.now();
+      vi.setSystemTime(now);
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'decay-forget-'));
+      const file = path.join(dir, 'memory.jsonl');
+      try {
+        const gs = new GraphStorage(file);
+        await gs.appendEntity(createAgentEntity('weak', {
+          importance: 0.1,
+          lastAccessedAt: new Date(now - 1000 * 60 * 60 * 1000).toISOString(),
+        }) as Entity);
+        await gs.appendEntity(createAgentEntity('strong', { importance: 9.0 }) as Entity);
+        await gs.appendRelation({ from: 'weak', to: 'strong', relationType: 'knows' });
+        await gs.appendRelation({ from: 'strong', to: 'strong', relationType: 'self' });
+
+        const decay = new DecayEngine(gs, new AccessTracker(gs), {
+          halfLifeHours: 24,
+          minImportance: 0.01,
+        });
+        const result = await decay.forgetWeakMemories({ effectiveImportanceThreshold: 5.0 });
+        expect(result.forgottenNames).toEqual(['weak']);
+
+        expect(gs.getEntityByName('weak')).toBeFalsy();
+        const live = await gs.loadGraph();
+        expect(live.relations.some((r) => r.from === 'weak' || r.to === 'weak')).toBe(false);
+        expect(live.relations.some((r) => r.relationType === 'self')).toBe(true);
+
+        // Reload from disk: the deletion must be durable.
+        gs.clearCache();
+        const reloaded = await gs.loadGraph();
+        expect(reloaded.entities.map((e) => e.name)).toEqual(['strong']);
+        expect(reloaded.relations.some((r) => r.from === 'weak' || r.to === 'weak')).toBe(false);
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    });
   });
 });
