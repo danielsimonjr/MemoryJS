@@ -453,7 +453,8 @@ for (const backend of ['jsonl', 'sqlite'] as Backend[]) {
 
       expect(results.find((r) => r.entityName === 'E1')?.addedObservations).toEqual(['new fact']);
       expect(results.find((r) => r.entityName === 'E2')?.addedObservations).toEqual([]);
-      expect(seen.map((e) => e.type)).toEqual(['entity:updated']);
+      // DES-3: observation:added follows entity:updated (E2 had no change, so none for it)
+      expect(seen.map((e) => e.type)).toEqual(['entity:updated', 'observation:added']);
       expect(storage.getEntityByName('E1')?.observations).toEqual(['a', 'new fact']);
     });
 
@@ -468,7 +469,8 @@ for (const backend of ['jsonl', 'sqlite'] as Backend[]) {
         { entityName: 'E1', observations: ['drop'] },
       ]);
 
-      expect(seen.map((e) => e.type)).toEqual(['entity:updated']);
+      // DES-3: observation:deleted follows entity:updated
+      expect(seen.map((e) => e.type)).toEqual(['entity:updated', 'observation:deleted']);
       expect(storage.getEntityByName('E1')?.observations).toEqual(['keep']);
 
       storage.clearCache();
