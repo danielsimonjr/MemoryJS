@@ -2300,7 +2300,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 78
+      "loc": 93
     },
     {
       "file": "tests/integration/agent/access-tracking.test.ts",
@@ -2783,14 +2783,14 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 330
+      "loc": 339
     },
     {
       "file": "tests/unit/agent/ConsolidationPipeline.mergeRace.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 125
+      "loc": 134
     },
     {
       "file": "tests/unit/agent/ConsolidationPipeline.promoteBatch.test.ts",
@@ -5114,7 +5114,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 118
+      "loc": 120
     },
     {
       "file": "tests/unit/utils/durableWriteFile.test.ts",

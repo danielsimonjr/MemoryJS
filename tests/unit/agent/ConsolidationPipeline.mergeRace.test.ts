@@ -36,9 +36,17 @@ function agent(name: string, observations: string[]): AgentEntity {
   } as AgentEntity;
 }
 
+
+/** Storages opened in the current test; closed in afterEach so Windows can remove the temp dirs. */
+const openedStorages: Array<{ close?: () => void }> = [];
+function track<T>(storage: T): T {
+  openedStorages.push(storage as unknown as { close?: () => void });
+  return storage;
+}
+
 const BACKENDS = [
-  { name: 'jsonl', open: (p: string) => new GraphStorage(p), path: makeTempJsonlPath },
-  { name: 'sqlite', open: (p: string) => new SQLiteStorage(p), path: makeTempSqlitePath },
+  { name: 'jsonl', open: (p: string) => track(new GraphStorage(p)), path: makeTempJsonlPath },
+  { name: 'sqlite', open: (p: string) => track(new SQLiteStorage(p)), path: makeTempSqlitePath },
 ] as const;
 
 function pipelineFor(storage: IGraphStorage): ConsolidationPipeline {
@@ -55,6 +63,7 @@ const auditCount = async (storage: IGraphStorage): Promise<number> =>
 
 afterEach(() => {
   vi.restoreAllMocks();
+  for (const storage of openedStorages.splice(0)) storage.close?.();
   cleanupTempDirs();
 });
 

@@ -366,7 +366,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/file-path.test.ts` | tests | test | 235 |
 | `tests/helpers/__tests__/mockStorage.test.ts` | tests | test | 101 |
 | `tests/helpers/mockStorage.ts` | tests | test | 127 |
-| `tests/helpers/tempStorage.ts` | tests | test | 78 |
+| `tests/helpers/tempStorage.ts` | tests | test | 93 |
 | `tests/integration/agent/access-tracking.test.ts` | tests | test | 326 |
 | `tests/integration/agent/agent-memory-manager-profile.test.ts` | tests | test | 33 |
 | `tests/integration/backup-compression.test.ts` | tests | test | 432 |
@@ -435,8 +435,8 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/CollaborativeSynthesis.test.ts` | tests | test | 710 |
 | `tests/unit/agent/ConflictResolver.test.ts` | tests | test | 466 |
 | `tests/unit/agent/ConnectivitySignals.test.ts` | tests | test | 478 |
-| `tests/unit/agent/ConsolidationPipeline.mergeDelta.test.ts` | tests | test | 330 |
-| `tests/unit/agent/ConsolidationPipeline.mergeRace.test.ts` | tests | test | 125 |
+| `tests/unit/agent/ConsolidationPipeline.mergeDelta.test.ts` | tests | test | 339 |
+| `tests/unit/agent/ConsolidationPipeline.mergeRace.test.ts` | tests | test | 134 |
 | `tests/unit/agent/ConsolidationPipeline.promoteBatch.test.ts` | tests | test | 278 |
 | `tests/unit/agent/ConsolidationPipeline.test.ts` | tests | test | 2334 |
 | `tests/unit/agent/ConsolidationScheduler.test.ts` | tests | test | 396 |
@@ -768,7 +768,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/utils/compression/CompressedMap.test.ts` | tests | test | 464 |
 | `tests/unit/utils/compression/ICompressionAdapter.test.ts` | tests | test | 140 |
 | `tests/unit/utils/compressionUtil.test.ts` | tests | test | 551 |
-| `tests/unit/utils/Diagnostics.observationDedup.test.ts` | tests | test | 118 |
+| `tests/unit/utils/Diagnostics.observationDedup.test.ts` | tests | test | 120 |
 | `tests/unit/utils/durableWriteFile.test.ts` | tests | test | 309 |
 | `tests/unit/utils/entityUtils.test.ts` | tests | test | 1097 |
 | `tests/unit/utils/EntityValidator.test.ts` | tests | test | 515 |
