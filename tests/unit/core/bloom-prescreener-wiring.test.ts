@@ -122,28 +122,71 @@ describe('CMP-2 ctx.bloomPreScreener (MEMORY_FUZZY_BLOOM_PRESCREEN)', () => {
     expect(screener!.isBuilt()).toBe(true);
   });
 
-  it('returns the same fuzzy results with and without the screener (incl. typo queries)', async () => {
+  it('screened fuzzy results are a subset of unscreened results (never invents matches)', async () => {
     const fixture = buildFixture();
 
     setEnv(undefined);
     const plain = newCtx();
     await plain.entityManager.createEntities(fixture);
+    // searchManager reads the env flag at first access: touch it while unset so
+    // this context is genuinely unscreened.
+    const plainFuzzy = plain.searchManager.fuzzySearcher;
+    expect(plainFuzzy.hasBloomPreScreener()).toBe(false);
 
     setEnv('true');
     const screened = newCtx();
     await screened.entityManager.createEntities(fixture);
     expect(screened.bloomPreScreener).not.toBeNull();
+    const screenedFuzzy = screened.searchManager.fuzzySearcher;
+    expect(screenedFuzzy.hasBloomPreScreener()).toBe(true);
 
+    // Lift the default result cap so the comparison is over complete sets.
+    const all = (f: typeof plainFuzzy, q: string) =>
+      f.fuzzySearch(q, undefined, undefined, undefined, undefined, 0, 1000);
+    let nonEmpty = 0;
     for (const query of QUERIES) {
-      const expected = await plain.searchManager.fuzzySearcher.fuzzySearch(query);
-      const actual = await screened.searchManager.fuzzySearcher.fuzzySearch(query);
-      expect(actual.entities.map((e) => e.name).sort(), `query="${query}"`).toEqual(
-        expected.entities.map((e) => e.name).sort(),
-      );
+      const expected = new Set((await all(plainFuzzy, query)).entities.map((e) => e.name));
+      const actual = (await all(screenedFuzzy, query)).entities.map((e) => e.name);
+      if (actual.length > 0) nonEmpty++;
+      for (const name of actual) {
+        expect(expected.has(name), `query="${query}" produced "${name}" only when screened`).toBe(true);
+      }
     }
+    // The comparison must not be vacuous.
+    expect(nonEmpty).toBeGreaterThan(0);
+  });
 
-    // The typo query must actually find Alice, so the parity above is not vacuous.
-    const typo = await screened.searchManager.fuzzySearcher.fuzzySearch('Alise');
-    expect(typo.entities.map((e) => e.name)).toContain('Alice');
+  it('close() drops the cached screener and detaches it from the fuzzy searcher', async () => {
+    setEnv('true');
+    const ctx = newCtx();
+    const first = ctx.bloomPreScreener;
+    expect(first).not.toBeNull();
+    expect(ctx.searchManager.fuzzySearcher.hasBloomPreScreener()).toBe(true);
+    ctx.close();
+    expect(ctx.searchManager.fuzzySearcher.hasBloomPreScreener()).toBe(false);
+    const second = ctx.bloomPreScreener;
+    expect(second).not.toBe(first);
+  });
+
+  it('documented trade-off: screened fuzzy search is approximate (drops typo match when a literal token exists)', async () => {
+    const fixture = [
+      { name: 'Alice', entityType: 'person', observations: ['zeta team lead'] },
+      { name: 'Bundle', entityType: 'thing', observations: ['alise token here'] },
+    ] as Entity[];
+
+    setEnv(undefined);
+    const plain = newCtx();
+    await plain.entityManager.createEntities(fixture);
+    // searchManager reads the env flag at first access: touch it while unset.
+    const plainFuzzy = plain.searchManager.fuzzySearcher;
+    setEnv('true');
+    const screened = newCtx();
+    await screened.entityManager.createEntities(fixture);
+    const screenedFuzzy = screened.searchManager.fuzzySearcher;
+
+    const p = await plainFuzzy.fuzzySearch('Alise');
+    const s = await screenedFuzzy.fuzzySearch('Alise');
+    expect(p.entities.map((e) => e.name).sort()).toEqual(['Alice', 'Bundle']);
+    expect(s.entities.map((e) => e.name).sort()).toEqual(['Bundle']);
   });
 });

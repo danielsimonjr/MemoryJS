@@ -1810,6 +1810,10 @@ export class ManagerContext {
     this._proceduralGraphManagers = [];
     for (const unsubscribe of this._bloomPreScreenerUnsubscribe) unsubscribe();
     this._bloomPreScreenerUnsubscribe = [];
+    if (this._bloomPreScreener) {
+      this._searchManager?.fuzzySearcher.setBloomPreScreener(null);
+    }
+    this._bloomPreScreener = undefined;
     const storage = this.storage as unknown as { close?: () => void };
     if (typeof storage?.close === 'function') {
       storage.close();

@@ -1,12 +1,12 @@
 {
   "generated": "2026-11-04",
-  "totalFiles": 756,
+  "totalFiles": 757,
   "byDisposition": {
     "reachable": 309,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 427,
+    "test": 428,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -15,7 +15,7 @@
   "byArea": {
     "benchmarks": 4,
     "src": 313,
-    "tests": 427,
+    "tests": 428,
     "tools": 10,
     "config": 2
   },
@@ -1159,7 +1159,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1871
+      "loc": 1875
     },
     {
       "file": "src/core/mmap/FsReadMmapBackend.ts",
@@ -1341,7 +1341,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 713
+      "loc": 717
     },
     {
       "file": "src/features/index.ts",
@@ -2468,7 +2468,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 47
+      "loc": 49
     },
     {
       "file": "tests/performance/mmap-load-benchmark.test.ts",
@@ -2496,7 +2496,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 519
+      "loc": 521
     },
     {
       "file": "tests/performance/ranked-search-benchmarks.test.ts",
@@ -3581,7 +3581,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 150
+      "loc": 193
     },
     {
       "file": "tests/unit/core/columns/columns-review-fixes.test.ts",
@@ -4135,6 +4135,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 293
+    },
+    {
+      "file": "tests/unit/features/GovernanceManager-fresh-storage.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 65
     },
     {
       "file": "tests/unit/features/GovernanceManager.test.ts",

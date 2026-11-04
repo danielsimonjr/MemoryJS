@@ -11,7 +11,7 @@ Complete reference for all configuration options, environment variables, and cus
 > shipped through v1.14.0 — agent memory (decay/salience/context-window),
 > governance, freshness, role profiles, entropy filter, consolidation
 > scheduler, cognitive load, default visibility, Memory Engine knobs,
-> PRD decay extensions, Memory Backend selector, RBAC defaults, audit
+> PRD decay extensions, Memory Backend selector, RBAC (code-configured; no env vars), audit
 > attribution, validation-on-store, and (v2.9.0) graph-connectivity
 > signals for hybrid search/salience/decay. See CLAUDE.md for the ~50
 > full set.
@@ -1047,7 +1047,7 @@ rationale.
 
 | Variable | Values | Default |
 |----------|--------|---------|
-| `MEMORY_FUZZY_BLOOM_PRESCREEN` | `'true'` (strict literal — `'1'`/`'yes'`/`'TRUE'` are ignored) | unset = off. Enables `ctx.bloomPreScreener`, a Bloom-filter pre-screen for `FuzzySearch`. The filter is built lazily on the first fuzzy search and cleared on entity events, so the next fuzzy search rebuilds it. |
+| `MEMORY_FUZZY_BLOOM_PRESCREEN` | `'true'` (strict literal — `'1'`/`'yes'`/`'TRUE'` are ignored) | unset = off. Enables `ctx.bloomPreScreener`, a Bloom-filter pre-screen for `FuzzySearch`. The filter is built lazily on the first fuzzy search and cleared on entity events, so the next fuzzy search rebuilds it. **Approximate: speed over recall.** The screener requires all query tokens to be present exactly, and `FuzzySearch` only falls back to a full scan when the candidate set is empty, so a typo query (e.g. `Alise`) can miss a fuzzy match (`Alice`) when another entity contains the literal token. |
 | `MEMORY_AUTO_LINK` | `'true'` (strict literal) | unset = off. Observation writes auto-link detected entity mentions into relations. Takes effect only after `ctx.autoLinker` has been accessed once (lazy getter that wires `AutoLinker` into `ObservationManager`). A per-call `autoLink` option overrides it. |
 | `MEMORY_OBSERVATION_DEDUP` | `'true'` (strict literal) | unset = off. Enables observation de-duplication on writes with the default dedup options, unless the call passes an explicit `dedup` option. |
 

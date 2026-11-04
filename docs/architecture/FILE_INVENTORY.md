@@ -10,7 +10,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 756
+**Total files**: 757
 
 ## Disposition counts
 
@@ -20,12 +20,12 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 427 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 428 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 4 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 0 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **756** | |
+| **Total** | **757** | |
 
 ## Per-area counts
 
@@ -34,7 +34,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `benchmarks` | 4 |
 | `config` | 2 |
 | `src` | 313 |
-| `tests` | 427 |
+| `tests` | 428 |
 | `tools` | 10 |
 
 ## All files
@@ -203,7 +203,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/core/GraphTraversal.ts` | src | reachable | 1406 |
 | `src/core/HierarchyManager.ts` | src | reachable | 314 |
 | `src/core/index.ts` | src | reachable | 52 |
-| `src/core/ManagerContext.ts` | src | reachable | 1871 |
+| `src/core/ManagerContext.ts` | src | reachable | 1875 |
 | `src/core/mmap/FsReadMmapBackend.ts` | src | reachable | 239 |
 | `src/core/mmap/IMmapBackend.ts` | src | reachable | 169 |
 | `src/core/nodeSqliteAdapter.ts` | src | reachable | 181 |
@@ -229,7 +229,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/features/ContradictionDetector.ts` | src | reachable | 211 |
 | `src/features/FactExtractor.ts` | src | reachable | 353 |
 | `src/features/FreshnessManager.ts` | src | reachable | 307 |
-| `src/features/GovernanceManager.ts` | src | reachable | 713 |
+| `src/features/GovernanceManager.ts` | src | reachable | 717 |
 | `src/features/index.ts` | src | reachable | 105 |
 | `src/features/IOManager.ts` | src | reachable | 2106 |
 | `src/features/KeywordExtractor.ts` | src | reachable | 150 |
@@ -390,11 +390,11 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/performance/embedding-benchmarks.test.ts` | tests | test | 472 |
 | `tests/performance/foundation-benchmarks.test.ts` | tests | test | 548 |
 | `tests/performance/memory-engine-perf.test.ts` | tests | test | 101 |
-| `tests/performance/merge-perf.test.ts` | tests | test | 47 |
+| `tests/performance/merge-perf.test.ts` | tests | test | 49 |
 | `tests/performance/mmap-load-benchmark.test.ts` | tests | test | 171 |
 | `tests/performance/optimization-benchmarks.test.ts` | tests | test | 318 |
 | `tests/performance/parallel-benchmarks.test.ts` | tests | test | 477 |
-| `tests/performance/query-execution-benchmarks.test.ts` | tests | test | 519 |
+| `tests/performance/query-execution-benchmarks.test.ts` | tests | test | 521 |
 | `tests/performance/ranked-search-benchmarks.test.ts` | tests | test | 141 |
 | `tests/performance/search-algorithm-benchmarks.test.ts` | tests | test | 616 |
 | `tests/performance/task-scheduler-benchmarks.test.ts` | tests | test | 420 |
@@ -549,7 +549,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/cli/tag.test.ts` | tests | test | 66 |
 | `tests/unit/cli/toolAffordance.test.ts` | tests | test | 76 |
 | `tests/unit/core/BatchTransaction.test.ts` | tests | test | 695 |
-| `tests/unit/core/bloom-prescreener-wiring.test.ts` | tests | test | 150 |
+| `tests/unit/core/bloom-prescreener-wiring.test.ts` | tests | test | 193 |
 | `tests/unit/core/columns/columns-review-fixes.test.ts` | tests | test | 355 |
 | `tests/unit/core/columns/IColumnStore.test.ts` | tests | test | 132 |
 | `tests/unit/core/columns/JsonlColumnStore.test.ts` | tests | test | 444 |
@@ -629,6 +629,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/features/FactExtractor.test.ts` | tests | test | 320 |
 | `tests/unit/features/FreshnessManager.test.ts` | tests | test | 528 |
 | `tests/unit/features/GovernanceManager-delta.test.ts` | tests | test | 293 |
+| `tests/unit/features/GovernanceManager-fresh-storage.test.ts` | tests | test | 65 |
 | `tests/unit/features/GovernanceManager.test.ts` | tests | test | 737 |
 | `tests/unit/features/ingest-provenance-modes.test.ts` | tests | test | 277 |
 | `tests/unit/features/io-manager-ingest.test.ts` | tests | test | 148 |

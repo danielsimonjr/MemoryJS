@@ -149,6 +149,8 @@ export class GovernanceTransaction {
     // Apply the operation (delta write: O(1) per entity, no full-graph rewrite)
     const timestamp = new Date().toISOString();
 
+    // Delta reads below are synchronous cache lookups; load the graph first.
+    await this.storage.ensureLoaded();
     if (this.storage.hasEntity(entity.name)) {
       throw new KnowledgeGraphError(`Entity "${entity.name}" already exists`, 'DUPLICATE_ENTITY');
     }
@@ -187,6 +189,7 @@ export class GovernanceTransaction {
     updates: Partial<Entity>,
     options?: GovernanceOperationOptions
   ): Promise<Entity> {
+    await this.storage.ensureLoaded();
     const existing = this.storage.getEntityByName(name);
     if (!existing) {
       throw new KnowledgeGraphError(`Entity "${name}" not found`, 'ENTITY_NOT_FOUND');
@@ -231,6 +234,7 @@ export class GovernanceTransaction {
    * @throws KnowledgeGraphError If policy blocks the delete or entity not found
    */
   async deleteEntity(name: string, options?: GovernanceOperationOptions): Promise<void> {
+    await this.storage.ensureLoaded();
     const existing = this.storage.getEntityByName(name);
     if (!existing) {
       throw new KnowledgeGraphError(`Entity "${name}" not found`, 'ENTITY_NOT_FOUND');

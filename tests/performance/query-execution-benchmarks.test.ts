@@ -42,6 +42,7 @@ describe('Query Execution Benchmarks', () => {
   // Mock dependencies
   const mockHybridSearch = {
     search: vi.fn(),
+    searchLayer: vi.fn(),
     searchWithEntities: vi.fn(),
   };
 
@@ -90,6 +91,7 @@ describe('Query Execution Benchmarks', () => {
 
     // Default mock to return some results
     mockHybridSearch.search.mockResolvedValue([]);
+    mockHybridSearch.searchLayer.mockResolvedValue([]);
     mockHybridSearch.searchWithEntities.mockResolvedValue([]);
   });
 
@@ -219,7 +221,7 @@ describe('Query Execution Benchmarks', () => {
   describe('EarlyTermination benchmarks', () => {
     it('should terminate early when results are adequate', async () => {
       // Return good results from first layer
-      mockHybridSearch.search.mockResolvedValueOnce(
+      mockHybridSearch.searchLayer.mockResolvedValueOnce(
         testGraph.entities.slice(0, 10).map(e => createResult(e, 0.9))
       );
 
@@ -237,7 +239,7 @@ describe('Query Execution Benchmarks', () => {
 
     it('should complete all layers when necessary', async () => {
       // Return minimal results
-      mockHybridSearch.search
+      mockHybridSearch.searchLayer
         .mockResolvedValueOnce([createResult(testGraph.entities[0], 0.3)])
         .mockResolvedValueOnce([createResult(testGraph.entities[1], 0.3)])
         .mockResolvedValueOnce([createResult(testGraph.entities[2], 0.3)]);

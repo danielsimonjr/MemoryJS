@@ -985,7 +985,7 @@ knobs) lives in [CLAUDE.md](CLAUDE.md#environment-variables). RBAC is wired in c
 | `MEMORY_VALIDATE_ON_STORE` | Run `MemoryValidator` before observation writes | `false` |
 | `MEMORY_AUTO_LINK` | Auto-link entity mentions in observation writes (takes effect once `ctx.autoLinker` is accessed) | `false` |
 | `MEMORY_OBSERVATION_DEDUP` | Observation de-duplication on writes, using default dedup options | `false` |
-| `MEMORY_FUZZY_BLOOM_PRESCREEN` | Enable `ctx.bloomPreScreener`, a Bloom-filter pre-screen for `FuzzySearch` (built lazily, cleared on entity events) | `false` |
+| `MEMORY_FUZZY_BLOOM_PRESCREEN` | Enable `ctx.bloomPreScreener`, a Bloom-filter pre-screen for `FuzzySearch` (built lazily, cleared on entity events). Approximate: speed over recall; typo queries can miss matches when another entity holds the literal token | `false` |
 | `MEMORY_AUDIT_ATTRIBUTION_REQUIRED` | `CollaborationAuditEnforcer` strict mode | `false` |
 | `MEMORY_DEFAULT_VISIBILITY` | Default `AgentEntity.visibility` | `private` |
 | `MEMORY_USE_MMAP` | Use mmap for `GraphStorage.loadFromDisk` (strict `'true'` literal match) | `false` |
