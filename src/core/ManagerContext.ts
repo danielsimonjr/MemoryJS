@@ -8,7 +8,6 @@
  * @module core/ManagerContext
  */
 
-import path from 'path';
 import { logger } from '../utils/logger.js';
 import { IndexHealthMonitor, type IndexHealthReport } from '../utils/IndexHealthMonitor.js';
 import { buildDiagnosticsReport, type DiagnosticsReport } from '../utils/Diagnostics.js';
@@ -29,14 +28,17 @@ import './sqlite-register.js';
 import { EntityManager, type GovernanceHooks } from './EntityManager.js';
 import { RelationManager } from './RelationManager.js';
 import { ObservationManager } from './ObservationManager.js';
-import { JsonlColumnStore } from './columns/JsonlColumnStore.js';
-import { TieredIndex, buildTieredIndex } from '../search/tiered/TieredIndex.js';
-import { LRUHotTier } from '../search/tiered/LRUHotTier.js';
-import { DiskWarmTier } from '../search/tiered/DiskWarmTier.js';
-import { BrotliColdTier } from '../search/tiered/BrotliColdTier.js';
-import { CompressedMap } from '../utils/compression/CompressedMap.js';
-import { ZlibCompressionAdapter } from '../utils/compression/ICompressionAdapter.js';
+import type { TieredIndex } from '../search/tiered/TieredIndex.js';
+import type { CompressedMap } from '../utils/compression/CompressedMap.js';
 import type { IColumnStore, ObservationColumn } from './columns/IColumnStore.js';
+import { StorageInfraFacade } from './context/StorageInfraFacade.js';
+import {
+  readEnvNumber,
+  readEnvNumberOrUndefined,
+  readEnvLooseFlag,
+  readEnvStrictFlag,
+  type EnvNumberBounds,
+} from '../utils/envConfig.js';
 import { HierarchyManager } from './HierarchyManager.js';
 import { GraphTraversal } from './GraphTraversal.js';
 import { SearchManager } from '../search/SearchManager.js';
@@ -75,7 +77,7 @@ import { ObserverPipeline } from '../agent/ObserverPipeline.js';
 import type { ObserverPipelineOptions } from '../agent/ObserverPipeline.js';
 import type { AgentMemoryConfig } from '../agent/AgentMemoryConfig.js';
 import { getEmbeddingConfig } from '../utils/constants.js';
-import { validateFilePath } from '../utils/index.js';
+import { validateFilePath, sidecarPath } from '../utils/index.js';
 import { ContradictionDetector } from '../features/ContradictionDetector.js';
 import { SemanticForget } from '../features/SemanticForget.js';
 import { MemoryEngine } from '../agent/MemoryEngine.js';
@@ -105,6 +107,7 @@ import {
 import { EventManager } from '../agent/events/EventManager.js';
 import {
   ProspectiveMemoryManager,
+  type PredicateEvaluator,
   type ProcedureInvoker,
 } from '../agent/ProspectiveMemoryManager.js';
 import { FailureManager } from '../agent/FailureManager.js';
@@ -121,7 +124,7 @@ import {
   type ReconstructiveBacking,
 } from '../agent/reconstruction/index.js';
 // Sec1 — governance enforcement chokepoint (kept as separate import lines).
-import { BloomPreScreener } from '../search/BloomPreScreener.js';
+import type { BloomPreScreener } from '../search/BloomPreScreener.js';
 import { GovernanceManager } from '../features/GovernanceManager.js';
 import { AuditLog } from '../features/AuditLog.js';
 
@@ -139,24 +142,15 @@ export interface ManagerContextOptions {
   storageType?: 'jsonl' | 'sqlite';
   /** Default project scope for this context. */
   defaultProjectId?: string;
+  /**
+   * Evaluator for conditional prospective-memory triggers. Passed to the
+   * `ctx.prospectiveMemory` manager. Code-only; no environment variable.
+   */
+  prospectivePredicateEvaluator?: PredicateEvaluator;
   /** Enable contradiction detection. Requires embedding provider. */
   enableContradictionDetection?: boolean;
   /** Similarity threshold for contradiction detection. Default 0.85. */
   contradictionThreshold?: number;
-}
-
-/**
- * Range contract for a numeric environment variable.
- *
- * @internal
- */
-interface EnvNumberBounds {
-  /** Lowest accepted value, inclusive. */
-  min?: number;
-  /** Highest accepted value, inclusive. */
-  max?: number;
-  /** When true, a fractional value is rejected. */
-  integer?: boolean;
 }
 
 /** Inclusive `[0, 1]` range shared by every probability and weight knob. */
@@ -172,28 +166,21 @@ export class ManagerContext {
   // which implements the same interface via duck typing
   readonly storage: GraphStorage;
   public readonly defaultProjectId?: string;
+  private readonly prospectivePredicateEvaluator: PredicateEvaluator | undefined;
   private readonly savedSearchesFilePath: string;
   private readonly tagAliasesFilePath: string;
   private readonly refIndexFilePath: string;
-  private readonly observationColumnStorePath: string;
+  /** Env-gated optional storage infrastructure (DES-4). */
+  private readonly infra: StorageInfraFacade;
   private _observerPipeline?: ObserverPipeline;
 
   // ==================== LAZY-INITIALIZED CORE MANAGERS ====================
   private _entityManager?: EntityManager;
   private _relationManager?: RelationManager;
   private _observationManager?: ObservationManager;
-  private _observationColumnStore: IColumnStore<ObservationColumn> | null | undefined;
-
-  /** Phase 9: tiered posting-list cache. `undefined` = unresolved, `null` = env-gated off. */
-  private _tieredPostingsIndex: TieredIndex<unknown> | null | undefined;
-
-  /** Phase 10: compressed entity cache. `undefined` = unresolved, `null` = env-gated off. */
-  private _compressedEntityCache: CompressedMap<string, Entity> | null | undefined;
   private _hierarchyManager?: HierarchyManager;
   private _graphTraversal?: GraphTraversal;
   private _searchManager?: SearchManager;
-  private _bloomPreScreener?: BloomPreScreener | null;
-  private _bloomPreScreenerUnsubscribe: Array<() => void> = [];
   private _rankedSearch?: RankedSearch;
   private _graphRankPrior?: GraphRankPrior;
   private _hybridSearchManager?: HybridSearchManager;
@@ -273,6 +260,7 @@ export class ManagerContext {
         ? { storagePath: pathOrOptions }
         : pathOrOptions;
     this.defaultProjectId = opts.defaultProjectId;
+    this.prospectivePredicateEvaluator = opts.prospectivePredicateEvaluator;
 
     // Security: Validate path to prevent path traversal attacks.
     // confineToBase=false because storagePath is application-controlled
@@ -280,19 +268,10 @@ export class ManagerContext {
     // in-depth ".." segment check at the top of validateFilePath still runs.
     const validatedPath = validateFilePath(opts.storagePath, undefined, false);
 
-    // Derive paths for saved searches and tag aliases
-    const dir = path.dirname(validatedPath);
-    const basename = path.basename(validatedPath, path.extname(validatedPath));
-    this.savedSearchesFilePath = path.join(dir, `${basename}-saved-searches.jsonl`);
-    this.tagAliasesFilePath = path.join(dir, `${basename}-tag-aliases.jsonl`);
-    this.refIndexFilePath = path.join(dir, `${basename}-ref-index.jsonl`);
-    // Phase 8: column-store sidecar lives next to the main file. Only
-    // populated when `MEMORY_OBSERVATIONS_COLUMNAR=true` (see the
-    // `observationColumnStore` lazy getter below); zero behavior change
-    // when the flag is unset. Hyphen-delimited path matches the
-    // convention used by the other sidecars in this constructor
-    // (`-saved-searches`, `-tag-aliases`, `-ref-index`).
-    this.observationColumnStorePath = path.join(dir, `${basename}-observations.jsonl`);
+    // Sidecars live next to the main file (hyphen-delimited suffixes).
+    this.savedSearchesFilePath = sidecarPath(validatedPath, '-saved-searches');
+    this.tagAliasesFilePath = sidecarPath(validatedPath, '-tag-aliases');
+    this.refIndexFilePath = sidecarPath(validatedPath, '-ref-index');
     // Use StorageFactory to respect MEMORY_STORAGE_TYPE environment variable.
     // An explicit `storageType` option is the default type when the env var
     // is unset (previously the option was declared but ignored).
@@ -300,6 +279,18 @@ export class ManagerContext {
     this.storage = (opts.storageType
       ? createStorage({ type: opts.storageType, path: validatedPath })
       : createStorageFromPath(validatedPath)) as GraphStorage;
+
+    // Env-gated storage infrastructure (column store, tiered index, compressed
+    // cache, Bloom pre-screener). Resolution is lazy; construction here is free.
+    this.infra = new StorageInfraFacade({
+      storage: this.storage,
+      cachePressure: this.cachePressure,
+      // Phase 8 sidecar, only used when MEMORY_OBSERVATIONS_COLUMNAR=true.
+      columnStorePath: sidecarPath(validatedPath, '-observations'),
+      onBloomScreenerReady: (screener) => {
+        if (this._searchManager) this._searchManager.fuzzySearcher.setBloomPreScreener(screener);
+      },
+    });
 
     // Wire contradiction detection if enabled (gracefully degrades without embedding provider)
     if (opts.enableContradictionDetection) {
@@ -387,10 +378,7 @@ export class ManagerContext {
     if (!this._governanceManager) {
       let auditPath = process.env.MEMORY_AUDIT_LOG_FILE;
       if (!auditPath) {
-        const filePath = this.storage.getFilePath();
-        const dir = path.dirname(filePath);
-        const basename = path.basename(filePath, path.extname(filePath));
-        auditPath = path.join(dir, `${basename}-audit.jsonl`);
+        auditPath = sidecarPath(this.storage.getFilePath(), '-audit');
       }
       this._governanceManager = new GovernanceManager(this.storage, new AuditLog(auditPath));
     }
@@ -450,140 +438,30 @@ export class ManagerContext {
   }
 
   /**
-   * Lazy `IColumnStore<ObservationColumn>` for the shadow observation
-   * column. Returns `null` when `MEMORY_OBSERVATIONS_COLUMNAR` is
-   * unset / `false` / any other value. Strict literal-match on
-   * `'true'` keeps the activation gate predictable (no `'yes'` /
-   * `'1'` / `'TRUE'` surprises). The sidecar lives at
-   * `<basename>-observations.jsonl` next to the main storage file.
-   *
-   * **Read once, cached for the life of the ManagerContext.** The
-   * env-var value is read on first access and the resolved column
-   * store (or `null`) is cached. Flipping
-   * `MEMORY_OBSERVATIONS_COLUMNAR` at runtime has no effect after
-   * the first access — restart the process. Matches the precedent
-   * set by Phase 7's `MEMORY_STORAGE_SEGMENT_COUNT` on
-   * `GraphStorage`. If runtime reconfiguration becomes a
-   * requirement, expose a `setObservationColumnStore` method on
-   * `ManagerContext` rather than reading the env on every call.
-   *
-   * @experimental Phase 8 — call signature stable; the underlying
-   *   sidecar format may grow new fields in non-breaking ways.
+   * Shadow observation column store (`MEMORY_OBSERVATIONS_COLUMNAR='true'`).
+   * Null when disabled. Read once. Delegates to `StorageInfraFacade`.
+   * @experimental Phase 8.
    */
   get observationColumnStore(): IColumnStore<ObservationColumn> | null {
-    if (this._observationColumnStore === undefined) {
-      this._observationColumnStore =
-        process.env.MEMORY_OBSERVATIONS_COLUMNAR === 'true'
-          ? new JsonlColumnStore<ObservationColumn>(this.observationColumnStorePath)
-          : null;
-    }
-    return this._observationColumnStore;
+    return this.infra.observationColumnStore;
   }
 
   /**
-   * Lazy `ITieredIndex<string, unknown>` building block for callers
-   * who want hot/warm/cold posting-list caching. Returns `null` when
-   * `MEMORY_TIERED_INDEX` is not exactly `'true'` (strict literal
-   * match — `'1'` / `'yes'` / `'TRUE'` decline, matching the
-   * `MEMORY_OBSERVATIONS_COLUMNAR` precedent).
-   *
-   * **Wiring**: a `LRUHotTier` (10k entries default) → `DiskWarmTier`
-   * (sidecar at `<basename>-tiered-warm.jsonl`) → `BrotliColdTier`
-   * (shard at `<basename>-tiered-cold.jsonl.br`) chain. Use
-   * `tieredPostingsIndex.stats()` for hit-rate diagnostics; the
-   * tier-stats roll up into `ctx.diagnostics()`.
-   *
-   * **Direct integration with `OptimizedInvertedIndex` is intentionally
-   * deferred** — the existing class uses tightly-coupled `Uint32Array`
-   * posting layouts that don't map cleanly onto an `ITieredIndex<V>`.
-   * Callers who want the cache today can compose it themselves on top
-   * of any string-keyed corpus; a follow-up phase will retrofit
-   * `OptimizedInvertedIndex` to consume the tiered backing.
-   *
-   * Read once at first access — restart the process to flip the env
-   * var. Matches `observationColumnStore` precedent.
-   *
-   * Phase 9 tasks 73 + 74.
-   *
-   * @internal Until `OptimizedInvertedIndex` (or another concrete
-   *   index implementation) actually consumes this property, the
-   *   typing `TieredIndex<unknown>` is loose and the property has
-   *   no in-tree caller. Marked `@internal` per Phase 9 review #5
-   *   so external adopters don't lock themselves to a surface that
-   *   may grow stricter generics once a concrete consumer lands.
-   *   The `@experimental` notes still apply: tier sizing defaults
-   *   and the `stats()` shape may change in non-breaking ways.
+   * Tiered posting-list cache (`MEMORY_TIERED_INDEX='true'`), or null.
+   * Read once. Delegates to `StorageInfraFacade`; stats roll up into `diagnostics()`.
+   * @internal Phase 9. See `StorageInfraFacade` for the tier layout.
    */
   get tieredPostingsIndex(): TieredIndex<unknown> | null {
-    if (this._tieredPostingsIndex === undefined) {
-      if (process.env.MEMORY_TIERED_INDEX !== 'true') {
-        this._tieredPostingsIndex = null;
-        return null;
-      }
-      const filePath = this.storage.getFilePath();
-      const dir = path.dirname(filePath);
-      const basename = path.basename(filePath, path.extname(filePath));
-      const warmPath = path.join(dir, `${basename}-tiered-warm.jsonl`);
-      const coldPath = path.join(dir, `${basename}-tiered-cold.jsonl.br`);
-      this._tieredPostingsIndex = buildTieredIndex<unknown>({
-        makeHot: (onEvict) => new LRUHotTier({ maxEntries: 10_000, onEvict, name: 'hot' }),
-        makeWarm: (onEvict) => new DiskWarmTier({ filePath: warmPath, maxEntries: 100_000, onEvict, name: 'warm' }),
-        makeCold: () => new BrotliColdTier({ filePath: coldPath, name: 'cold' }),
-      });
-    }
-    return this._tieredPostingsIndex;
+    return this.infra.tieredPostingsIndex;
   }
 
   /**
-   * Lazy `CompressedMap<string, Entity>` for callers who want to
-   * hold a large entity set in RAM at a fraction of the uncompressed
-   * cost. Activated by `MEMORY_CACHE_COMPRESS='true'` (strict
-   * literal-match — matches `MEMORY_OBSERVATIONS_COLUMNAR` and
-   * `MEMORY_TIERED_INDEX` precedents).
-   *
-   * **Default configuration:** hot threshold 1000 entries
-   * (uncompressed working set), Zlib adapter at level 6 (best
-   * compress-speed/ratio trade-off per Phase 10 task 77 benchmark).
-   * Brotli is the right pick for cold-storage shards; zlib for hot
-   * caches like this one.
-   *
-   * **Direct integration with `GraphStorage.cache` is intentionally
-   * deferred** — the existing cache holds a `KnowledgeGraph`
-   * snapshot, not per-entity entries, so swapping in a
-   * `CompressedMap` would require restructuring every read/write
-   * path. Callers who want compressed entity caching today can
-   * compose this property over the storage layer themselves; the
-   * follow-up phase that rewires `GraphStorage` to entity-level
-   * caching will pick this up.
-   *
-   * Phase 10 task 79.
-   *
-   * @internal Until `GraphStorage.cache` is restructured to use
-   *   per-entity caching, the property has no in-tree consumer.
-   *   Marked `@internal` per Phase 9 precedent so external adopters
-   *   don't lock themselves to a surface that may grow stricter
-   *   typing once a concrete consumer lands.
+   * Compressed entity cache (`MEMORY_CACHE_COMPRESS='true'`), or null.
+   * Read once. Delegates to `StorageInfraFacade`.
+   * @internal Phase 10. See `StorageInfraFacade` for the cache policy.
    */
   get compressedEntityCache(): CompressedMap<string, Entity> | null {
-    if (this._compressedEntityCache === undefined) {
-      if (process.env.MEMORY_CACHE_COMPRESS !== 'true') {
-        this._compressedEntityCache = null;
-        return null;
-      }
-      const pressure = this.cachePressure.enabled ? this.cachePressure : undefined;
-      const compressed = new CompressedMap<string, Entity>({
-        hotThreshold: 1000,
-        adapter: new ZlibCompressionAdapter(6),
-        onInsert: () => pressure?.evictIfOverBudget(),
-      });
-      this._compressedEntityCache = compressed;
-      pressure?.register({
-        name: 'compressed-entities',
-        currentEntries: () => compressed.currentEntries(),
-        evictTo: (target) => compressed.evictTo(target),
-      });
-    }
-    return this._compressedEntityCache;
+    return this.infra.compressedEntityCache;
   }
 
   /** HierarchyManager - Entity hierarchy operations */
@@ -604,7 +482,7 @@ export class ManagerContext {
         this.savedSearchesFilePath,
         this.cachePressure.enabled ? this.cachePressure : undefined,
       );
-      if (process.env.MEMORY_FUZZY_BLOOM_PRESCREEN === 'true') {
+      if (readEnvStrictFlag('MEMORY_FUZZY_BLOOM_PRESCREEN')) {
         const screener = this.bloomPreScreener;
         if (screener) this._searchManager.fuzzySearcher.setBloomPreScreener(screener);
       }
@@ -613,36 +491,13 @@ export class ManagerContext {
   }
 
   /**
-   * Opt-in `BloomPreScreener` for fuzzy search candidate pre-screening.
-   *
-   * Enabled only when `MEMORY_FUZZY_BLOOM_PRESCREEN` is the strict literal
-   * `'true'` (read once, at first access). When disabled the getter returns
-   * `null` and nothing is constructed. When enabled it is attached to
-   * `searchManager.fuzzySearcher`; every entity write clears it and the next
-   * fuzzy search rebuilds it from the current graph.
-   *
+   * Opt-in Bloom pre-screener for fuzzy search (`MEMORY_FUZZY_BLOOM_PRESCREEN='true'`),
+   * or null. Read once. Delegates to `StorageInfraFacade`; attached to
+   * `searchManager.fuzzySearcher` when it exists.
    * @experimental
    */
   get bloomPreScreener(): BloomPreScreener | null {
-    if (this._bloomPreScreener === undefined) {
-      if (process.env.MEMORY_FUZZY_BLOOM_PRESCREEN !== 'true') {
-        this._bloomPreScreener = null;
-        return null;
-      }
-      const screener = new BloomPreScreener(this.storage);
-      const events = this.storage.events;
-      if (events) {
-        const clear = (): void => screener.clear();
-        for (const type of ['entity:created', 'entity:updated', 'entity:deleted', 'entity:renamed', 'graph:saved'] as const) {
-          this._bloomPreScreenerUnsubscribe.push(events.on(type, clear));
-        }
-      }
-      this._bloomPreScreener = screener;
-      if (this._searchManager) {
-        this._searchManager.fuzzySearcher.setBloomPreScreener(screener);
-      }
-    }
-    return this._bloomPreScreener;
+    return this.infra.bloomPreScreener;
   }
 
   /** RankedSearch - TF-IDF/BM25 ranked search */
@@ -801,10 +656,9 @@ export class ManagerContext {
       // the cached field directly so an unconfigured tiered index
       // doesn't force initialization just to report nothing.
       () => {
-        if (this._tieredPostingsIndex === undefined || this._tieredPostingsIndex === null) {
-          return undefined;
-        }
-        const stats = this._tieredPostingsIndex.stats();
+        const tiered = this.infra.peekTieredPostingsIndex();
+        if (!tiered) return undefined;
+        const stats = tiered.stats();
         const total = stats.hits + stats.misses;
         return {
           ...stats,
@@ -1234,11 +1088,11 @@ export class ManagerContext {
     if (type === 'memory') {
       return undefined;
     }
-    const filePath = this.storage.getFilePath();
-    const dir = path.dirname(filePath);
-    const basename = path.basename(filePath, path.extname(filePath));
-    const ext = type === 'sqlite' ? 'db' : 'jsonl';
-    return path.join(dir, `${basename}-procedural-graph.${ext}`);
+    return sidecarPath(
+      this.storage.getFilePath(),
+      '-procedural-graph',
+      type === 'sqlite' ? '.db' : '.jsonl',
+    );
   }
 
   /**
@@ -1273,6 +1127,7 @@ export class ManagerContext {
         defaultExpiryHours: this.getEnvNumber('MEMORY_PROSPECTIVE_DEFAULT_EXPIRY_HOURS', 168, { min: 0 }),
         maxPendingPerSession: this.getEnvNumber('MEMORY_PROSPECTIVE_MAX_PENDING_PER_SESSION', 100, { integer: true, min: 1 }),
         procedureInvoker,
+        predicateEvaluator: this.prospectivePredicateEvaluator,
       });
     }
     return this._prospectiveMemory;
@@ -1529,10 +1384,7 @@ export class ManagerContext {
   /** Returns env-var as number, or undefined when unset (lets the
    *  default-derive logic in DecayEngine kick in for `decayRate`). */
   private envNumberOrUndefined(name: string): number | undefined {
-    const raw = process.env[name];
-    if (raw === undefined || raw === '') return undefined;
-    const n = Number(raw);
-    return Number.isFinite(n) ? n : undefined;
+    return readEnvNumberOrUndefined(name);
   }
 
   /**
@@ -1808,12 +1660,11 @@ export class ManagerContext {
       });
     }
     this._proceduralGraphManagers = [];
-    for (const unsubscribe of this._bloomPreScreenerUnsubscribe) unsubscribe();
-    this._bloomPreScreenerUnsubscribe = [];
-    if (this._bloomPreScreener) {
+    const hadBloomScreener = this.infra.peekBloomPreScreener() !== null;
+    this.infra.close();
+    if (hadBloomScreener) {
       this._searchManager?.fuzzySearcher.setBloomPreScreener(null);
     }
-    this._bloomPreScreener = undefined;
     const storage = this.storage as unknown as { close?: () => void };
     if (typeof storage?.close === 'function') {
       storage.close();
@@ -1827,33 +1678,7 @@ export class ManagerContext {
    * @internal
    */
   private getEnvNumber(key: string, defaultValue: number, bounds?: EnvNumberBounds): number {
-    const value = process.env[key];
-    if (value === undefined) return defaultValue;
-
-    const raw = value.trim();
-    if (raw === '') return defaultValue;
-
-    // `Number` rejects a numeric prefix ('10abc') that `parseFloat` accepts,
-    // and the finite check rejects 'Infinity' and 'NaN'. An operator's
-    // malformed value must not become a silent, out-of-contract setting.
-    const parsed = Number(raw);
-    if (!Number.isFinite(parsed)) {
-      logger.warn(`${key}='${value}' is not a finite number; using ${defaultValue}`);
-      return defaultValue;
-    }
-    if (bounds?.integer && !Number.isInteger(parsed)) {
-      logger.warn(`${key}='${value}' must be an integer; using ${defaultValue}`);
-      return defaultValue;
-    }
-    if (bounds?.min !== undefined && parsed < bounds.min) {
-      logger.warn(`${key}='${value}' is below the minimum ${bounds.min}; using ${defaultValue}`);
-      return defaultValue;
-    }
-    if (bounds?.max !== undefined && parsed > bounds.max) {
-      logger.warn(`${key}='${value}' is above the maximum ${bounds.max}; using ${defaultValue}`);
-      return defaultValue;
-    }
-    return parsed;
+    return readEnvNumber(key, defaultValue, bounds);
   }
 
   /**
@@ -1861,9 +1686,7 @@ export class ManagerContext {
    * @internal
    */
   private getEnvBool(key: string, defaultValue: boolean): boolean {
-    const value = process.env[key];
-    if (value === undefined) return defaultValue;
-    return value.toLowerCase() === 'true';
+    return readEnvLooseFlag(key, defaultValue);
   }
 }
 

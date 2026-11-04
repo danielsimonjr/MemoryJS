@@ -33,6 +33,7 @@ import type {
   ObservationContext,
   ProspectiveAction,
   ProspectiveEntity,
+  ProspectiveEvaluationContext,
   ProspectiveLifecycle,
   ProspectiveTrigger,
   TriggerCondition,
@@ -57,6 +58,19 @@ export type ProcedureInvoker = (
   context: FiredEvent
 ) => Promise<void>;
 
+/**
+ * Evaluates the predicate of a `conditional` trigger during `tick()`.
+ *
+ * Return `true` to fire the intention. Only the boolean `true` fires; any
+ * other value does not. A throw or rejection is treated as `false` and is
+ * logged once per intention. Code-only: there is no environment variable and
+ * no built-in predicate language.
+ */
+export type PredicateEvaluator = (
+  predicate: string,
+  context: ProspectiveEvaluationContext
+) => boolean | Promise<boolean>;
+
 /** Configuration for `ProspectiveMemoryManager`. */
 export interface ProspectiveMemoryConfig {
   /**
@@ -76,6 +90,14 @@ export interface ProspectiveMemoryConfig {
    * procedure runs.
    */
   procedureInvoker?: ProcedureInvoker;
+
+  /**
+   * Evaluator for `conditional` triggers. Without one, conditional
+   * intentions persist but never fire (the warning from `scheduleConditional`
+   * says so). With one, `tick()` calls it for each pending conditional
+   * intention, honouring `checkIntervalMs` when the trigger sets it.
+   */
+  predicateEvaluator?: PredicateEvaluator;
 }
 
 // ==================== Schedule Options ====================
@@ -127,13 +149,17 @@ export class ProspectiveMemoryManager {
   private readonly defaultExpiryHours: number;
   private readonly maxPendingPerSession: number;
   private readonly procedureInvoker: ProcedureInvoker | undefined;
+  private readonly predicateEvaluator: PredicateEvaluator | undefined;
   private conditionalWarningEmitted = false;
+  /** Intention names whose predicate evaluator has already failed (warn once each). */
+  private readonly predicateErrorWarned = new Set<string>();
 
   constructor(storage: IGraphStorage, config: ProspectiveMemoryConfig = {}) {
     this.storage = storage;
     this.defaultExpiryHours = config.defaultExpiryHours ?? 168;
     this.maxPendingPerSession = config.maxPendingPerSession ?? 100;
     this.procedureInvoker = config.procedureInvoker;
+    this.predicateEvaluator = config.predicateEvaluator;
   }
 
   // ==================== Create ====================
@@ -166,19 +192,18 @@ export class ProspectiveMemoryManager {
   /**
    * Schedule a conditional-predicate intention.
    *
-   * ⚠️ **Predicate evaluation is deferred.** This MVP persists the
-   * intention but `tick()` does NOT auto-evaluate the predicate; the
-   * intention will sit in `'pending'` indefinitely. Use `scheduleOnEvent`
-   * if you need runtime evaluation today. Tracked in
-   * `docs/roadmap/MEMORY_TYPES_EXPANSION.md` §4.7 as a deferred
-   * implementation detail.
+   * The intention is persisted in either case. When no `predicateEvaluator`
+   * is configured, `tick()` never fires it and a one-time warning is logged.
+   * When one is configured, `tick()` evaluates the predicate. Set
+   * `checkIntervalMs` to limit how often the evaluator runs.
+   * See `docs/roadmap/MEMORY_TYPES_EXPANSION.md` §4.7.
    */
   async scheduleConditional(
     content: string,
     predicate: string,
     options: ScheduleOptions & { checkIntervalMs?: number } = {}
   ): Promise<ProspectiveEntity> {
-    if (!this.conditionalWarningEmitted) {
+    if (!this.predicateEvaluator && !this.conditionalWarningEmitted) {
       logger.warn(
         'ProspectiveMemoryManager.scheduleConditional: predicate evaluation is not implemented in this version. ' +
           'The intention will persist but will never auto-fire. ' +
@@ -238,7 +263,11 @@ export class ProspectiveMemoryManager {
     const pending = await this.getPending();
     const fired: FiredEvent[] = [];
     for (const entity of pending) {
-      if (!this.shouldFireOnTick(entity, now)) continue;
+      const due =
+        entity.trigger.kind === 'conditional'
+          ? await this.evaluateConditional(entity, now)
+          : this.shouldFireOnTick(entity, now);
+      if (!due) continue;
       fired.push(await this.fire(entity, now));
     }
     return fired;
@@ -424,6 +453,57 @@ export class ProspectiveMemoryManager {
         return false;
       case 'event':
         return false; // Event triggers fire only via onObservation()
+    }
+  }
+
+  /**
+   * Decide whether a conditional intention is due. Requires a configured
+   * `predicateEvaluator`; without one the intention is never due. When
+   * `checkIntervalMs` is set, the evaluator is skipped inside the window
+   * after the last recorded check, and each check that finds the intention
+   * not due is persisted as `lifecycle.lastCheckedAt`. An evaluator error
+   * is logged once per intention and counts as not due.
+   */
+  private async evaluateConditional(entity: ProspectiveEntity, now: Date): Promise<boolean> {
+    if (entity.trigger.kind !== 'conditional' || !this.predicateEvaluator) return false;
+    const { predicate, checkIntervalMs } = entity.trigger;
+    const nowMs = now.getTime();
+    if (checkIntervalMs !== undefined && entity.lifecycle.status === 'pending') {
+      const lastCheckedMs = safeIsoToMs(entity.lifecycle.lastCheckedAt);
+      if (lastCheckedMs !== undefined && nowMs - lastCheckedMs < checkIntervalMs) return false;
+    }
+
+    let due = false;
+    try {
+      due = (await this.predicateEvaluator(predicate, { entity, now })) === true;
+    } catch (err) {
+      if (!this.predicateErrorWarned.has(entity.name)) {
+        this.predicateErrorWarned.add(entity.name);
+        logger.warn(
+          `ProspectiveMemoryManager: predicate evaluator failed for '${entity.name}': ${
+            err instanceof Error ? err.message : String(err)
+          }`
+        );
+      }
+      due = false;
+    }
+
+    if (!due && checkIntervalMs !== undefined) {
+      await this.recordPredicateCheck(entity, now);
+    }
+    return due;
+  }
+
+  /** Persist `lastCheckedAt` on a pending conditional intention. */
+  private async recordPredicateCheck(entity: ProspectiveEntity, now: Date): Promise<void> {
+    if (entity.lifecycle.status !== 'pending') return;
+    const nowIso = toIsoDateTime(now);
+    const persisted = await this.storage.updateEntity(entity.name, {
+      lifecycle: { ...entity.lifecycle, lastCheckedAt: nowIso },
+      lastModified: nowIso,
+    } as unknown as Partial<Entity>);
+    if (!persisted) {
+      logger.debug(`ProspectiveMemoryManager: '${entity.name}' vanished before its check was recorded`);
     }
   }
 

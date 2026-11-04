@@ -1216,7 +1216,7 @@ export type ProspectiveAction =
  * - `fired` → `expired` (if `fireCount >= maxFireCount`)
  */
 export type ProspectiveLifecycle =
-  | { status: 'pending'; fireCount: number; firedAt?: IsoDateTime }
+  | { status: 'pending'; fireCount: number; firedAt?: IsoDateTime; lastCheckedAt?: IsoDateTime }
   | { status: 'fired'; firedAt: IsoDateTime; fireCount: number }
   | { status: 'expired'; firedAt?: IsoDateTime; fireCount: number; expiredAt: IsoDateTime }
   | { status: 'cancelled'; cancelledAt: IsoDateTime; fireCount: number };
@@ -1240,6 +1240,15 @@ export interface ProspectiveEntity extends AgentEntity {
   maxFireCount?: PositiveInt;
   /** Optional condition that cancels the intention without firing. OR-semantics. */
   cancelOnEvent?: TriggerCondition;
+}
+
+/**
+ * Argument passed to a conditional-trigger predicate evaluator. Carries the
+ * intention as stored and the instant the tick is evaluated at.
+ */
+export interface ProspectiveEvaluationContext {
+  entity: ProspectiveEntity;
+  now: Date;
 }
 
 /**

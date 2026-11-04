@@ -66,6 +66,7 @@ export {
   ProspectiveMemoryManager,
   type ProspectiveMemoryConfig,
   type ProcedureInvoker,
+  type PredicateEvaluator,
   type ScheduleOptions,
 } from './ProspectiveMemoryManager.js';
 
