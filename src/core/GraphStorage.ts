@@ -24,6 +24,11 @@ import { NameIndex, TypeIndex, LowercaseCache, RelationIndex, ObservationIndex }
 import { sanitizeObject, validateFilePath, AsyncMutex } from '../utils/index.js';
 import { EntityNotFoundError, DuplicateEntityError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
+import {
+  parseSegmentCount,
+  readEnvStrictFlag,
+  readEnvStrictInt,
+} from '../utils/envConfig.js';
 import { BatchTransaction } from './TransactionManager.js';
 import { GraphEventEmitter } from './GraphEventEmitter.js';
 import { dirname } from 'path';
@@ -61,19 +66,12 @@ import {
  *
  * Segment files live under `<dirname(memoryFilePath)>/segments/`.
  */
-const MAX_SEGMENT_COUNT = 1024;
-const SEGMENT_COUNT_PATTERN = /^[1-9][0-9]*$/;
+// Strict decimal parsing (rejects floats, exponents, hex, leading zeros,
+// signs, whitespace) and the `[2, 1024]` range live in `parseSegmentCount`
+// (shared with JsonlProceduralGraphBacking).
 function resolveSegmentStorage(memoryFilePath: string): FileSegmentStorage | null {
-  const raw = process.env.MEMORY_STORAGE_SEGMENT_COUNT;
-  if (!raw) return null;
-  // Require a plain positive-decimal-integer literal — rejects floats
-  // (`3.7`), exponents (`1e3`), hex (`0x10`), leading zeros (`007`),
-  // signs (`-5`, `+5`), and whitespace. `Number('1e3') === 1000` is
-  // numerically fine, but an operator who typed `1e3` was probably
-  // confused — fail closed so the misconfig surfaces.
-  if (!SEGMENT_COUNT_PATTERN.test(raw)) return null;
-  const count = Number(raw);
-  if (!Number.isInteger(count) || count < 2 || count > MAX_SEGMENT_COUNT) return null;
+  const count = parseSegmentCount(process.env.MEMORY_STORAGE_SEGMENT_COUNT);
+  if (count === null) return null;
   const rootDir = dirname(memoryFilePath);
   return new FileSegmentStorage(rootDir, new FnvSegmentRouter(count));
 }
@@ -662,16 +660,13 @@ export class GraphStorage implements IGraphStorage {
    * eats the mmap perf benefit.
    */
   private async shouldUseMmap(): Promise<boolean> {
-    if (process.env.MEMORY_USE_MMAP !== 'true') return false;
-    const thresholdRaw = process.env.MEMORY_MMAP_THRESHOLD_BYTES;
+    if (!readEnvStrictFlag('MEMORY_USE_MMAP')) return false;
     // Phase 11 review #4: accept `0` to mean "always use mmap"
     // (size > 0 trivially true for any non-empty file). Without
     // this, `'0'` silently fell back to the 100 MB default which
     // surprised operators who wrote `MEMORY_MMAP_THRESHOLD_BYTES=0`
     // to force the mmap path on.
-    const threshold = thresholdRaw && /^(0|[1-9][0-9]*)$/.test(thresholdRaw)
-      ? Number(thresholdRaw)
-      : 100 * 1024 * 1024;
+    const threshold = readEnvStrictInt('MEMORY_MMAP_THRESHOLD_BYTES', { min: 0 }) ?? 100 * 1024 * 1024;
     try {
       const stat = await fs.stat(this.memoryFilePath);
       return stat.size > threshold;

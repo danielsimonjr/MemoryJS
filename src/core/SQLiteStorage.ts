@@ -150,6 +150,7 @@ import { NameIndex, RelationIndex, TypeIndex, computeLowercase } from '../utils/
 import { sanitizeObject, validateFilePath, AsyncMutex } from '../utils/index.js';
 import { EntityNotFoundError, DuplicateEntityError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
+import { readEnvPositiveIntOrDefault } from '../utils/envConfig.js';
 import { randomUUID } from 'node:crypto';
 import { PartialIndexAdvisor, type FilterObservation } from '../search/PartialIndexAdvisor.js';
 import { GraphEventEmitter } from './GraphEventEmitter.js';
@@ -2235,9 +2236,7 @@ export class SQLiteStorage implements IGraphStorage {
    * and `pickReadConnection()` returns `this.db`.
    */
   private initReadPool(): void {
-    const raw = process.env.MEMORY_SQLITE_READ_POOL_SIZE;
-    const parsed = raw === undefined ? 4 : parseInt(raw, 10);
-    const size = Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 4;
+    const size = readEnvPositiveIntOrDefault('MEMORY_SQLITE_READ_POOL_SIZE', 4);
     if (size <= 1) return; // Single-writer fallback; reads go through this.db.
 
     const Database = loadDatabaseCtor();

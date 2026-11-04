@@ -132,6 +132,11 @@ export interface CompressedCacheStats {
  * const stats = cache.getStats();
  * console.log(`Memory saved: ${stats.memorySaved} bytes`);
  * ```
+ *
+ * @deprecated Use `CompressedMap<string, Entity>` from
+ *   `src/utils/compression/CompressedMap.ts` instead. `CompressedMap` is the
+ *   generic replacement already wired into `ManagerContext`. No behaviour
+ *   change in this class; it is scheduled for removal in v5.
  */
 export class CompressedCache {
   private _entryMap: Map<string, CacheEntry> = new Map();

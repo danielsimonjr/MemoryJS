@@ -24,6 +24,8 @@
  *   gain a min-floor or LRU-vs-LFU knob.
  */
 
+import { readEnvStrictInt } from './envConfig.js';
+
 /** A registered cache participating in coordinated eviction. */
 export interface PressureAwareCache {
   /** Stable name for diagnostics. */
@@ -66,14 +68,8 @@ export class CachePressureCoordinator {
   constructor(options: { minRetentionEntries?: number } = {}) {
     this.minRetentionEntries = options.minRetentionEntries ?? 16;
 
-    const raw = process.env.MEMORY_CACHE_BUDGET_ENTRIES;
-    if (raw === undefined) {
-      this.enabled = false;
-      this.budgetEntries = 0;
-      return;
-    }
-    const parsed = /^(?:[1-9][0-9]*)$/.test(raw) ? Number(raw) : Number.NaN;
-    if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+    const parsed = readEnvStrictInt('MEMORY_CACHE_BUDGET_ENTRIES', { min: 1 });
+    if (parsed === undefined || !Number.isSafeInteger(parsed)) {
       this.enabled = false;
       this.budgetEntries = 0;
       return;

@@ -11,6 +11,7 @@
 import { appendFileSync } from 'fs';
 import { randomBytes } from 'crypto';
 import type { LogLevel, QueryLogEntry } from '../types/search.js';
+import { readEnvStrictFlag } from '../utils/envConfig.js';
 
 /**
  * Configuration for QueryLogger.
@@ -54,7 +55,7 @@ export class QueryLogger {
   constructor(config: QueryLoggerConfig = {}) {
     this.config = {
       level: config.level ?? (process.env.MEMORY_QUERY_LOG_LEVEL as LogLevel) ?? 'info',
-      console: config.console ?? process.env.MEMORY_QUERY_LOGGING === 'true',
+      console: config.console ?? readEnvStrictFlag('MEMORY_QUERY_LOGGING'),
       filePath: config.filePath ?? process.env.MEMORY_QUERY_LOG_FILE ?? '',
       callback: config.callback,
       timestamps: config.timestamps ?? true,

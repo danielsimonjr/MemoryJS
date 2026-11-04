@@ -11,6 +11,7 @@ import type { GraphEventEmitter } from '../core/GraphEventEmitter.js';
 import type { TFIDFIndexManager } from './TFIDFIndexManager.js';
 import type { IGraphStorage } from '../types/index.js';
 import { CoalescingTimer } from '../utils/timing.js';
+import { readEnvNonNegativeIntOrDefault } from '../utils/envConfig.js';
 import type {
   EntityCreatedEvent,
   EntityUpdatedEvent,
@@ -127,9 +128,7 @@ export class TFIDFEventSync {
         ? options.coalesceMs
         : 50;
     } else {
-      const raw = process.env.MEMORY_INDEX_COALESCE_MS;
-      const parsed = raw === undefined ? 50 : parseInt(raw, 10);
-      this.coalesceMs = Number.isFinite(parsed) && parsed >= 0 ? parsed : 50;
+      this.coalesceMs = readEnvNonNegativeIntOrDefault('MEMORY_INDEX_COALESCE_MS', 50);
     }
 
     this.rebuildDebounceMs =

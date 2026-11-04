@@ -67,6 +67,10 @@ export {
 } from './compressionUtil.js';
 
 // ==================== Compressed Cache ====================
+/**
+ * @deprecated Use `CompressedMap` (exported below) instead. Scheduled for
+ *   removal in v5.
+ */
 export {
   CompressedCache,
   type CompressedCacheOptions,
@@ -75,6 +79,22 @@ export {
 
 // ==================== Logger ====================
 export { logger } from './logger.js';
+
+// ==================== Env Config (DES-2) ====================
+export {
+  readEnvStrictFlag,
+  readEnvLooseFlag,
+  readEnvNumber,
+  readEnvNumberOrUndefined,
+  readEnvStrictInt,
+  parseStrictDecimalInt,
+  parseSegmentCount,
+  readEnvPositiveIntOrDefault,
+  readEnvNonNegativeIntOrDefault,
+  MAX_SEGMENT_COUNT,
+  type EnvNumberBounds,
+  type EnvStrictIntBounds,
+} from './envConfig.js';
 
 // ==================== Search Algorithms ====================
 export {

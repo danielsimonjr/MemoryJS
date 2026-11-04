@@ -25,11 +25,9 @@
 import { readFile } from 'node:fs/promises';
 import { durableAppendFile, durableWriteFile } from '../../../../utils/durableWriteFile.js';
 import { logger } from '../../../../utils/logger.js';
+import { parseSegmentCount } from '../../../../utils/envConfig.js';
 import { LockedProceduralGraphBacking } from './LockedProceduralGraphBacking.js';
 import { ProceduralGraphState } from './ProceduralGraphState.js';
-
-const MAX_SEGMENT_COUNT = 1024;
-const SEGMENT_COUNT_PATTERN = /^[1-9][0-9]*$/;
 
 const SEGMENT_MODE_ERROR = 'PG JSONL backing does not support MEMORY_STORAGE_SEGMENT_COUNT>=2';
 
@@ -88,15 +86,11 @@ export class JsonlProceduralGraphBacking extends LockedProceduralGraphBacking {
 }
 
 /**
- * Same regex/range as `GraphStorage.resolveSegmentStorage`: a plain positive
- * decimal integer in `[2, 1024]` activates segment mode.
+ * Segment mode is active when `MEMORY_STORAGE_SEGMENT_COUNT` resolves to a
+ * segment count (same rules as `GraphStorage`, via `parseSegmentCount`).
  */
 function isSegmentModeActive(): boolean {
-  const raw = process.env.MEMORY_STORAGE_SEGMENT_COUNT;
-  if (!raw) return false;
-  if (!SEGMENT_COUNT_PATTERN.test(raw)) return false;
-  const count = Number(raw);
-  return Number.isInteger(count) && count >= 2 && count <= MAX_SEGMENT_COUNT;
+  return parseSegmentCount(process.env.MEMORY_STORAGE_SEGMENT_COUNT) !== null;
 }
 
 async function loadJsonlFile(
