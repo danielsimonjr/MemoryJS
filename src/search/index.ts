@@ -241,3 +241,32 @@ export type {
   ExplainHybridOptions,
   ExplainedHybridSearchResult,
 } from './HybridSearchManager.js';
+
+// CMP-4: types returned by public ManagerContext getters (materializedViews, bloom pre-screen, partial index advisor, explain plans, tiered index)
+export {
+  MaterializedViewsManager,
+  type ViewDefinition,
+  type ViewSnapshot,
+} from './MaterializedViews.js';
+export { BloomFilter } from './BloomFilter.js';
+export {
+  BloomPreScreener,
+  type BloomPreScreenerOptions,
+} from './BloomPreScreener.js';
+export {
+  PartialIndexAdvisor,
+  type FilterObservation,
+  type IndexRecommendation,
+  type PartialIndexAdvisorOptions,
+} from './PartialIndexAdvisor.js';
+export { formatQueryPlanAscii, type ExplainPlanResult } from './QueryPlanFormatter.js';
+export {
+  TieredIndex,
+  buildTieredIndex,
+  type TieredIndexOptions,
+  type TieredIndexBuildOptions,
+} from './tiered/TieredIndex.js';
+export type { ITieredIndex, IIndexTier, TierAccessStats } from './tiered/ITieredIndex.js';
+export { LRUHotTier, type LRUHotTierOptions } from './tiered/LRUHotTier.js';
+export { DiskWarmTier, type DiskWarmTierOptions } from './tiered/DiskWarmTier.js';
+export { BrotliColdTier, type BrotliColdTierOptions } from './tiered/BrotliColdTier.js';

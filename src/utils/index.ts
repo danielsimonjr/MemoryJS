@@ -388,3 +388,25 @@ export {
   cosineSimilarity as textCosineSimilarity,
   calculateTextSimilarity,
 } from './textSimilarity.js';
+
+// ==================== CMP-4: types returned by public ManagerContext getters ====================
+export {
+  CachePressureCoordinator,
+  type PressureAwareCache,
+  type CachePressureSnapshot,
+} from './CachePressureCoordinator.js';
+export type { DiagnosticsReport, TieredIndexStatsSnapshot } from './Diagnostics.js';
+export {
+  IndexHealthMonitor,
+  type IndexHealthReport,
+  type IndexHealthSources,
+} from './IndexHealthMonitor.js';
+export type { IIndexHealth, IndexHealthSnapshot } from './IIndexHealth.js';
+export {
+  CompressedMap,
+  type CompressedMapOptions,
+} from './compression/CompressedMap.js';
+export {
+  ZlibCompressionAdapter,
+  type ICompressionAdapter,
+} from './compression/ICompressionAdapter.js';

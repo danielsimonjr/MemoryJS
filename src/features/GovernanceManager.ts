@@ -146,11 +146,10 @@ export class GovernanceTransaction {
       );
     }
 
-    // Apply the operation
-    const graph = await this.storage.getGraphForMutation();
+    // Apply the operation (delta write: O(1) per entity, no full-graph rewrite)
     const timestamp = new Date().toISOString();
 
-    if (graph.entities.some(e => e.name === entity.name)) {
+    if (this.storage.hasEntity(entity.name)) {
       throw new KnowledgeGraphError(`Entity "${entity.name}" already exists`, 'DUPLICATE_ENTITY');
     }
 
@@ -159,8 +158,7 @@ export class GovernanceTransaction {
       entity as unknown as Record<string, unknown>
     ) as unknown as Omit<Entity, 'createdAt' | 'lastModified'>;
     const created: Entity = { ...sanitized, createdAt: timestamp, lastModified: timestamp };
-    graph.entities.push(created);
-    await this.storage.saveGraph(graph);
+    await this.storage.appendEntity(created);
 
     // Audit
     const entry = await this.auditLog.append({
@@ -189,8 +187,7 @@ export class GovernanceTransaction {
     updates: Partial<Entity>,
     options?: GovernanceOperationOptions
   ): Promise<Entity> {
-    const graph = await this.storage.getGraphForMutation();
-    const existing = graph.entities.find(e => e.name === name);
+    const existing = this.storage.getEntityByName(name);
     if (!existing) {
       throw new KnowledgeGraphError(`Entity "${name}" not found`, 'ENTITY_NOT_FOUND');
     }
@@ -201,13 +198,16 @@ export class GovernanceTransaction {
       throw new GovernanceError('update', name);
     }
 
+    // Snapshot BEFORE the mutation: storage.updateEntity mutates the live
+    // object in place, so a shallow copy must be taken first.
     const before = { ...existing } as unknown as object;
-    const timestamp = new Date().toISOString();
-    // Prototype-pollution guard (Sec4): same sanitization EntityManager applies
-    // (`EntityManager.updateEntity` / `batchUpdate` parity).
-    Object.assign(existing, sanitizeObject(updates as Record<string, unknown>));
-    existing.lastModified = timestamp;
-    await this.storage.saveGraph(graph);
+    // Delta write: storage applies the sanitized patch (Sec4 prototype-pollution
+    // guard), sets lastModified and persists only this entity.
+    const applied = await this.storage.updateEntity(name, updates);
+    if (!applied) {
+      throw new KnowledgeGraphError(`Entity "${name}" not found`, 'ENTITY_NOT_FOUND');
+    }
+    const after = this.storage.getEntityByName(name) ?? existing;
 
     // Audit
     const entry = await this.auditLog.append({
@@ -215,12 +215,12 @@ export class GovernanceTransaction {
       entityName: name,
       agentId: options?.agentId ?? this.defaultAgentId,
       before: this.redactSnapshot(before),
-      after: this.redactSnapshot(existing as unknown as object),
+      after: this.redactSnapshot(after as unknown as object),
       status: 'committed',
     });
     this.auditEntries.push(entry);
 
-    return existing;
+    return after;
   }
 
   /**
@@ -231,13 +231,10 @@ export class GovernanceTransaction {
    * @throws KnowledgeGraphError If policy blocks the delete or entity not found
    */
   async deleteEntity(name: string, options?: GovernanceOperationOptions): Promise<void> {
-    const graph = await this.storage.getGraphForMutation();
-    const index = graph.entities.findIndex(e => e.name === name);
-    if (index === -1) {
+    const existing = this.storage.getEntityByName(name);
+    if (!existing) {
       throw new KnowledgeGraphError(`Entity "${name}" not found`, 'ENTITY_NOT_FOUND');
     }
-
-    const existing = graph.entities[index];
 
     // Policy check
     if (this.policy.canDelete && !this.policy.canDelete(existing)) {
@@ -249,9 +246,11 @@ export class GovernanceTransaction {
     }
 
     const before = { ...existing } as unknown as object;
-    graph.entities.splice(index, 1);
-    graph.relations = graph.relations.filter(r => r.from !== name && r.to !== name);
-    await this.storage.saveGraph(graph);
+    // Delta write: storage removes the entity and cascades touching relations.
+    const { deletedEntities } = await this.storage.deleteEntities([name]);
+    if (deletedEntities.length === 0) {
+      throw new KnowledgeGraphError(`Entity "${name}" not found`, 'ENTITY_NOT_FOUND');
+    }
 
     // Audit
     const entry = await this.auditLog.append({
