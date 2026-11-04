@@ -28,6 +28,12 @@ export interface JsonlMapParseOptions extends JsonlMapFormat {
   keyLabel: string;
   /** File path that each warning names. */
   filePath: string;
+  /**
+   * Optional field that marks a tombstone line. A line whose tombstone field
+   * is the number `1` removes its key from the map. Omit it when the file has
+   * no tombstones.
+   */
+  tombstoneField?: string;
 }
 
 /**
@@ -36,14 +42,16 @@ export interface JsonlMapParseOptions extends JsonlMapFormat {
  * Blank lines are skipped. A line that is not valid JSON, or that is the JSON
  * value `null`, is skipped with a malformed-line warning. A line that is valid
  * JSON but has no string in its key field is skipped with a non-string-key
- * warning. A later line with the same key replaces the earlier value.
+ * warning. A later line with the same key replaces the earlier value and moves
+ * the key to the end of the map order, so the map order matches the last write.
+ * A tombstone line (see `tombstoneField`) removes its key.
  *
  * @param raw - JSONL text to parse
  * @param options - Field names and warning texts
  * @returns Map from key to value, in file order
  */
 export function parseJsonlMapLines<V>(raw: string, options: JsonlMapParseOptions): Map<string, V> {
-  const { keyField, valueField, warnPrefix, keyLabel, filePath } = options;
+  const { keyField, valueField, warnPrefix, keyLabel, filePath, tombstoneField } = options;
   const map = new Map<string, V>();
   for (const line of raw.split('\n')) {
     const trimmed = line.trim();
@@ -55,6 +63,12 @@ export function parseJsonlMapLines<V>(raw: string, options: JsonlMapParseOptions
         logger.warn(`${warnPrefix}: skipping line with non-string ${keyLabel} in ${filePath}`);
         continue;
       }
+      if (tombstoneField !== undefined && parsed[tombstoneField] === 1) {
+        map.delete(key);
+        continue;
+      }
+      // Delete first so that a repeated key moves to the end of the map order.
+      map.delete(key);
       map.set(key, parsed[valueField] as V);
     } catch {
       logger.warn(`${warnPrefix}: skipping malformed line in ${filePath}`);

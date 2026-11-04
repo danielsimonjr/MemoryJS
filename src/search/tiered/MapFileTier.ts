@@ -25,6 +25,12 @@ import type { IIndexTier } from './ITieredIndex.js';
 const TIER_LINE_FORMAT: JsonlMapFormat = { keyField: 'k', valueField: 'v' };
 
 /**
+ * Field that marks a tombstone line, `{"k":key,"d":1}`. Only a tier that
+ * appends records writes tombstones. The loader accepts them in every tier.
+ */
+export const TOMBSTONE_FIELD = 'd';
+
+/**
  * Base class of the file-backed tiers.
  *
  * Every operation runs under one lock, because the tier keeps one file.
@@ -75,7 +81,7 @@ export abstract class MapFileTier<V> implements IIndexTier<string, V> {
       const snapshot = new Map(cache);
       cache.delete(key);
       try {
-        await this.flush(cache);
+        await this.persistDelete(cache, key);
       } catch (err) {
         cache.clear();
         for (const [k, v] of snapshot) cache.set(k, v);
@@ -130,6 +136,15 @@ export abstract class MapFileTier<V> implements IIndexTier<string, V> {
     await this.writeContent(serializeJsonlMap(cache, TIER_LINE_FORMAT));
   }
 
+  /**
+   * Persists the removal of `key`, which `cache` no longer holds. The caller
+   * must hold the lock. The default rewrites the whole file. A subclass can
+   * append a tombstone instead.
+   */
+  protected async persistDelete(cache: Map<string, V>, _key: string): Promise<void> {
+    await this.flush(cache);
+  }
+
   private async loadFromDisk(): Promise<Map<string, V>> {
     const raw = await this.readContent();
     if (raw === null) {
@@ -140,6 +155,7 @@ export abstract class MapFileTier<V> implements IIndexTier<string, V> {
       warnPrefix: this.warnPrefix(),
       keyLabel: 'key',
       filePath: this.filePath,
+      tombstoneField: TOMBSTONE_FIELD,
     });
   }
 }
