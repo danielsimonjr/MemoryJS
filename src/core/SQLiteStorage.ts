@@ -340,6 +340,9 @@ export class SQLiteStorage implements IGraphStorage {
    */
   private stmtCaches: WeakMap<DatabaseType, Map<string, Statement>> = new WeakMap();
 
+  /** OPT-1: connection for which `ensureEmbeddingsTable` already ran. */
+  private embeddingsTableReadyFor: DatabaseType | null = null;
+
   /**
    * Get (or lazily prepare) a cached statement for a connection.
    */
@@ -2416,6 +2419,9 @@ export class SQLiteStorage implements IGraphStorage {
    */
   private ensureEmbeddingsTable(): void {
     if (!this.db) throw new Error('Database not initialized');
+    // OPT-1: DDL is idempotent; run it once per connection, not per embedding op.
+    // Keyed by connection so a reopened db handle is re-checked automatically.
+    if (this.embeddingsTableReadyFor === this.db) return;
 
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS embeddings (
@@ -2430,6 +2436,7 @@ export class SQLiteStorage implements IGraphStorage {
 
     // Index for quick lookup by model
     this.db.exec(`CREATE INDEX IF NOT EXISTS idx_embedding_model ON embeddings(embeddingModel)`);
+    this.embeddingsTableReadyFor = this.db;
   }
 
   /**
@@ -2450,7 +2457,7 @@ export class SQLiteStorage implements IGraphStorage {
     // Convert to Float32Array for efficient storage
     const buffer = Buffer.from(new Float32Array(vector).buffer);
 
-    const stmt = this.db.prepare(`
+    const stmt = this.prepareCached(this.db, `
       INSERT OR REPLACE INTO embeddings (entityName, embedding, embeddingModel, embeddingUpdatedAt, dimensions, contentHash)
       VALUES (?, ?, ?, ?, ?, ?)
     `);
@@ -2470,7 +2477,7 @@ export class SQLiteStorage implements IGraphStorage {
     try {
       this.ensureEmbeddingsTable();
 
-      const stmt = this.db.prepare(`SELECT embedding FROM embeddings WHERE entityName = ?`);
+      const stmt = this.prepareCached(this.db, `SELECT embedding FROM embeddings WHERE entityName = ?`);
       const row = stmt.get(entityName) as { embedding: Buffer } | undefined;
 
       if (!row) return null;
@@ -2534,7 +2541,7 @@ export class SQLiteStorage implements IGraphStorage {
 
     try {
       this.ensureEmbeddingsTable();
-      const stmt = this.db.prepare(`DELETE FROM embeddings WHERE entityName = ?`);
+      const stmt = this.prepareCached(this.db, `DELETE FROM embeddings WHERE entityName = ?`);
       stmt.run(entityName);
     } catch {
       // Ignore errors if table doesn't exist
@@ -2566,7 +2573,7 @@ export class SQLiteStorage implements IGraphStorage {
 
     try {
       this.ensureEmbeddingsTable();
-      const stmt = this.db.prepare(`SELECT 1 FROM embeddings WHERE entityName = ? LIMIT 1`);
+      const stmt = this.prepareCached(this.db, `SELECT 1 FROM embeddings WHERE entityName = ? LIMIT 1`);
       const row = stmt.get(entityName);
       return row !== undefined;
     } catch {

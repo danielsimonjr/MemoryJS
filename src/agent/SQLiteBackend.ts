@@ -50,6 +50,13 @@ export interface SQLiteBackendOptions {
    * engine-generated entity name post-creation. Default false (lossy
    * translation: caller IDs are silently overridden). */
   preserveCallerIds?: boolean;
+  /**
+   * Optional rename hook used by `preserveCallerIds=true`. Pass
+   * `(a, b) => ctx.entityManager.renameEntity(a, b)` to enable it. Without
+   * it, `preserveCallerIds=true` throws on the first id mismatch. Additive;
+   * omitting it keeps the previous behaviour.
+   */
+  renameEntity?: (oldName: string, newName: string) => Promise<unknown>;
 }
 
 /**
@@ -58,7 +65,8 @@ export interface SQLiteBackendOptions {
  * By default `add` runs the dedup chain of the engine. Decay scoring uses `DecayEngine`.
  */
 export class SQLiteBackend implements IMemoryBackend {
-  private readonly options: Required<SQLiteBackendOptions>;
+  private readonly options: Required<Omit<SQLiteBackendOptions, 'renameEntity'>>;
+  private readonly renameEntity?: (oldName: string, newName: string) => Promise<unknown>;
 
   constructor(
     private readonly memoryEngine: MemoryEngine,
@@ -69,6 +77,7 @@ export class SQLiteBackend implements IMemoryBackend {
       dedupOnAdd: options.dedupOnAdd ?? true,
       preserveCallerIds: options.preserveCallerIds ?? false,
     };
+    this.renameEntity = options.renameEntity;
   }
 
   async add(turn: MemoryTurn): Promise<void> {
@@ -93,11 +102,7 @@ export class SQLiteBackend implements IMemoryBackend {
       importance: memoryjsImportance,
     });
 
-    // Optional: write caller's id as a rename on the new entity.
-    // For β.3 we skip this — preserveCallerIds=true requires a
-    // storage.renameEntity primitive that doesn't exist yet. Adding it
-    // touches the durable-storage layer + indexes, so it lands as a
-    // separate (T13b) follow-up if needed.
+    // Optional: rename the engine-generated entity to the caller's turn.id.
     // `result.entity` is absent on the `blocked` path (Phase Excl B);
     // a blocked write never produces an id-mismatch to detect.
     if (
@@ -106,10 +111,15 @@ export class SQLiteBackend implements IMemoryBackend {
       result.entity &&
       turn.id !== result.entity.name
     ) {
-      throw new Error(
-        'SQLiteBackend: preserveCallerIds=true requires storage.renameEntity ' +
-          'which is not implemented yet. Default false; see β.3 spec notes.',
-      );
+      if (!this.renameEntity) {
+        throw new Error(
+          'SQLiteBackend: preserveCallerIds=true requires a renameEntity hook. ' +
+            'Pass `renameEntity` (e.g. ctx.entityManager.renameEntity.bind(ctx.entityManager)) ' +
+            'in SQLiteBackendOptions to enable it. Default false.',
+        );
+      }
+      // Errors from the hook (e.g. DuplicateEntityError on a colliding id) propagate.
+      await this.renameEntity(result.entity.name, turn.id);
     }
   }
 

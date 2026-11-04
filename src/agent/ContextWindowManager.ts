@@ -119,6 +119,12 @@ export interface PrioritizeOptions {
   maxSlots?: number;
   /** Keep the input order of optional entities instead of the efficiency order. */
   preserveOrder?: boolean;
+  /**
+   * Token estimator used for each candidate. Defaults to `estimateTokens`.
+   * Callers that estimate the same entity more than once can pass a memoised
+   * function; it is per-call and never cached at class level.
+   */
+  tokenEstimator?: (entity: AgentEntity) => number;
 }
 
 /**
@@ -297,9 +303,10 @@ export class ContextWindowManager {
     const scored = await this.salienceEngine.rankEntitiesBySalience(entities, context);
 
     // Calculate tokens for each
+    const estimate = options.tokenEstimator ?? ((e: AgentEntity) => this.estimateTokens(e));
     const withTokens = scored.map((s) => ({
       ...s,
-      tokens: this.estimateTokens(s.entity),
+      tokens: estimate(s.entity),
     }));
 
     // Separate must-include from optional
@@ -454,13 +461,24 @@ export class ContextWindowManager {
       candidates = this.prefilterCandidates(candidates, mustInclude);
     }
 
+    // Each candidate's token count is needed up to three times below; memoise
+    // per call (keyed by entity name) so the regex pass runs once per entity.
+    const tokenMemo = new Map<string, number>();
+    const estimateMemo = (e: AgentEntity): number => {
+      const cached = tokenMemo.get(e.name);
+      if (cached !== undefined) return cached;
+      const value = this.estimateTokens(e);
+      tokenMemo.set(e.name, value);
+      return value;
+    };
+
     // Prioritize within budget
     const { selected, excluded } = await this.prioritize(
       candidates,
       effectiveBudget,
       context,
       mustInclude,
-      { maxSlots, preserveOrder: queryMode }
+      { maxSlots, preserveOrder: queryMode, tokenEstimator: estimateMemo }
     );
 
     // Filter by minimum salience
@@ -470,12 +488,12 @@ export class ContextWindowManager {
       .map((s) => ({
         entity: s.entity,
         reason: 'low_salience' as const,
-        tokens: this.estimateTokens(s.entity),
+        tokens: estimateMemo(s.entity),
         salience: s.salienceScore,
       }));
 
     // Calculate breakdown by memory type
-    const breakdown = this.calculateBreakdown(filtered, mustInclude);
+    const breakdown = this.calculateBreakdown(filtered, mustInclude, estimateMemo);
 
     // Generate suggestions for excluded high-salience entities
     const suggestions = this.generateSuggestions(excluded);
@@ -489,7 +507,7 @@ export class ContextWindowManager {
 
     return this.withBudgetReport({
       memories: filtered.map((s) => s.entity),
-      totalTokens: this.estimateTotalTokens(filtered.map((s) => s.entity)),
+      totalTokens: filtered.reduce((sum, s) => sum + estimateMemo(s.entity), 0),
       breakdown,
       excluded: allExcluded,
       suggestions,
@@ -966,7 +984,8 @@ export class ContextWindowManager {
    */
   private calculateBreakdown(
     entities: ScoredEntity[],
-    mustInclude: string[]
+    mustInclude: string[],
+    estimate: (entity: AgentEntity) => number = (e) => this.estimateTokens(e)
   ): TokenBreakdown {
     const mustIncludeSet = new Set(mustInclude);
     const breakdown: TokenBreakdown = {
@@ -978,7 +997,7 @@ export class ContextWindowManager {
     };
 
     for (const scored of entities) {
-      const tokens = this.estimateTokens(scored.entity);
+      const tokens = estimate(scored.entity);
 
       if (mustIncludeSet.has(scored.entity.name)) {
         breakdown.mustInclude += tokens;

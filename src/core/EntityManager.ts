@@ -244,6 +244,7 @@ import {
   createProgress,
 } from '../utils/index.js';
 import { GRAPH_LIMITS } from '../utils/constants.js';
+import { borrowGraphView } from '../utils/graphCopy.js';
 
 /**
  * Minimum importance value (least important).
@@ -541,8 +542,8 @@ export class EntityManager {
       const timestamp = new Date().toISOString();
 
       // Check graph size limits
-      const existingNames = new Set(graph.entities.map(e => e.name));
-      const entitiesToAdd = entities.filter(e => !existingNames.has(e.name));
+      // OPT-2: O(1) NameIndex membership instead of building an O(N) Set per call.
+      const entitiesToAdd = entities.filter(e => !this.storage.hasEntity(e.name));
       if (graph.entities.length + entitiesToAdd.length > GRAPH_LIMITS.MAX_ENTITIES) {
         throw new ValidationError(
           'Graph size limit exceeded',
@@ -741,8 +742,10 @@ export class EntityManager {
    * ```
    */
   async getEntity(name: string, options?: GetEntityOptions): Promise<Entity | null> {
-    const graph = await this.storage.loadGraph();
-    const entity = graph.entities.find(e => e.name === name) || null;
+    // OPT-6: O(1) NameIndex lookup; borrowGraphView keeps read-view freezing identical to loadGraph().
+    await this.storage.ensureLoaded();
+    const live = this.storage.getEntityByName(name);
+    const entity = live ? borrowGraphView(live) : null;
 
     // Track access if enabled
     if (entity && options?.trackAccess && this.accessTracker) {
@@ -1564,9 +1567,10 @@ export class EntityManager {
     if (!/^\d{4}-\d{2}-\d{2}/.test(asOf)) {
       throw new ValidationError(`asOf must be an ISO 8601 date string, got: '${asOf}'`, []);
     }
-    const graph = await this.storage.loadGraph();
-    const entity = graph.entities.find(e => e.name === name);
-    if (!entity) return null;
+    await this.storage.ensureLoaded();
+    const live = this.storage.getEntityByName(name);
+    if (!live) return null;
+    const entity = borrowGraphView(live);
     const vf = entity.validFrom;
     const vu = entity.validUntil;
     if (vf && vf > asOf) return null;
@@ -1583,9 +1587,11 @@ export class EntityManager {
    * @param name - Any entity name in the chain
    */
   async entityTimeline(name: string): Promise<Entity[]> {
+    await this.storage.ensureLoaded();
+    const live = this.storage.getEntityByName(name);
+    if (!live) return [];
     const graph = await this.storage.loadGraph();
-    const entity = graph.entities.find(e => e.name === name);
-    if (!entity) return [];
+    const entity = borrowGraphView(live);
     const rootName = entity.rootEntityName ?? entity.name;
     const chain = graph.entities.filter(
       e => (e.rootEntityName ?? e.name) === rootName,

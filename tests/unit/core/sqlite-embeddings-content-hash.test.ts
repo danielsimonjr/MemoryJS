@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SQLiteStorage } from '../../../src/core/SQLiteStorage.js';
 import { mkdtempSync, rmSync } from 'node:fs';
 import path from 'node:path';
@@ -134,4 +134,48 @@ describe('SQLiteStorage embeddings contentHash', () => {
     expect(storage.hasEmbedding('b')).toBe(true);
     expect(await storage.loadEmbeddingMetadata()).toHaveLength(1);
   });
+
+  describe('OPT-1 embeddings DDL and statement caching', () => {
+    it('runs no DDL or prepare on repeated per-entity reads after the first store', async () => {
+      storage = new SQLiteStorage(path.join(dir, 'memory.db'));
+      await storage.saveGraph({ entities: [entity('a')], relations: [] });
+      storage.storeEmbedding('a', VECTOR, 'm');
+
+      const db = rawDb(storage) as unknown as { exec: (sql: string) => void };
+      const execSpy = vi.spyOn(db, 'exec');
+      for (let i = 0; i < 50; i++) {
+        expect(storage.getEmbedding('a')).not.toBeNull();
+        expect(storage.hasEmbedding('a')).toBe(true);
+      }
+      expect(execSpy).not.toHaveBeenCalled();
+      execSpy.mockRestore();
+    });
+
+    it('stores embeddings again after clearCache() reopens the connection', async () => {
+      storage = new SQLiteStorage(path.join(dir, 'memory.db'));
+      await storage.saveGraph({ entities: [entity('a'), entity('b')], relations: [] });
+      storage.storeEmbedding('a', VECTOR, 'm');
+
+      storage.clearCache();
+      await storage.ensureLoaded();
+
+      storage.storeEmbedding('b', VECTOR, 'm', 'h');
+      expect(storage.getEmbedding('b')).toEqual(VECTOR.map((v) => Math.fround(v)));
+      expect(storage.getEmbedding('a')).toEqual(VECTOR.map((v) => Math.fround(v)));
+      expect(await storage.loadEmbeddingMetadata()).toHaveLength(2);
+    });
+
+    it('removeEmbedding and clearAllEmbeddings still work with cached statements', async () => {
+      storage = new SQLiteStorage(path.join(dir, 'memory.db'));
+      await storage.saveGraph({ entities: [entity('a'), entity('b')], relations: [] });
+      storage.storeEmbedding('a', VECTOR, 'm');
+      storage.storeEmbedding('b', VECTOR, 'm');
+      storage.removeEmbedding('a');
+      expect(storage.hasEmbedding('a')).toBe(false);
+      expect(storage.hasEmbedding('b')).toBe(true);
+      storage.clearAllEmbeddings();
+      expect(storage.hasEmbedding('b')).toBe(false);
+    });
+  });
+
 });

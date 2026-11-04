@@ -705,6 +705,64 @@ describe('EntityManager', () => {
       });
     });
   });
+
+  describe('OPT-2/OPT-6 NameIndex lookups', () => {
+    it('createEntities skips an existing name via the hasEntity path', async () => {
+      await manager.createEntities([{ name: 'Alice', entityType: 'person', observations: ['original'] } as any]);
+      const created = await manager.createEntities([
+        { name: 'Alice', entityType: 'person', observations: ['replacement'] } as any,
+        { name: 'Bob', entityType: 'person', observations: ['new'] } as any,
+      ]);
+      expect(created.map(e => e.name)).toEqual(['Bob']);
+      const graph = await storage.loadGraph();
+      expect(graph.entities).toHaveLength(2);
+      expect((await manager.getEntity('Alice'))!.observations).toEqual(['original']);
+    });
+
+    it('createEntities works on a fresh storage with no prior loadGraph call', async () => {
+      const fresh = new GraphStorage(join(testDir, 'fresh.jsonl'));
+      const freshManager = new EntityManager(fresh);
+      const created = await freshManager.createEntities([{ name: 'Solo', entityType: 'thing', observations: [] } as any]);
+      expect(created).toHaveLength(1);
+      expect(fresh.hasEntity('Solo')).toBe(true);
+    });
+
+    it('getEntity matches loadGraph read-view semantics (frozen outside production)', async () => {
+      await manager.createEntities([{ name: 'Alice', entityType: 'person', observations: ['x'] } as any]);
+      const viaGetEntity = await manager.getEntity('Alice');
+      const graph = await storage.loadGraph();
+      const viaLoad = graph.entities.find(e => e.name === 'Alice')!;
+      expect(Object.isFrozen(viaGetEntity)).toBe(Object.isFrozen(viaLoad));
+      expect(viaGetEntity).toEqual(viaLoad);
+    });
+
+    it('entityAsOf honours validFrom/validUntil and returns null for unknown names', async () => {
+      await storage.saveGraph({
+        entities: [
+          { name: 'V', entityType: 't', observations: [], validFrom: '2025-01-01', validUntil: '2025-06-01' } as any,
+        ],
+        relations: [],
+      });
+      expect((await manager.entityAsOf('V', '2025-03-01'))?.name).toBe('V');
+      expect(await manager.entityAsOf('V', '2026-01-01')).toBeNull();
+      expect(await manager.entityAsOf('Missing', '2025-03-01')).toBeNull();
+    });
+
+    it('entityTimeline returns the full supersession chain unchanged', async () => {
+      await storage.saveGraph({
+        entities: [
+          { name: 'Root', entityType: 't', observations: [], validFrom: '2024-01-01', rootEntityName: 'Root' } as any,
+          { name: 'Root_v2', entityType: 't', observations: [], validFrom: '2025-01-01', rootEntityName: 'Root' } as any,
+          { name: 'Root_v3', entityType: 't', observations: [], validFrom: '2026-01-01', rootEntityName: 'Root' } as any,
+          { name: 'Other', entityType: 't', observations: [] } as any,
+        ],
+        relations: [],
+      });
+      const timeline = await manager.entityTimeline('Root_v2');
+      expect(timeline.map(e => e.name)).toEqual(['Root', 'Root_v2', 'Root_v3']);
+      expect(await manager.entityTimeline('Missing')).toEqual([]);
+    });
+  });
 });
 
 /**
