@@ -8,51 +8,18 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { promises as fs } from 'fs';
 import { join } from 'path';
-import { tmpdir } from 'os';
 import { GraphStorage } from '../../../src/core/GraphStorage.js';
+import { createInMemoryStorageFake } from '../../helpers/mockStorage.js';
+import { makeTempDir, removeTempDir } from '../../helpers/tempStorage.js';
 import {
   ConsolidationPipeline,
   ProspectivePromotionStage,
   type PipelineStage,
 } from '../../../src/agent/ConsolidationPipeline.js';
-import type { IGraphStorage, Entity, KnowledgeGraph } from '../../../src/types/types.js';
+import type { IGraphStorage, Entity } from '../../../src/types/types.js';
 import type { AgentEntity, ConsolidateOptions } from '../../../src/types/agent-memory.js';
 import type { WorkingMemoryManager } from '../../../src/agent/WorkingMemoryManager.js';
 import type { DecayEngine } from '../../../src/agent/DecayEngine.js';
-
-/**
- * Create a mock storage with configurable behavior.
- */
-function createMockStorage(entities: Entity[] = []): IGraphStorage {
-  const entityMap = new Map<string, Entity>(entities.map((e) => [e.name, e]));
-  const relations: Array<{ from: string; to: string; relationType: string }> = [];
-
-  return {
-    getEntityByName: vi.fn((name: string) => entityMap.get(name)),
-    updateEntity: vi.fn(async (name: string, updates: Record<string, unknown>) => {
-      const entity = entityMap.get(name);
-      if (!entity) return false;
-      Object.assign(entity, updates);
-      return true;
-    }),
-    loadGraph: vi.fn(async () => ({
-      entities: Array.from(entityMap.values()),
-      relations: [...relations],
-    })),
-    appendEntity: vi.fn(async (entity: Entity) => {
-      entityMap.set(entity.name, entity);
-    }),
-    appendRelation: vi.fn(async (relation: { from: string; to: string; relationType: string }) => {
-      relations.push(relation);
-    }),
-    saveGraph: vi.fn(async (graph: KnowledgeGraph) => {
-      entityMap.clear();
-      for (const e of graph.entities) {
-        entityMap.set(e.name, e);
-      }
-    }),
-  } as unknown as IGraphStorage;
-}
 
 /**
  * Create a mock working memory manager.
@@ -138,7 +105,7 @@ describe('ConsolidationPipeline', () => {
   let pipeline: ConsolidationPipeline;
 
   beforeEach(() => {
-    storage = createMockStorage();
+    storage = createInMemoryStorageFake();
     workingMemory = createMockWorkingMemory();
     decayEngine = createMockDecayEngine();
     pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
@@ -255,7 +222,7 @@ describe('ConsolidationPipeline', () => {
         createWorkingMemory('wm2', 'session_1', 0.9, 4),
       ];
 
-      storage = createMockStorage(memories);
+      storage = createInMemoryStorageFake(memories);
       workingMemory = createMockWorkingMemory(new Map([['session_1', memories]]));
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
@@ -270,7 +237,7 @@ describe('ConsolidationPipeline', () => {
         createWorkingMemory('wm_low', 'session_1', 0.3, 3),
       ];
 
-      storage = createMockStorage(memories);
+      storage = createInMemoryStorageFake(memories);
       workingMemory = createMockWorkingMemory(new Map([['session_1', memories]]));
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
@@ -286,7 +253,7 @@ describe('ConsolidationPipeline', () => {
         createWorkingMemory('wm_unconfirmed', 'session_1', 0.8, 0),
       ];
 
-      storage = createMockStorage(memories);
+      storage = createInMemoryStorageFake(memories);
       workingMemory = createMockWorkingMemory(new Map([['session_1', memories]]));
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
@@ -302,7 +269,7 @@ describe('ConsolidationPipeline', () => {
         createWorkingMemory('wm2', 'session_1', 0.85, 3),
       ];
 
-      storage = createMockStorage(memories);
+      storage = createInMemoryStorageFake(memories);
       workingMemory = createMockWorkingMemory(new Map([['session_1', memories]]));
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
@@ -326,7 +293,7 @@ describe('ConsolidationPipeline', () => {
       });
 
       const memories = [createWorkingMemory('wm1', 'session_1', 0.8, 3)];
-      storage = createMockStorage(memories);
+      storage = createInMemoryStorageFake(memories);
       workingMemory = createMockWorkingMemory(new Map([['session_1', memories]]));
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
       pipeline.registerStage({
@@ -344,7 +311,7 @@ describe('ConsolidationPipeline', () => {
 
     it('should handle stage errors gracefully', async () => {
       const memories = [createWorkingMemory('wm1', 'session_1', 0.8, 3)];
-      storage = createMockStorage(memories);
+      storage = createInMemoryStorageFake(memories);
       workingMemory = createMockWorkingMemory(new Map([['session_1', memories]]));
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
       pipeline.registerStage({
@@ -366,7 +333,7 @@ describe('ConsolidationPipeline', () => {
   describe('promoteMemory', () => {
     it('should promote working memory to episodic', async () => {
       const wm = createWorkingMemory('wm_test', 'session_1');
-      storage = createMockStorage([wm]);
+      storage = createInMemoryStorageFake([wm]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       const promoted = await pipeline.promoteMemory('wm_test', 'episodic');
@@ -380,7 +347,7 @@ describe('ConsolidationPipeline', () => {
 
     it('should promote working memory to semantic', async () => {
       const wm = createWorkingMemory('wm_test', 'session_1');
-      storage = createMockStorage([wm]);
+      storage = createInMemoryStorageFake([wm]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       const promoted = await pipeline.promoteMemory('wm_test', 'semantic');
@@ -390,7 +357,7 @@ describe('ConsolidationPipeline', () => {
 
     it('should reinforce memory after promotion', async () => {
       const wm = createWorkingMemory('wm_test', 'session_1');
-      storage = createMockStorage([wm]);
+      storage = createInMemoryStorageFake([wm]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       await pipeline.promoteMemory('wm_test', 'episodic');
@@ -419,7 +386,7 @@ describe('ConsolidationPipeline', () => {
         confidence: 0.8,
         visibility: 'private',
       };
-      storage = createMockStorage([episodic as unknown as Entity]);
+      storage = createInMemoryStorageFake([episodic as unknown as Entity]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       await expect(
@@ -447,7 +414,7 @@ describe('ConsolidationPipeline', () => {
     }
 
     it('returns the merged entity fields recorded from the old code', async () => {
-      storage = createMockStorage([workingEntity() as unknown as Entity]);
+      storage = createInMemoryStorageFake([workingEntity() as unknown as Entity]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
       const promoted = await pipeline.promoteMemory('wm_test', 'episodic');
       expect({
@@ -472,7 +439,7 @@ describe('ConsolidationPipeline', () => {
     });
 
     it('writes the update keys in the pipeline order and does not strip tags', async () => {
-      storage = createMockStorage([workingEntity() as unknown as Entity]);
+      storage = createInMemoryStorageFake([workingEntity() as unknown as Entity]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
       await pipeline.promoteMemory('wm_test', 'episodic');
       const updates = vi.mocked(storage.updateEntity).mock.calls[0][1] as Record<string, unknown>;
@@ -488,7 +455,7 @@ describe('ConsolidationPipeline', () => {
     });
 
     it('reinforces after the write and touches no WorkingMemoryManager method', async () => {
-      storage = createMockStorage([workingEntity() as unknown as Entity]);
+      storage = createInMemoryStorageFake([workingEntity() as unknown as Entity]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
       await pipeline.promoteMemory('wm_test', 'episodic');
       const writeOrder = vi.mocked(storage.updateEntity).mock.invocationCallOrder[0];
@@ -501,21 +468,21 @@ describe('ConsolidationPipeline', () => {
     });
 
     it('reads the entity exactly once', async () => {
-      storage = createMockStorage([workingEntity() as unknown as Entity]);
+      storage = createInMemoryStorageFake([workingEntity() as unknown as Entity]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
       await pipeline.promoteMemory('wm_test', 'episodic');
       expect(storage.getEntityByName).toHaveBeenCalledTimes(1);
     });
 
     it('reports a missing entity with the exact text', async () => {
-      storage = createMockStorage([]);
+      storage = createInMemoryStorageFake([]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
       await expect(pipeline.promoteMemory('nope', 'episodic')).rejects.toThrow(/^Entity not found: nope$/);
     });
 
     it('reports a plain entity with the exact text', async () => {
       const plain = { name: 'plain', entityType: 'note', observations: [] } as unknown as Entity;
-      storage = createMockStorage([plain]);
+      storage = createInMemoryStorageFake([plain]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
       await expect(pipeline.promoteMemory('plain', 'episodic')).rejects.toThrow(
         /^Entity is not an AgentEntity: plain$/
@@ -524,7 +491,7 @@ describe('ConsolidationPipeline', () => {
 
     it('reports an episodic entity with the exact text', async () => {
       const episodic = { ...createWorkingMemory('bad', 'session_1'), memoryType: 'episodic' } as AgentEntity;
-      storage = createMockStorage([episodic as unknown as Entity]);
+      storage = createInMemoryStorageFake([episodic as unknown as Entity]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
       await expect(pipeline.promoteMemory('bad', 'episodic')).rejects.toThrow(
         /^Entity is not working memory: bad$/
@@ -535,15 +502,11 @@ describe('ConsolidationPipeline', () => {
       let testDir: string;
 
       beforeEach(() => {
-        testDir = join(tmpdir(), `pipeline-guard-${Date.now()}-${Math.random()}`);
+        testDir = makeTempDir('pipeline-guard-');
       });
 
-      afterEach(async () => {
-        try {
-          await fs.rm(testDir, { recursive: true, force: true });
-        } catch {
-          /* cleanup best-effort */
-        }
+      afterEach(() => {
+        removeTempDir(testDir);
       });
 
       it('the pipeline route writes the promoted entity line', async () => {
@@ -569,7 +532,7 @@ describe('ConsolidationPipeline', () => {
       const session2Memories = [createWorkingMemory('wm2', 'session_2', 0.8, 3)];
 
       const allMemories = [...session1Memories, ...session2Memories];
-      storage = createMockStorage(allMemories);
+      storage = createInMemoryStorageFake(allMemories);
       workingMemory = createMockWorkingMemory(
         new Map([
           ['session_1', session1Memories],
@@ -638,7 +601,7 @@ describe('ConsolidationPipeline', () => {
   describe('isPromotionEligible', () => {
     it('should return true for eligible entity', async () => {
       const wm = createWorkingMemory('eligible', 'session_1', 0.8, 3);
-      storage = createMockStorage([wm]);
+      storage = createInMemoryStorageFake([wm]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       const eligible = await pipeline.isPromotionEligible('eligible');
@@ -648,7 +611,7 @@ describe('ConsolidationPipeline', () => {
 
     it('should return false for ineligible entity', async () => {
       const wm = createWorkingMemory('ineligible', 'session_1', 0.3, 0);
-      storage = createMockStorage([wm]);
+      storage = createInMemoryStorageFake([wm]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       const eligible = await pipeline.isPromotionEligible('ineligible');
@@ -666,7 +629,7 @@ describe('ConsolidationPipeline', () => {
         confirmationCount: 0,
         confidence: 0.9,
       };
-      storage = createMockStorage([episodic as unknown as Entity]);
+      storage = createInMemoryStorageFake([episodic as unknown as Entity]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       const eligible = await pipeline.isPromotionEligible('episodic');
@@ -816,7 +779,7 @@ describe('ConsolidationPipeline', () => {
         visibility: 'private',
       };
 
-      storage = createMockStorage([entity as unknown as Entity]);
+      storage = createInMemoryStorageFake([entity as unknown as Entity]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       const result = await pipeline.applySummarizationToEntity('to_summarize', 0.3);
@@ -842,7 +805,7 @@ describe('ConsolidationPipeline', () => {
         visibility: 'private',
       };
 
-      storage = createMockStorage([entity as unknown as Entity]);
+      storage = createInMemoryStorageFake([entity as unknown as Entity]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       // With very high threshold, observations won't group
@@ -911,7 +874,7 @@ describe('ConsolidationPipeline', () => {
         },
       ];
 
-      storage = createMockStorage(entities as unknown as Entity[]);
+      storage = createInMemoryStorageFake(entities as unknown as Entity[]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       const patterns = await pipeline.extractPatterns('preference', 2);
@@ -937,7 +900,7 @@ describe('ConsolidationPipeline', () => {
         },
       ];
 
-      storage = createMockStorage(entities as unknown as Entity[]);
+      storage = createInMemoryStorageFake(entities as unknown as Entity[]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       // Only 1 preference entity, so no pattern can be found
@@ -954,7 +917,7 @@ describe('ConsolidationPipeline', () => {
         },
       ];
 
-      storage = createMockStorage(entities as unknown as Entity[]);
+      storage = createInMemoryStorageFake(entities as unknown as Entity[]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       const patterns = await pipeline.extractPatterns('preference', 3);
@@ -978,7 +941,7 @@ describe('ConsolidationPipeline', () => {
         { name: 'pref3', entityType: 'preference', observations: [] },
       ];
 
-      storage = createMockStorage(entities);
+      storage = createInMemoryStorageFake(entities);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       const semantic = await pipeline.createSemanticFromPattern(
@@ -1006,7 +969,7 @@ describe('ConsolidationPipeline', () => {
         { name: 'pref1', entityType: 'preference', observations: [] },
       ];
 
-      storage = createMockStorage(entities);
+      storage = createInMemoryStorageFake(entities);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       await pipeline.createSemanticFromPattern(pattern, ['pref1']);
@@ -1041,7 +1004,7 @@ describe('ConsolidationPipeline', () => {
         },
       ];
 
-      storage = createMockStorage(entities as unknown as Entity[]);
+      storage = createInMemoryStorageFake(entities as unknown as Entity[]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       const semantics = await pipeline.extractAndCreateSemanticPatterns(
@@ -1078,7 +1041,7 @@ describe('ConsolidationPipeline', () => {
         },
       ];
 
-      storage = createMockStorage(entities as unknown as Entity[]);
+      storage = createInMemoryStorageFake(entities as unknown as Entity[]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       // With 4 observations, only 2 match, so confidence is 0.5
@@ -1114,7 +1077,7 @@ describe('ConsolidationPipeline', () => {
       const entities: AgentEntity[] = [
         createWorkingMemory('ent1', 'session1'),
       ];
-      storage = createMockStorage(entities as unknown as Entity[]);
+      storage = createInMemoryStorageFake(entities as unknown as Entity[]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       await expect(
@@ -1155,7 +1118,7 @@ describe('ConsolidationPipeline', () => {
         },
       ];
 
-      storage = createMockStorage(entities as unknown as Entity[]);
+      storage = createInMemoryStorageFake(entities as unknown as Entity[]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       const result = await pipeline.mergeMemories(['older', 'newer'], 'newest');
@@ -1199,7 +1162,7 @@ describe('ConsolidationPipeline', () => {
         },
       ];
 
-      storage = createMockStorage(entities as unknown as Entity[]);
+      storage = createInMemoryStorageFake(entities as unknown as Entity[]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       const result = await pipeline.mergeMemories(['weak', 'strong'], 'strongest');
@@ -1240,7 +1203,7 @@ describe('ConsolidationPipeline', () => {
         },
       ];
 
-      storage = createMockStorage(entities as unknown as Entity[]);
+      storage = createInMemoryStorageFake(entities as unknown as Entity[]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       const result = await pipeline.mergeMemories(
@@ -1285,7 +1248,7 @@ describe('ConsolidationPipeline', () => {
         },
       ];
 
-      storage = createMockStorage(entities as unknown as Entity[]);
+      storage = createInMemoryStorageFake(entities as unknown as Entity[]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       const result = await pipeline.mergeMemories(['ent1', 'ent2'], 'newest');
@@ -1326,7 +1289,7 @@ describe('ConsolidationPipeline', () => {
         },
       ];
 
-      storage = createMockStorage(entities as unknown as Entity[]);
+      storage = createInMemoryStorageFake(entities as unknown as Entity[]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       await pipeline.mergeMemories(['ent1', 'ent2'], 'newest');
@@ -1372,7 +1335,7 @@ describe('ConsolidationPipeline', () => {
         },
       ];
 
-      storage = createMockStorage(entities as unknown as Entity[]);
+      storage = createInMemoryStorageFake(entities as unknown as Entity[]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       await pipeline.mergeMemories(['ent1', 'ent2'], 'newest');
@@ -1428,7 +1391,7 @@ describe('ConsolidationPipeline', () => {
         },
       ];
 
-      storage = createMockStorage(entities as unknown as Entity[]);
+      storage = createInMemoryStorageFake(entities as unknown as Entity[]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       // Low threshold to capture similarity
@@ -1472,7 +1435,7 @@ describe('ConsolidationPipeline', () => {
         },
       ];
 
-      storage = createMockStorage(entities as unknown as Entity[]);
+      storage = createInMemoryStorageFake(entities as unknown as Entity[]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       // High threshold should filter out dissimilar pairs
@@ -1512,7 +1475,7 @@ describe('ConsolidationPipeline', () => {
         },
       ];
 
-      storage = createMockStorage(entities as unknown as Entity[]);
+      storage = createInMemoryStorageFake(entities as unknown as Entity[]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       const duplicates = await pipeline.findDuplicates(0.5);
@@ -1542,7 +1505,7 @@ describe('ConsolidationPipeline', () => {
         { name: 'b2', entityType: 'note', observations: ['identical body content'], ...base },
       ];
 
-      storage = createMockStorage(entities as unknown as Entity[]);
+      storage = createInMemoryStorageFake(entities as unknown as Entity[]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       const duplicates = await pipeline.findDuplicates(0.9);
@@ -1574,7 +1537,7 @@ describe('ConsolidationPipeline', () => {
         confirmationCount: 1,
         visibility: 'private' as const,
       }));
-      storage = createMockStorage(entities as unknown as Entity[]);
+      storage = createInMemoryStorageFake(entities as unknown as Entity[]);
       pipeline = new ConsolidationPipeline(
         storage,
         workingMemory,
@@ -1622,7 +1585,7 @@ describe('ConsolidationPipeline', () => {
         },
       ];
 
-      storage = createMockStorage(entities as unknown as Entity[]);
+      storage = createInMemoryStorageFake(entities as unknown as Entity[]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       const results = await pipeline.autoMergeDuplicates(0.3, 'strongest');
@@ -1663,7 +1626,7 @@ describe('ConsolidationPipeline', () => {
         },
       ];
 
-      storage = createMockStorage(entities as unknown as Entity[]);
+      storage = createInMemoryStorageFake(entities as unknown as Entity[]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       const results = await pipeline.autoMergeDuplicates(0.5);
@@ -1719,7 +1682,7 @@ describe('ConsolidationPipeline', () => {
         },
       ];
 
-      storage = createMockStorage(entities as unknown as Entity[]);
+      storage = createInMemoryStorageFake(entities as unknown as Entity[]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       // Even with 3 entities that are all duplicates, once ent1+ent2 are merged,
@@ -1763,7 +1726,7 @@ describe('ConsolidationPipeline', () => {
         },
       ];
 
-      storage = createMockStorage(entities);
+      storage = createInMemoryStorageFake(entities);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       const history = await pipeline.getMergeHistory('ent1');
@@ -1796,7 +1759,7 @@ describe('ConsolidationPipeline', () => {
         },
       ];
 
-      storage = createMockStorage(entities);
+      storage = createInMemoryStorageFake(entities);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       const history = await pipeline.getMergeHistory('target');
@@ -1946,7 +1909,7 @@ describe('ConsolidationPipeline', () => {
         },
       ];
 
-      storage = createMockStorage(entities as unknown as Entity[]);
+      storage = createInMemoryStorageFake(entities as unknown as Entity[]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       pipeline.addRule({
@@ -1984,7 +1947,7 @@ describe('ConsolidationPipeline', () => {
         },
       ];
 
-      storage = createMockStorage(entities as unknown as Entity[]);
+      storage = createInMemoryStorageFake(entities as unknown as Entity[]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       // Add low priority first
@@ -2031,7 +1994,7 @@ describe('ConsolidationPipeline', () => {
         },
       ];
 
-      storage = createMockStorage(entities as unknown as Entity[]);
+      storage = createInMemoryStorageFake(entities as unknown as Entity[]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       pipeline.addRule({
@@ -2065,7 +2028,7 @@ describe('ConsolidationPipeline', () => {
         },
       ];
 
-      storage = createMockStorage(entities as unknown as Entity[]);
+      storage = createInMemoryStorageFake(entities as unknown as Entity[]);
       pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
 
       pipeline.addRule({
@@ -2153,7 +2116,7 @@ describe('ConsolidationPipeline', () => {
     }
 
     it('promotes fired inject-context prospective intentions', async () => {
-      const storage = createMockStorage([makeFiredProspective('p1')]);
+      const storage = createInMemoryStorageFake([makeFiredProspective('p1')]);
       const stage = new ProspectivePromotionStage(storage);
 
       const result = await stage.process([], {} as ConsolidateOptions);
@@ -2170,7 +2133,7 @@ describe('ConsolidationPipeline', () => {
     });
 
     it('does not promote fired invoke-action intentions', async () => {
-      const storage = createMockStorage([
+      const storage = createInMemoryStorageFake([
         makeFiredProspective('p-invoke', { actionKind: 'invoke' }),
       ]);
       const stage = new ProspectivePromotionStage(storage);
@@ -2181,7 +2144,7 @@ describe('ConsolidationPipeline', () => {
     });
 
     it('does not promote fired tag-related intentions', async () => {
-      const storage = createMockStorage([
+      const storage = createInMemoryStorageFake([
         makeFiredProspective('p-tag', { actionKind: 'tag-related' }),
       ]);
       const stage = new ProspectivePromotionStage(storage);
@@ -2192,14 +2155,14 @@ describe('ConsolidationPipeline', () => {
     });
 
     it('does not promote pending prospective intentions', async () => {
-      const storage = createMockStorage([makeFiredProspective('p-pend', { status: 'pending' })]);
+      const storage = createInMemoryStorageFake([makeFiredProspective('p-pend', { status: 'pending' })]);
       const stage = new ProspectivePromotionStage(storage);
       const result = await stage.process([], {} as ConsolidateOptions);
       expect(result.processed).toBe(0);
     });
 
     it('does not promote expired or cancelled intentions', async () => {
-      const storage = createMockStorage([
+      const storage = createInMemoryStorageFake([
         makeFiredProspective('exp', { status: 'expired' }),
         makeFiredProspective('can', { status: 'cancelled' }),
       ]);
@@ -2209,7 +2172,7 @@ describe('ConsolidationPipeline', () => {
     });
 
     it('is idempotent — does not re-promote already-fulfilled entities', async () => {
-      const storage = createMockStorage([makeFiredProspective('p-twice')]);
+      const storage = createInMemoryStorageFake([makeFiredProspective('p-twice')]);
       const stage = new ProspectivePromotionStage(storage);
       await stage.process([], {} as ConsolidateOptions);
       const second = await stage.process([], {} as ConsolidateOptions);
@@ -2219,7 +2182,7 @@ describe('ConsolidationPipeline', () => {
     });
 
     it('preserves existing tags when adding prospective-fulfilled', async () => {
-      const storage = createMockStorage([
+      const storage = createInMemoryStorageFake([
         makeFiredProspective('p-tags', { tags: ['existing-1', 'existing-2'] }),
       ]);
       const stage = new ProspectivePromotionStage(storage);
@@ -2229,7 +2192,7 @@ describe('ConsolidationPipeline', () => {
     });
 
     it('processes multiple fired intentions in one pass', async () => {
-      const storage = createMockStorage([
+      const storage = createInMemoryStorageFake([
         makeFiredProspective('a'),
         makeFiredProspective('b'),
         makeFiredProspective('c'),
@@ -2241,7 +2204,7 @@ describe('ConsolidationPipeline', () => {
     });
 
     it('reports updateEntity errors without aborting the batch', async () => {
-      const storage = createMockStorage([
+      const storage = createInMemoryStorageFake([
         makeFiredProspective('ok'),
         makeFiredProspective('fail'),
         makeFiredProspective('also-ok'),
@@ -2261,7 +2224,7 @@ describe('ConsolidationPipeline', () => {
     });
 
     it('reports vanished-mid-batch (updateEntity returns false) without inflating transformed count', async () => {
-      const storage = createMockStorage([
+      const storage = createInMemoryStorageFake([
         makeFiredProspective('present'),
         makeFiredProspective('vanished'),
       ]);
@@ -2282,7 +2245,7 @@ describe('ConsolidationPipeline', () => {
     });
 
     it('includes fireCount and action kind in error messages', async () => {
-      const storage = createMockStorage([makeFiredProspective('ctx')]);
+      const storage = createInMemoryStorageFake([makeFiredProspective('ctx')]);
       (storage.updateEntity as ReturnType<typeof vi.fn>).mockImplementation(async () => {
         throw new Error('boom');
       });
@@ -2294,7 +2257,7 @@ describe('ConsolidationPipeline', () => {
     });
 
     it('has the expected stage name', async () => {
-      const stage = new ProspectivePromotionStage(createMockStorage());
+      const stage = new ProspectivePromotionStage(createInMemoryStorageFake());
       expect(stage.name).toBe('prospective-promotion');
     });
   });
@@ -2331,7 +2294,7 @@ describe('ConsolidationPipeline names made in one millisecond', () => {
   }
 
   it('keeps two semantic memories of the same pattern', async () => {
-    const storage = createMockStorage();
+    const storage = createInMemoryStorageFake();
     const pipeline = new ConsolidationPipeline(storage, createMockWorkingMemory(), createMockDecayEngine());
     const pattern = {
       pattern: 'User prefers {X} food',
@@ -2351,7 +2314,7 @@ describe('ConsolidationPipeline names made in one millisecond', () => {
   });
 
   it('keeps the audit record of each of two merges', async () => {
-    const storage = createMockStorage([
+    const storage = createInMemoryStorageFake([
       memory('a1'),
       memory('a2'),
       memory('b1'),

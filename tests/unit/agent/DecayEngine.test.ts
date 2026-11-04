@@ -14,8 +14,7 @@ import { AccessTracker } from '../../../src/agent/AccessTracker.js';
 import type { IGraphStorage, Entity } from '../../../src/types/types.js';
 import type { AgentEntity } from '../../../src/types/agent-memory.js';
 import { GraphStorage } from '../../../src/core/GraphStorage.js';
-import * as fs from 'fs';
-import * as os from 'os';
+import { makeTempDir, removeTempDir } from '../../helpers/tempStorage.js';
 import * as path from 'path';
 
 // ==================== Mock Storage ====================
@@ -1281,7 +1280,7 @@ describe('DecayEngine half-life factors (pins)', () => {
       vi.useFakeTimers();
       const now = Date.now();
       vi.setSystemTime(now);
-      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'decay-forget-'));
+      const dir = makeTempDir('decay-forget-');
       const file = path.join(dir, 'memory.jsonl');
       try {
         const gs = new GraphStorage(file);
@@ -1311,7 +1310,7 @@ describe('DecayEngine half-life factors (pins)', () => {
         expect(reloaded.entities.map((e) => e.name)).toEqual(['strong']);
         expect(reloaded.relations.some((r) => r.from === 'weak' || r.to === 'weak')).toBe(false);
       } finally {
-        fs.rmSync(dir, { recursive: true, force: true });
+        removeTempDir(dir);
       }
     });
   });
