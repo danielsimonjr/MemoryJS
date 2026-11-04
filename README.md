@@ -46,7 +46,7 @@ For a runnable CLI (`memory` / `memoryjs`): `bunx --package @danielsimonjr/memor
 | Bitemporal versioning (entities + observations) | `invalidateEntity()` / `entityAsOf()` / `entityTimeline()` |
 | Temporal relations (validity windows) | `relationManager.invalidateRelation()` / `queryAsOf()` / `timeline()` |
 | Memory versioning with contradiction-driven supersession | `Entity.version` / `parentEntityName` / `rootEntityName` / `supersededBy` |
-| Project scoping | `Entity.projectId` + `MEMORY_DEFAULT_PROJECT_ID` |
+| Project scoping | `Entity.projectId` + `new ManagerContext(path, { defaultProjectId })` |
 | Two-tier deletion (exact match → semantic fallback) | `ctx.semanticForget` |
 | Hierarchical nesting + traversal | `ctx.hierarchyManager` (ancestors / descendants / subtrees) |
 | Stable named references that survive entity renames | `ctx.refIndex.register()` / `resolve()` |
@@ -117,7 +117,7 @@ For a runnable CLI (`memory` / `memoryjs`): `bunx --package @danielsimonjr/memor
 | JSONL or SQLite backend (FTS5, BM25, WAL mode) | `MEMORY_STORAGE_TYPE=jsonl\|sqlite` |
 | Pluggable Memory Engine backend | `MEMORY_BACKEND=sqlite\|in-memory` |
 | Memory-mapped file loading for large stores | `MEMORY_USE_MMAP=true`, `MEMORY_MMAP_THRESHOLD_BYTES` |
-| Segment-sharded JSONL (FNV-routed N-way shards) | `MEMORY_STORAGE_SEGMENT_COUNT=1..1024` |
+| Segment-sharded JSONL (FNV-routed N-way shards) | `MEMORY_STORAGE_SEGMENT_COUNT=2..1024` |
 | Columnar observation storage | `JsonlColumnStore` (env-gated) |
 | Tiered index — LRU hot / disk warm / Brotli cold | `LRUHotTier` → `DiskWarmTier` → `BrotliColdTier` via `TieredIndex` |
 | In-memory entity-cache compression | `ctx.compressedEntityCache`, `CompressedMap` |
@@ -966,8 +966,8 @@ Persistence: the JSONL backing is append-only and single-writer per file (a torn
 
 memoryjs is configured almost entirely through environment variables. The
 table below lists the most-used; the full reference (decay / salience /
-context-window / freshness / RBAC / mmap / segment / SQLite-pool / partial-index
-knobs) lives in [CLAUDE.md](CLAUDE.md#environment-variables).
+context-window / freshness / mmap / segment / SQLite-pool / partial-index
+knobs) lives in [CLAUDE.md](CLAUDE.md#environment-variables). RBAC is wired in code via `ctx.rbacMiddleware` (see [AGENT_INTEGRATION](docs/guides/AGENT_INTEGRATION.md)), not by an env var.
 
 | Variable | Description | Default |
 |---|---|---|
@@ -983,14 +983,16 @@ knobs) lives in [CLAUDE.md](CLAUDE.md#environment-variables).
 | `MEMORY_AUDIT_LOG_FILE` | Path for the audit JSONL trail | — |
 | `MEMORY_AGENT_ROLE` | Apply a built-in role profile (`researcher` / `planner` / `executor` / `reviewer` / `coordinator`) | — |
 | `MEMORY_VALIDATE_ON_STORE` | Run `MemoryValidator` before observation writes | `false` |
+| `MEMORY_AUTO_LINK` | Auto-link entity mentions in observation writes (takes effect once `ctx.autoLinker` is accessed) | `false` |
+| `MEMORY_OBSERVATION_DEDUP` | Observation de-duplication on writes, using default dedup options | `false` |
+| `MEMORY_FUZZY_BLOOM_PRESCREEN` | Enable `ctx.bloomPreScreener`, a Bloom-filter pre-screen for `FuzzySearch` (built lazily, cleared on entity events) | `false` |
 | `MEMORY_AUDIT_ATTRIBUTION_REQUIRED` | `CollaborationAuditEnforcer` strict mode | `false` |
-| `MEMORY_RBAC_ENABLED` | Wire `RbacMiddleware` into `GovernancePolicy` | `false` |
 | `MEMORY_DEFAULT_VISIBILITY` | Default `AgentEntity.visibility` | `private` |
 | `MEMORY_USE_MMAP` | Use mmap for `GraphStorage.loadFromDisk` (strict `'true'` literal match) | `false` |
 | `MEMORY_MMAP_THRESHOLD_BYTES` | Minimum file size to trigger the mmap path; `0` = always | `104857600` |
-| `MEMORY_STORAGE_SEGMENT_COUNT` | FNV-routed JSONL shard count (1–1024) | `1` (off) |
+| `MEMORY_STORAGE_SEGMENT_COUNT` | FNV-routed JSONL shard count (2–1024; unset = single-file) | unset (single-file) |
 | `MEMORY_SQLITE_READ_POOL_SIZE` | Read-connection pool size for `SQLiteStorage` | `4` |
-| `MEMORY_SQLITE_AUTO_INDEX` | Enable `PartialIndexAdvisor`-driven automatic partial-index DDL | `false` |
+| `MEMORY_SQLITE_AUTO_INDEX` | Storage-side hook (`SQLiteStorage.recordFilter`) is wired, but no in-tree search path records filters, so this currently has no effect on query plans. Call `recordFilter` yourself if you drive raw SQL | `false` |
 | `SKIP_BENCHMARKS` | Skip perf-benchmark tests | `false` |
 | `LOG_LEVEL` | `debug` / `info` / `warn` / `error` | (none) |
 

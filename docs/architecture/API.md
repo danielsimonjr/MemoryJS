@@ -109,6 +109,19 @@ const ctx = new ManagerContext('./memory.db');
 | `diagnostics` | `Diagnostics` | Query `explainPlan` + index health surface (v1.15.0 Phase 0/1) |
 | `graphRankPrior` | `GraphRankPrior` | Cached normalized-PageRank ranking signal, event-invalidated (v2.9.0, `@experimental`) |
 | `hybridSearchManager` | `HybridSearchManager` | Semantic + lexical + symbolic (+ optional graph) layered search (v2.9.0) |
+| `materializedViews` | `MaterializedViewsManager` | Pre-computed result sets for repeated filter-based queries; lazy, auto-invalidated on entity events (`@experimental`) |
+| `observationStore` | `ObservationStore` | Per-context, in-process interned observation store; not persisted, starts empty on each new context |
+| `tieredPostingsIndex` | `TieredIndex<unknown> \| null` | 3-tier LRU / disk / Brotli index composer, `null` unless `MEMORY_TIERED_INDEX='true'`. `@internal`: no in-tree consumer yet |
+| `cachePressure` | `CachePressureCoordinator` | Global cache-entry budget coordinator (`MEMORY_CACHE_BUDGET_ENTRIES`); caches register with it lazily (`@experimental`) |
+| `eventManager` | `EventManager` | Event reification: actions become `entityType: 'event'` hub entities with role relations; `whoDidWhat()` (`@experimental`) |
+| `reconstructiveMemory(config?)` | `ReconstructiveMemory` | **Method, not a getter.** MRAgent Cue–Tag–Content memory with active multi-step reconstruction; defaults its backing to this context's managers (`@experimental`) |
+| `prospectiveMemory` | `ProspectiveMemoryManager` | Intention-to-act (future-tense) memory; lazy |
+| `spellChecker` | `SpellChecker` | Spell correction over the `NGramIndex` vocabulary (entity names + tag values); `suggest(query)`; lazy |
+| `toolAffordanceManager` | `ToolAffordanceManager` | Per-tool rolling outcome statistics for adaptive tool selection; lazy |
+| `toolCallObserver` | `ToolCallObserver` | Canonical producer pipeline for `toolAffordanceManager` (`observeStart` / `observeComplete` / `observeError`). `@internal` |
+| `agentMemory(config?)` | `AgentMemoryManager` | **Method, not a getter.** Agent Memory System facade; `config` overrides the env-var defaults and re-instantiates the cached facade |
+| `queryNaturalLanguage(text)` | `Promise<Entity[]>` | **Method.** LLM-planned NL query decomposition; uses the default no-LLM planner unless a custom `llmQueryPlanner()` was initialised. The LLM provider is configured in code (`llmQueryPlanner()`), not by an env var |
+| `bloomPreScreener` | `BloomPreScreener \| null` | Bloom-filter pre-screen for `FuzzySearch` (`@experimental`). `null` unless `MEMORY_FUZZY_BLOOM_PRESCREEN='true'`; built lazily on the first fuzzy search and cleared on entity events |
 | `createProceduralGraph(config)` | `Promise<ProceduralGraphManager>` | **Factory, not a lazy getter** (`@experimental`). See note below. |
 
 Procedural Graph is created via `createProceduralGraph(config)`, not a `ctx.proceduralGraph` getter:

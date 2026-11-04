@@ -976,7 +976,6 @@ opt-in / require explicit configuration.
 | `MEMORY_GOVERNANCE_ENABLED` | `'true'` (strict literal — `'1'`/`'yes'`/`'TRUE'` are silently ignored) | unset = not enforced |
 | `MEMORY_AUDIT_LOG_FILE` | path | `<basename>-audit.jsonl` sidecar |
 | `MEMORY_FRESHNESS_TTL_DEFAULT_HOURS` | number | `168` |
-| `MEMORY_LLM_QUERY_PLANNER_PROVIDER` | provider name | — |
 | `MEMORY_MAX_DECOMPRESSED_BYTES` | Positive integer (bytes) | `268435456` (256 MB) — decompression-bomb cap (Unreleased, Sec8) |
 
 **`MEMORY_GOVERNANCE_ENABLED` now actually enforces (Unreleased, Sec1).**
@@ -1043,6 +1042,14 @@ rationale.
 | `MEMORY_ENGINE_LENGTH_WEIGHT` | 0–1 | `0.3` |
 | `MEMORY_ENGINE_KEYWORD_WEIGHT` | 0–1 | `0.4` |
 | `MEMORY_ENGINE_OVERLAP_WEIGHT` | 0–1 | `0.3` |
+
+### Search and observation-write toggles
+
+| Variable | Values | Default |
+|----------|--------|---------|
+| `MEMORY_FUZZY_BLOOM_PRESCREEN` | `'true'` (strict literal — `'1'`/`'yes'`/`'TRUE'` are ignored) | unset = off. Enables `ctx.bloomPreScreener`, a Bloom-filter pre-screen for `FuzzySearch`. The filter is built lazily on the first fuzzy search and cleared on entity events, so the next fuzzy search rebuilds it. |
+| `MEMORY_AUTO_LINK` | `'true'` (strict literal) | unset = off. Observation writes auto-link detected entity mentions into relations. Takes effect only after `ctx.autoLinker` has been accessed once (lazy getter that wires `AutoLinker` into `ObservationManager`). A per-call `autoLink` option overrides it. |
+| `MEMORY_OBSERVATION_DEDUP` | `'true'` (strict literal) | unset = off. Enables observation de-duplication on writes with the default dedup options, unless the call passes an explicit `dedup` option. |
 
 ### Memory Validator (v1.13 → η.5.5)
 
