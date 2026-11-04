@@ -7,7 +7,7 @@
  * @module agent/ConsolidationPipeline
  */
 
-import type { IGraphStorage, Entity } from '../types/types.js';
+import type { IGraphStorage, Entity, Relation } from '../types/types.js';
 import type {
   AgentEntity,
   ConsolidateOptions,
@@ -34,7 +34,11 @@ import type { WorkingMemoryManager } from './WorkingMemoryManager.js';
 import { requireWorkingMemoryEntity } from './workingMemoryGuard.js';
 import type { DecayEngine } from './DecayEngine.js';
 import { buildReinforcementUpdates } from './DecayEngine.js';
-import { hasDeltaPrimitives } from '../core/storageCapabilities.js';
+import {
+  hasDeltaPrimitives,
+  withStorageWriteLock,
+  type DeltaCapableStorage,
+} from '../core/storageCapabilities.js';
 import { SummarizationService } from './SummarizationService.js';
 import { PatternDetector } from './PatternDetector.js';
 import { RuleEvaluator } from './RuleEvaluator.js';
@@ -916,44 +920,53 @@ export class ConsolidationPipeline {
     // Record merge in audit trail
     await this.recordMerge(entityNames, survivor.name, strategy);
 
-    // Remove other entities (delete them from storage)
-    const graph = await this.storage.loadGraph();
+    // Remove other entities (delete them from storage) and rewire relations.
     const mergedNames = entityNames.filter((n) => n !== survivor.name);
+    const storage = this.storage;
 
-    // Filter out merged entities and their relations
-    const filteredEntities = graph.entities.filter(
-      (e) => !mergedNames.includes(e.name)
-    );
+    if (hasDeltaPrimitives(storage)) {
+      // OPT-15 / DES-11: touch only the relations incident to merged entities.
+      await this.applyMergeDelta(storage, survivor.name, mergedNames);
+    } else {
+      // Fallback for storages without delta primitives (e.g. minimal fakes):
+      // full-graph rewrite through saveGraph.
+      const graph = await storage.loadGraph();
 
-    // Retarget relations
-    const seenRelations = new Set<string>();
-    const filteredRelations = graph.relations
-      .map((r) => {
-        let from = r.from;
-        let to = r.to;
+      // Filter out merged entities and their relations
+      const filteredEntities = graph.entities.filter(
+        (e) => !mergedNames.includes(e.name)
+      );
 
-        // Retarget from merged entities
-        if (mergedNames.includes(from)) from = survivor.name;
-        if (mergedNames.includes(to)) to = survivor.name;
+      // Retarget relations
+      const seenRelations = new Set<string>();
+      const filteredRelations = graph.relations
+        .map((r) => {
+          let from = r.from;
+          let to = r.to;
 
-        return { ...r, from, to };
-      })
-      .filter((r) => {
-        // Skip self-relations
-        if (r.from === r.to) return false;
+          // Retarget from merged entities
+          if (mergedNames.includes(from)) from = survivor.name;
+          if (mergedNames.includes(to)) to = survivor.name;
 
-        // Skip duplicates
-        const key = `${r.from}|${r.to}|${r.relationType}`;
-        if (seenRelations.has(key)) return false;
-        seenRelations.add(key);
+          return { ...r, from, to };
+        })
+        .filter((r) => {
+          // Skip self-relations
+          if (r.from === r.to) return false;
 
-        return true;
+          // Skip duplicates
+          const key = `${r.from}|${r.to}|${r.relationType}`;
+          if (seenRelations.has(key)) return false;
+          seenRelations.add(key);
+
+          return true;
+        });
+
+      await storage.saveGraph({
+        entities: filteredEntities,
+        relations: filteredRelations,
       });
-
-    await this.storage.saveGraph({
-      entities: filteredEntities,
-      relations: filteredRelations,
-    });
+    }
 
     return {
       survivor: { ...survivor, ...updates } as AgentEntity,
@@ -962,6 +975,102 @@ export class ConsolidationPipeline {
       strategy,
       observationCount: mergedObservations.length,
     };
+  }
+
+  /**
+   * Delta form of the merge rewrite (OPT-15 / DES-11).
+   *
+   * Runs under the storage write lock and touches only the relations incident
+   * to merged entities:
+   * 1. Collect relations touching merged entities, retargeted to the survivor.
+   *    Self-loops are dropped; a retargeted key already on the survivor (or
+   *    produced earlier in this batch) is dropped, so the survivor's existing
+   *    relation wins over a retargeted duplicate.
+   * 2. `deleteEntities(mergedNames)` removes the merged entities and cascades
+   *    their relations.
+   * 3. `appendRelations(retargeted)` re-adds the rewired relations.
+   *
+   * Failure handling: if step 2 or 3 throws after the deletion has been
+   * applied, the deleted entities and their cascaded relations are restored
+   * from the delete result and any partially appended retargeted relations are
+   * removed, then the original error is rethrown. If that rollback itself
+   * fails, the error reports that the graph may be partially merged. A failure
+   * inside `deleteEntities` is not compensated here: its atomicity is the
+   * backend's guarantee.
+   *
+   * Unlike the saveGraph fallback, relations unrelated to the merge are not
+   * rewritten, so pre-existing duplicates elsewhere in the graph are left as-is.
+   */
+  private async applyMergeDelta(
+    storage: DeltaCapableStorage,
+    survivorName: string,
+    mergedNames: string[]
+  ): Promise<void> {
+    const mergedSet = new Set(mergedNames);
+    const relKey = (r: Pick<Relation, 'from' | 'to' | 'relationType'>): string =>
+      `${r.from}|${r.to}|${r.relationType}`;
+
+    await withStorageWriteLock(storage, async () => {
+      const survivorKeys = new Set(
+        storage.getRelationsFor(survivorName).map(relKey)
+      );
+      const retargeted: Relation[] = [];
+      for (const name of mergedNames) {
+        for (const r of storage.getRelationsFor(name)) {
+          const from = mergedSet.has(r.from) ? survivorName : r.from;
+          const to = mergedSet.has(r.to) ? survivorName : r.to;
+          if (from === to) continue;
+          const key = relKey({ from, to, relationType: r.relationType });
+          if (survivorKeys.has(key)) continue;
+          survivorKeys.add(key);
+          retargeted.push({ ...r, from, to });
+        }
+      }
+
+      let deleted: Awaited<ReturnType<DeltaCapableStorage['deleteEntities']>> | undefined;
+      try {
+        deleted = await storage.deleteEntities(mergedNames);
+        if (retargeted.length > 0) await storage.appendRelations(retargeted);
+      } catch (error) {
+        if (deleted) {
+          await this.rollbackMergeDelta(storage, deleted, retargeted, error);
+        }
+        throw error;
+      }
+    });
+  }
+
+  /**
+   * Restore the state captured by a delete result after a failed merge delta.
+   * Throws a wrapped error (with the original as `cause`) if restoration fails.
+   */
+  private async rollbackMergeDelta(
+    storage: DeltaCapableStorage,
+    deleted: { deletedEntities: Entity[]; deletedRelations: Relation[] },
+    retargeted: Relation[],
+    cause: unknown
+  ): Promise<void> {
+    try {
+      if (retargeted.length > 0) {
+        // Retargeted keys never collide with a pre-existing relation (they were
+        // filtered against the survivor's keys), so deleting them is safe.
+        await storage.deleteRelations(
+          retargeted.map((r) => ({ from: r.from, to: r.to, relationType: r.relationType }))
+        );
+      }
+      if (deleted.deletedEntities.length > 0) {
+        await storage.appendEntities(structuredClone(deleted.deletedEntities));
+      }
+      if (deleted.deletedRelations.length > 0) {
+        await storage.appendRelations(structuredClone(deleted.deletedRelations));
+      }
+    } catch (rollbackError) {
+      const detail = rollbackError instanceof Error ? rollbackError.message : String(rollbackError);
+      throw new Error(
+        `ConsolidationPipeline.mergeMemories: delta write failed and rollback also failed; graph may be partially merged (rollback: ${detail})`,
+        { cause }
+      );
+    }
   }
 
   /**
