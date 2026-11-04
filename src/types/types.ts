@@ -1307,6 +1307,47 @@ export interface IGraphStorage {
    */
   renameEntity?(oldName: string, newName: string): Promise<Entity>;
 
+  // ==================== Optional delta primitives (DES-1) ====================
+  //
+  // Batch delta writes implemented by both first-party backends
+  // (`GraphStorage`, `SQLiteStorage`) with identical signatures. OPTIONAL so
+  // pre-existing third-party / test implementations remain valid. Managers
+  // detect them with `typeof storage.<member> === 'function'` (or the
+  // `hasDeltaPrimitives` guard in `core/storageCapabilities.ts`) and fall back
+  // to the single-item primitives when absent.
+
+  /** Append a batch of entities in one storage operation. */
+  appendEntities?(entities: Entity[]): Promise<void>;
+
+  /** Append a batch of relations in one storage operation. */
+  appendRelations?(relations: Relation[]): Promise<void>;
+
+  /** Update a batch of entities all-or-nothing; resolves to the updated entities. */
+  updateEntities?(
+    batch: Array<{ name: string; updates: Partial<Entity> }>,
+    options?: { timestamp?: string },
+  ): Promise<Entity[]>;
+
+  /** Delete entities by name, cascading to their relations. */
+  deleteEntities?(
+    names: string[],
+  ): Promise<{ deletedEntities: Entity[]; deletedRelations: Relation[] }>;
+
+  /** Delete relations by key; `touchEntities` get their `lastModified` bumped. */
+  deleteRelations?(
+    keys: Array<Pick<Relation, 'from' | 'to' | 'relationType'>>,
+    options?: { touchEntities?: string[]; timestamp?: string },
+  ): Promise<Relation[]>;
+
+  /**
+   * Manager-level write lock (see `GraphStorage.graphMutex`). Structural
+   * mirror of `utils/AsyncMutex.acquire`; `types/` must not import it.
+   * Optional so third-party fakes without a lock still compose.
+   */
+  readonly graphMutex?: {
+    acquire(options?: { signal?: AbortSignal }): Promise<() => void>;
+  };
+
   /**
    * Graph event emitter powering event-driven derived views (TF-IDF sync,
    * rank priors, embedding caches, columnar observation mirroring).

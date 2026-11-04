@@ -108,7 +108,7 @@ export class ObservationManager {
     batch: Array<{ name: string; updates: Partial<Entity> }>,
     options?: { timestamp?: string },
   ): Promise<void> {
-    if (typeof (this.storage as Partial<GraphStorage>).updateEntities === 'function') {
+    if (typeof this.storage.updateEntities === 'function') {
       await this.storage.updateEntities(batch, options);
       return;
     }

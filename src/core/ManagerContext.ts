@@ -773,7 +773,7 @@ export class ManagerContext {
     fn: (b: BatchTransaction) => void | Promise<void>,
     options: BatchOptions = {},
   ): Promise<BatchResult> {
-    const builder = new BatchTransaction(this.storage as GraphStorage);
+    const builder = new BatchTransaction(this.storage);
     try {
       await fn(builder);
     } catch (err) {

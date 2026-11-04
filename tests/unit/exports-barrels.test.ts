@@ -172,3 +172,12 @@ describe('CMP-4 barrel exports', () => {
     expect(typeProbes).toBeUndefined();
   });
 });
+
+describe('DES-1 storage capability barrel exports', () => {
+  it('core barrel and package root export hasDeltaPrimitives and withStorageWriteLock', () => {
+    expect(typeof core.hasDeltaPrimitives).toBe('function');
+    expect(typeof core.withStorageWriteLock).toBe('function');
+    expect(root.hasDeltaPrimitives).toBe(core.hasDeltaPrimitives);
+    expect(root.withStorageWriteLock).toBe(core.withStorageWriteLock);
+  });
+});
