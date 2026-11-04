@@ -117,6 +117,7 @@ function withoutDelta(storage: IGraphStorage): IGraphStorage {
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
+  for (const storage of openedStorages.splice(0)) storage.close?.();
   cleanupTempDirs();
 });
 
@@ -193,15 +194,23 @@ describe('mergeMemories delta path (in-memory fake)', () => {
 
 // ==================== Parity: delta vs saveGraph on real backends ====================
 
+
+/** Storages opened in the current test; closed in afterEach so Windows can remove the temp dirs. */
+const openedStorages: Array<{ close?: () => void }> = [];
+function track<T>(storage: T): T {
+  openedStorages.push(storage as unknown as { close?: () => void });
+  return storage;
+}
+
 const REAL_BACKENDS = [
   {
     name: 'jsonl',
-    open: (path: string) => new GraphStorage(path) as unknown as IGraphStorage,
+    open: (path: string) => track(new GraphStorage(path)) as unknown as IGraphStorage,
     path: makeTempJsonlPath,
   },
   {
     name: 'sqlite',
-    open: (path: string) => new SQLiteStorage(path) as unknown as IGraphStorage,
+    open: (path: string) => track(new SQLiteStorage(path)) as unknown as IGraphStorage,
     path: makeTempSqlitePath,
   },
 ] as const;

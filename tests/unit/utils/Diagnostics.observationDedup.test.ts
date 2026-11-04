@@ -22,11 +22,13 @@ async function seed(filePath: string, name: 'jsonl' | 'sqlite'): Promise<void> {
     { name: 'B', entityType: 'note', observations: [SHARED] },
     { name: 'C', entityType: 'task', observations: [SHARED, 'only in C'] },
   ]);
+  // Close the seeding context: Windows cannot remove a temp dir while a
+  // SQLite connection inside it is still open (EBUSY on rmSync).
+  ctx.close();
 }
 
 function closeCtx(ctx: ManagerContext): void {
-  const s = ctx.storage as unknown as { close?: () => void };
-  s.close?.();
+  ctx.close();
 }
 
 describe('ctx.diagnostics() observationDedup opt-in (DES-12)', () => {

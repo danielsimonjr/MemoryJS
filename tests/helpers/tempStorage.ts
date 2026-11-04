@@ -32,9 +32,24 @@ export function makeTempSqlitePath(): string {
   return join(makeTempDir('memoryjs-sqlite-'), 'memory.db');
 }
 
-/** Remove every temp dir made by this module and not yet removed. */
+/**
+ * Remove every temp dir made by this module and not yet removed.
+ *
+ * Every dir is attempted and forgotten, then the first failure is rethrown,
+ * so a leaked SQLite handle (Windows: `EBUSY` on `rmSync`) fails the test
+ * that leaked it exactly once instead of every later test in the file.
+ */
 export function cleanupTempDirs(): void {
-  for (const dir of [...createdDirs]) removeTempDir(dir);
+  let firstError: unknown;
+  for (const dir of [...createdDirs]) {
+    try {
+      removeTempDir(dir);
+    } catch (err) {
+      createdDirs.delete(dir);
+      firstError ??= err;
+    }
+  }
+  if (firstError !== undefined) throw firstError;
 }
 
 export interface BackendCase {
