@@ -2,9 +2,9 @@ metadata:
   name: "@danielsimonjr/memoryjs"
   version: 4.4.0
   lastUpdated: "2026-11-04"
-  totalFiles: 313
+  totalFiles: 317
   totalModules: 12
-  totalExports: 2149
+  totalExports: 2185
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -274,6 +274,7 @@ modules:
         - file: ../types/types.js
           imports:
             - IGraphStorage
+            - Entity
           typeOnly: true
         - file: ../types/agent-memory.js
           imports:
@@ -288,6 +289,9 @@ modules:
         - file: ../utils/fillDefaults.js
           imports:
             - fillDefaults
+        - file: ../core/storageCapabilities.js
+          imports:
+            - hasDeltaPrimitives
         - file: ../types/agent-memory.js
           imports:
             - AccessContext
@@ -698,6 +702,7 @@ modules:
           imports:
             - IGraphStorage
             - Entity
+            - Relation
           typeOnly: true
         - file: ../types/agent-memory.js
           imports:
@@ -739,6 +744,14 @@ modules:
           imports:
             - DecayEngine
           typeOnly: true
+        - file: ./DecayEngine.js
+          imports:
+            - buildReinforcementUpdates
+        - file: ../core/storageCapabilities.js
+          imports:
+            - hasDeltaPrimitives
+            - withStorageWriteLock
+            - DeltaCapableStorage
         - file: ./SummarizationService.js
           imports:
             - SummarizationService
@@ -959,6 +972,7 @@ modules:
           imports:
             - IGraphStorage
             - ReadonlyKnowledgeGraph
+            - Entity
           typeOnly: true
         - file: ../core/GraphStorage.js
           imports:
@@ -992,6 +1006,9 @@ modules:
             - computeDegreeMap
             - normalizedDegree
             - DegreeMap
+        - file: ../core/storageCapabilities.js
+          imports:
+            - hasDeltaPrimitives
         - file: ../types/agent-memory.js
           imports:
             - DecayResult
@@ -1000,6 +1017,7 @@ modules:
           reExport: true
           typeOnly: true
       exports:
+        - buildReinforcementUpdates
         - DecayEngine
         - DecayResult
         - ForgetOptions
@@ -1014,6 +1032,9 @@ modules:
         - DecayEngineConfig
         - DecayOperationOptions
         - ReinforcementOptions
+        - BatchReinforcementOptions
+      functions:
+        - buildReinforcementUpdates
     src/agent/DecayScheduler.ts:
       description: Decay Scheduler
       externalDependencies: []
@@ -1981,6 +2002,7 @@ modules:
             - ObservationContext
             - ProspectiveAction
             - ProspectiveEntity
+            - ProspectiveEvaluationContext
             - ProspectiveLifecycle
             - ProspectiveTrigger
             - TriggerCondition
@@ -2791,6 +2813,7 @@ modules:
             - ProspectiveMemoryManager
             - ProspectiveMemoryConfig
             - ProcedureInvoker
+            - PredicateEvaluator
             - ScheduleOptions
           reExport: true
         - file: ./FailureManager.js
@@ -3367,6 +3390,7 @@ modules:
         - ProspectiveMemoryManager
         - ProspectiveMemoryConfig
         - ProcedureInvoker
+        - PredicateEvaluator
         - ScheduleOptions
         - FailureManager
         - FailureManagerConfig
@@ -3773,6 +3797,7 @@ modules:
         - ProspectiveMemoryManager
         - ProspectiveMemoryConfig
         - ProcedureInvoker
+        - PredicateEvaluator
         - ScheduleOptions
         - FailureManager
         - FailureManagerConfig
@@ -4727,6 +4752,9 @@ modules:
         - file: ../../../../utils/logger.js
           imports:
             - logger
+        - file: ../../../../utils/envConfig.js
+          imports:
+            - parseSegmentCount
         - file: ./LockedProceduralGraphBacking.js
           imports:
             - LockedProceduralGraphBacking
@@ -7097,6 +7125,11 @@ modules:
         - file: ../utils/logger.js
           imports:
             - logger
+        - file: ../utils/envConfig.js
+          imports:
+            - parseSegmentCount
+            - readEnvStrictFlag
+            - readEnvStrictInt
         - file: ./TransactionManager.js
           imports:
             - BatchTransaction
@@ -7209,10 +7242,7 @@ modules:
     src/core/ManagerContext.ts:
       description: Manager Context
       externalDependencies: []
-      nodeDependencies:
-        - module: path
-          imports:
-            - path
+      nodeDependencies: []
       internalDependencies:
         - file: ../utils/logger.js
           imports:
@@ -7224,6 +7254,7 @@ modules:
         - file: ../utils/Diagnostics.js
           imports:
             - buildDiagnosticsReport
+            - DiagnosticsOptions
             - DiagnosticsReport
         - file: ./TransactionManager.js
           imports:
@@ -7263,33 +7294,29 @@ modules:
         - file: ./ObservationManager.js
           imports:
             - ObservationManager
-        - file: ./columns/JsonlColumnStore.js
-          imports:
-            - JsonlColumnStore
         - file: ../search/tiered/TieredIndex.js
           imports:
             - TieredIndex
-            - buildTieredIndex
-        - file: ../search/tiered/LRUHotTier.js
-          imports:
-            - LRUHotTier
-        - file: ../search/tiered/DiskWarmTier.js
-          imports:
-            - DiskWarmTier
-        - file: ../search/tiered/BrotliColdTier.js
-          imports:
-            - BrotliColdTier
+          typeOnly: true
         - file: ../utils/compression/CompressedMap.js
           imports:
             - CompressedMap
-        - file: ../utils/compression/ICompressionAdapter.js
-          imports:
-            - ZlibCompressionAdapter
+          typeOnly: true
         - file: ./columns/IColumnStore.js
           imports:
             - IColumnStore
             - ObservationColumn
           typeOnly: true
+        - file: ./context/StorageInfraFacade.js
+          imports:
+            - StorageInfraFacade
+        - file: ../utils/envConfig.js
+          imports:
+            - readEnvNumber
+            - readEnvNumberOrUndefined
+            - readEnvLooseFlag
+            - readEnvStrictFlag
+            - EnvNumberBounds
         - file: ./HierarchyManager.js
           imports:
             - HierarchyManager
@@ -7406,6 +7433,7 @@ modules:
         - file: ../utils/index.js
           imports:
             - validateFilePath
+            - sidecarPath
         - file: ../features/ContradictionDetector.js
           imports:
             - ContradictionDetector
@@ -7477,6 +7505,7 @@ modules:
         - file: ../agent/ProspectiveMemoryManager.js
           imports:
             - ProspectiveMemoryManager
+            - PredicateEvaluator
             - ProcedureInvoker
         - file: ../agent/FailureManager.js
           imports:
@@ -7510,6 +7539,7 @@ modules:
         - file: ../search/BloomPreScreener.js
           imports:
             - BloomPreScreener
+          typeOnly: true
         - file: ../features/GovernanceManager.js
           imports:
             - GovernanceManager
@@ -7570,6 +7600,9 @@ modules:
         - file: ../utils/textSimilarity.js
           imports:
             - calculateTextSimilarity
+        - file: ../utils/envConfig.js
+          imports:
+            - readEnvStrictFlag
         - file: ../utils/graphCopy.js
           imports:
             - borrowGraphView
@@ -7756,6 +7789,9 @@ modules:
         - file: ../utils/logger.js
           imports:
             - logger
+        - file: ../utils/envConfig.js
+          imports:
+            - readEnvPositiveIntOrDefault
         - file: ../search/PartialIndexAdvisor.js
           imports:
             - PartialIndexAdvisor
@@ -7826,6 +7862,7 @@ modules:
           imports:
             - Entity
             - Relation
+            - IGraphStorage
             - KnowledgeGraph
             - LongRunningOperationOptions
             - BatchOperation
@@ -7837,6 +7874,9 @@ modules:
           imports:
             - GraphStorage
           typeOnly: true
+        - file: ./storageCapabilities.js
+          imports:
+            - hasWriteLock
         - file: ../features/IOManager.js
           imports:
             - IOManager
@@ -7886,8 +7926,6 @@ modules:
             - EntityDeletedEvent
             - RelationCreatedEvent
             - RelationDeletedEvent
-            - ObservationAddedEvent
-            - ObservationDeletedEvent
           typeOnly: true
       exports:
         - TransitionLedger
@@ -7937,6 +7975,65 @@ modules:
         - JsonlColumnStore
       classes:
         - JsonlColumnStore
+    src/core/context/StorageInfraFacade.ts:
+      description: StorageInfraFacade
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../../search/tiered/TieredIndex.js
+          imports:
+            - TieredIndex
+            - buildTieredIndex
+        - file: ../../search/tiered/LRUHotTier.js
+          imports:
+            - LRUHotTier
+        - file: ../../search/tiered/DiskWarmTier.js
+          imports:
+            - DiskWarmTier
+        - file: ../../search/tiered/BrotliColdTier.js
+          imports:
+            - BrotliColdTier
+        - file: ../../utils/compression/CompressedMap.js
+          imports:
+            - CompressedMap
+        - file: ../../utils/compression/ICompressionAdapter.js
+          imports:
+            - ZlibCompressionAdapter
+        - file: ../../search/BloomPreScreener.js
+          imports:
+            - BloomPreScreener
+        - file: ../columns/JsonlColumnStore.js
+          imports:
+            - JsonlColumnStore
+        - file: ../columns/IColumnStore.js
+          imports:
+            - IColumnStore
+            - ObservationColumn
+          typeOnly: true
+        - file: ../GraphStorage.js
+          imports:
+            - GraphStorage
+          typeOnly: true
+        - file: ../../utils/CachePressureCoordinator.js
+          imports:
+            - CachePressureCoordinator
+          typeOnly: true
+        - file: ../../types/index.js
+          imports:
+            - Entity
+          typeOnly: true
+        - file: ../../utils/envConfig.js
+          imports:
+            - readEnvStrictFlag
+        - file: ../../utils/sidecarPath.js
+          imports:
+            - sidecarPath
+      exports:
+        - StorageInfraFacade
+      classes:
+        - StorageInfraFacade
+      interfaces:
+        - StorageInfraDeps
     src/core/index.ts:
       description: Core Module Barrel Export
       externalDependencies: []
@@ -7992,6 +8089,14 @@ modules:
             - createStorageFromPath
             - preloadSQLiteStorage
             - registerSQLiteStorage
+          reExport: true
+        - file: ./storageCapabilities.js
+          imports:
+            - hasDeltaPrimitives
+            - hasWriteLock
+            - withStorageWriteLock
+            - DeltaCapableStorage
+            - WriteLockableStorage
           reExport: true
         - file: ./GraphEventEmitter.js
           imports:
@@ -8055,6 +8160,11 @@ modules:
         - createStorageFromPath
         - preloadSQLiteStorage
         - registerSQLiteStorage
+        - hasDeltaPrimitives
+        - hasWriteLock
+        - withStorageWriteLock
+        - DeltaCapableStorage
+        - WriteLockableStorage
         - GraphEventEmitter
         - RefIndex
         - RefEntry
@@ -8089,6 +8199,11 @@ modules:
         - createStorageFromPath
         - preloadSQLiteStorage
         - registerSQLiteStorage
+        - hasDeltaPrimitives
+        - hasWriteLock
+        - withStorageWriteLock
+        - DeltaCapableStorage
+        - WriteLockableStorage
         - GraphEventEmitter
         - RefIndex
         - RefEntry
@@ -8295,6 +8410,23 @@ modules:
         - removeEntitiesFromIndexes
         - deleteNamesFromSnapshot
         - deleteRelationsFromSnapshot
+    src/core/storageCapabilities.ts:
+      description: Storage capability guards (DES-1).
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../types/index.js
+          imports:
+            - IGraphStorage
+          typeOnly: true
+      exports:
+        - hasDeltaPrimitives
+        - hasWriteLock
+        - withStorageWriteLock
+      functions:
+        - hasDeltaPrimitives
+        - hasWriteLock
+        - withStorageWriteLock
   features:
     src/features/AnalyticsManager.ts:
       description: Analytics Manager
@@ -9940,6 +10072,9 @@ modules:
             - LogLevel
             - QueryLogEntry
           typeOnly: true
+        - file: ../utils/envConfig.js
+          imports:
+            - readEnvStrictFlag
       exports:
         - QueryLogger
       classes:
@@ -10363,6 +10498,9 @@ modules:
         - file: ../utils/timing.js
           imports:
             - CoalescingTimer
+        - file: ../utils/envConfig.js
+          imports:
+            - readEnvNonNegativeIntOrDefault
         - file: ../types/types.js
           imports:
             - EntityCreatedEvent
@@ -11228,10 +11366,12 @@ modules:
             - logger
         - file: ../../utils/durableWriteFile.js
           imports:
+            - durableAppendFile
             - durableWriteFile
         - file: ./MapFileTier.js
           imports:
             - MapFileTier
+            - TOMBSTONE_FIELD
       exports:
         - DiskWarmTier
       classes:
@@ -11295,9 +11435,12 @@ modules:
             - IIndexTier
           typeOnly: true
       exports:
+        - TOMBSTONE_FIELD
         - MapFileTier
       classes:
         - MapFileTier
+      constants:
+        - TOMBSTONE_FIELD
     src/search/tiered/TieredIndex.ts:
       description: Tiered Index Composer (hot → warm → cold)
       externalDependencies: []
@@ -11560,6 +11703,7 @@ modules:
         - DecayResult
         - ForgetResult
         - ProspectiveEntity
+        - ProspectiveEvaluationContext
         - FiredEvent
         - ObservationContext
         - BlamedComponent
@@ -12689,7 +12833,10 @@ modules:
       description: Cache Pressure Coordinator
       externalDependencies: []
       nodeDependencies: []
-      internalDependencies: []
+      internalDependencies:
+        - file: ./envConfig.js
+          imports:
+            - readEnvStrictInt
       exports:
         - CachePressureCoordinator
       classes:
@@ -12706,12 +12853,17 @@ modules:
           imports:
             - IndexHealthReport
           typeOnly: true
+        - file: ../core/ObservationStore.js
+          imports:
+            - ObservationStoreStats
+          typeOnly: true
       exports:
         - buildDiagnosticsReport
       interfaces:
         - EntityCounts
         - TieredIndexStatsSnapshot
         - DiagnosticsReport
+        - DiagnosticsOptions
       functions:
         - buildDiagnosticsReport
     src/utils/EntityValidator.ts:
@@ -13147,6 +13299,40 @@ modules:
         - ensureMemoryFilePath
       constants:
         - defaultMemoryPath
+    src/utils/envConfig.ts:
+      description: Shared environment-variable parsing helpers.
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ./logger.js
+          imports:
+            - logger
+      exports:
+        - MAX_SEGMENT_COUNT
+        - readEnvStrictFlag
+        - readEnvLooseFlag
+        - readEnvNumber
+        - readEnvNumberOrUndefined
+        - parseStrictDecimalInt
+        - readEnvStrictInt
+        - parseSegmentCount
+        - readEnvPositiveIntOrDefault
+        - readEnvNonNegativeIntOrDefault
+      interfaces:
+        - EnvNumberBounds
+        - EnvStrictIntBounds
+      functions:
+        - readEnvStrictFlag
+        - readEnvLooseFlag
+        - readEnvNumber
+        - readEnvNumberOrUndefined
+        - parseStrictDecimalInt
+        - readEnvStrictInt
+        - parseSegmentCount
+        - readEnvPositiveIntOrDefault
+        - readEnvNonNegativeIntOrDefault
+      constants:
+        - MAX_SEGMENT_COUNT
     src/utils/errorSuggestions.ts:
       description: Error Suggestion Generator
       externalDependencies: []
@@ -13365,6 +13551,21 @@ modules:
         - file: ./logger.js
           imports:
             - logger
+          reExport: true
+        - file: ./envConfig.js
+          imports:
+            - readEnvStrictFlag
+            - readEnvLooseFlag
+            - readEnvNumber
+            - readEnvNumberOrUndefined
+            - readEnvStrictInt
+            - parseStrictDecimalInt
+            - parseSegmentCount
+            - readEnvPositiveIntOrDefault
+            - readEnvNonNegativeIntOrDefault
+            - MAX_SEGMENT_COUNT
+            - EnvNumberBounds
+            - EnvStrictIntBounds
           reExport: true
         - file: ./searchAlgorithms.js
           imports:
@@ -13668,6 +13869,10 @@ modules:
             - ZlibCompressionAdapter
             - ICompressionAdapter
           reExport: true
+        - file: ./sidecarPath.js
+          imports:
+            - sidecarPath
+          reExport: true
         - file: ./Diagnostics.js
           imports:
             - DiagnosticsReport
@@ -13731,6 +13936,18 @@ modules:
         - CompressedCacheOptions
         - CompressedCacheStats
         - logger
+        - readEnvStrictFlag
+        - readEnvLooseFlag
+        - readEnvNumber
+        - readEnvNumberOrUndefined
+        - readEnvStrictInt
+        - parseStrictDecimalInt
+        - parseSegmentCount
+        - readEnvPositiveIntOrDefault
+        - readEnvNonNegativeIntOrDefault
+        - MAX_SEGMENT_COUNT
+        - EnvNumberBounds
+        - EnvStrictIntBounds
         - levenshteinDistance
         - calculateTF
         - calculateTFFromTokens
@@ -13958,6 +14175,7 @@ modules:
         - CompressedMapOptions
         - ZlibCompressionAdapter
         - ICompressionAdapter
+        - sidecarPath
         - cosineSimilarity
         - DiagnosticsReport
         - TieredIndexStatsSnapshot
@@ -14014,6 +14232,18 @@ modules:
         - CompressedCacheOptions
         - CompressedCacheStats
         - logger
+        - readEnvStrictFlag
+        - readEnvLooseFlag
+        - readEnvNumber
+        - readEnvNumberOrUndefined
+        - readEnvStrictInt
+        - parseStrictDecimalInt
+        - parseSegmentCount
+        - readEnvPositiveIntOrDefault
+        - readEnvNonNegativeIntOrDefault
+        - MAX_SEGMENT_COUNT
+        - EnvNumberBounds
+        - EnvStrictIntBounds
         - levenshteinDistance
         - calculateTF
         - calculateTFFromTokens
@@ -14240,6 +14470,7 @@ modules:
         - CompressedMapOptions
         - ZlibCompressionAdapter
         - ICompressionAdapter
+        - sidecarPath
         - DiagnosticsReport
         - TieredIndexStatsSnapshot
         - IIndexHealth
@@ -14598,6 +14829,18 @@ modules:
         - cleanupExpiredEntries
       constants:
         - searchCaches
+    src/utils/sidecarPath.ts:
+      description: Sidecar path derivation.
+      externalDependencies: []
+      nodeDependencies:
+        - module: path
+          imports:
+            - path
+      internalDependencies: []
+      exports:
+        - sidecarPath
+      functions:
+        - sidecarPath
     src/utils/taskScheduler.ts:
       description: Task Scheduler
       externalDependencies: []
@@ -14994,6 +15237,7 @@ dependencyGraph:
         - src/core/TransitionLedger.ts
         - src/core/columns/IColumnStore.ts
         - src/core/columns/JsonlColumnStore.ts
+        - src/core/context/StorageInfraFacade.ts
         - src/core/index.ts
         - src/core/mmap/FsReadMmapBackend.ts
         - src/core/mmap/IMmapBackend.ts
@@ -15002,6 +15246,7 @@ dependencyGraph:
         - src/core/segments/ISegmentStorage.ts
         - src/core/sqlite-register.ts
         - src/core/storageCache.ts
+        - src/core/storageCapabilities.ts
     - name: Features
       files:
         - src/features/AnalyticsManager.ts
@@ -15125,6 +15370,7 @@ dependencyGraph:
         - src/utils/constants.ts
         - src/utils/durableWriteFile.ts
         - src/utils/entityUtils.ts
+        - src/utils/envConfig.ts
         - src/utils/errorSuggestions.ts
         - src/utils/errors.ts
         - src/utils/fieldPath.ts
@@ -15148,6 +15394,7 @@ dependencyGraph:
         - src/utils/schemas.ts
         - src/utils/searchAlgorithms.ts
         - src/utils/searchCache.ts
+        - src/utils/sidecarPath.ts
         - src/utils/taskScheduler.ts
         - src/utils/textSimilarity.ts
         - src/utils/timing.ts
@@ -15162,29 +15409,29 @@ reachability:
     - src/index.ts
     - src/sqlite.ts
     - src/workers/levenshteinWorker.ts
-  reachableCount: 313
+  reachableCount: 317
   dormantCount: 0
   orphaned: []
   testOnly: []
 statistics:
-  totalTypeScriptFiles: 313
+  totalTypeScriptFiles: 317
   totalModules: 12
-  totalLinesOfCode: 105893
-  totalExports: 2149
-  totalClasses: 237
-  totalInterfaces: 632
-  totalFunctions: 378
+  totalLinesOfCode: 106961
+  totalExports: 2185
+  totalClasses: 238
+  totalInterfaces: 638
+  totalFunctions: 392
   totalTypeGuards: 31
   totalEnums: 4
-  totalConstants: 124
-  totalReExports: 1395
-  totalTypeOnlyImports: 504
+  totalConstants: 126
+  totalReExports: 1414
+  totalTypeOnlyImports: 513
   runtimeCircularDeps: 0
   typeOnlyCircularDeps: 8
   entryRoots: 4
-  reachableFiles: 313
+  reachableFiles: 317
   dormantFiles: 0
   orphanedFiles: 0
   testOnlyFiles: 0
   unusedFilesCount: 0
-  unusedExportsCount: 59
+  unusedExportsCount: 61
