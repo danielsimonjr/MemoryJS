@@ -69,6 +69,7 @@ const ctx = new ManagerContext('./memory.db');
 | Variable | Values | Default | Description |
 |----------|--------|---------|-------------|
 | `MEMORY_STORAGE_TYPE` | `jsonl`, `sqlite` | `jsonl` | Storage backend type |
+| `MEMORY_SQLITE_AUTO_INDEX` | `true`, `1` (deprecated) | `false` | **Deprecated, no effect** on query plans. Constructing a `SQLiteStorage` with it set logs a warning. Full indexes already cover the hot filters; scheduled for removal in v5 (DES-9) |
 
 ### Embedding Variables
 
@@ -437,24 +438,24 @@ const stats = cache?.getStats();
 clearAllSearchCaches();
 ```
 
-### Compressed Cache
+### Compressed Map
 
-For memory-constrained environments:
+For memory-constrained environments. `CompressedMap` keeps the most recent keys
+uncompressed and zlib-compresses colder entries. (`CompressedCache` is
+`@deprecated`, has no `src/` consumer, and is scheduled for removal in v5; use
+`CompressedMap` instead.)
 
 ```typescript
-import { CompressedCache } from '@danielsimonjr/memoryjs';
+import { CompressedMap, type Entity } from '@danielsimonjr/memoryjs';
 
-const cache = new CompressedCache<Entity>({
-  maxSize: 1000,           // Max entries
-  compressionLevel: 6,     // Brotli level 1-11
-  minSizeToCompress: 1024  // Min bytes to compress
+const cache = new CompressedMap<string, Entity>({
+  hotThreshold: 1000       // Recent unique keys kept uncompressed (default 1000)
 });
 
 cache.set('key', entity);
 const retrieved = cache.get('key');
 
-const stats = cache.getStats();
-// { hits: 100, misses: 10, compressionRatio: 0.3 }
+const { hotCount, coldCount, coldBytes } = cache.stats();
 ```
 
 ---
@@ -819,15 +820,14 @@ const ctx = new ManagerContext('/fast-ssd/memory.db');
 ### Memory-Constrained Configuration
 
 ```typescript
-import { ManagerContext, CompressedCache } from '@danielsimonjr/memoryjs';
+import { ManagerContext, CompressedMap, type Entity } from '@danielsimonjr/memoryjs';
 
 // Use JSONL with aggressive cache limits
 const ctx = new ManagerContext('./memory.jsonl');
 
-// Use compressed cache for large datasets
-const cache = new CompressedCache({
-  maxSize: 500,
-  compressionLevel: 9  // Maximum compression
+// Keep fewer entries uncompressed for large datasets
+const cache = new CompressedMap<string, Entity>({
+  hotThreshold: 500
 });
 ```
 
@@ -1006,7 +1006,7 @@ await ctx.entityManager.deleteEntities(['critical-record']); // throws Governanc
 
 | Variable | Values | Default |
 |----------|--------|---------|
-| `MEMORY_AGENT_ROLE` | `researcher`, `planner`, `executor`, `reviewer`, `coordinator` | — |
+| `MEMORY_AGENT_ROLE` | **Reserved, not read by the library** (no effect). Use `getRoleProfile(role)` in code. Values: `researcher`, `planner`, `executor`, `reviewer`, `coordinator` | — |
 | `MEMORY_ENTROPY_FILTER_ENABLED` | `true`, `false` | `false` |
 | `MEMORY_ENTROPY_THRESHOLD` | number 0–1 | `0.3` |
 | `MEMORY_CONSOLIDATION_SCHEDULER_ENABLED` | `true`, `false` | `false` |

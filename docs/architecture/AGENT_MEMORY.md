@@ -399,6 +399,13 @@ interface AccessTracker {
   recordAccess(entityName: string, context?: AccessContext): Promise<void>;
 
   /**
+   * Record the same access context for many entities. Delta-capable storage
+   * writes all access fields in one updateEntities call; otherwise each
+   * entity goes through recordAccess.
+   */
+  recordAccessBatch(entityNames: readonly string[], context: AccessContext): Promise<void>;
+
+  /**
    * Get access statistics for an entity
    */
   getAccessStats(entityName: string): AccessStats; // v2.0.0: synchronous (Theme 3)
@@ -473,6 +480,13 @@ interface DecayEngine {
   reinforceMemory(entityName: string, amount?: number): Promise<void>;
 
   /**
+   * Batch form of reinforceMemory. Every name must exist (missing name throws
+   * before any write). `alreadyApplied: true` skips the reinforcement write
+   * when the caller already persisted it; access tracking still runs.
+   */
+  reinforceMemories(entityNames: readonly string[], options?: BatchReinforcementOptions): Promise<void>;
+
+  /**
    * Forget memories below threshold
    */
   forgetWeakMemories(options: ForgetOptions): Promise<ForgetResult>;
@@ -532,6 +546,16 @@ interface ConsolidationPipeline {
     entityName: string,
     targetType: 'episodic' | 'semantic'
   ): Promise<void>;
+
+  /**
+   * Batch promotion. Each name is validated and reported on its own; one
+   * failure does not block the others. Returns the promoted entities and
+   * per-name errors.
+   */
+  promoteMemories(
+    entityNames: readonly string[],
+    targetType: MemoryType
+  ): Promise<{ promoted: AgentEntity[]; errors: Array<{ entityName: string; error: string }> }>;
 
   /**
    * Extract patterns from repeated observations
@@ -910,6 +934,12 @@ type ConflictStrategy =
   - Discriminated `ProspectiveLifecycle` (`pending` / `fired` / `cancelled` /
     `expired`)
   - Append-only writes; lifecycle transitions return `CancelResult`
+  - Conditional triggers are evaluated by `tick()` through a code-supplied
+    `predicateEvaluator` (`ProspectiveMemoryConfig`, or
+    `ManagerContextOptions.prospectivePredicateEvaluator`). Only `true`
+    fires. Without an evaluator the intention never fires. With
+    `checkIntervalMs`, each not-due check persists `lifecycle.lastCheckedAt`
+    (an update to an otherwise append-only record)
 
 ### Failure Memory (Sprint 4)
 
@@ -1522,5 +1552,5 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 
 | Claim | Value | Source |
 |---|---|---|
-| totalSourceFiles | 768 | repo-tools map |
+| totalSourceFiles | 788 | repo-tools map |
 | totalModules | 6 | repo-tools map |

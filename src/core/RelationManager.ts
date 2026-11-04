@@ -61,7 +61,7 @@ export class RelationManager {
 
   /** Append a batch of relations, preferring the storage's batch primitive. */
   private async appendRelationsCompat(relations: Relation[]): Promise<void> {
-    if (typeof (this.storage as Partial<GraphStorage>).appendRelations === 'function') {
+    if (typeof this.storage.appendRelations === 'function') {
       await this.storage.appendRelations(relations);
       return;
     }
@@ -75,7 +75,7 @@ export class RelationManager {
     relations: Array<Pick<Relation, 'from' | 'to' | 'relationType'>>,
     options: { touchEntities: string[]; timestamp: string },
   ): Promise<void> {
-    if (typeof (this.storage as Partial<GraphStorage>).deleteRelations === 'function') {
+    if (typeof this.storage.deleteRelations === 'function') {
       await this.storage.deleteRelations(relations, options);
       return;
     }

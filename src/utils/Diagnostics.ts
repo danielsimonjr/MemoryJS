@@ -18,6 +18,7 @@
  */
 
 import type { IndexHealthReport } from './IndexHealthMonitor.js';
+import type { ObservationStoreStats } from '../core/ObservationStore.js';
 
 /**
  * Per-type entity-count histogram. `total = -1` and `byType = {}` indicate
@@ -56,6 +57,26 @@ export interface DiagnosticsReport {
   entityCounts: EntityCounts;
   /** Phase 9: tier stats when `ctx.tieredPostingsIndex` is active. */
   tieredIndexStats?: TieredIndexStatsSnapshot;
+  /**
+   * Observation dedup ratio over the cached graph. Present only when
+   * `ctx.diagnostics({ observationDedup: true })` was requested AND the
+   * storage cache is loaded; otherwise `undefined`. Computed on a
+   * throwaway `ObservationStore`, never `ctx.observationStore`.
+   */
+  observationDedup?: ObservationStoreStats;
+}
+
+/**
+ * Options for `ctx.diagnostics()`. Everything is opt-in; the no-argument
+ * call keeps the report shape it had before these options existed.
+ */
+export interface DiagnosticsOptions {
+  /**
+   * When true, interns every observation of the cached graph into a
+   * throwaway `ObservationStore` and reports the dedup ratio. O(total
+   * observations); skipped (field left `undefined`) when nothing is cached.
+   */
+  observationDedup?: boolean;
 }
 
 /**
@@ -70,6 +91,7 @@ export function buildDiagnosticsReport(
   indexHealth: () => IndexHealthReport,
   entityCounts: () => EntityCounts,
   tieredIndexStats?: () => TieredIndexStatsSnapshot | undefined,
+  observationDedup?: () => ObservationStoreStats | undefined,
 ): DiagnosticsReport {
   const report: DiagnosticsReport = {
     generatedAt: new Date().toISOString(),
@@ -79,6 +101,10 @@ export function buildDiagnosticsReport(
   if (tieredIndexStats) {
     const snap = tieredIndexStats();
     if (snap !== undefined) report.tieredIndexStats = snap;
+  }
+  if (observationDedup) {
+    const dedup = observationDedup();
+    if (dedup !== undefined) report.observationDedup = dedup;
   }
   return report;
 }

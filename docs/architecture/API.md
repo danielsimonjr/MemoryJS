@@ -42,6 +42,7 @@ surface only.
 30. [RelationConsolidator](#relationconsolidator) *(Unreleased, R3, `@experimental`)*
 31. [ApiKeyAuthMiddleware](#apikeyauthmiddleware) *(Unreleased, Sec9)*
 32. [ProceduralGraphManager](#proceduralgraphmanager) (`ctx.createProceduralGraph`, `@experimental`)
+33. [Batch primitives and helper surface](#batch-primitives-and-helper-surface) *(2026-11 design pass)*
 
 ---
 
@@ -106,7 +107,7 @@ const ctx = new ManagerContext('./memory.db');
 | `memoryEngine` | `MemoryEngine` | Turn-aware conversation memory + 4-tier dedup (v1.11.0) |
 | `memoryBackend` | `IMemoryBackend` | Pluggable backend selector via `MEMORY_BACKEND` (v1.12.0) |
 | `compressedEntityCache` | `CompressedMap<string, Entity>` | In-memory compressed entity cache (v1.15.0 Phase 10) |
-| `diagnostics` | `Diagnostics` | Query `explainPlan` + index health surface (v1.15.0 Phase 0/1) |
+| `diagnostics(options?)` | `DiagnosticsReport` | **Method, not a getter.** Aggregate report (index health, entity counts). `{ observationDedup: true }` adds the observation dedup ratio (O(total observations)). `explainPlan` is `ctx.searchManager.explainPlan(query)`; index health is `ctx.indexHealth()` (v1.15.0 Phase 0/1) |
 | `graphRankPrior` | `GraphRankPrior` | Cached normalized-PageRank ranking signal, event-invalidated (v2.9.0, `@experimental`) |
 | `hybridSearchManager` | `HybridSearchManager` | Semantic + lexical + symbolic (+ optional graph) layered search (v2.9.0) |
 | `materializedViews` | `MaterializedViewsManager` | Pre-computed result sets for repeated filter-based queries; lazy, auto-invalidated on entity events: updates dirty only views whose filter keys intersect the changed keys, creates/deletes dirty all, date-bounded views are dirtied by every update (`@experimental`) |
@@ -115,7 +116,7 @@ const ctx = new ManagerContext('./memory.db');
 | `cachePressure` | `CachePressureCoordinator` | Global cache-entry budget coordinator (`MEMORY_CACHE_BUDGET_ENTRIES`); caches register with it lazily (`@experimental`) |
 | `eventManager` | `EventManager` | Event reification: actions become `entityType: 'event'` hub entities with role relations; `whoDidWhat()` (`@experimental`) |
 | `reconstructiveMemory(config?)` | `ReconstructiveMemory` | **Method, not a getter.** MRAgent Cue–Tag–Content memory with active multi-step reconstruction; defaults its backing to this context's managers (`@experimental`) |
-| `prospectiveMemory` | `ProspectiveMemoryManager` | Intention-to-act (future-tense) memory; lazy |
+| `prospectiveMemory` | `ProspectiveMemoryManager` | Intention-to-act (future-tense) memory; lazy. Conditional triggers fire only when `prospectivePredicateEvaluator` is passed in `ManagerContextOptions` (see *Batch primitives and helper surface*) |
 | `spellChecker` | `SpellChecker` | Spell correction over the `NGramIndex` vocabulary (entity names + tag values); `suggest(query)`; lazy |
 | `toolAffordanceManager` | `ToolAffordanceManager` | Per-tool rolling outcome statistics for adaptive tool selection; lazy |
 | `toolCallObserver` | `ToolCallObserver` | Canonical producer pipeline for `toolAffordanceManager` (`observeStart` / `observeComplete` / `observeError`). `@internal` |
@@ -745,6 +746,8 @@ Remove observations from entities.
 async deleteObservations(deletions: ObservationDeletion[]): Promise<ObservationResult[]>
 ```
 
+**Events (DES-3).** `addObservations` emits `observation:added` once per entity that gained observations, with only the strings actually added. Duplicates emit nothing. `deleteObservations` emits `observation:deleted` with only the strings actually removed; requested-but-absent strings are not reported. Both events fire after the `entity:updated` event for the same write. `createEntities` with initial observations emits `entity:created` only, not `observation:added`.
+
 ### invalidateObservation (η.4.4 — Bitemporal Axis)
 
 Mark a specific observation (matched by its content string) as no longer valid at a given point in time, without removing it from the entity's `observations[]`. Adds an `observationMeta[]` entry recording the boundary.
@@ -1010,11 +1013,12 @@ async autoSearch(query: string, options?: SearchOptions): Promise<{
 ### Diagnostics (Phase 0/1, v1.15.0)
 
 ```typescript
-ctx.diagnostics.explainPlan(query: string): QueryPlanExplanation
-ctx.diagnostics.indexHealth(): IndexHealthReport
+ctx.searchManager.explainPlan(query: string): ExplainPlanResult   // { ascii: string; json: QueryPlan }
+ctx.indexHealth(): IndexHealthReport
+ctx.diagnostics(options?: DiagnosticsOptions): DiagnosticsReport  // composes indexHealth() + entity counts
 ```
 
-`explainPlan` returns the resolved query AST + which indexes would be hit + cost estimate. `indexHealth` reports the fill rate, fragmentation, and last-rebuild timestamp for each index.
+`ctx.diagnostics` is a method. Call it as `ctx.diagnostics()`; it is not a property holding a `Diagnostics` object. `explainPlan` is a `SearchManager` method, not a `ctx.diagnostics` member.
 
 ---
 
@@ -1519,18 +1523,30 @@ interface NormalizeOptions {
 
 ## TransactionManager
 
-Atomic batch operations with rollback support.
+Stages operations and applies them in one full-graph save. Staging methods only record the operation; storage is not touched until `commit()`.
 
 ```typescript
-begin(): void
-async commit(options?: { force?: boolean }): Promise<void>
-rollback(): void
-async createEntity(entity: CreateEntity): Promise<Entity>
-async updateEntity(name: string, updates: Partial<Entity>): Promise<Entity>
-async deleteEntity(name: string): Promise<void>
-async createRelation(relation: CreateRelation): Promise<Relation>
-async deleteRelation(relation: Relation): Promise<void>
+begin(): void                                                  // throws TRANSACTION_ACTIVE if one is open
+createEntity(entity: Omit<Entity, 'createdAt' | 'lastModified'>): void
+updateEntity(name: string, updates: Partial<Entity>): void
+deleteEntity(name: string): void
+createRelation(relation: Omit<Relation, 'createdAt' | 'lastModified'>): void
+deleteRelation(from: string, to: string, relationType: string): void
+async commit(options?: LongRunningOperationOptions): Promise<TransactionResult>
+async rollback(): Promise<{ success: boolean; backupUsed?: string }>
+isInTransaction(): boolean
+getOperationCount(): number
 ```
+
+**`commit()` semantics:**
+
+1. Creates a backup file (`IOManager.createBackup`). The storage write lock (`graphMutex`) is held from before the backup until the save or rollback ends.
+2. Loads a mutable copy and applies every staged operation in order. A throw here saves nothing.
+3. Captures the pre-commit graph and calls `saveGraph` once. This is the only persisted write.
+4. On success, deletes the backup and returns `{ success: true, operationsExecuted }`.
+5. On any failure, calls `rollback()` and returns `{ success: false, error, rollbackBackup? }`. If no save was attempted, storage still holds the pre-commit state and nothing is rewritten. If a save was attempted, the in-memory pre-commit graph is saved back.
+
+`commit()` is O(graph) by design: it rewrites the whole graph. Use `BatchTransaction` or `ctx.batch()` when only a few changes are needed. JSONL storage is single-process: the lock does not coordinate other processes. If rollback fails, the backup file is kept for manual recovery.
 
 ---
 
@@ -1550,7 +1566,18 @@ async execute(options?: BatchOptions): Promise<BatchResult>
 // BatchOptions: { stopOnError?: boolean; validateBeforeExecute?: boolean; signal?: AbortSignal }
 ```
 
-`execute()` and `TransactionManager.commit()` hold the storage write lock (`graphMutex`) from the graph load until the save or rollback ends. `signal` cancels only while the call waits for the lock. JSONL storage is single-process.
+`ctx.batch(fn, options)` builds a `BatchTransaction` and calls `execute()`. If `fn` throws, the queued operations are discarded and `execute()` is not called.
+
+**`execute()` semantics:**
+
+- Holds `graphMutex` from the graph load until the save ends.
+- `validateBeforeExecute` (default `true`): validates all operations first. A validation failure saves nothing.
+- `stopOnError` (default `true`): the first failing operation stops the batch. Nothing is saved, so the batch is all-or-nothing for the write.
+- `stopOnError: false`: failing operations are skipped and reported per operation in `operationResults`. The successful ones are saved in one write, so the result can be a partial success.
+- The save is one `saveGraph` call. A save failure returns `success: false` with `Failed to save graph: ...`.
+- `signal` cancels only while the call waits for the lock. After the lock is acquired, the batch runs to completion.
+
+Use this for atomic multi-operation writes. `GovernanceManager.withTransaction` is not atomic (see below). JSONL storage is single-process.
 
 ---
 
@@ -1566,6 +1593,87 @@ createStorageFromPath(path: string): IGraphStorage
 (Free functions, not static class methods — `MEMORY_STORAGE_TYPE` overrides `config.type` when set.)
 
 `IGraphStorage` gained two optional members (v2.9.0) so existing third-party/test implementations remain valid without changes: `renameEntity?(oldName, newName): Promise<Entity>` (storage-level rename primitive; both `GraphStorage` and `SQLiteStorage` implement it) and `readonly events?: GraphEventEmitter` (also now implemented by `SQLiteStorage`, giving it full event parity with `GraphStorage` — `graph:loaded`/`saved`, `entity:created`/`updated`/`deleted`, `relation:created` — so event-driven derived views like `TFIDFEventSync` and `GraphRankPrior` work on the SQLite backend too). `SQLiteStorage` also gained the `graphMutex` member already present on `GraphStorage` (fixes a crash in batch manager mutations against the raw SQLite backend).
+
+---
+
+## Batch primitives and helper surface
+
+Added in the 2026-11 design pass. Each entry is additive; existing signatures are unchanged.
+
+### Shared env helpers (`src/utils/envConfig.ts`, `@public`)
+
+Each helper encodes one env-parsing idiom. Call sites keep their previous accept/reject rules.
+
+| Helper | Contract |
+|---|---|
+| `readEnvStrictFlag(name)` | `true` only for the exact string `'true'` |
+| `readEnvLooseFlag(name, defaultValue)` | Case-insensitive `'true'`; unset returns `defaultValue` |
+| `readEnvNumber(name, defaultValue, bounds?)` | `bounds`: `{ min?, max?, integer? }`. Invalid or out-of-range input logs and falls back to `defaultValue` |
+| `readEnvNumberOrUndefined(name)` | Finite number, or `undefined` |
+| `parseStrictDecimalInt(raw, bounds?)` | Accepts only `^(0\|[1-9][0-9]*)$`. Returns `undefined` on rejection. Never throws or logs |
+| `readEnvStrictInt(name, bounds?)` | `parseStrictDecimalInt` applied to `process.env[name]` |
+| `parseSegmentCount(raw)` | Strict integer in `[2, MAX_SEGMENT_COUNT]` (1024), or `null` |
+| `readEnvPositiveIntOrDefault(name, defaultValue)` | Lenient `parseInt`, minimum 1. `'10abc'` gives 10 |
+| `readEnvNonNegativeIntOrDefault(name, defaultValue)` | Lenient `parseInt`, minimum 0 |
+
+The lenient helpers are kept lenient on purpose. Tightening them would change behaviour for existing deployments.
+
+### Storage capability guards (`src/core/storageCapabilities.ts`)
+
+Re-exported from the core barrel. The module is tagged `@internal`, so treat these names as not yet stable.
+
+- `hasDeltaPrimitives(storage): storage is DeltaCapableStorage`: true when all batch delta primitives are present.
+- `hasWriteLock(storage): storage is WriteLockableStorage`: true when `graphMutex.acquire` exists.
+- `withStorageWriteLock(storage, fn)`: runs `fn` under `graphMutex` when present, otherwise runs it directly. The lock is released in `finally`.
+
+Both first-party backends pass the guards. Minimal fakes usually do not, and managers fall back to the per-item path for them.
+
+### `ConsolidationPipeline.promoteMemories(entityNames, targetType)`
+
+```typescript
+async promoteMemories(
+  entityNames: readonly string[],
+  targetType: MemoryType
+): Promise<{ promoted: AgentEntity[]; errors: Array<{ entityName: string; error: string }> }>
+```
+
+Each name is validated and reported on its own, so one failing name does not block the others. Error text matches `promoteMemory`. With delta-capable storage the writes are batched into one update per call. A repeated name in one call fails as a second `promoteMemory` would.
+
+### `DecayEngine.reinforceMemories(entityNames, options?)`
+
+Batch form of `reinforceMemory`. All names must exist: a missing name throws `Entity not found: <name>` before any write. Access tracking runs through `AccessTracker.recordAccessBatch`. `options.alreadyApplied: true` skips the reinforcement write when the caller already persisted it (for example, folded into a promotion), and access tracking still runs.
+
+### `AccessTracker.recordAccessBatch(names, context)`
+
+Records the same access context for many entities. With delta-capable storage, all access fields are written in one `updateEntities` call, and a failed batch is retried per entity. Without delta primitives it runs `recordAccess` for each name in parallel.
+
+### Conditional prospective memory (`ProspectiveMemoryManager`)
+
+Conditional triggers (`scheduleConditional`) are evaluated by `tick()` through a code-supplied evaluator. There is no env var and no built-in predicate language.
+
+```typescript
+type PredicateEvaluator = (
+  predicate: string,
+  context: { entity: ProspectiveEntity; now: Date }
+) => boolean | Promise<boolean>;
+
+const pm = new ProspectiveMemoryManager(storage, { predicateEvaluator });
+// or
+const ctx = new ManagerContext({
+  storagePath: './memory.jsonl',
+  prospectivePredicateEvaluator: (predicate, { entity, now }) => /* boolean */ true,
+});
+```
+
+- Only the boolean `true` fires the intention. A throw or rejection counts as not due and is logged once per intention.
+- `checkIntervalMs` on the trigger limits how often the evaluator runs. Each check that finds the intention not due is persisted as `lifecycle.lastCheckedAt` on the pending entity. Without `checkIntervalMs` nothing is written on a not-due check.
+- With no evaluator, `scheduleConditional` persists the intention, logs a one-time warning, and the intention never fires.
+
+`ManagerContextOptions.prospectivePredicateEvaluator` forwards the evaluator to `ctx.prospectiveMemory`.
+
+### Deprecated: `CompressedCache`
+
+`CompressedCache` (`src/utils/compressedCache.ts`) is `@deprecated`. Use `CompressedMap<K, V>` (`src/utils/compression/CompressedMap.ts`), which `ManagerContext` already uses for `compressedEntityCache`. `CompressedCache` has no behaviour change and is scheduled for removal in v5.
 
 ---
 
@@ -1850,19 +1958,19 @@ Integer [0, 10] scoring via `length × keyword × recent-turn-overlap` signals. 
 
 ## GovernanceManager
 
-(v1.6.0; **Unreleased** — enforcement chokepoint, Sec1) Policy enforcement and transactional safety for memory mutations. Wired via `ctx.governanceManager`.
+(v1.6.0; **Unreleased** — enforcement chokepoint, Sec1) Policy enforcement and audit logging for memory mutations. Wired via `ctx.governanceManager`.
 
 ### withTransaction
 
-Wraps a function in a snapshot-based transaction. On exception, the storage is restored to the pre-call snapshot.
+Groups operations under one governed scope for audit attribution. **It is not an atomic transaction.** Each operation persists immediately. If `fn` throws, the audit entries recorded in the call are marked `rolled_back` (new `rolled_back` entries are appended) and the error is re-thrown. **Storage is not reverted.** For atomic multi-operation writes use `ctx.batch()` or `TransactionManager.commit()`.
 
 ```typescript
-async withTransaction<T>(fn: (tx: GovernanceTransaction) => Promise<T>): Promise<T>
+async withTransaction<T>(fn: (tx: GovernanceTransaction) => Promise<T>, agentId?: string): Promise<T>
 ```
 
 ### rollback
 
-Explicit rollback of a previously committed operation by its audit entry id (rare — `withTransaction` rolls back automatically on throw).
+Reverses one recorded operation, identified by its audit entry id. It loads the graph and undoes the recorded change (a `create` is undone by deleting the entity; a `delete` is undone by recreating the entity from the entry's before snapshot), saves the graph, and appends a `rolled_back` audit entry. An unknown id throws `KnowledgeGraphError` with code `AUDIT_ENTRY_NOT_FOUND`. It is not invoked automatically by `withTransaction`.
 
 ```typescript
 async rollback(auditEntryId: string): Promise<void>
@@ -2290,8 +2398,8 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 
 | Claim | Value | Source |
 |---|---|---|
-| totalExports | 3012 | repo-tools map |
-| totalSourceFiles | 768 | repo-tools map |
+| totalExports | 3068 | repo-tools map |
+| totalSourceFiles | 788 | repo-tools map |
 
 The figures below come from `bun run tools:deps` and `bun run tools:deps:full`. These generators read `src/` only. The gate does not check these figures. Read them in `dependency-summary.compact.json` and `TEST_COVERAGE.md`.
 

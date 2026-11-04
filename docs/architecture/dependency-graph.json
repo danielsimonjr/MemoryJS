@@ -3,9 +3,9 @@
     "name": "@danielsimonjr/memoryjs",
     "version": "4.4.0",
     "lastUpdated": "2026-11-04",
-    "totalFiles": 313,
+    "totalFiles": 317,
     "totalModules": 12,
-    "totalExports": 2149
+    "totalExports": 2186
   },
   "entryPoints": [
     {
@@ -387,7 +387,8 @@
           {
             "file": "../types/types.js",
             "imports": [
-              "IGraphStorage"
+              "IGraphStorage",
+              "Entity"
             ],
             "typeOnly": true
           },
@@ -411,6 +412,12 @@
             "file": "../utils/fillDefaults.js",
             "imports": [
               "fillDefaults"
+            ]
+          },
+          {
+            "file": "../core/storageCapabilities.js",
+            "imports": [
+              "hasDeltaPrimitives"
             ]
           },
           {
@@ -891,13 +898,6 @@
             "typeOnly": true
           },
           {
-            "file": "../core/GraphStorage.js",
-            "imports": [
-              "GraphStorage"
-            ],
-            "typeOnly": true
-          },
-          {
             "file": "../core/EntityManager.js",
             "imports": [
               "EntityManager"
@@ -1090,7 +1090,8 @@
             "file": "../types/types.js",
             "imports": [
               "IGraphStorage",
-              "Entity"
+              "Entity",
+              "Relation"
             ],
             "typeOnly": true
           },
@@ -1157,6 +1158,20 @@
               "DecayEngine"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "./DecayEngine.js",
+            "imports": [
+              "buildReinforcementUpdates"
+            ]
+          },
+          {
+            "file": "../core/storageCapabilities.js",
+            "imports": [
+              "hasDeltaPrimitives",
+              "withStorageWriteLock",
+              "DeltaCapableStorage"
+            ]
           },
           {
             "file": "./SummarizationService.js",
@@ -1507,14 +1522,8 @@
             "file": "../types/types.js",
             "imports": [
               "IGraphStorage",
-              "ReadonlyKnowledgeGraph"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../core/GraphStorage.js",
-            "imports": [
-              "GraphStorage"
+              "ReadonlyKnowledgeGraph",
+              "Entity"
             ],
             "typeOnly": true
           },
@@ -1568,6 +1577,12 @@
             ]
           },
           {
+            "file": "../core/storageCapabilities.js",
+            "imports": [
+              "hasDeltaPrimitives"
+            ]
+          },
+          {
             "file": "../types/agent-memory.js",
             "imports": [
               "DecayResult",
@@ -1579,6 +1594,7 @@
           }
         ],
         "exports": [
+          "buildReinforcementUpdates",
           "DecayEngine",
           "DecayResult",
           "ForgetOptions",
@@ -1595,7 +1611,11 @@
         "interfaces": [
           "DecayEngineConfig",
           "DecayOperationOptions",
-          "ReinforcementOptions"
+          "ReinforcementOptions",
+          "BatchReinforcementOptions"
+        ],
+        "functions": [
+          "buildReinforcementUpdates"
         ]
       },
       "src/agent/DecayScheduler.ts": {
@@ -3129,6 +3149,7 @@
               "ObservationContext",
               "ProspectiveAction",
               "ProspectiveEntity",
+              "ProspectiveEvaluationContext",
               "ProspectiveLifecycle",
               "ProspectiveTrigger",
               "TriggerCondition"
@@ -4343,6 +4364,7 @@
               "ProspectiveMemoryManager",
               "ProspectiveMemoryConfig",
               "ProcedureInvoker",
+              "PredicateEvaluator",
               "ScheduleOptions"
             ],
             "reExport": true
@@ -5096,6 +5118,7 @@
           "ProspectiveMemoryManager",
           "ProspectiveMemoryConfig",
           "ProcedureInvoker",
+          "PredicateEvaluator",
           "ScheduleOptions",
           "FailureManager",
           "FailureManagerConfig",
@@ -5503,6 +5526,7 @@
           "ProspectiveMemoryManager",
           "ProspectiveMemoryConfig",
           "ProcedureInvoker",
+          "PredicateEvaluator",
           "ScheduleOptions",
           "FailureManager",
           "FailureManagerConfig",
@@ -6784,6 +6808,12 @@
             "file": "../../../../utils/logger.js",
             "imports": [
               "logger"
+            ]
+          },
+          {
+            "file": "../../../../utils/envConfig.js",
+            "imports": [
+              "parseSegmentCount"
             ]
           },
           {
@@ -10402,6 +10432,14 @@
             ]
           },
           {
+            "file": "../utils/envConfig.js",
+            "imports": [
+              "parseSegmentCount",
+              "readEnvStrictFlag",
+              "readEnvStrictInt"
+            ]
+          },
+          {
             "file": "./TransactionManager.js",
             "imports": [
               "BatchTransaction"
@@ -10578,14 +10616,7 @@
       "src/core/ManagerContext.ts": {
         "description": "Manager Context",
         "externalDependencies": [],
-        "nodeDependencies": [
-          {
-            "module": "path",
-            "imports": [
-              "path"
-            ]
-          }
-        ],
+        "nodeDependencies": [],
         "internalDependencies": [
           {
             "file": "../utils/logger.js",
@@ -10604,6 +10635,7 @@
             "file": "../utils/Diagnostics.js",
             "imports": [
               "buildDiagnosticsReport",
+              "DiagnosticsOptions",
               "DiagnosticsReport"
             ]
           },
@@ -10679,47 +10711,18 @@
             ]
           },
           {
-            "file": "./columns/JsonlColumnStore.js",
-            "imports": [
-              "JsonlColumnStore"
-            ]
-          },
-          {
             "file": "../search/tiered/TieredIndex.js",
             "imports": [
-              "TieredIndex",
-              "buildTieredIndex"
-            ]
-          },
-          {
-            "file": "../search/tiered/LRUHotTier.js",
-            "imports": [
-              "LRUHotTier"
-            ]
-          },
-          {
-            "file": "../search/tiered/DiskWarmTier.js",
-            "imports": [
-              "DiskWarmTier"
-            ]
-          },
-          {
-            "file": "../search/tiered/BrotliColdTier.js",
-            "imports": [
-              "BrotliColdTier"
-            ]
+              "TieredIndex"
+            ],
+            "typeOnly": true
           },
           {
             "file": "../utils/compression/CompressedMap.js",
             "imports": [
               "CompressedMap"
-            ]
-          },
-          {
-            "file": "../utils/compression/ICompressionAdapter.js",
-            "imports": [
-              "ZlibCompressionAdapter"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "./columns/IColumnStore.js",
@@ -10728,6 +10731,22 @@
               "ObservationColumn"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "./context/StorageInfraFacade.js",
+            "imports": [
+              "StorageInfraFacade"
+            ]
+          },
+          {
+            "file": "../utils/envConfig.js",
+            "imports": [
+              "readEnvNumber",
+              "readEnvNumberOrUndefined",
+              "readEnvLooseFlag",
+              "readEnvStrictFlag",
+              "EnvNumberBounds"
+            ]
           },
           {
             "file": "./HierarchyManager.js",
@@ -10953,7 +10972,8 @@
           {
             "file": "../utils/index.js",
             "imports": [
-              "validateFilePath"
+              "validateFilePath",
+              "sidecarPath"
             ]
           },
           {
@@ -11091,6 +11111,7 @@
             "file": "../agent/ProspectiveMemoryManager.js",
             "imports": [
               "ProspectiveMemoryManager",
+              "PredicateEvaluator",
               "ProcedureInvoker"
             ]
           },
@@ -11154,7 +11175,8 @@
             "file": "../search/BloomPreScreener.js",
             "imports": [
               "BloomPreScreener"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../features/GovernanceManager.js",
@@ -11254,6 +11276,12 @@
             "file": "../utils/textSimilarity.js",
             "imports": [
               "calculateTextSimilarity"
+            ]
+          },
+          {
+            "file": "../utils/envConfig.js",
+            "imports": [
+              "readEnvStrictFlag"
             ]
           },
           {
@@ -11565,6 +11593,12 @@
             ]
           },
           {
+            "file": "../utils/envConfig.js",
+            "imports": [
+              "readEnvPositiveIntOrDefault"
+            ]
+          },
+          {
             "file": "../search/PartialIndexAdvisor.js",
             "imports": [
               "PartialIndexAdvisor",
@@ -11664,6 +11698,7 @@
             "imports": [
               "Entity",
               "Relation",
+              "IGraphStorage",
               "KnowledgeGraph",
               "LongRunningOperationOptions",
               "BatchOperation",
@@ -11679,6 +11714,12 @@
               "GraphStorage"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "./storageCapabilities.js",
+            "imports": [
+              "hasWriteLock"
+            ]
           },
           {
             "file": "../features/IOManager.js",
@@ -11757,9 +11798,7 @@
               "EntityUpdatedEvent",
               "EntityDeletedEvent",
               "RelationCreatedEvent",
-              "RelationDeletedEvent",
-              "ObservationAddedEvent",
-              "ObservationDeletedEvent"
+              "RelationDeletedEvent"
             ],
             "typeOnly": true
           }
@@ -11842,6 +11881,112 @@
         ],
         "classes": [
           "JsonlColumnStore"
+        ]
+      },
+      "src/core/context/StorageInfraFacade.ts": {
+        "description": "StorageInfraFacade",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../search/tiered/TieredIndex.js",
+            "imports": [
+              "TieredIndex",
+              "buildTieredIndex"
+            ]
+          },
+          {
+            "file": "../../search/tiered/LRUHotTier.js",
+            "imports": [
+              "LRUHotTier"
+            ]
+          },
+          {
+            "file": "../../search/tiered/DiskWarmTier.js",
+            "imports": [
+              "DiskWarmTier"
+            ]
+          },
+          {
+            "file": "../../search/tiered/BrotliColdTier.js",
+            "imports": [
+              "BrotliColdTier"
+            ]
+          },
+          {
+            "file": "../../utils/compression/CompressedMap.js",
+            "imports": [
+              "CompressedMap"
+            ]
+          },
+          {
+            "file": "../../utils/compression/ICompressionAdapter.js",
+            "imports": [
+              "ZlibCompressionAdapter"
+            ]
+          },
+          {
+            "file": "../../search/BloomPreScreener.js",
+            "imports": [
+              "BloomPreScreener"
+            ]
+          },
+          {
+            "file": "../columns/JsonlColumnStore.js",
+            "imports": [
+              "JsonlColumnStore"
+            ]
+          },
+          {
+            "file": "../columns/IColumnStore.js",
+            "imports": [
+              "IColumnStore",
+              "ObservationColumn"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../utils/CachePressureCoordinator.js",
+            "imports": [
+              "CachePressureCoordinator"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../types/index.js",
+            "imports": [
+              "Entity"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../utils/envConfig.js",
+            "imports": [
+              "readEnvStrictFlag"
+            ]
+          },
+          {
+            "file": "../../utils/sidecarPath.js",
+            "imports": [
+              "sidecarPath"
+            ]
+          }
+        ],
+        "exports": [
+          "StorageInfraFacade"
+        ],
+        "classes": [
+          "StorageInfraFacade"
+        ],
+        "interfaces": [
+          "StorageInfraDeps"
         ]
       },
       "src/core/index.ts": {
@@ -11934,6 +12079,17 @@
             "reExport": true
           },
           {
+            "file": "./storageCapabilities.js",
+            "imports": [
+              "hasDeltaPrimitives",
+              "hasWriteLock",
+              "withStorageWriteLock",
+              "DeltaCapableStorage",
+              "WriteLockableStorage"
+            ],
+            "reExport": true
+          },
+          {
             "file": "./GraphEventEmitter.js",
             "imports": [
               "GraphEventEmitter"
@@ -12020,6 +12176,11 @@
           "createStorageFromPath",
           "preloadSQLiteStorage",
           "registerSQLiteStorage",
+          "hasDeltaPrimitives",
+          "hasWriteLock",
+          "withStorageWriteLock",
+          "DeltaCapableStorage",
+          "WriteLockableStorage",
           "GraphEventEmitter",
           "RefIndex",
           "RefEntry",
@@ -12055,6 +12216,11 @@
           "createStorageFromPath",
           "preloadSQLiteStorage",
           "registerSQLiteStorage",
+          "hasDeltaPrimitives",
+          "hasWriteLock",
+          "withStorageWriteLock",
+          "DeltaCapableStorage",
+          "WriteLockableStorage",
           "GraphEventEmitter",
           "RefIndex",
           "RefEntry",
@@ -12353,6 +12519,30 @@
           "removeEntitiesFromIndexes",
           "deleteNamesFromSnapshot",
           "deleteRelationsFromSnapshot"
+        ]
+      },
+      "src/core/storageCapabilities.ts": {
+        "description": "Storage capability guards (DES-1).",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "IGraphStorage"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "hasDeltaPrimitives",
+          "hasWriteLock",
+          "withStorageWriteLock"
+        ],
+        "functions": [
+          "hasDeltaPrimitives",
+          "hasWriteLock",
+          "withStorageWriteLock"
         ]
       }
     },
@@ -14857,6 +15047,12 @@
               "QueryLogEntry"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../utils/envConfig.js",
+            "imports": [
+              "readEnvStrictFlag"
+            ]
           }
         ],
         "exports": [
@@ -15535,6 +15731,12 @@
             "file": "../utils/timing.js",
             "imports": [
               "CoalescingTimer"
+            ]
+          },
+          {
+            "file": "../utils/envConfig.js",
+            "imports": [
+              "readEnvNonNegativeIntOrDefault"
             ]
           },
           {
@@ -16684,13 +16886,15 @@
           {
             "file": "../../utils/durableWriteFile.js",
             "imports": [
+              "durableAppendFile",
               "durableWriteFile"
             ]
           },
           {
             "file": "./MapFileTier.js",
             "imports": [
-              "MapFileTier"
+              "MapFileTier",
+              "TOMBSTONE_FIELD"
             ]
           }
         ],
@@ -16791,10 +16995,14 @@
           }
         ],
         "exports": [
+          "TOMBSTONE_FIELD",
           "MapFileTier"
         ],
         "classes": [
           "MapFileTier"
+        ],
+        "constants": [
+          "TOMBSTONE_FIELD"
         ]
       },
       "src/search/tiered/TieredIndex.ts": {
@@ -17131,6 +17339,7 @@
           "DecayResult",
           "ForgetResult",
           "ProspectiveEntity",
+          "ProspectiveEvaluationContext",
           "FiredEvent",
           "ObservationContext",
           "BlamedComponent",
@@ -18376,7 +18585,14 @@
         "description": "Cache Pressure Coordinator",
         "externalDependencies": [],
         "nodeDependencies": [],
-        "internalDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./envConfig.js",
+            "imports": [
+              "readEnvStrictInt"
+            ]
+          }
+        ],
         "exports": [
           "CachePressureCoordinator"
         ],
@@ -18399,6 +18615,13 @@
               "IndexHealthReport"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../core/ObservationStore.js",
+            "imports": [
+              "ObservationStoreStats"
+            ],
+            "typeOnly": true
           }
         ],
         "exports": [
@@ -18407,7 +18630,8 @@
         "interfaces": [
           "EntityCounts",
           "TieredIndexStatsSnapshot",
-          "DiagnosticsReport"
+          "DiagnosticsReport",
+          "DiagnosticsOptions"
         ],
         "functions": [
           "buildDiagnosticsReport"
@@ -19007,6 +19231,49 @@
           "defaultMemoryPath"
         ]
       },
+      "src/utils/envConfig.ts": {
+        "description": "Shared environment-variable parsing helpers.",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./logger.js",
+            "imports": [
+              "logger"
+            ]
+          }
+        ],
+        "exports": [
+          "MAX_SEGMENT_COUNT",
+          "readEnvStrictFlag",
+          "readEnvLooseFlag",
+          "readEnvNumber",
+          "readEnvNumberOrUndefined",
+          "parseStrictDecimalInt",
+          "readEnvStrictInt",
+          "parseSegmentCount",
+          "readEnvPositiveIntOrDefault",
+          "readEnvNonNegativeIntOrDefault"
+        ],
+        "interfaces": [
+          "EnvNumberBounds",
+          "EnvStrictIntBounds"
+        ],
+        "functions": [
+          "readEnvStrictFlag",
+          "readEnvLooseFlag",
+          "readEnvNumber",
+          "readEnvNumberOrUndefined",
+          "parseStrictDecimalInt",
+          "readEnvStrictInt",
+          "parseSegmentCount",
+          "readEnvPositiveIntOrDefault",
+          "readEnvNonNegativeIntOrDefault"
+        ],
+        "constants": [
+          "MAX_SEGMENT_COUNT"
+        ]
+      },
       "src/utils/errorSuggestions.ts": {
         "description": "Error Suggestion Generator",
         "externalDependencies": [],
@@ -19280,6 +19547,24 @@
             "file": "./logger.js",
             "imports": [
               "logger"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./envConfig.js",
+            "imports": [
+              "readEnvStrictFlag",
+              "readEnvLooseFlag",
+              "readEnvNumber",
+              "readEnvNumberOrUndefined",
+              "readEnvStrictInt",
+              "parseStrictDecimalInt",
+              "parseSegmentCount",
+              "readEnvPositiveIntOrDefault",
+              "readEnvNonNegativeIntOrDefault",
+              "MAX_SEGMENT_COUNT",
+              "EnvNumberBounds",
+              "EnvStrictIntBounds"
             ],
             "reExport": true
           },
@@ -19661,8 +19946,16 @@
             "reExport": true
           },
           {
+            "file": "./sidecarPath.js",
+            "imports": [
+              "sidecarPath"
+            ],
+            "reExport": true
+          },
+          {
             "file": "./Diagnostics.js",
             "imports": [
+              "DiagnosticsOptions",
               "DiagnosticsReport",
               "TieredIndexStatsSnapshot"
             ],
@@ -19730,6 +20023,18 @@
           "CompressedCacheOptions",
           "CompressedCacheStats",
           "logger",
+          "readEnvStrictFlag",
+          "readEnvLooseFlag",
+          "readEnvNumber",
+          "readEnvNumberOrUndefined",
+          "readEnvStrictInt",
+          "parseStrictDecimalInt",
+          "parseSegmentCount",
+          "readEnvPositiveIntOrDefault",
+          "readEnvNonNegativeIntOrDefault",
+          "MAX_SEGMENT_COUNT",
+          "EnvNumberBounds",
+          "EnvStrictIntBounds",
           "levenshteinDistance",
           "calculateTF",
           "calculateTFFromTokens",
@@ -19957,7 +20262,9 @@
           "CompressedMapOptions",
           "ZlibCompressionAdapter",
           "ICompressionAdapter",
+          "sidecarPath",
           "cosineSimilarity",
+          "DiagnosticsOptions",
           "DiagnosticsReport",
           "TieredIndexStatsSnapshot",
           "IIndexHealth",
@@ -20014,6 +20321,18 @@
           "CompressedCacheOptions",
           "CompressedCacheStats",
           "logger",
+          "readEnvStrictFlag",
+          "readEnvLooseFlag",
+          "readEnvNumber",
+          "readEnvNumberOrUndefined",
+          "readEnvStrictInt",
+          "parseStrictDecimalInt",
+          "parseSegmentCount",
+          "readEnvPositiveIntOrDefault",
+          "readEnvNonNegativeIntOrDefault",
+          "MAX_SEGMENT_COUNT",
+          "EnvNumberBounds",
+          "EnvStrictIntBounds",
           "levenshteinDistance",
           "calculateTF",
           "calculateTFFromTokens",
@@ -20240,6 +20559,8 @@
           "CompressedMapOptions",
           "ZlibCompressionAdapter",
           "ICompressionAdapter",
+          "sidecarPath",
+          "DiagnosticsOptions",
           "DiagnosticsReport",
           "TieredIndexStatsSnapshot",
           "IIndexHealth",
@@ -20702,6 +21023,25 @@
         ],
         "constants": [
           "searchCaches"
+        ]
+      },
+      "src/utils/sidecarPath.ts": {
+        "description": "Sidecar path derivation.",
+        "externalDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "path",
+            "imports": [
+              "path"
+            ]
+          }
+        ],
+        "internalDependencies": [],
+        "exports": [
+          "sidecarPath"
+        ],
+        "functions": [
+          "sidecarPath"
         ]
       },
       "src/utils/taskScheduler.ts": {
@@ -21197,6 +21537,7 @@
           "src/core/TransitionLedger.ts",
           "src/core/columns/IColumnStore.ts",
           "src/core/columns/JsonlColumnStore.ts",
+          "src/core/context/StorageInfraFacade.ts",
           "src/core/index.ts",
           "src/core/mmap/FsReadMmapBackend.ts",
           "src/core/mmap/IMmapBackend.ts",
@@ -21204,7 +21545,8 @@
           "src/core/segments/FileSegmentStorage.ts",
           "src/core/segments/ISegmentStorage.ts",
           "src/core/sqlite-register.ts",
-          "src/core/storageCache.ts"
+          "src/core/storageCache.ts",
+          "src/core/storageCapabilities.ts"
         ]
       },
       {
@@ -21349,6 +21691,7 @@
           "src/utils/constants.ts",
           "src/utils/durableWriteFile.ts",
           "src/utils/entityUtils.ts",
+          "src/utils/envConfig.ts",
           "src/utils/errorSuggestions.ts",
           "src/utils/errors.ts",
           "src/utils/fieldPath.ts",
@@ -21372,6 +21715,7 @@
           "src/utils/schemas.ts",
           "src/utils/searchAlgorithms.ts",
           "src/utils/searchCache.ts",
+          "src/utils/sidecarPath.ts",
           "src/utils/taskScheduler.ts",
           "src/utils/textSimilarity.ts",
           "src/utils/timing.ts",
@@ -21394,32 +21738,32 @@
       "src/sqlite.ts",
       "src/workers/levenshteinWorker.ts"
     ],
-    "reachableCount": 313,
+    "reachableCount": 317,
     "dormantCount": 0,
     "orphaned": [],
     "testOnly": []
   },
   "statistics": {
-    "totalTypeScriptFiles": 313,
+    "totalTypeScriptFiles": 317,
     "totalModules": 12,
-    "totalLinesOfCode": 105893,
-    "totalExports": 2149,
-    "totalClasses": 237,
-    "totalInterfaces": 632,
-    "totalFunctions": 378,
+    "totalLinesOfCode": 107017,
+    "totalExports": 2186,
+    "totalClasses": 238,
+    "totalInterfaces": 638,
+    "totalFunctions": 392,
     "totalTypeGuards": 31,
     "totalEnums": 4,
-    "totalConstants": 124,
-    "totalReExports": 1395,
-    "totalTypeOnlyImports": 504,
+    "totalConstants": 126,
+    "totalReExports": 1415,
+    "totalTypeOnlyImports": 511,
     "runtimeCircularDeps": 0,
     "typeOnlyCircularDeps": 8,
     "entryRoots": 4,
-    "reachableFiles": 313,
+    "reachableFiles": 317,
     "dormantFiles": 0,
     "orphanedFiles": 0,
     "testOnlyFiles": 0,
     "unusedFilesCount": 0,
-    "unusedExportsCount": 59
+    "unusedExportsCount": 61
   }
 }

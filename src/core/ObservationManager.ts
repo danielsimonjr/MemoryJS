@@ -22,6 +22,7 @@ import {
   type GovernanceHooks,
 } from './EntityManager.js';
 import { calculateTextSimilarity } from '../utils/textSimilarity.js';
+import { readEnvStrictFlag } from '../utils/envConfig.js';
 import { borrowGraphView } from '../utils/graphCopy.js';
 import type { IColumnStore, ObservationColumn } from './columns/IColumnStore.js';
 import type {
@@ -108,7 +109,7 @@ export class ObservationManager {
     batch: Array<{ name: string; updates: Partial<Entity> }>,
     options?: { timestamp?: string },
   ): Promise<void> {
-    if (typeof (this.storage as Partial<GraphStorage>).updateEntities === 'function') {
+    if (typeof this.storage.updateEntities === 'function') {
       await this.storage.updateEntities(batch, options);
       return;
     }
@@ -416,7 +417,7 @@ export class ObservationManager {
     if (dedup) {
       return dedup.enabled ? dedup : undefined;
     }
-    if (process.env.MEMORY_OBSERVATION_DEDUP === 'true') {
+    if (readEnvStrictFlag('MEMORY_OBSERVATION_DEDUP')) {
       return DEFAULT_DEDUP_OPTIONS;
     }
     return undefined;
@@ -565,7 +566,7 @@ export class ObservationManager {
       // contradiction findings are still informational only — the
       // contract is "validator hooks downstream consumers, doesn't
       // mutate persistence by itself."
-      if (this.memoryValidatorProvider && process.env.MEMORY_VALIDATE_ON_STORE === 'true') {
+      if (this.memoryValidatorProvider && readEnvStrictFlag('MEMORY_VALIDATE_ON_STORE')) {
         const validator = this.memoryValidatorProvider();
         const passed: string[] = [];
         for (const content of nonExactDuplicates) {
@@ -679,6 +680,16 @@ export class ObservationManager {
       });
       await this.updateEntitiesCompat(batch, { timestamp });
       fireGovernanceAudits(this.governanceHooks, auditEvents, 'ObservationManager');
+      // DES-3: announce the per-entity delta after the entity:updated event
+      // fired by the storage write. Only observations actually appended.
+      const emitter = this.storage.events;
+      if (emitter) {
+        for (const r of results) {
+          if (r.addedObservations.length > 0) {
+            emitter.emitObservationAdded(r.entityName, r.addedObservations);
+          }
+        }
+      }
       // Phase 8 task 67: shadow-write the column store with the post-
       // save inline state. Best-effort — failures log but don't reject
       // the caller's add (inline state is already durable).
@@ -694,7 +705,7 @@ export class ObservationManager {
 
     // Auto-link: detect entity mentions and create relations
     const shouldAutoLink =
-      (options?.autoLink ?? (process.env.MEMORY_AUTO_LINK === 'true')) && this._autoLinker;
+      (options?.autoLink ?? readEnvStrictFlag('MEMORY_AUTO_LINK')) && this._autoLinker;
 
     if (shouldAutoLink && this._autoLinker) {
       const autoLinkResults: AutoLinkResult[] = [];
@@ -831,6 +842,9 @@ export class ObservationManager {
     const timestamp = new Date().toISOString();
     let hasChanges = false;
     const touchedNames: string[] = [];
+    // DES-3: observations actually removed, per entity (requested-but-absent
+    // strings are not recorded).
+    const removedByEntity = new Map<string, string[]>();
 
     deletions.forEach(d => {
       const live = entityMap.get(d.entityName) ?? this.storage.getEntityByName(d.entityName);
@@ -841,7 +855,11 @@ export class ObservationManager {
           entityMap.set(d.entityName, entity);
         }
         const originalLength = entity.observations.length;
+        const removed = entity.observations.filter(o => d.observations.includes(o));
         entity.observations = entity.observations.filter(o => !d.observations.includes(o));
+        if (removed.length > 0) {
+          removedByEntity.set(entity.name, [...(removedByEntity.get(entity.name) ?? []), ...removed]);
+        }
 
         // Update lastModified timestamp if observations were deleted
         if (entity.observations.length < originalLength) {
@@ -871,6 +889,13 @@ export class ObservationManager {
       });
       await this.updateEntitiesCompat(batch, { timestamp });
       fireGovernanceAudits(this.governanceHooks, auditEvents, 'ObservationManager');
+      // DES-3: announce removed observations after entity:updated.
+      const emitter = this.storage.events;
+      if (emitter) {
+        for (const [entityName, removed] of removedByEntity) {
+          emitter.emitObservationDeleted(entityName, removed);
+        }
+      }
       // Phase 8 task 67: shadow-update the column store for each
       // touched entity. Empty-after-delete entries still get put()'d
       // (not delete()'d) so callers see `[]` rather than fall through

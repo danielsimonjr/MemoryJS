@@ -14,7 +14,7 @@ import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { ManagerContext } from '../../../src/core/ManagerContext.js';
-import { registerDiagCommand } from '../../../src/cli/commands/diag.js';
+import { registerDiagCommand, ENV_VAR_CATALOG } from '../../../src/cli/commands/diag.js';
 
 describe('diag CLI commands', () => {
   let testDir: string;
@@ -180,5 +180,14 @@ describe('diag error path', () => {
     } finally {
       await cleanupCliHarness(h);
     }
+  });
+});
+
+describe('ENV_VAR_CATALOG deprecated entries', () => {
+  it('lists MEMORY_SQLITE_AUTO_INDEX as deprecated with no effect', () => {
+    const entry = ENV_VAR_CATALOG.find((e) => e.name === 'MEMORY_SQLITE_AUTO_INDEX');
+    expect(entry).toBeDefined();
+    expect(entry!.description).toMatch(/^Deprecated — no effect/);
+    expect(entry!.description).toContain('DES-9');
   });
 });

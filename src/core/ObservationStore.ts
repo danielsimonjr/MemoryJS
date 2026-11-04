@@ -6,10 +6,11 @@
  * reconstruct the full text via this store, which keeps a single copy
  * of each unique string plus a reference count for safe removal.
  *
- * Phase 3 step 32 — infrastructure-only first cut. Callers that want
- * the memory savings can wrap their writes and reads via this store;
- * the canonical `Entity` shape is unchanged so existing code keeps
- * working. Wiring into `EntityManager` is a follow-up.
+ * Phase 3 step 32 — infrastructure-only first cut. The canonical `Entity`
+ * shape is unchanged. Used by `ctx.diagnostics({ observationDedup: true })`
+ * to report the dedup ratio over the cached graph (on a throwaway store).
+ * Write-path wiring into `EntityManager` is an owner decision
+ * (DESIGN_PASS_2026-11-04 §5 Q2), not yet made.
  *
  * @module core/ObservationStore
  * @public Stable content-addressable store. `intern`/`get`/`release`

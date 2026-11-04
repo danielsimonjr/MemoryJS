@@ -12,9 +12,9 @@
 - **Dormant files** (runtime code on disk, unreachable from any entry/build root): 0
   - **Orphaned (reachable from nothing — delete/wire candidates)**: 0
   - **Test-only (exercised by a test, ships nothing)**: 0
-- **Potentially unused exports**: 59
+- **Potentially unused exports**: 61
   - **Unreferenced anywhere (deletion candidates)**: 0
-  - **Referenced in-module (type contracts / helpers backing live exports)**: 59
+  - **Referenced in-module (type contracts / helpers backing live exports)**: 61
 
 Seeded reachability roots (4):
 
@@ -87,6 +87,10 @@ support exports that ARE used, so they cannot be deleted in isolation.
 - `ContextCompressionResult` (interface) — 2 in-file refs
 - `CompressionLevel` (type) — 4 in-file refs
 
+### `src/agent/DecayEngine.ts`
+
+- `BatchReinforcementOptions` (interface) — 1 in-file ref
+
 ### `src/agent/PatternDetector.ts`
 
 - `PatternDetectorOptions` (interface) — 1 in-file ref
@@ -134,6 +138,10 @@ support exports that ARE used, so they cannot be deleted in isolation.
 ### `src/core/SQLiteStorage.ts`
 
 - `DatabaseCtor` (type) — 6 in-file refs
+
+### `src/core/context/StorageInfraFacade.ts`
+
+- `StorageInfraDeps` (interface) — 1 in-file ref
 
 ### `src/core/mmap/FsReadMmapBackend.ts`
 

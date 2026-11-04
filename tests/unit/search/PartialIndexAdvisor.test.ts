@@ -101,6 +101,20 @@ describe('PartialIndexAdvisor', () => {
     db.close();
   });
 
+  it('enabled option overrides the env var (no env read)', () => {
+    delete process.env.MEMORY_SQLITE_AUTO_INDEX;
+    const on = new PartialIndexAdvisor({ minSupport: 1, enabled: true });
+    expect(on.enabled).toBe(true);
+    on.record({ entityType: 'person' });
+    expect(on.recommend()).toHaveLength(1);
+
+    process.env.MEMORY_SQLITE_AUTO_INDEX = 'true';
+    const off = new PartialIndexAdvisor({ minSupport: 1, enabled: false });
+    expect(off.enabled).toBe(false);
+    off.record({ entityType: 'person' });
+    expect(off.snapshot().typeCounts.person).toBeUndefined();
+  });
+
   it('apply() is a no-op when disabled', () => {
     delete process.env.MEMORY_SQLITE_AUTO_INDEX;
     const advisor = new PartialIndexAdvisor({ minSupport: 1 });

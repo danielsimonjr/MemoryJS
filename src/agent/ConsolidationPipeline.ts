@@ -7,7 +7,7 @@
  * @module agent/ConsolidationPipeline
  */
 
-import type { IGraphStorage, Entity } from '../types/types.js';
+import type { IGraphStorage, Entity, Relation } from '../types/types.js';
 import type {
   AgentEntity,
   ConsolidateOptions,
@@ -33,6 +33,12 @@ import { uniqueTimeSuffix } from '../utils/ids.js';
 import type { WorkingMemoryManager } from './WorkingMemoryManager.js';
 import { requireWorkingMemoryEntity } from './workingMemoryGuard.js';
 import type { DecayEngine } from './DecayEngine.js';
+import { buildReinforcementUpdates } from './DecayEngine.js';
+import {
+  hasDeltaPrimitives,
+  withStorageWriteLock,
+  type DeltaCapableStorage,
+} from '../core/storageCapabilities.js';
 import { SummarizationService } from './SummarizationService.js';
 import { PatternDetector } from './PatternDetector.js';
 import { RuleEvaluator } from './RuleEvaluator.js';
@@ -279,15 +285,13 @@ export class ConsolidationPipeline {
         }
       }
 
-      // Promote eligible memories
-      for (const candidate of candidates) {
-        try {
-          await this.promoteMemory(candidate.name, effectiveOptions.targetType);
-          result.memoriesPromoted++;
-        } catch (error) {
-          result.errors.push(`Promotion failed for ${candidate.name}: ${error instanceof Error ? error.message : String(error)}`);
-        }
-      }
+      // Promote eligible memories (per-candidate error isolation)
+      const { promoted, errors } = await this.promoteMemories(
+        candidates.map((c) => c.name),
+        effectiveOptions.targetType
+      );
+      result.memoriesPromoted += promoted.length;
+      result.errors.push(...errors.map((e) => `Promotion failed for ${e.entityName}: ${e.error}`));
 
       // Clean up originals if not preserving
       // Working memories will expire naturally via TTL,
@@ -328,35 +332,7 @@ export class ConsolidationPipeline {
     const agentEntity = requireWorkingMemoryEntity(this.storage, entityName);
 
     const now = new Date().toISOString();
-    const updates: Partial<AgentEntity> = {
-      // Change memory type
-      memoryType: targetType,
-
-      // Clear working memory fields
-      isWorkingMemory: false,
-      expiresAt: undefined,
-
-      // Set promotion metadata
-      promotedAt: now,
-      promotedFrom: agentEntity.sessionId,
-      markedForPromotion: false,
-
-      // Update timestamp
-      lastModified: now,
-    };
-
-    // Type-specific processing
-    if (targetType === 'semantic') {
-      // For semantic memory, we might want to:
-      // - Abstract away session-specific context
-      // - Generalize observations
-      // This is typically handled by summarization stages
-    } else if (targetType === 'episodic') {
-      // For episodic memory:
-      // - Preserve temporal context
-      // - Keep sessionId and timestamps intact
-      // This is the default behavior
-    }
+    const updates = buildPromotionUpdates(agentEntity, targetType, now);
 
     // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- entity existence-checked at entry; closing this microtask-gap TOCTOU race needs storage-level atomic check-and-set (task #55)
     await this.storage.updateEntity(entityName, updates as Partial<Entity>);
@@ -365,6 +341,112 @@ export class ConsolidationPipeline {
     await this.decayEngine.reinforceMemory(entityName);
 
     return { ...agentEntity, ...updates } as AgentEntity;
+  }
+
+  /**
+   * Promote many working memories. Each name is validated and reported on its
+   * own: one failing name never blocks the others.
+   *
+   * With delta-capable storage, every promotion (fields plus reinforcement) is
+   * written in one `updateEntities` call, and access tracking is batched.
+   * If the batch write throws, each name is re-read: those already at the
+   * target type count as promoted; the rest fall back to `promoteMemory` one
+   * at a time. A failure of the access-tracking step after a successful write
+   * keeps the names in `promoted` and adds a "Promoted, but access tracking
+   * failed" entry to `errors`. Without delta primitives every name
+   * goes through `promoteMemory`.
+   *
+   * @param entityNames - Names of working memory entities to promote
+   * @param targetType - Target memory type (episodic or semantic)
+   * @returns Promoted entities and per-name errors (error text matches `promoteMemory`)
+   */
+  async promoteMemories(
+    entityNames: readonly string[],
+    targetType: MemoryType
+  ): Promise<{ promoted: AgentEntity[]; errors: Array<{ entityName: string; error: string }> }> {
+    const promoted: AgentEntity[] = [];
+    const errors: Array<{ entityName: string; error: string }> = [];
+
+    const promoteEach = async (names: readonly string[]): Promise<void> => {
+      for (const name of names) {
+        try {
+          promoted.push(await this.promoteMemory(name, targetType));
+        } catch (error) {
+          errors.push({ entityName: name, error: errorText(error) });
+        }
+      }
+    };
+
+    if (!hasDeltaPrimitives(this.storage)) {
+      await promoteEach(entityNames);
+      return { promoted, errors };
+    }
+
+    // Phase A: validate each name in isolation. A repeated name fails the same
+    // way a second promoteMemory call would (the first call already promoted it).
+    const valid: AgentEntity[] = [];
+    const seen = new Set<string>();
+    for (const name of entityNames) {
+      if (seen.has(name)) {
+        errors.push({ entityName: name, error: `Entity is not working memory: ${name}` });
+        continue;
+      }
+      seen.add(name);
+      try {
+        valid.push(requireWorkingMemoryEntity(this.storage, name));
+      } catch (error) {
+        errors.push({ entityName: name, error: errorText(error) });
+      }
+    }
+    if (valid.length === 0) return { promoted, errors };
+
+    // Phase B: one delta write for all promotions, reinforcement folded in.
+    const now = new Date().toISOString();
+    const batch = valid.map((agentEntity) => ({
+      name: agentEntity.name,
+      updates: {
+        ...buildPromotionUpdates(agentEntity, targetType, now),
+        ...buildReinforcementUpdates(agentEntity, now),
+      } as Partial<Entity>,
+    }));
+
+    try {
+      await this.storage.updateEntities(batch, { timestamp: now });
+    } catch {
+      // The write may have persisted before throwing (e.g. a post-write step).
+      // Re-read: names already at targetType count as promoted; only the rest
+      // retry on the per-entity path.
+      const unpromoted: string[] = [];
+      for (const candidate of valid) {
+        const current = this.storage.getEntityByName(candidate.name) as AgentEntity | undefined;
+        if (current && current.memoryType === targetType) {
+          promoted.push(current);
+        } else {
+          unpromoted.push(candidate.name);
+        }
+      }
+      await promoteEach(unpromoted);
+      return { promoted, errors };
+    }
+
+    // Phase C: access tracking only; reinforcement fields were written in Phase B.
+    // The promotion is already persisted, so a failure here is reported as a
+    // reinforcement error without un-counting the promotion.
+    const names = valid.map((e) => e.name);
+    for (const agentEntity of valid) {
+      promoted.push({ ...agentEntity, ...buildPromotionUpdates(agentEntity, targetType, now) } as AgentEntity);
+    }
+    try {
+      await this.decayEngine.reinforceMemories(names, { alreadyApplied: true });
+    } catch (error) {
+      for (const name of names) {
+        errors.push({
+          entityName: name,
+          error: `Promoted, but access tracking failed: ${errorText(error)}`,
+        });
+      }
+    }
+    return { promoted, errors };
   }
 
   // ==================== Batch Operations ====================
@@ -793,7 +875,74 @@ export class ConsolidationPipeline {
       throw new Error('Need at least 2 entities to merge');
     }
 
-    // Load all entities
+    const storage = this.storage;
+
+    if (hasDeltaPrimitives(storage)) {
+      // DES-11: the lock is taken FIRST so the re-read of the merged entities,
+      // the survivor update, relation retargeting, delete and append form one
+      // critical section; a concurrent write cannot land between the snapshot
+      // and the delete and be lost.
+      const result = await withStorageWriteLock(storage, async () => {
+        const plan = this.planMerge(entityNames, strategy);
+        const mergedNames = entityNames.filter((n) => n !== plan.survivor.name);
+        const survivorBefore = structuredClone(plan.survivor);
+        await this.persistSurvivor(plan.survivor.name, plan.updates);
+        try {
+          await this.applyMergeDelta(storage, plan.survivor.name, mergedNames);
+        } catch (error) {
+          await this.restoreSurvivor(survivorBefore, plan.updates, error);
+          throw error;
+        }
+        return plan;
+      });
+      // Audit only after the merge committed.
+      await this.recordMerge(entityNames, result.survivor.name, strategy).catch(() => undefined);
+      return this.buildMergeResult(entityNames, strategy, result);
+    }
+
+    // Fallback for storages without delta primitives (e.g. minimal fakes):
+    // full-graph rewrite through saveGraph.
+    const plan = this.planMerge(entityNames, strategy);
+    const { survivor } = plan;
+    await this.persistSurvivor(survivor.name, plan.updates);
+    await this.recordMerge(entityNames, survivor.name, strategy);
+    const mergedNames = entityNames.filter((n) => n !== survivor.name);
+    {
+      const graph = await storage.loadGraph();
+      const filteredEntities = graph.entities.filter(
+        (e) => !mergedNames.includes(e.name)
+      );
+      const seenRelations = new Set<string>();
+      const filteredRelations = graph.relations
+        .map((r) => {
+          let from = r.from;
+          let to = r.to;
+          if (mergedNames.includes(from)) from = survivor.name;
+          if (mergedNames.includes(to)) to = survivor.name;
+          return { ...r, from, to };
+        })
+        .filter((r) => {
+          if (r.from === r.to) return false;
+          const key = `${r.from}|${r.to}|${r.relationType}`;
+          if (seenRelations.has(key)) return false;
+          seenRelations.add(key);
+          return true;
+        });
+
+      await storage.saveGraph({
+        entities: filteredEntities,
+        relations: filteredRelations,
+      });
+    }
+
+    return this.buildMergeResult(entityNames, strategy, plan);
+  }
+
+  /** Load the entities, pick the survivor and compute the merged fields. */
+  private planMerge(
+    entityNames: string[],
+    strategy: MemoryMergeStrategy
+  ): { survivor: AgentEntity; updates: Partial<AgentEntity>; mergedObservations: string[] } {
     const entities: AgentEntity[] = [];
     for (const name of entityNames) {
       const entity = this.storage.getEntityByName(name);
@@ -803,7 +952,6 @@ export class ConsolidationPipeline {
       entities.push(entity as AgentEntity);
     }
 
-    // Determine survivor based on strategy
     let survivor: AgentEntity;
     switch (strategy) {
       case 'newest':
@@ -818,15 +966,12 @@ export class ConsolidationPipeline {
         break;
     }
 
-    // Merge observations from all entities into survivor
     const allObservations = new Set<string>();
     for (const entity of entities) {
       entity.observations?.forEach((o) => allObservations.add(o));
     }
-
     const mergedObservations = Array.from(allObservations);
 
-    // Calculate merged metadata
     const updates: Partial<AgentEntity> = {
       observations: mergedObservations,
       confirmationCount: entities.reduce(
@@ -836,63 +981,52 @@ export class ConsolidationPipeline {
       accessCount: entities.reduce((sum, e) => sum + (e.accessCount ?? 0), 0),
       lastModified: new Date().toISOString(),
     };
+    return { survivor, updates, mergedObservations };
+  }
 
-    // Update survivor. If the survivor vanished between merge-planning and
-    // this write, abort BEFORE the destructive delete-others step below —
-    // proceeding would delete the merged entities with no survivor to hold
-    // their data.
-    const survivorPersisted = await this.storage.updateEntity(
-      survivor.name,
-      updates as Partial<Entity>
-    );
-    if (!survivorPersisted) {
+  /**
+   * Write merged fields to the survivor. If the survivor vanished, abort
+   * BEFORE the destructive delete-others step: proceeding would delete the
+   * merged entities with no survivor to hold their data.
+   */
+  private async persistSurvivor(name: string, updates: Partial<AgentEntity>): Promise<void> {
+    const persisted = await this.storage.updateEntity(name, updates as Partial<Entity>);
+    if (!persisted) {
       throw new Error(
-        `ConsolidationPipeline.mergeMemories: survivor '${survivor.name}' vanished mid-merge; aborting before delete to prevent data loss`
+        `ConsolidationPipeline.mergeMemories: survivor '${name}' vanished mid-merge; aborting before delete to prevent data loss`
       );
     }
+  }
 
-    // Record merge in audit trail
-    await this.recordMerge(entityNames, survivor.name, strategy);
+  /** Put the survivor's pre-merge field values back after a failed delta merge. */
+  private async restoreSurvivor(
+    before: AgentEntity,
+    updates: Partial<AgentEntity>,
+    cause: unknown
+  ): Promise<void> {
+    try {
+      const restore: Record<string, unknown> = {};
+      for (const key of Object.keys(updates)) {
+        restore[key] = (before as unknown as Record<string, unknown>)[key];
+      }
+      if (!(await this.storage.updateEntity(before.name, restore as Partial<Entity>))) {
+        throw new Error(`survivor '${before.name}' no longer exists`);
+      }
+    } catch (restoreError) {
+      const detail = restoreError instanceof Error ? restoreError.message : String(restoreError);
+      throw new Error(
+        `ConsolidationPipeline.mergeMemories: merge failed and survivor restore also failed (restore: ${detail})`,
+        { cause }
+      );
+    }
+  }
 
-    // Remove other entities (delete them from storage)
-    const graph = await this.storage.loadGraph();
-    const mergedNames = entityNames.filter((n) => n !== survivor.name);
-
-    // Filter out merged entities and their relations
-    const filteredEntities = graph.entities.filter(
-      (e) => !mergedNames.includes(e.name)
-    );
-
-    // Retarget relations
-    const seenRelations = new Set<string>();
-    const filteredRelations = graph.relations
-      .map((r) => {
-        let from = r.from;
-        let to = r.to;
-
-        // Retarget from merged entities
-        if (mergedNames.includes(from)) from = survivor.name;
-        if (mergedNames.includes(to)) to = survivor.name;
-
-        return { ...r, from, to };
-      })
-      .filter((r) => {
-        // Skip self-relations
-        if (r.from === r.to) return false;
-
-        // Skip duplicates
-        const key = `${r.from}|${r.to}|${r.relationType}`;
-        if (seenRelations.has(key)) return false;
-        seenRelations.add(key);
-
-        return true;
-      });
-
-    await this.storage.saveGraph({
-      entities: filteredEntities,
-      relations: filteredRelations,
-    });
-
+  private buildMergeResult(
+    entityNames: string[],
+    strategy: MemoryMergeStrategy,
+    plan: { survivor: AgentEntity; updates: Partial<AgentEntity>; mergedObservations: string[] }
+  ): MergeResult {
+    const { survivor, updates, mergedObservations } = plan;
     return {
       survivor: { ...survivor, ...updates } as AgentEntity,
       mergedEntities: entityNames,
@@ -900,6 +1034,103 @@ export class ConsolidationPipeline {
       strategy,
       observationCount: mergedObservations.length,
     };
+  }
+
+  /**
+   * Delta form of the merge rewrite (OPT-15 / DES-11).
+   *
+   * Must be called with the storage write lock already held (see
+   * `mergeMemories`). Touches only the relations incident
+   * to merged entities:
+   * 1. Collect relations touching merged entities, retargeted to the survivor.
+   *    Self-loops are dropped; a retargeted key already on the survivor (or
+   *    produced earlier in this batch) is dropped, so the survivor's existing
+   *    relation wins over a retargeted duplicate.
+   * 2. `deleteEntities(mergedNames)` removes the merged entities and cascades
+   *    their relations.
+   * 3. `appendRelations(retargeted)` re-adds the rewired relations.
+   *
+   * Failure handling: if step 2 or 3 throws after the deletion has been
+   * applied, the deleted entities and their cascaded relations are restored
+   * from the delete result and any partially appended retargeted relations are
+   * removed, then the original error is rethrown. If that rollback itself
+   * fails, the error reports that the graph may be partially merged. A failure
+   * inside `deleteEntities` is not compensated here: its atomicity is the
+   * backend's guarantee.
+   *
+   * Unlike the saveGraph fallback, relations unrelated to the merge are not
+   * rewritten, so pre-existing duplicates elsewhere in the graph are left as-is.
+   */
+  private async applyMergeDelta(
+    storage: DeltaCapableStorage,
+    survivorName: string,
+    mergedNames: string[]
+  ): Promise<void> {
+    const mergedSet = new Set(mergedNames);
+    const relKey = (r: Pick<Relation, 'from' | 'to' | 'relationType'>): string =>
+      `${r.from}|${r.to}|${r.relationType}`;
+
+    {
+      const survivorKeys = new Set(
+        storage.getRelationsFor(survivorName).map(relKey)
+      );
+      const retargeted: Relation[] = [];
+      for (const name of mergedNames) {
+        for (const r of storage.getRelationsFor(name)) {
+          const from = mergedSet.has(r.from) ? survivorName : r.from;
+          const to = mergedSet.has(r.to) ? survivorName : r.to;
+          if (from === to) continue;
+          const key = relKey({ from, to, relationType: r.relationType });
+          if (survivorKeys.has(key)) continue;
+          survivorKeys.add(key);
+          retargeted.push({ ...r, from, to });
+        }
+      }
+
+      let deleted: Awaited<ReturnType<DeltaCapableStorage['deleteEntities']>> | undefined;
+      try {
+        deleted = await storage.deleteEntities(mergedNames);
+        if (retargeted.length > 0) await storage.appendRelations(retargeted);
+      } catch (error) {
+        if (deleted) {
+          await this.rollbackMergeDelta(storage, deleted, retargeted, error);
+        }
+        throw error;
+      }
+    }
+  }
+
+  /**
+   * Restore the state captured by a delete result after a failed merge delta.
+   * Throws a wrapped error (with the original as `cause`) if restoration fails.
+   */
+  private async rollbackMergeDelta(
+    storage: DeltaCapableStorage,
+    deleted: { deletedEntities: Entity[]; deletedRelations: Relation[] },
+    retargeted: Relation[],
+    cause: unknown
+  ): Promise<void> {
+    try {
+      if (retargeted.length > 0) {
+        // Retargeted keys never collide with a pre-existing relation (they were
+        // filtered against the survivor's keys), so deleting them is safe.
+        await storage.deleteRelations(
+          retargeted.map((r) => ({ from: r.from, to: r.to, relationType: r.relationType }))
+        );
+      }
+      if (deleted.deletedEntities.length > 0) {
+        await storage.appendEntities(structuredClone(deleted.deletedEntities));
+      }
+      if (deleted.deletedRelations.length > 0) {
+        await storage.appendRelations(structuredClone(deleted.deletedRelations));
+      }
+    } catch (rollbackError) {
+      const detail = rollbackError instanceof Error ? rollbackError.message : String(rollbackError);
+      throw new Error(
+        `ConsolidationPipeline.mergeMemories: delta write failed and rollback also failed; graph may be partially merged (rollback: ${detail})`,
+        { cause }
+      );
+    }
   }
 
   /**
@@ -1881,6 +2112,37 @@ export class ObservationDedupReportStage implements PipelineStage {
     }
     return { processed: errors.length, transformed: 0, errors };
   }
+}
+
+/** Field updates applied to a working memory when it is promoted. */
+function buildPromotionUpdates(
+  agentEntity: AgentEntity,
+  targetType: MemoryType,
+  now: string
+): Partial<AgentEntity> {
+  // Semantic promotion abstracts session context and episodic keeps it; both
+  // are handled by the stages and by keeping sessionId/timestamps intact.
+  return {
+    // Change memory type
+    memoryType: targetType,
+
+    // Clear working memory fields
+    isWorkingMemory: false,
+    expiresAt: undefined,
+
+    // Set promotion metadata
+    promotedAt: now,
+    promotedFrom: agentEntity.sessionId,
+    markedForPromotion: false,
+
+    // Update timestamp
+    lastModified: now,
+  };
+}
+
+/** Message text used in promotion error reports. */
+function errorText(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function truncate(s: string, n: number): string {

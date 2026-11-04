@@ -444,28 +444,36 @@ describe('TransitionLedger', () => {
       expect(events[0].to).toBeNull();
     });
 
-    it('should capture observation:added events', async () => {
+    it('should not record observation:added directly (DES-3: entity:updated is the source)', async () => {
       emitter.emitObservationAdded('Alice', ['Loves TypeScript', 'Plays piano']);
 
       await new Promise(resolve => setTimeout(resolve, 50));
 
-      expect(ledger.size).toBe(1);
-      const events = ledger.query({ entityId: 'Alice' });
-      expect(events[0].field).toBe('observations');
-      expect(events[0].from).toBeNull();
-      expect(events[0].to).toEqual(['Loves TypeScript', 'Plays piano']);
+      expect(ledger.size).toBe(0);
     });
 
-    it('should capture observation:deleted events', async () => {
+    it('should not record observation:deleted directly (DES-3: entity:updated is the source)', async () => {
       emitter.emitObservationDeleted('Alice', ['Outdated info']);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(ledger.size).toBe(0);
+    });
+
+    it('should record the observations field once from entity:updated', async () => {
+      emitter.emitEntityUpdated(
+        'Alice',
+        { observations: ['Loves TypeScript', 'Plays piano'] },
+        { observations: ['Loves TypeScript'] }
+      );
 
       await new Promise(resolve => setTimeout(resolve, 50));
 
       expect(ledger.size).toBe(1);
       const events = ledger.query({ entityId: 'Alice' });
       expect(events[0].field).toBe('observations');
-      expect(events[0].from).toEqual(['Outdated info']);
-      expect(events[0].to).toBeNull();
+      expect(events[0].from).toEqual(['Loves TypeScript']);
+      expect(events[0].to).toEqual(['Loves TypeScript', 'Plays piano']);
     });
 
     it('should allow detaching from emitter', async () => {

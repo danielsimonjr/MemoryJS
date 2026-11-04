@@ -71,8 +71,8 @@ For a runnable CLI (`memory` / `memoryjs`): `bunx --package @danielsimonjr/memor
 | Traceable evidence paths — *why* each result matched | `ctx.hybridSearchManager.search(graph, query, { explain: true })` → `evidencePaths` |
 | NL-guided neighbor retrieval (free-text "look for") | `ctx.graphTraversal.getNeighborsWithRelations(name, { lookFor })` |
 | Temporal range queries with natural-language parsing | `ctx.searchManager.searchByTime("last hour")` |
-| LLM-planned natural-language queries | `ctx.queryNaturalLanguage(query, llmProvider?)` |
-| Query diagnostics (`explainPlan`, index health) | `ctx.diagnostics` |
+| LLM-planned natural-language queries | `ctx.llmQueryPlanner({ llmProvider })` once, then `ctx.queryNaturalLanguage(text)` (keyword fallback without a provider) |
+| Query diagnostics (`explainPlan`, index health) | `ctx.searchManager.explainPlan(query)`, `ctx.indexHealth()`, aggregate `ctx.diagnostics()` |
 
 ### Graph algorithms
 
@@ -90,7 +90,7 @@ For a runnable CLI (`memory` / `memoryjs`): `bunx --package @danielsimonjr/memor
 | Sessions, working memory, episodic memory | `ctx.agentMemory()` — `startSession` / `addWorkingMemory` / `retrieveForContext` |
 | Turn-aware conversation memory with 4-tier dedup (exact / prefix / Jaccard / semantic) | `ctx.memoryEngine.addTurn()` / `getSessionTurns()` / `getRepeatedTurnCount()` |
 | Decay, salience, freshness | `DecayEngine`, `SalienceEngine`, `ctx.freshnessManager` |
-| Role profiles — `researcher` / `planner` / `executor` / `reviewer` / `coordinator` | `MEMORY_AGENT_ROLE` or `RoleProfileManager.apply(role)` |
+| Role profiles — `researcher` / `planner` / `executor` / `reviewer` / `coordinator` | `getRoleProfile(role)` / `resolveRoleProfile(agentType)` (`MEMORY_AGENT_ROLE` is reserved and not read) |
 | Memory consolidation, summarization, pattern detection | `ConsolidationPipeline`, `ConsolidationScheduler` |
 | Collaborative synthesis with conflict resolution | `CollaborativeSynthesis.synthesize()` / `resolveConflicts()` |
 | Failure-driven distillation, cognitive load analysis | `FailureDistillation`, `CognitiveLoadAnalyzer` |
@@ -100,7 +100,7 @@ For a runnable CLI (`memory` / `memoryjs`): `bunx --package @danielsimonjr/memor
 | Causal reasoning — causes / effects / counterfactuals / cycle detection | `ctx.causalReasoner.findCauses()` / `findEffects()` / `counterfactual()` |
 | World-state orchestrator | `ctx.worldModelManager.getCurrentState()` / `predictOutcome()` |
 | Per-agent persistent journal | `AgentMemoryManager.writeDiary()` / `readDiary()` |
-| Prospective memory (intentions-to-act) | `ctx.prospectiveMemory.schedule()` / `fire()` / `cancel()` |
+| Prospective memory (intentions-to-act) | `ctx.prospectiveMemory.scheduleAt()` / `scheduleOnEvent()` / `scheduleConditional()` / `tick()` / `cancel()` |
 | Failure memory (pre-task `applicability_hint` lookup) | `ctx.failureManager.record()` / `lookupForTask()` |
 | Plan memory (hierarchical goal trees) | `ctx.plan.createPlan()` / `pushSubGoal()` / `transitionNode()` |
 | Reflection memory (additive insights with content-hash dedup) | `ctx.reflectionManager.create()` / `getRelevantForSession()` |
@@ -130,7 +130,7 @@ For a runnable CLI (`memory` / `memoryjs`): `bunx --package @danielsimonjr/memor
 
 | Capability | Entry point |
 |---|---|
-| Policy enforcement + transactional rollback | `ctx.governanceManager.withTransaction()` / `GovernancePolicy` |
+| Policy enforcement + audit grouping (`withTransaction` is not atomic; see API.md) | `ctx.governanceManager.withTransaction()` / `GovernancePolicy` |
 | Enforced governance — every EntityManager mutation policy-checked + audited | `MEMORY_GOVERNANCE_ENABLED=true` (`GovernanceError` on denial) |
 | Tamper-evident audit trail (SHA-256 hash chain, `verifyChain()`) + query CLI | `ctx.auditLog` / `memory audit log\|history\|verify\|stats` |
 | REST API-key auth (Bearer / X-Api-Key, scopes, timing-safe) | `ApiKeyAuthMiddleware` + `RestRouter` `auth` option |
@@ -442,7 +442,7 @@ ctx.freshnessManager     // TTL / confidence freshness reports
 ctx.semanticSearch       // Vector similarity (lazy; needs embedding provider)
 ctx.temporalSearch       // Natural-language time-range search
 ctx.activeRetrieval      // Iterative query rewriting (no LLM required)
-ctx.queryNaturalLanguage // Convenience wrapper for NL → StructuredQuery
+ctx.queryNaturalLanguage // Convenience wrapper for NL → StructuredQuery (text only; provider set via ctx.llmQueryPlanner)
 
 // Memory engine + agent system
 ctx.memoryEngine         // Turn-aware conversation memory (4-tier dedup)
@@ -545,7 +545,7 @@ When using JSONL, related files are automatically created:
 | `semanticSearch.search(query)` | Vector similarity (requires embedding provider); persistent on SQLite | Semantic queries |
 | `new HybridSearchManager(...).search(query)` | Semantic + lexical + symbolic | Multi-signal ranking |
 | `activeRetrieval.adaptiveRetrieve({ query })` | Iterative query rewriting + coverage check | Adaptive refinement |
-| `queryNaturalLanguage(query, llmProvider?)` | LLM-planned NL decomposition (fallback: keyword) | Free-text queries |
+| `queryNaturalLanguage(text)` | LLM-planned NL decomposition; the provider is set first with `ctx.llmQueryPlanner({ llmProvider })` (fallback: keyword) | Free-text queries |
 | `causalReasoner.findEffects(seed, candidates)` | Subgraph traversal over `causes`/`enables`/`prevents` | Causal inference |
 
 ### Auto-search
@@ -946,11 +946,23 @@ Persistence: the JSONL backing is append-only and single-writer per file (a torn
 | `redactWithStats(text)` | Returns `{ text, stats: { totalRedactedBytes, countsByPattern } }` |
 | `redactGraph(graph)` | Apply to every observation in a graph-shaped object |
 
+### Role profiles
+
+Role presets are code helpers in `src/agent/RoleProfiles.ts`, exported from the root package. `MEMORY_AGENT_ROLE` is catalogued but reserved: the library does not read it, so setting it has no effect.
+
+```typescript
+import { getRoleProfile, resolveRoleProfile, listRoleProfiles } from '@danielsimonjr/memoryjs';
+
+const planner = getRoleProfile('planner');     // built-in preset for one role
+const fallback = resolveRoleProfile('llm');    // profile for an AgentType
+const all = listRoleProfiles();               // the five built-in profiles
+```
+
 ### Specialised memory managers
 
 | Manager | Path | Key methods |
 |---|---|---|
-| Prospective | `ctx.prospectiveMemory` | `schedule()` / `fire()` / `cancel()` / `expireDueIntentions()` / `getPending()` |
+| Prospective | `ctx.prospectiveMemory` | `scheduleAt()` / `scheduleOnEvent()` / `scheduleConditional()` / `tick()` / `cancel()` / `expireOverdue()` / `getPending()` |
 | Failure | `ctx.failureManager` | `record()` / `lookupForTask()` / `markResolved()` / `getAll()` |
 | Plan | `ctx.plan` | `createPlan()` / `pushSubGoal()` / `transitionNode()` / `markPlanComplete()` / `getCurrentPath()` |
 | Reflection | `ctx.reflectionManager` | `create()` / `list()` / `getRelevantForSession()` / `archive()` |
@@ -981,7 +993,7 @@ knobs) lives in [CLAUDE.md](CLAUDE.md#environment-variables). RBAC is wired in c
 | `MEMORY_DECAY_HALF_LIFE_HOURS` | Half-life for importance decay | `168` |
 | `MEMORY_GOVERNANCE_ENABLED` | Enable `GovernanceManager` policy enforcement | `false` |
 | `MEMORY_AUDIT_LOG_FILE` | Path for the audit JSONL trail | — |
-| `MEMORY_AGENT_ROLE` | Apply a built-in role profile (`researcher` / `planner` / `executor` / `reviewer` / `coordinator`) | — |
+| `MEMORY_AGENT_ROLE` | **Reserved, not read by the library** (catalogued only; no effect). Use `getRoleProfile(role)` in code | — |
 | `MEMORY_VALIDATE_ON_STORE` | Run `MemoryValidator` before observation writes | `false` |
 | `MEMORY_AUTO_LINK` | Auto-link entity mentions in observation writes (takes effect once `ctx.autoLinker` is accessed) | `false` |
 | `MEMORY_OBSERVATION_DEDUP` | Observation de-duplication on writes, using default dedup options | `false` |
@@ -992,7 +1004,7 @@ knobs) lives in [CLAUDE.md](CLAUDE.md#environment-variables). RBAC is wired in c
 | `MEMORY_MMAP_THRESHOLD_BYTES` | Minimum file size to trigger the mmap path; `0` = always | `104857600` |
 | `MEMORY_STORAGE_SEGMENT_COUNT` | FNV-routed JSONL shard count (2–1024; unset = single-file) | unset (single-file) |
 | `MEMORY_SQLITE_READ_POOL_SIZE` | Read-connection pool size for `SQLiteStorage` | `4` |
-| `MEMORY_SQLITE_AUTO_INDEX` | Storage-side hook (`SQLiteStorage.recordFilter`) is wired, but no in-tree search path records filters, so this currently has no effect on query plans. Call `recordFilter` yourself if you drive raw SQL | `false` |
+| `MEMORY_SQLITE_AUTO_INDEX` | **Deprecated, no effect** on query plans. Setting it logs a warning when a `SQLiteStorage` is constructed. Full indexes already cover the hot filters; scheduled for removal in v5 | `false` |
 | `SKIP_BENCHMARKS` | Skip perf-benchmark tests | `false` |
 | `LOG_LEVEL` | `debug` / `info` / `warn` / `error` | (none) |
 

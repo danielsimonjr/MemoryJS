@@ -32,6 +32,14 @@ export {
   preloadSQLiteStorage,
   registerSQLiteStorage,
 } from './StorageFactory.js';
+// DES-1: storage capability guards
+export {
+  hasDeltaPrimitives,
+  hasWriteLock,
+  withStorageWriteLock,
+  type DeltaCapableStorage,
+  type WriteLockableStorage,
+} from './storageCapabilities.js';
 // Phase 10 Sprint 2: Graph change events
 export { GraphEventEmitter } from './GraphEventEmitter.js';
 // Named reference index

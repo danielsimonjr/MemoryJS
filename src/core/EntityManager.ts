@@ -294,7 +294,7 @@ export class EntityManager {
 
   /** Append a batch of entities, preferring the storage's batch primitive. */
   private async appendEntitiesCompat(entities: Entity[]): Promise<void> {
-    if (typeof (this.storage as Partial<GraphStorage>).appendEntities === 'function') {
+    if (typeof this.storage.appendEntities === 'function') {
       await this.storage.appendEntities(entities);
       return;
     }
@@ -308,7 +308,7 @@ export class EntityManager {
     batch: Array<{ name: string; updates: Partial<Entity> }>,
     options?: { timestamp?: string },
   ): Promise<Entity[]> {
-    if (typeof (this.storage as Partial<GraphStorage>).updateEntities === 'function') {
+    if (typeof this.storage.updateEntities === 'function') {
       return this.storage.updateEntities(batch, options);
     }
     // Fallback: validate all names first (all-or-nothing parity), then
@@ -330,7 +330,7 @@ export class EntityManager {
 
   /** Delete entities (cascading relations), preferring the storage's delta primitive. */
   private async deleteEntitiesCompat(entityNames: string[]): Promise<void> {
-    if (typeof (this.storage as Partial<GraphStorage>).deleteEntities === 'function') {
+    if (typeof this.storage.deleteEntities === 'function') {
       await this.storage.deleteEntities(entityNames);
       return;
     }
@@ -1149,7 +1149,7 @@ export class EntityManager {
 
     // Emit events on backends that have an emitter (both first-party
     // backends do; the guard covers third-party storage without one).
-    const events = (this.storage as Partial<Pick<GraphStorage, 'events'>>).events;
+    const events = this.storage.events;
     if (events) {
       events.emitEntityRenamed(oldName, newName, renamed);
       events.emitEntityDeleted(oldName);

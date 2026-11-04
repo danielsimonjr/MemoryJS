@@ -3,6 +3,7 @@
 import type {
   Entity,
   Relation,
+  IGraphStorage,
   KnowledgeGraph,
   LongRunningOperationOptions,
   BatchOperation,
@@ -11,6 +12,7 @@ import type {
   OperationResult,
 } from '../types/index.js';
 import type { GraphStorage } from './GraphStorage.js';
+import { hasWriteLock } from './storageCapabilities.js';
 import { IOManager } from '../features/IOManager.js';
 import { KnowledgeGraphError } from '../utils/errors.js';
 import { checkCancellation, createProgressReporter, createProgress, sanitizeObject } from '../utils/index.js';
@@ -54,9 +56,8 @@ export type TransactionOperation =
  * the same order the managers use. A storage without `graphMutex` gets a
  * no-op release.
  */
-async function acquireWriteLock(storage: GraphStorage, signal?: AbortSignal): Promise<() => void> {
-  const mutex = (storage as Partial<Pick<GraphStorage, 'graphMutex'>>).graphMutex;
-  return mutex ? mutex.acquire({ signal }) : () => undefined;
+async function acquireWriteLock(storage: IGraphStorage, signal?: AbortSignal): Promise<() => void> {
+  return hasWriteLock(storage) ? storage.graphMutex.acquire({ signal }) : () => undefined;
 }
 
 function emptyBatchResult(): BatchResult {
@@ -189,8 +190,10 @@ export class TransactionManager {
   private transactionBackup?: string;
   private preCommitGraph?: KnowledgeGraph;
 
-  constructor(private storage: GraphStorage) {
-    this.ioManager = new IOManager(storage);
+  constructor(private storage: IGraphStorage) {
+    // IOManager is still typed against the concrete GraphStorage (it needs
+    // getFilePath for backup placement). Widening it is out of DES-1 scope.
+    this.ioManager = new IOManager(storage as GraphStorage);
   }
 
   /** Begin a new transaction. */
@@ -433,9 +436,9 @@ export class TransactionManager {
 /** Fluent API for building and executing batch transactions. */
 export class BatchTransaction {
   private operations: BatchOperation[] = [];
-  private storage: GraphStorage;
+  private storage: IGraphStorage;
 
-  constructor(storage: GraphStorage) {
+  constructor(storage: IGraphStorage) {
     this.storage = storage;
   }
 

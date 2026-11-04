@@ -150,6 +150,7 @@ import { NameIndex, RelationIndex, TypeIndex, computeLowercase } from '../utils/
 import { sanitizeObject, validateFilePath, AsyncMutex } from '../utils/index.js';
 import { EntityNotFoundError, DuplicateEntityError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
+import { readEnvPositiveIntOrDefault } from '../utils/envConfig.js';
 import { randomUUID } from 'node:crypto';
 import { PartialIndexAdvisor, type FilterObservation } from '../search/PartialIndexAdvisor.js';
 import { GraphEventEmitter } from './GraphEventEmitter.js';
@@ -240,22 +241,11 @@ export class SQLiteStorage implements IGraphStorage {
   private readPoolCursor: number = 0;
 
   /**
-   * Partial-index advisor. Self-disables when `MEMORY_SQLITE_AUTO_INDEX`
-   * is unset. Callers feed it via `recordFilter(observation)`; the
-   * advisor's recommendations are flushed every
-   * `partialIndexApplyEvery` recordings.
+   * Partial-index advisor (deprecated, DES-9). Only counts filter shapes
+   * when `MEMORY_SQLITE_AUTO_INDEX` is set; it never creates indexes.
+   * Legacy `idx_advisor_*` indexes are dropped on `close()`.
    */
   private readonly partialIndexAdvisor: PartialIndexAdvisor = new PartialIndexAdvisor();
-
-  /**
-   * How many `recordFilter` calls between automatic `apply()`s. Tuned
-   * so the DDL doesn't fire on every query but reacts within a few
-   * hundred filters.
-   */
-  private readonly partialIndexApplyEvery: number = 100;
-
-  /** Counter against `partialIndexApplyEvery`. */
-  private partialIndexRecordings: number = 0;
 
   /**
    * Whether the database has been initialized.
@@ -384,6 +374,14 @@ export class SQLiteStorage implements IGraphStorage {
     // defense-in-depth check still runs.
     this.validatedDbFilePath = validateFilePath(dbFilePath, undefined, false);
     this.cacheState = SQLiteStorage.cacheStateOf(this);
+    if (this.partialIndexAdvisor.enabled) {
+      logger.warn(
+        'MEMORY_SQLITE_AUTO_INDEX is deprecated and has no effect on query plans: ' +
+          'full indexes already cover entityType/projectId/isLatest/contentHash and ' +
+          'no in-tree read path records filters. The flag will be removed in v5. ' +
+          '(see docs/development/DESIGN_PASS_2026-11-04.md DES-9)',
+      );
+    }
   }
 
   /**
@@ -2211,14 +2209,11 @@ export class SQLiteStorage implements IGraphStorage {
    * Close the database connection (and any pooled read connections).
    */
   close(): void {
-    // Drop advisor-managed indexes before tearing down so the file
-    // doesn't accumulate orphan idx_advisor_* indexes across runs.
-    if (this.partialIndexAdvisor.enabled && this.db) {
-      try {
-        this.partialIndexAdvisor.dropAll(this.db);
-      } catch {
-        // Best-effort — never block close on advisor cleanup.
-      }
+    // Drop legacy advisor-managed indexes (created by older versions when
+    // MEMORY_SQLITE_AUTO_INDEX was set) so existing databases stay clean.
+    // Runs regardless of the env flag: the advisor no longer creates them.
+    if (this.db) {
+      this.dropLegacyAdvisorIndexes(this.db);
     }
     this.closeReadPool();
     if (this.db) {
@@ -2229,15 +2224,30 @@ export class SQLiteStorage implements IGraphStorage {
   }
 
   /**
+   * Drop every `idx_advisor_*` index present in the database. Best-effort:
+   * a failure here must never block close.
+   */
+  private dropLegacyAdvisorIndexes(db: DatabaseType): void {
+    try {
+      const rows = db
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name LIKE 'idx_advisor\\_%' ESCAPE '\\'")
+        .all() as Array<{ name: string }>;
+      for (const { name } of rows) {
+        db.exec(`DROP INDEX IF EXISTS "${name.replace(/"/g, '""')}"`);
+      }
+    } catch {
+      // Best-effort — never block close on advisor cleanup.
+    }
+  }
+
+  /**
    * Initialise the read connection pool. Size comes from
    * `MEMORY_SQLITE_READ_POOL_SIZE` (default 4). A size of 0 or 1 means
    * "route reads through the writer connection" — the pool stays empty
    * and `pickReadConnection()` returns `this.db`.
    */
   private initReadPool(): void {
-    const raw = process.env.MEMORY_SQLITE_READ_POOL_SIZE;
-    const parsed = raw === undefined ? 4 : parseInt(raw, 10);
-    const size = Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 4;
+    const size = readEnvPositiveIntOrDefault('MEMORY_SQLITE_READ_POOL_SIZE', 4);
     if (size <= 1) return; // Single-writer fallback; reads go through this.db.
 
     const Database = loadDatabaseCtor();
@@ -2269,38 +2279,22 @@ export class SQLiteStorage implements IGraphStorage {
 
   /**
    * Record a search-filter observation for the partial-index advisor.
-   * No-op when `MEMORY_SQLITE_AUTO_INDEX` is unset (the advisor
-   * self-disables). After every `partialIndexApplyEvery` recordings,
-   * advisor recommendations are applied to the writer connection so
-   * partial indexes track the live workload.
+   * Deprecated (DES-9): counts only, when `MEMORY_SQLITE_AUTO_INDEX` is
+   * set. No DDL is issued; no index is created.
    *
-   * Callers (typically `SearchManager`) invoke this with the filter
-   * shape they're about to execute. Pre-existing in-memory filtering
-   * is unaffected — partial indexes only accelerate lookups, never
-   * change semantics.
+   * @internal
+   * @deprecated No in-tree caller; has no effect on query plans.
    */
   recordFilter(observation: FilterObservation): void {
     if (!this.partialIndexAdvisor.enabled) return;
     this.partialIndexAdvisor.record(observation);
-    this.partialIndexRecordings++;
-    if (this.partialIndexRecordings % this.partialIndexApplyEvery === 0 && this.db) {
-      // Defer the DDL via setImmediate so the calling search returns
-      // before any CREATE INDEX runs. The advisor's apply() is
-      // idempotent so a second call before the first finishes is safe.
-      const dbRef = this.db;
-      setImmediate(() => {
-        try {
-          this.partialIndexAdvisor.apply(dbRef);
-        } catch (err) {
-          logger.error('[SQLiteStorage] partial-index apply failed:', err);
-        }
-      });
-    }
   }
 
   /**
-   * Read-only snapshot of the advisor's current state — useful for
-   * `ctx.diagnostics()` and tests.
+   * Read-only snapshot of the advisor's current state.
+   *
+   * @internal
+   * @deprecated Retained for compatibility; see `recordFilter`.
    */
   partialIndexAdvisorSnapshot(): ReturnType<PartialIndexAdvisor['snapshot']> {
     return this.partialIndexAdvisor.snapshot();

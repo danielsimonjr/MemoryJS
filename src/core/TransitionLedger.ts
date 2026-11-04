@@ -19,8 +19,6 @@ import type {
   EntityDeletedEvent,
   RelationCreatedEvent,
   RelationDeletedEvent,
-  ObservationAddedEvent,
-  ObservationDeletedEvent,
 } from '../types/index.js';
 
 // ==================== Interfaces ====================
@@ -388,29 +386,9 @@ export class TransitionLedger {
       })
     );
 
-    // Observation added
-    unsubscribers.push(
-      emitter.on('observation:added', (event: ObservationAddedEvent) => {
-        handleAppend({
-          entityId: event.entityName,
-          field: 'observations',
-          from: null,
-          to: event.observations,
-        });
-      })
-    );
-
-    // Observation deleted
-    unsubscribers.push(
-      emitter.on('observation:deleted', (event: ObservationDeletedEvent) => {
-        handleAppend({
-          entityId: event.entityName,
-          field: 'observations',
-          from: event.observations,
-          to: null,
-        });
-      })
-    );
+    // Observation added/deleted are intentionally NOT subscribed here (DES-3):
+    // the `entity:updated` handler above already records the `observations`
+    // field diff, so subscribing to `observation:*` would double-record.
 
     return () => {
       for (const unsub of unsubscribers) {

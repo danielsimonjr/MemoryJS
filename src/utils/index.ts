@@ -67,6 +67,10 @@ export {
 } from './compressionUtil.js';
 
 // ==================== Compressed Cache ====================
+/**
+ * @deprecated Use `CompressedMap` (exported below) instead. Scheduled for
+ *   removal in v5.
+ */
 export {
   CompressedCache,
   type CompressedCacheOptions,
@@ -75,6 +79,22 @@ export {
 
 // ==================== Logger ====================
 export { logger } from './logger.js';
+
+// ==================== Env Config (DES-2) ====================
+export {
+  readEnvStrictFlag,
+  readEnvLooseFlag,
+  readEnvNumber,
+  readEnvNumberOrUndefined,
+  readEnvStrictInt,
+  parseStrictDecimalInt,
+  parseSegmentCount,
+  readEnvPositiveIntOrDefault,
+  readEnvNonNegativeIntOrDefault,
+  MAX_SEGMENT_COUNT,
+  type EnvNumberBounds,
+  type EnvStrictIntBounds,
+} from './envConfig.js';
 
 // ==================== Search Algorithms ====================
 export {
@@ -395,7 +415,7 @@ export {
   type PressureAwareCache,
   type CachePressureSnapshot,
 } from './CachePressureCoordinator.js';
-export type { DiagnosticsReport, TieredIndexStatsSnapshot } from './Diagnostics.js';
+export type { DiagnosticsOptions, DiagnosticsReport, TieredIndexStatsSnapshot } from './Diagnostics.js';
 export {
   IndexHealthMonitor,
   type IndexHealthReport,
@@ -410,3 +430,6 @@ export {
   ZlibCompressionAdapter,
   type ICompressionAdapter,
 } from './compression/ICompressionAdapter.js';
+
+// ==================== Sidecar paths (DES-5) ====================
+export { sidecarPath } from './sidecarPath.js';
