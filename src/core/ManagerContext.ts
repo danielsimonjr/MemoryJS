@@ -10,7 +10,7 @@
 
 import { logger } from '../utils/logger.js';
 import { IndexHealthMonitor, type IndexHealthReport } from '../utils/IndexHealthMonitor.js';
-import { buildDiagnosticsReport, type DiagnosticsReport } from '../utils/Diagnostics.js';
+import { buildDiagnosticsReport, type DiagnosticsOptions, type DiagnosticsReport } from '../utils/Diagnostics.js';
 import { BatchTransaction } from './TransactionManager.js';
 import type { BatchResult, BatchOptions, Entity } from '../types/index.js';
 import { CachePressureCoordinator } from '../utils/CachePressureCoordinator.js';
@@ -638,7 +638,7 @@ export class ManagerContext {
     return builder.execute(options);
   }
 
-  diagnostics(): DiagnosticsReport {
+  diagnostics(options: DiagnosticsOptions = {}): DiagnosticsReport {
     return buildDiagnosticsReport(
       () => this.indexHealth(),
       () => {
@@ -664,6 +664,18 @@ export class ManagerContext {
           ...stats,
           hitRate: total === 0 ? 0 : stats.hits / total,
         };
+      },
+      // DES-12 (CMP-8): opt-in observation dedup ratio. Uses a throwaway
+      // store so `ctx.observationStore` is never populated by diagnostics.
+      () => {
+        if (options.observationDedup !== true) return undefined;
+        const cached = this.storage.cachedGraph;
+        if (!cached) return undefined;
+        const store = new ObservationStore();
+        for (const e of cached.entities) {
+          store.internAll(e.observations);
+        }
+        return store.stats();
       },
     );
   }
