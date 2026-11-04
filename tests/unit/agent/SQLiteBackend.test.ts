@@ -174,22 +174,42 @@ describe('SQLiteBackend specifics', () => {
     expect(result[0].turn.content).toBe('real sqlite path content');
   });
 
-  it('dedupOnAdd=false throws (bypass path not yet implemented)', () => {
+  it('dedupOnAdd=false writes every turn, including exact duplicates', async () => {
     const file = path.join(os.tmpdir(), `sqlite-backend-bypass-${Date.now()}.jsonl`);
     activeFiles.push(file);
     const ctx = track(new ManagerContext(file));
     const backend = new SQLiteBackend(ctx.memoryEngine, ctx.decayEngine, {
       dedupOnAdd: false,
     });
-    return expect(
-      backend.add({
-        id: '1',
-        sessionId: 's',
-        content: 'hello',
-        role: 'user',
-        importance: 2.0,
-        createdAt: new Date().toISOString(),
-      }),
-    ).rejects.toThrow(/dedupOnAdd=false bypass path is not implemented/);
+    const turn = {
+      id: '1',
+      sessionId: 's',
+      content: 'hello bypass',
+      role: 'user' as const,
+      importance: 2.0,
+      createdAt: new Date().toISOString(),
+    };
+    await backend.add(turn);
+    await backend.add({ ...turn, id: '2' });
+    const turns = await ctx.memoryEngine.getSessionTurns('s');
+    expect(turns.length).toBe(2);
+    expect(ctx.memoryEngine.getRepeatedTurnCount('s')).toBe(0);
+  });
+
+  it('dedupOnAdd=true (default) still collapses exact duplicates', async () => {
+    const backend = makeBackend();
+    const turn = {
+      id: '1',
+      sessionId: 's',
+      content: 'hello dedup',
+      role: 'user' as const,
+      importance: 2.0,
+      createdAt: new Date().toISOString(),
+    };
+    await backend.add(turn);
+    await backend.add({ ...turn, id: '2' });
+    const ctx = activeContexts[activeContexts.length - 1];
+    const turns = await ctx.memoryEngine.getSessionTurns('s');
+    expect(turns.length).toBe(1);
   });
 });

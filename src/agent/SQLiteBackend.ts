@@ -10,9 +10,11 @@
  *   `MemoryEngine.addTurn`, inheriting the four-tier dedup chain
  *   (exact / prefix / Jaccard / optional semantic) and event emission.
  *   Idempotent on duplicate — silent no-op.
- * - **`dedupOnAdd=false`** — bypass dedup. `add()` writes directly via
- *   `EntityManager.createEntities`. Intended for bulk import scenarios
- *   where the caller has already de-duplicated upstream.
+ * - **`dedupOnAdd=false`** — bypass dedup. `add()` still goes through
+ *   `MemoryEngine.addTurn` (so exclusion rules, importance scoring and
+ *   `turnAdded` events apply) but with `skipDedup: true`, so every turn is
+ *   written. Intended for bulk import scenarios where the caller has
+ *   already de-duplicated upstream.
  * - **`preserveCallerIds=true`** — when set together with
  *   `dedupOnAdd=true`, the engine-generated entity name is renamed to
  *   the caller's `turn.id` after creation. Lossy translation
@@ -81,17 +83,6 @@ export class SQLiteBackend implements IMemoryBackend {
   }
 
   async add(turn: MemoryTurn): Promise<void> {
-    if (!this.options.dedupOnAdd) {
-      // Direct-write bypass: not yet wired (would need a path through
-      // EntityManager.createEntities + post-write contentHash + agentMetadata
-      // serialization). For β.3 we only ship the dedup-on path; bulk-import
-      // bypass is a follow-up if/when a caller asks for it.
-      throw new Error(
-        'SQLiteBackend: dedupOnAdd=false bypass path is not implemented yet. ' +
-          'See docs/superpowers/specs/2026-04-16-memory-engine-decay-extensions-design.md',
-      );
-    }
-
     // PRD-importance translation (turn.importance is [1.0, 3.0]; addTurn
     // expects memoryjs scale [0, 10]). Match InMemoryBackend's inverse.
     const memoryjsImportance = Math.max(0, Math.min(10, (turn.importance - 1.0) * 5));
@@ -100,6 +91,8 @@ export class SQLiteBackend implements IMemoryBackend {
       sessionId: turn.sessionId,
       role: turn.role,
       importance: memoryjsImportance,
+      // dedupOnAdd=false: bulk-import bypass, the caller de-duplicated upstream.
+      skipDedup: !this.options.dedupOnAdd,
     });
 
     // Optional: rename the engine-generated entity to the caller's turn.id.

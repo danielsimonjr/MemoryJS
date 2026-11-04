@@ -67,6 +67,13 @@ export interface AddTurnOptions {
   metadata?: Record<string, unknown>;
   queryContext?: string;
   recentTurns?: string[];
+  /**
+   * When `true`, skip the four-tier dedup chain and write the turn
+   * unconditionally. Intended for bulk imports that were de-duplicated
+   * upstream (`SQLiteBackend` with `dedupOnAdd=false`). Exclusion rules
+   * still apply. Default `false`.
+   */
+  skipDedup?: boolean;
 }
 
 /**
@@ -244,7 +251,9 @@ export class MemoryEngine {
       }
     }
 
-    const dup = await this.checkDuplicate(content, options.sessionId);
+    const dup = options.skipDedup
+      ? ({ isDuplicate: false } as DuplicateCheckResult)
+      : await this.checkDuplicate(content, options.sessionId);
     if (dup.isDuplicate && dup.match) {
       this.events.emit('memoryEngine:duplicateDetected', {
         existingEntity: dup.match,

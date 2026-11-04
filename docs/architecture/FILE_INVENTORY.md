@@ -89,7 +89,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/InMemoryBackend.ts` | src | reachable | 115 |
 | `src/agent/keyValueLine.ts` | src | reachable | 63 |
 | `src/agent/MemoryBackend.ts` | src | reachable | 156 |
-| `src/agent/MemoryEngine.ts` | src | reachable | 597 |
+| `src/agent/MemoryEngine.ts` | src | reachable | 606 |
 | `src/agent/MemoryFormatter.ts` | src | reachable | 518 |
 | `src/agent/MemoryValidator.ts` | src | reachable | 332 |
 | `src/agent/MultiAgentMemoryManager.ts` | src | reachable | 1150 |
@@ -150,7 +150,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/SessionCheckpoint.ts` | src | reachable | 692 |
 | `src/agent/SessionManager.ts` | src | reachable | 685 |
 | `src/agent/SessionQueryBuilder.ts` | src | reachable | 535 |
-| `src/agent/SQLiteBackend.ts` | src | reachable | 182 |
+| `src/agent/SQLiteBackend.ts` | src | reachable | 175 |
 | `src/agent/SummarizationService.ts` | src | reachable | 341 |
 | `src/agent/ToolAffordanceManager.ts` | src | reachable | 279 |
 | `src/agent/ToolCallObserver.ts` | src | reachable | 155 |
@@ -510,7 +510,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/SessionCheckpoint.test.ts` | tests | test | 698 |
 | `tests/unit/agent/SessionManager.test.ts` | tests | test | 848 |
 | `tests/unit/agent/SessionQueryBuilder.test.ts` | tests | test | 610 |
-| `tests/unit/agent/SQLiteBackend.test.ts` | tests | test | 196 |
+| `tests/unit/agent/SQLiteBackend.test.ts` | tests | test | 216 |
 | `tests/unit/agent/SummarizationService.test.ts` | tests | test | 531 |
 | `tests/unit/agent/ToolAffordanceManager.test.ts` | tests | test | 198 |
 | `tests/unit/agent/ToolCallObserver.test.ts` | tests | test | 339 |
