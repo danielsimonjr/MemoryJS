@@ -93,6 +93,9 @@ export function createInMemoryStorageFake(
         });
       },
     );
+    fake.appendEntities = vi.fn(async (batch: Entity[]) => {
+      for (const entity of batch) entityMap.set(entity.name, entity);
+    });
     fake.deleteEntities = vi.fn(async (names: string[]) => {
       const nameSet = new Set(names);
       const deletedEntities = Array.from(entityMap.values()).filter((e) => nameSet.has(e.name));

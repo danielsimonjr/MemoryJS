@@ -17,9 +17,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Audit CMP-1..5: new completeness/compat additions, including the opt-in `ctx.bloomPreScreener` (env `MEMORY_FUZZY_BLOOM_PRESCREEN`, strict `'true'`) and the related barrel exports. The pre-screener is approximate (speed over recall): typo queries can miss fuzzy matches when another entity contains the literal token.
 
+- Design pass (docs/development/DESIGN_PASS_2026-11-04.md): `envConfig` helpers for strict env parsing; storage capability guards (`hasDeltaPrimitives`, `withStorageWriteLock`; `@experimental`, `src/core/storageCapabilities.ts`) replace concrete `GraphStorage` casts in managers.
+- Batch agent-memory APIs: `ConsolidationPipeline.promoteMemories`, `DecayEngine.reinforceMemories` and `AccessTracker.recordAccessBatch` (one delta write for N entities, per-name error isolation, per-entity fallback without delta primitives).
+- `observation:added` and `observation:deleted` are now emitted by `ObservationManager`.
+- `ProspectiveMemory` accepts a `predicateEvaluator`, wired through `ManagerContextOptions.prospectivePredicateEvaluator`.
+- `ctx.diagnostics({ observationDedup })` option; `DiagnosticsOptions` is exported from `src/utils`.
+- `DiskWarmTier` `compactEvery` append mode.
+- `StorageInfraFacade` and the `sidecarPath` helper (internal) for storage-adjacent infrastructure.
+- Test fakes under `tests/helpers` (in-memory storage fake with delta primitives, temp storage helpers).
+
 ### Changed
 
 - `HierarchyManager.setEntityParent` now emits `entity:updated` instead of `graph:saved`. Listeners that relied on `graph:saved` for parent changes must also subscribe to `entity:updated`.
+
+- `ConsolidationPipeline.mergeMemories` delta path (DES-11): re-reads the merged entities and survivor, updates the survivor, retargets relations, deletes and appends all under the storage write lock, with compensating rollback (merged entities, relations and the survivor's pre-merge state) on failure. The merge audit entry is written only after the merge commits. The `saveGraph` fallback is unchanged.
+- `IGraphStorage` now declares the batch delta primitives (`appendEntities`, `appendRelations`, `updateEntities`, `deleteEntities`, `deleteRelations`) and `graphMutex` as optional members.
+- `ManagerContext` slimmed by delegating storage infrastructure to `StorageInfraFacade`; public getters are unchanged.
+- `TransitionLedger` no longer subscribes to `observation:*` events directly.
+- `ConsolidationPipeline.promoteMemories`: an access-tracking failure after the promotion write keeps the names in `promoted` and reports a "Promoted, but access tracking failed" error instead of un-counting them.
+
+### Deprecated
+
+- `CompressedCache` is deprecated in favour of `CompressedMap`.
+- `MEMORY_SQLITE_AUTO_INDEX` / `PartialIndexAdvisor` are a no-op that logs a one-time warning.
 
 ### Fixed
 
@@ -28,10 +48,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SQLiteBackend` preserves caller-supplied ids (`preserveCallerIds`).
 - `ManagerContext.close()` now also drops the cached Bloom pre-screener and detaches it from the fuzzy searcher.
 - Performance test mocks (`merge-perf`, `query-execution-benchmarks`) updated to the current storage / `searchLayer` contracts.
+- Found in review of the design pass: `mergeMemories` no longer loses a write to a merged entity that lands between the snapshot and the delete (race), restores the survivor's pre-merge observations and counters when the merge fails, and no longer records a success audit entry for a failed merge.
+- `promoteMemories` no longer reports `promoted: []` with "Entity is not working memory" errors when the batch write persisted and then threw; names already at the target type count as promoted without a fallback re-run.
 
 ### Documentation
 
 - Audit DOC-1..8: documentation corrections from the 2026-11-04 audit, including RBAC being code-configured (no `MEMORY_RBAC_*` env vars) and the Bloom pre-screener trade-off.
+- Design pass DES-6, DES-9 and DES-19 (docs/development/DESIGN_PASS_2026-11-04.md); stale `RoleProfileManager` and `queryNaturalLanguage` signatures corrected in `docs/architecture/COMPONENTS.md`.
 
 ## [4.4.0] - 2026-10-30
 

@@ -1,12 +1,12 @@
 {
   "generated": "2026-11-04",
-  "totalFiles": 777,
+  "totalFiles": 778,
   "byDisposition": {
     "reachable": 313,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 444,
+    "test": 445,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -15,7 +15,7 @@
   "byArea": {
     "benchmarks": 4,
     "src": 317,
-    "tests": 444,
+    "tests": 445,
     "tools": 10,
     "config": 2
   },
@@ -130,7 +130,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 243
+      "loc": 241
     },
     {
       "file": "src/agent/causal/CausalReasoner.ts",
@@ -186,7 +186,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 2091
+      "loc": 2151
     },
     {
       "file": "src/agent/ConsolidationScheduler.ts",
@@ -214,7 +214,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 833
+      "loc": 831
     },
     {
       "file": "src/agent/DecayScheduler.ts",
@@ -2293,7 +2293,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 124
+      "loc": 127
     },
     {
       "file": "tests/helpers/tempStorage.ts",
@@ -2692,7 +2692,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 109
+      "loc": 101
     },
     {
       "file": "tests/unit/agent/AccessTracker.test.ts",
@@ -2783,14 +2783,21 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 336
+      "loc": 330
+    },
+    {
+      "file": "tests/unit/agent/ConsolidationPipeline.mergeRace.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 125
     },
     {
       "file": "tests/unit/agent/ConsolidationPipeline.promoteBatch.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 263
+      "loc": 278
     },
     {
       "file": "tests/unit/agent/ConsolidationPipeline.test.ts",
@@ -2839,7 +2846,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 158
+      "loc": 150
     },
     {
       "file": "tests/unit/agent/DecayEngine.test.ts",

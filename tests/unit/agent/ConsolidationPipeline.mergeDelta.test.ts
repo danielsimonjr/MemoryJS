@@ -125,12 +125,6 @@ afterEach(() => {
 describe('mergeMemories delta path (in-memory fake)', () => {
   async function delta(entities: Entity[], relations: Relation[] = []) {
     const storage = createInMemoryStorageFake(entities, { withDeltaPrimitives: true });
-    // The shared fake omits appendEntities, which hasDeltaPrimitives requires.
-    Object.assign(storage, {
-      appendEntities: vi.fn(async (list: Entity[]) => {
-        for (const e of list) await storage.appendEntity(e);
-      }),
-    });
     for (const r of relations) await storage.appendRelation(r);
     return storage;
   }

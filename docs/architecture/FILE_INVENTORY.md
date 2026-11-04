@@ -10,7 +10,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 777
+**Total files**: 778
 
 ## Disposition counts
 
@@ -20,12 +20,12 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 444 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 445 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 4 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 0 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **777** | |
+| **Total** | **778** | |
 
 ## Per-area counts
 
@@ -34,7 +34,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `benchmarks` | 4 |
 | `config` | 2 |
 | `src` | 317 |
-| `tests` | 444 |
+| `tests` | 445 |
 | `tools` | 10 |
 
 ## All files
@@ -56,7 +56,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/AgentMemoryConfig.ts` | src | reachable | 265 |
 | `src/agent/AgentMemoryManager.ts` | src | reachable | 705 |
 | `src/agent/AgentReflectionManager.ts` | src | reachable | 306 |
-| `src/agent/ArtifactManager.ts` | src | reachable | 243 |
+| `src/agent/ArtifactManager.ts` | src | reachable | 241 |
 | `src/agent/causal/CausalReasoner.ts` | src | reachable | 254 |
 | `src/agent/causal/index.ts` | src | reachable | 15 |
 | `src/agent/CognitiveLoadAnalyzer.ts` | src | reachable | 331 |
@@ -64,11 +64,11 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/CollaborativeSynthesis.ts` | src | reachable | 355 |
 | `src/agent/ConflictResolver.ts` | src | reachable | 467 |
 | `src/agent/connectivity.ts` | src | reachable | 66 |
-| `src/agent/ConsolidationPipeline.ts` | src | reachable | 2091 |
+| `src/agent/ConsolidationPipeline.ts` | src | reachable | 2151 |
 | `src/agent/ConsolidationScheduler.ts` | src | reachable | 230 |
 | `src/agent/ContextProfileManager.ts` | src | reachable | 301 |
 | `src/agent/ContextWindowManager.ts` | src | reachable | 1954 |
-| `src/agent/DecayEngine.ts` | src | reachable | 833 |
+| `src/agent/DecayEngine.ts` | src | reachable | 831 |
 | `src/agent/DecayScheduler.ts` | src | reachable | 233 |
 | `src/agent/DecisionManager.ts` | src | reachable | 442 |
 | `src/agent/DistillationPipeline.ts` | src | reachable | 204 |
@@ -365,7 +365,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/edge-cases/edge-cases.test.ts` | tests | test | 496 |
 | `tests/file-path.test.ts` | tests | test | 235 |
 | `tests/helpers/__tests__/mockStorage.test.ts` | tests | test | 101 |
-| `tests/helpers/mockStorage.ts` | tests | test | 124 |
+| `tests/helpers/mockStorage.ts` | tests | test | 127 |
 | `tests/helpers/tempStorage.ts` | tests | test | 78 |
 | `tests/integration/agent/access-tracking.test.ts` | tests | test | 326 |
 | `tests/integration/agent/agent-memory-manager-profile.test.ts` | tests | test | 33 |
@@ -422,7 +422,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/adapters/rest-tenancy.test.ts` | tests | test | 347 |
 | `tests/unit/adapters/rest-unscoped-warning.test.ts` | tests | test | 46 |
 | `tests/unit/adapters/RestRouter.test.ts` | tests | test | 203 |
-| `tests/unit/agent/AccessTracker.recordBatch.test.ts` | tests | test | 109 |
+| `tests/unit/agent/AccessTracker.recordBatch.test.ts` | tests | test | 101 |
 | `tests/unit/agent/AccessTracker.test.ts` | tests | test | 744 |
 | `tests/unit/agent/ActiveRetrieval.test.ts` | tests | test | 194 |
 | `tests/unit/agent/agent-memory-manager-diary.test.ts` | tests | test | 70 |
@@ -435,15 +435,16 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/CollaborativeSynthesis.test.ts` | tests | test | 710 |
 | `tests/unit/agent/ConflictResolver.test.ts` | tests | test | 466 |
 | `tests/unit/agent/ConnectivitySignals.test.ts` | tests | test | 478 |
-| `tests/unit/agent/ConsolidationPipeline.mergeDelta.test.ts` | tests | test | 336 |
-| `tests/unit/agent/ConsolidationPipeline.promoteBatch.test.ts` | tests | test | 263 |
+| `tests/unit/agent/ConsolidationPipeline.mergeDelta.test.ts` | tests | test | 330 |
+| `tests/unit/agent/ConsolidationPipeline.mergeRace.test.ts` | tests | test | 125 |
+| `tests/unit/agent/ConsolidationPipeline.promoteBatch.test.ts` | tests | test | 278 |
 | `tests/unit/agent/ConsolidationPipeline.test.ts` | tests | test | 2334 |
 | `tests/unit/agent/ConsolidationScheduler.test.ts` | tests | test | 396 |
 | `tests/unit/agent/context-window-manager-compress.test.ts` | tests | test | 166 |
 | `tests/unit/agent/context-window-manager-wakeup.test.ts` | tests | test | 226 |
 | `tests/unit/agent/ContextProfileManager.test.ts` | tests | test | 526 |
 | `tests/unit/agent/ContextWindowManager.test.ts` | tests | test | 1753 |
-| `tests/unit/agent/DecayEngine.reinforceBatch.test.ts` | tests | test | 158 |
+| `tests/unit/agent/DecayEngine.reinforceBatch.test.ts` | tests | test | 150 |
 | `tests/unit/agent/DecayEngine.test.ts` | tests | test | 1318 |
 | `tests/unit/agent/DecayScheduler.test.ts` | tests | test | 584 |
 | `tests/unit/agent/DecisionManager.test.ts` | tests | test | 407 |

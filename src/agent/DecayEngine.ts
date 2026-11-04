@@ -9,7 +9,6 @@
  */
 
 import type { IGraphStorage, ReadonlyKnowledgeGraph, Entity } from '../types/types.js';
-import type { GraphStorage } from '../core/GraphStorage.js';
 import type { AgentEntity, DecayResult, ForgetOptions, ForgetResult } from '../types/agent-memory.js';
 import { isAgentEntity } from '../types/agent-memory.js';
 import { AccessTracker } from './AccessTracker.js';
@@ -743,9 +742,8 @@ export class DecayEngine {
     if (!options.dryRun && forgottenNames.length > 0) {
       // Prefer the per-entity delete (O(deleted)); fall back to a full rewrite
       // for backends that only expose saveGraph.
-      const s = this.storage as Partial<GraphStorage>;
-      if (typeof s.deleteEntities === 'function') {
-        await s.deleteEntities(forgottenNames);
+      if (typeof this.storage.deleteEntities === 'function') {
+        await this.storage.deleteEntities(forgottenNames);
       } else {
         const forgottenSet = new Set(forgottenNames);
         const updatedEntities = graph.entities.filter(

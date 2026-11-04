@@ -415,7 +415,7 @@ export {
   type PressureAwareCache,
   type CachePressureSnapshot,
 } from './CachePressureCoordinator.js';
-export type { DiagnosticsReport, TieredIndexStatsSnapshot } from './Diagnostics.js';
+export type { DiagnosticsOptions, DiagnosticsReport, TieredIndexStatsSnapshot } from './Diagnostics.js';
 export {
   IndexHealthMonitor,
   type IndexHealthReport,

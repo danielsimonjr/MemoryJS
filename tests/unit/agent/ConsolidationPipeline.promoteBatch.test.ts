@@ -52,15 +52,6 @@ const workingMemoryStub = {} as WorkingMemoryManager;
 
 function setup(entities: AgentEntity[], withDeltaPrimitives: boolean) {
   const storage = createInMemoryStorageFake(entities, { withDeltaPrimitives });
-  if (withDeltaPrimitives) {
-    // The shared fake omits appendEntities, which hasDeltaPrimitives requires.
-    // Stub it here so the delta capability check sees all five primitives.
-    Object.assign(storage, {
-      appendEntities: vi.fn(async (list: AgentEntity[]) => {
-        for (const e of list) await storage.appendEntity(e);
-      }),
-    });
-  }
   const tracker = new AccessTracker(storage);
   const decay = new DecayEngine(storage, tracker);
   const pipeline = new ConsolidationPipeline(storage, workingMemoryStub, decay);
@@ -177,16 +168,40 @@ describe('promoteMemories with delta primitives', () => {
     }
   });
 
-  it('reports every candidate when access tracking fails after the promotion write', async () => {
+  it('keeps candidates promoted but surfaces the error when access tracking fails after the write', async () => {
     vi.spyOn(decay, 'reinforceMemories').mockRejectedValueOnce(new Error('tracker down'));
 
     const result = await pipeline.promoteMemories(names('mem', 2), 'episodic');
 
-    expect(result.promoted).toEqual([]);
+    expect(result.promoted.map((e) => e.name)).toEqual(['mem_0', 'mem_1']);
     expect(result.errors).toEqual([
-      { entityName: 'mem_0', error: 'tracker down' },
-      { entityName: 'mem_1', error: 'tracker down' },
+      { entityName: 'mem_0', error: 'Promoted, but access tracking failed: tracker down' },
+      { entityName: 'mem_1', error: 'Promoted, but access tracking failed: tracker down' },
     ]);
+    for (const name of ['mem_0', 'mem_1']) {
+      expect((storage.getEntityByName(name) as AgentEntity).memoryType).toBe('episodic');
+    }
+  });
+
+  it('counts candidates as promoted when the batch write persists and then throws', async () => {
+    const update = storage.updateEntities as unknown as Mock;
+    const real = update.getMockImplementation()!;
+    update.mockImplementationOnce(async (...args: unknown[]) => {
+      await real(...args);
+      throw new Error('post-write failure');
+    });
+
+    const result = await pipeline.promoteMemories(names('mem', 3), 'semantic');
+
+    expect(result.errors).toEqual([]);
+    expect(result.promoted.map((e) => e.name)).toEqual(names('mem', 3));
+    // No per-entity fallback re-run: reinforcement applied exactly once.
+    expect(update).toHaveBeenCalledTimes(1);
+    for (const name of names('mem', 3)) {
+      const e = storage.getEntityByName(name) as AgentEntity;
+      expect(e.memoryType).toBe('semantic');
+      expect(e.confirmationCount).toBe(PRE_CONFIRMATIONS + 1);
+    }
   });
 });
 

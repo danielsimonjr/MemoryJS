@@ -349,8 +349,11 @@ export class ConsolidationPipeline {
    *
    * With delta-capable storage, every promotion (fields plus reinforcement) is
    * written in one `updateEntities` call, and access tracking is batched.
-   * If the batch write fails it is all-or-nothing, so the valid names fall
-   * back to `promoteMemory` one at a time. Without delta primitives every name
+   * If the batch write throws, each name is re-read: those already at the
+   * target type count as promoted; the rest fall back to `promoteMemory` one
+   * at a time. A failure of the access-tracking step after a successful write
+   * keeps the names in `promoted` and adds a "Promoted, but access tracking
+   * failed" entry to `errors`. Without delta primitives every name
    * goes through `promoteMemory`.
    *
    * @param entityNames - Names of working memory entities to promote
@@ -410,25 +413,38 @@ export class ConsolidationPipeline {
     try {
       await this.storage.updateEntities(batch, { timestamp: now });
     } catch {
-      // All-or-nothing: nothing was written. Retry each valid name on the per-entity path.
-      await promoteEach(valid.map((e) => e.name));
+      // The write may have persisted before throwing (e.g. a post-write step).
+      // Re-read: names already at targetType count as promoted; only the rest
+      // retry on the per-entity path.
+      const unpromoted: string[] = [];
+      for (const candidate of valid) {
+        const current = this.storage.getEntityByName(candidate.name) as AgentEntity | undefined;
+        if (current && current.memoryType === targetType) {
+          promoted.push(current);
+        } else {
+          unpromoted.push(candidate.name);
+        }
+      }
+      await promoteEach(unpromoted);
       return { promoted, errors };
     }
 
     // Phase C: access tracking only; reinforcement fields were written in Phase B.
+    // The promotion is already persisted, so a failure here is reported as a
+    // reinforcement error without un-counting the promotion.
     const names = valid.map((e) => e.name);
+    for (const agentEntity of valid) {
+      promoted.push({ ...agentEntity, ...buildPromotionUpdates(agentEntity, targetType, now) } as AgentEntity);
+    }
     try {
       await this.decayEngine.reinforceMemories(names, { alreadyApplied: true });
     } catch (error) {
-      // Access tracking failed: report each name as the per-entity path would.
       for (const name of names) {
-        errors.push({ entityName: name, error: errorText(error) });
+        errors.push({
+          entityName: name,
+          error: `Promoted, but access tracking failed: ${errorText(error)}`,
+        });
       }
-      return { promoted, errors };
-    }
-
-    for (const agentEntity of valid) {
-      promoted.push({ ...agentEntity, ...buildPromotionUpdates(agentEntity, targetType, now) } as AgentEntity);
     }
     return { promoted, errors };
   }
@@ -859,7 +875,74 @@ export class ConsolidationPipeline {
       throw new Error('Need at least 2 entities to merge');
     }
 
-    // Load all entities
+    const storage = this.storage;
+
+    if (hasDeltaPrimitives(storage)) {
+      // DES-11: the lock is taken FIRST so the re-read of the merged entities,
+      // the survivor update, relation retargeting, delete and append form one
+      // critical section; a concurrent write cannot land between the snapshot
+      // and the delete and be lost.
+      const result = await withStorageWriteLock(storage, async () => {
+        const plan = this.planMerge(entityNames, strategy);
+        const mergedNames = entityNames.filter((n) => n !== plan.survivor.name);
+        const survivorBefore = structuredClone(plan.survivor);
+        await this.persistSurvivor(plan.survivor.name, plan.updates);
+        try {
+          await this.applyMergeDelta(storage, plan.survivor.name, mergedNames);
+        } catch (error) {
+          await this.restoreSurvivor(survivorBefore, plan.updates, error);
+          throw error;
+        }
+        return plan;
+      });
+      // Audit only after the merge committed.
+      await this.recordMerge(entityNames, result.survivor.name, strategy).catch(() => undefined);
+      return this.buildMergeResult(entityNames, strategy, result);
+    }
+
+    // Fallback for storages without delta primitives (e.g. minimal fakes):
+    // full-graph rewrite through saveGraph.
+    const plan = this.planMerge(entityNames, strategy);
+    const { survivor } = plan;
+    await this.persistSurvivor(survivor.name, plan.updates);
+    await this.recordMerge(entityNames, survivor.name, strategy);
+    const mergedNames = entityNames.filter((n) => n !== survivor.name);
+    {
+      const graph = await storage.loadGraph();
+      const filteredEntities = graph.entities.filter(
+        (e) => !mergedNames.includes(e.name)
+      );
+      const seenRelations = new Set<string>();
+      const filteredRelations = graph.relations
+        .map((r) => {
+          let from = r.from;
+          let to = r.to;
+          if (mergedNames.includes(from)) from = survivor.name;
+          if (mergedNames.includes(to)) to = survivor.name;
+          return { ...r, from, to };
+        })
+        .filter((r) => {
+          if (r.from === r.to) return false;
+          const key = `${r.from}|${r.to}|${r.relationType}`;
+          if (seenRelations.has(key)) return false;
+          seenRelations.add(key);
+          return true;
+        });
+
+      await storage.saveGraph({
+        entities: filteredEntities,
+        relations: filteredRelations,
+      });
+    }
+
+    return this.buildMergeResult(entityNames, strategy, plan);
+  }
+
+  /** Load the entities, pick the survivor and compute the merged fields. */
+  private planMerge(
+    entityNames: string[],
+    strategy: MemoryMergeStrategy
+  ): { survivor: AgentEntity; updates: Partial<AgentEntity>; mergedObservations: string[] } {
     const entities: AgentEntity[] = [];
     for (const name of entityNames) {
       const entity = this.storage.getEntityByName(name);
@@ -869,7 +952,6 @@ export class ConsolidationPipeline {
       entities.push(entity as AgentEntity);
     }
 
-    // Determine survivor based on strategy
     let survivor: AgentEntity;
     switch (strategy) {
       case 'newest':
@@ -884,15 +966,12 @@ export class ConsolidationPipeline {
         break;
     }
 
-    // Merge observations from all entities into survivor
     const allObservations = new Set<string>();
     for (const entity of entities) {
       entity.observations?.forEach((o) => allObservations.add(o));
     }
-
     const mergedObservations = Array.from(allObservations);
 
-    // Calculate merged metadata
     const updates: Partial<AgentEntity> = {
       observations: mergedObservations,
       confirmationCount: entities.reduce(
@@ -902,72 +981,52 @@ export class ConsolidationPipeline {
       accessCount: entities.reduce((sum, e) => sum + (e.accessCount ?? 0), 0),
       lastModified: new Date().toISOString(),
     };
+    return { survivor, updates, mergedObservations };
+  }
 
-    // Update survivor. If the survivor vanished between merge-planning and
-    // this write, abort BEFORE the destructive delete-others step below —
-    // proceeding would delete the merged entities with no survivor to hold
-    // their data.
-    const survivorPersisted = await this.storage.updateEntity(
-      survivor.name,
-      updates as Partial<Entity>
-    );
-    if (!survivorPersisted) {
+  /**
+   * Write merged fields to the survivor. If the survivor vanished, abort
+   * BEFORE the destructive delete-others step: proceeding would delete the
+   * merged entities with no survivor to hold their data.
+   */
+  private async persistSurvivor(name: string, updates: Partial<AgentEntity>): Promise<void> {
+    const persisted = await this.storage.updateEntity(name, updates as Partial<Entity>);
+    if (!persisted) {
       throw new Error(
-        `ConsolidationPipeline.mergeMemories: survivor '${survivor.name}' vanished mid-merge; aborting before delete to prevent data loss`
+        `ConsolidationPipeline.mergeMemories: survivor '${name}' vanished mid-merge; aborting before delete to prevent data loss`
       );
     }
+  }
 
-    // Record merge in audit trail
-    await this.recordMerge(entityNames, survivor.name, strategy);
-
-    // Remove other entities (delete them from storage) and rewire relations.
-    const mergedNames = entityNames.filter((n) => n !== survivor.name);
-    const storage = this.storage;
-
-    if (hasDeltaPrimitives(storage)) {
-      // OPT-15 / DES-11: touch only the relations incident to merged entities.
-      await this.applyMergeDelta(storage, survivor.name, mergedNames);
-    } else {
-      // Fallback for storages without delta primitives (e.g. minimal fakes):
-      // full-graph rewrite through saveGraph.
-      const graph = await storage.loadGraph();
-
-      // Filter out merged entities and their relations
-      const filteredEntities = graph.entities.filter(
-        (e) => !mergedNames.includes(e.name)
+  /** Put the survivor's pre-merge field values back after a failed delta merge. */
+  private async restoreSurvivor(
+    before: AgentEntity,
+    updates: Partial<AgentEntity>,
+    cause: unknown
+  ): Promise<void> {
+    try {
+      const restore: Record<string, unknown> = {};
+      for (const key of Object.keys(updates)) {
+        restore[key] = (before as unknown as Record<string, unknown>)[key];
+      }
+      if (!(await this.storage.updateEntity(before.name, restore as Partial<Entity>))) {
+        throw new Error(`survivor '${before.name}' no longer exists`);
+      }
+    } catch (restoreError) {
+      const detail = restoreError instanceof Error ? restoreError.message : String(restoreError);
+      throw new Error(
+        `ConsolidationPipeline.mergeMemories: merge failed and survivor restore also failed (restore: ${detail})`,
+        { cause }
       );
-
-      // Retarget relations
-      const seenRelations = new Set<string>();
-      const filteredRelations = graph.relations
-        .map((r) => {
-          let from = r.from;
-          let to = r.to;
-
-          // Retarget from merged entities
-          if (mergedNames.includes(from)) from = survivor.name;
-          if (mergedNames.includes(to)) to = survivor.name;
-
-          return { ...r, from, to };
-        })
-        .filter((r) => {
-          // Skip self-relations
-          if (r.from === r.to) return false;
-
-          // Skip duplicates
-          const key = `${r.from}|${r.to}|${r.relationType}`;
-          if (seenRelations.has(key)) return false;
-          seenRelations.add(key);
-
-          return true;
-        });
-
-      await storage.saveGraph({
-        entities: filteredEntities,
-        relations: filteredRelations,
-      });
     }
+  }
 
+  private buildMergeResult(
+    entityNames: string[],
+    strategy: MemoryMergeStrategy,
+    plan: { survivor: AgentEntity; updates: Partial<AgentEntity>; mergedObservations: string[] }
+  ): MergeResult {
+    const { survivor, updates, mergedObservations } = plan;
     return {
       survivor: { ...survivor, ...updates } as AgentEntity,
       mergedEntities: entityNames,
@@ -980,7 +1039,8 @@ export class ConsolidationPipeline {
   /**
    * Delta form of the merge rewrite (OPT-15 / DES-11).
    *
-   * Runs under the storage write lock and touches only the relations incident
+   * Must be called with the storage write lock already held (see
+   * `mergeMemories`). Touches only the relations incident
    * to merged entities:
    * 1. Collect relations touching merged entities, retargeted to the survivor.
    *    Self-loops are dropped; a retargeted key already on the survivor (or
@@ -1010,7 +1070,7 @@ export class ConsolidationPipeline {
     const relKey = (r: Pick<Relation, 'from' | 'to' | 'relationType'>): string =>
       `${r.from}|${r.to}|${r.relationType}`;
 
-    await withStorageWriteLock(storage, async () => {
+    {
       const survivorKeys = new Set(
         storage.getRelationsFor(survivorName).map(relKey)
       );
@@ -1037,7 +1097,7 @@ export class ConsolidationPipeline {
         }
         throw error;
       }
-    });
+    }
   }
 
   /**

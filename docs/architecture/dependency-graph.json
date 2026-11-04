@@ -5,7 +5,7 @@
     "lastUpdated": "2026-11-04",
     "totalFiles": 317,
     "totalModules": 12,
-    "totalExports": 2185
+    "totalExports": 2186
   },
   "entryPoints": [
     {
@@ -898,13 +898,6 @@
             "typeOnly": true
           },
           {
-            "file": "../core/GraphStorage.js",
-            "imports": [
-              "GraphStorage"
-            ],
-            "typeOnly": true
-          },
-          {
             "file": "../core/EntityManager.js",
             "imports": [
               "EntityManager"
@@ -1531,13 +1524,6 @@
               "IGraphStorage",
               "ReadonlyKnowledgeGraph",
               "Entity"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../core/GraphStorage.js",
-            "imports": [
-              "GraphStorage"
             ],
             "typeOnly": true
           },
@@ -19969,6 +19955,7 @@
           {
             "file": "./Diagnostics.js",
             "imports": [
+              "DiagnosticsOptions",
               "DiagnosticsReport",
               "TieredIndexStatsSnapshot"
             ],
@@ -20277,6 +20264,7 @@
           "ICompressionAdapter",
           "sidecarPath",
           "cosineSimilarity",
+          "DiagnosticsOptions",
           "DiagnosticsReport",
           "TieredIndexStatsSnapshot",
           "IIndexHealth",
@@ -20572,6 +20560,7 @@
           "ZlibCompressionAdapter",
           "ICompressionAdapter",
           "sidecarPath",
+          "DiagnosticsOptions",
           "DiagnosticsReport",
           "TieredIndexStatsSnapshot",
           "IIndexHealth",
@@ -21757,16 +21746,16 @@
   "statistics": {
     "totalTypeScriptFiles": 317,
     "totalModules": 12,
-    "totalLinesOfCode": 106961,
-    "totalExports": 2185,
+    "totalLinesOfCode": 107017,
+    "totalExports": 2186,
     "totalClasses": 238,
     "totalInterfaces": 638,
     "totalFunctions": 392,
     "totalTypeGuards": 31,
     "totalEnums": 4,
     "totalConstants": 126,
-    "totalReExports": 1414,
-    "totalTypeOnlyImports": 513,
+    "totalReExports": 1415,
+    "totalTypeOnlyImports": 511,
     "runtimeCircularDeps": 0,
     "typeOnlyCircularDeps": 8,
     "entryRoots": 4,

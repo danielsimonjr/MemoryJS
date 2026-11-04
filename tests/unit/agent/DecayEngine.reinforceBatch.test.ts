@@ -32,14 +32,6 @@ function agent(name: string, overrides: Partial<AgentEntity> = {}): AgentEntity 
 
 function build(entities: AgentEntity[], withDeltaPrimitives: boolean) {
   const storage = createInMemoryStorageFake(entities, { withDeltaPrimitives });
-  if (withDeltaPrimitives) {
-    // The shared fake omits appendEntities, which hasDeltaPrimitives requires.
-    Object.assign(storage, {
-      appendEntities: vi.fn(async (list: AgentEntity[]) => {
-        for (const e of list) await storage.appendEntity(e);
-      }),
-    });
-  }
   const tracker = new AccessTracker(storage);
   const decay = new DecayEngine(storage, tracker);
   return { storage, tracker, decay };

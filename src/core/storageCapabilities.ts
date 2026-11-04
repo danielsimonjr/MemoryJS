@@ -7,7 +7,7 @@
  * without casting to the concrete `GraphStorage` class.
  *
  * @module core/storageCapabilities
- * @internal
+ * @experimental
  */
 
 import type { IGraphStorage } from '../types/index.js';

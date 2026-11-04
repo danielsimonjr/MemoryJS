@@ -473,13 +473,11 @@ export interface RoleProfile {
   budgetSplits: BudgetSplits;           // working / episodic / semantic proportions
 }
 
-export class RoleProfileManager {
-  constructor(salienceEngine: SalienceEngine, contextWindowManager: ContextWindowManager)
-
-  apply(role: AgentRole): void          // Sets weights + budget splits
-  getProfile(role: AgentRole): RoleProfile
-  listProfiles(): RoleProfile[]
-}
+// Plain functions in agent/RoleProfiles.ts (there is no RoleProfileManager class)
+export function getRoleProfile(role: AgentRole): RoleProfile
+export function listRoleProfiles(): RoleProfile[]
+export function resolveRoleProfile(agentType: AgentType): RoleProfile
+export function createCustomProfile(base: AgentRole, overrides: { label?, salienceConfig?, contextConfig? }): RoleProfile
 ```
 
 Five built-in profiles ship with opinionated defaults — e.g. `researcher` boosts semantic weight, `executor` boosts working-memory budget.
@@ -1401,7 +1399,7 @@ export class LLMSearchExecutor {
 }
 ```
 
-Exposed as `ManagerContext.queryNaturalLanguage(query, llmProvider?)`.
+Exposed as `ManagerContext.queryNaturalLanguage(text)`; the LLM provider is configured via `ctx.llmQueryPlanner({ llmProvider })`.
 
 ---
 
@@ -2109,10 +2107,10 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 
 | Claim | Value | Source |
 |---|---|---|
-| totalSourceFiles | 768 | repo-tools map |
-| totalLinesOfCode | 260661 | repo-tools map |
-| totalExports | 3012 | repo-tools map |
-| reachableFiles | 313 | repo-tools map |
+| totalSourceFiles | 788 | repo-tools map |
+| totalLinesOfCode | 264483 | repo-tools map |
+| totalExports | 3068 | repo-tools map |
+| reachableFiles | 317 | repo-tools map |
 | runtimeCircularDeps | 0 | repo-tools map |
 | typeOnlyCircularDeps | 24 | repo-tools map |
 

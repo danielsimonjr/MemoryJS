@@ -599,12 +599,6 @@ export class ManagerContext {
   }
 
   /**
-   * Aggregate diagnostics: composes over `indexHealth()` and adds optional
-   * memory / entity-count / query-stats / cache-hit-rate panels. Cheap
-   * enough to call from a request handler — does not force lazy-subsystem
-   * construction (uninitialised parts report null/empty).
-   */
-  /**
    * Group multiple mutations into a single batch executed atomically.
    *
    * The callback receives a `BatchTransaction` builder. Mutations queued
@@ -638,6 +632,12 @@ export class ManagerContext {
     return builder.execute(options);
   }
 
+  /**
+   * Aggregate diagnostics: composes over `indexHealth()` and adds optional
+   * memory / entity-count / query-stats / cache-hit-rate panels. Cheap
+   * enough to call from a request handler — does not force lazy-subsystem
+   * construction (uninitialised parts report null/empty).
+   */
   diagnostics(options: DiagnosticsOptions = {}): DiagnosticsReport {
     return buildDiagnosticsReport(
       () => this.indexHealth(),
