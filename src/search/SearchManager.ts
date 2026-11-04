@@ -23,6 +23,7 @@ import { QueryPlanCache } from './QueryPlanCache.js';
 import { formatQueryPlanAscii, type ExplainPlanResult } from './QueryPlanFormatter.js';
 import type { AccessTracker } from '../agent/AccessTracker.js';
 import type { CachePressureCoordinator } from '../utils/CachePressureCoordinator.js';
+import { SEARCH_LIMITS } from '../utils/constants.js';
 
 /**
  * Options for search methods with access tracking support.
@@ -446,11 +447,16 @@ export class SearchManager {
     const selectionReason = recommendation.reason;
 
     // Execute the selected search method
+    const pageCap = Math.min(limit, SEARCH_LIMITS.DEFAULT);
     let results: SearchResult[];
 
     switch (selectedMethod) {
       case 'basic': {
-        const basicResult = await this.basicSearch.searchNodes(query);
+        // Only the first `limit` results are returned, so ask for no more than that.
+        // Capped at the default page size, as the unlimited call was, so results are unchanged.
+        const basicResult = await this.basicSearch.searchNodes(
+          query, undefined, undefined, undefined, 0, pageCap,
+        );
         results = basicResult.entities.map((e: Entity, idx: number) => ({
           entity: e,
           score: 1.0 - idx * 0.01, // Rank by position
@@ -475,7 +481,9 @@ export class SearchManager {
       }
 
       case 'fuzzy': {
-        const fuzzyResult = await this.fuzzySearcher.fuzzySearch(query);
+        const fuzzyResult = await this.fuzzySearcher.fuzzySearch(
+          query, undefined, undefined, undefined, undefined, 0, pageCap,
+        );
         results = fuzzyResult.entities.map((e: Entity, idx: number) => ({
           entity: e,
           score: 1.0 - idx * 0.01, // Rank by position

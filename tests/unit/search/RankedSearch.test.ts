@@ -813,3 +813,54 @@ describe('RankedSearch evictTo with an undefined key (review pins)', () => {
     expect([...cache.keys()]).toEqual([undefined, 'e0', 'e1']);
   });
 });
+
+describe('RankedSearch OPT-5: cached totals and lowercase copies', () => {
+  it('matchedFields.observations keeps original casing and order', async () => {
+    const dir = join(tmpdir(), `ranked-opt5-${Date.now()}-${Math.random()}`);
+    await fs.mkdir(dir, { recursive: true });
+    try {
+      const store = new GraphStorage(join(dir, 'graph.jsonl'));
+      const em = new EntityManager(store);
+      await em.createEntities([
+        { name: 'Casey', entityType: 'Person', observations: ['Python Basics', 'Rust notes', 'Loves PYTHON daily'] },
+        { name: 'Dana', entityType: 'Person', observations: ['Go notes only'] },
+      ]);
+      const ranked = new RankedSearch(store);
+      const results = await ranked.searchNodesRanked('python');
+      const casey = results.find(r => r.entity.name === 'Casey');
+      expect(casey).toBeDefined();
+      expect(casey?.matchedFields.observations).toEqual(['Python Basics', 'Loves PYTHON daily']);
+      expect(casey?.matchedFields.name).toBeUndefined();
+      store.clearCache();
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('scores are unchanged after a single entity is re-indexed and restored', async () => {
+    const dir = join(tmpdir(), `ranked-opt5b-${Date.now()}-${Math.random()}`);
+    await fs.mkdir(dir, { recursive: true });
+    try {
+      const store = new GraphStorage(join(dir, 'graph.jsonl'));
+      const em = new EntityManager(store);
+      await em.createEntities([
+        { name: 'Alice', entityType: 'person', observations: ['Python developer', 'Likes tea'] },
+        { name: 'Bob', entityType: 'person', observations: ['Python tester', 'Likes coffee'] },
+        { name: 'Cara', entityType: 'person', observations: ['Go developer'] },
+      ]);
+      const ranked = new RankedSearch(store);
+      const before = await ranked.searchNodesRanked('python developer');
+      const beforeScores = before.map(r => [r.entity.name, r.score]);
+      expect(beforeScores.length).toBeGreaterThan(0);
+
+      await em.updateEntity('Alice', { observations: ['Python developer', 'Likes tea', 'Extra filler words here'] });
+      await em.updateEntity('Alice', { observations: ['Python developer', 'Likes tea'] });
+
+      const after = await ranked.searchNodesRanked('python developer');
+      expect(after.map(r => [r.entity.name, r.score])).toEqual(beforeScores);
+      store.clearCache();
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+});

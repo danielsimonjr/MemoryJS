@@ -13,15 +13,30 @@
  * the structural-filter shape from `SearchFilters` is supported.
  *
  * @module search/MaterializedViews
- * @experimental View invalidation is currently coarse — every entity
- *   event marks every view dirty. Per-view filter-aware invalidation
- *   is a planned refinement.
+ * @experimental Create and delete events mark every view dirty. Update
+ *   events mark only the views whose filters read a changed field.
  */
 
 import type { GraphEventEmitter } from '../core/GraphEventEmitter.js';
 import type { GraphStorage } from '../core/GraphStorage.js';
-import type { Entity } from '../types/types.js';
+import type { Entity, EntityUpdatedEvent } from '../types/types.js';
 import { SearchFilterChain, type SearchFilters } from './SearchFilterChain.js';
+
+/**
+ * Entity fields that a view's predicate can read, derived from its filters.
+ * Version visibility (`publishedAncestorsOfDraftHeads`) always reads
+ * `isLatest`, `lifecycleStatus`, `parentEntityName` and `name`.
+ */
+function relevantKeysFor(filters: SearchFilters): Set<keyof Entity> {
+  const keys = new Set<keyof Entity>(['isLatest', 'lifecycleStatus', 'parentEntityName', 'name']);
+  if (filters.tags && filters.tags.length > 0) keys.add('tags');
+  if (filters.minImportance !== undefined || filters.maxImportance !== undefined) keys.add('importance');
+  if (filters.entityType) keys.add('entityType');
+  if (filters.createdAfter || filters.createdBefore) keys.add('createdAt');
+  if (filters.modifiedAfter || filters.modifiedBefore) keys.add('lastModified');
+  if (filters.projectId !== undefined) keys.add('projectId');
+  return keys;
+}
 
 /** A registered view's stable identifier and its filter predicate. */
 export interface ViewDefinition {
@@ -41,6 +56,8 @@ interface ViewState {
   computedAt: number;
   /** True when the cached list is known stale. */
   dirty: boolean;
+  /** Entity fields this view's predicate reads (see `relevantKeysFor`). */
+  relevantKeys: Set<keyof Entity>;
 }
 
 /** Snapshot returned by `query()`. */
@@ -85,6 +102,7 @@ export class MaterializedViewsManager {
       members: [],
       computedAt: 0,
       dirty: true,
+      relevantKeys: relevantKeysFor(def.filters),
     });
   }
 
@@ -155,18 +173,29 @@ export class MaterializedViewsManager {
   }
 
   /**
-   * Subscribe to entity-mutation events. Any event marks every view as
-   * dirty — finer-grained invalidation (per-view filter predicate
-   * checks) is a possible follow-up but not in scope yet.
+   * Subscribe to entity-mutation events. Created and deleted entities mark
+   * every view dirty, since membership can change for any predicate. An
+   * update marks only the views whose predicate reads a changed field. A view
+   * that filters on `lastModified` is dirtied by every update, because some
+   * write paths do not list `lastModified` in the event's `changes`.
    */
   private attachListeners(): void {
     if (this.unsubscribers.length > 0) return;
-    const markDirty = (): void => {
+    const markAllDirty = (): void => {
       for (const state of this.views.values()) state.dirty = true;
     };
-    this.unsubscribers.push(this.events.on('entity:created', markDirty));
-    this.unsubscribers.push(this.events.on('entity:updated', markDirty));
-    this.unsubscribers.push(this.events.on('entity:deleted', markDirty));
+    const markDirtyForUpdate = (event: EntityUpdatedEvent): void => {
+      const changed = Object.keys(event.changes);
+      for (const state of this.views.values()) {
+        if (state.dirty) continue;
+        if (state.relevantKeys.has('lastModified') || changed.some(k => state.relevantKeys.has(k as keyof Entity))) {
+          state.dirty = true;
+        }
+      }
+    };
+    this.unsubscribers.push(this.events.on('entity:created', markAllDirty));
+    this.unsubscribers.push(this.events.on('entity:updated', markDirtyForUpdate));
+    this.unsubscribers.push(this.events.on('entity:deleted', markAllDirty));
   }
 
   private detachListeners(): void {

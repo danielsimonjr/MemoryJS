@@ -249,22 +249,30 @@ export class BM25Search {
     const { documents, documentFrequency, avgDocLength, totalDocs } = this.index;
     const scored: Array<{ entityName: string; docEntry: BM25DocumentEntry; score: number }> = [];
 
+    // IDF is a per-term corpus constant: compute it once per query term.
+    const idfByTerm = new Map<string, number>();
+    for (const term of queryTerms) {
+      if (idfByTerm.has(term)) continue;
+      const df = documentFrequency.get(term) || 0;
+      idfByTerm.set(term, df > 0 ? Math.log((totalDocs - df + 0.5) / (df + 0.5) + 1) : 0);
+    }
+
     // Calculate BM25 score for each document
     for (const [entityName, docEntry] of documents) {
       if (candidateNames !== null && !candidateNames.has(entityName)) continue;
+
+      // Length normalisation is per document, shared by all query terms.
+      const denominatorBase = k1 * (1 - b + b * (docEntry.docLength / avgDocLength));
 
       let score = 0;
       for (const term of queryTerms) {
         const tf = docEntry.termFreqs.get(term) || 0;
         if (tf === 0) continue;
 
-        // Calculate IDF
-        const df = documentFrequency.get(term) || 0;
-        const idf = df > 0 ? Math.log((totalDocs - df + 0.5) / (df + 0.5) + 1) : 0;
-
         // Calculate BM25 score component
+        const idf = idfByTerm.get(term) ?? 0;
         const numerator = tf * (k1 + 1);
-        const denominator = tf + k1 * (1 - b + b * (docEntry.docLength / avgDocLength));
+        const denominator = tf + denominatorBase;
         score += idf * (numerator / denominator);
       }
 

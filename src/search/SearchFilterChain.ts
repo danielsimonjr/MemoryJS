@@ -28,6 +28,27 @@ function parseableBound(bound: string | undefined): string | undefined {
   return bound && !isNaN(new Date(bound).getTime()) ? bound : undefined;
 }
 
+/** Shared empty result for {@link SearchFilterChain.publishedAncestorsOfDraftHeads}. Read-only. */
+const NO_VISIBLE_SUPERSEDED: ReadonlySet<string> = new Set<string>();
+
+/**
+ * Per-search filter state that does not depend on the entity being tested.
+ * Built once per `applyFilters` call so the per-entity loop does no parsing.
+ */
+interface ResolvedFilters {
+  filters: SearchFilters;
+  normalizedSearchTags: string[] | undefined;
+  /** Raw truthiness of the created bounds, as the entity-level date check uses it. */
+  hasCreatedBound: boolean;
+  /** Raw truthiness of the modified bounds. */
+  hasModifiedBound: boolean;
+  createdAfter: string | undefined;
+  createdBefore: string | undefined;
+  modifiedAfter: string | undefined;
+  modifiedBefore: string | undefined;
+  allowedStatuses: ReadonlyArray<EntityStatus>;
+}
+
 /**
  * Search filter configuration options.
  * All filters are optional - entities pass if filter is not specified.
@@ -87,6 +108,21 @@ export class SearchFilterChain {
    * `parentEntityName`. A head that is not a draft adds nothing.
    */
   static publishedAncestorsOfDraftHeads(entities: readonly Entity[]): ReadonlySet<string> {
+    // Fast path: a walk starts only at a live draft head that has a parent.
+    // Most graphs have none, so skip building the name map entirely.
+    let hasWalkStart = false;
+    for (const head of entities) {
+      if (
+        head.isLatest !== false &&
+        (head.lifecycleStatus ?? DEFAULT_ENTITY_STATUS) === 'draft' &&
+        head.parentEntityName !== undefined
+      ) {
+        hasWalkStart = true;
+        break;
+      }
+    }
+    if (!hasWalkStart) return NO_VISIBLE_SUPERSEDED;
+
     const byName = new Map<string, Entity>();
     for (const entity of entities) {
       byName.set(entity.name, entity);
@@ -131,15 +167,37 @@ export class SearchFilterChain {
     filters: SearchFilters,
     versionContext?: SearchFilterVersionContext,
   ): Entity[] {
-    const normalizedSearchTags = filters.tags?.length
-      ? normalizeTags(filters.tags)
-      : undefined;
+    const resolved = this.resolveFilters(
+      filters,
+      filters.tags?.length ? normalizeTags(filters.tags) : undefined,
+    );
     const visibleSupersededNames =
       versionContext?.visibleSupersededNames ??
       this.publishedAncestorsOfDraftHeads(entities);
     return entities.filter(entity =>
-      this.entityPassesFilters(entity, filters, normalizedSearchTags, visibleSupersededNames)
+      this.entityPassesResolved(entity, resolved, visibleSupersededNames)
     );
+  }
+
+  /**
+   * Computes the entity-independent parts of a filter set once: normalized
+   * tags, parsed date bounds and the allowed lifecycle statuses.
+   */
+  private static resolveFilters(
+    filters: SearchFilters,
+    normalizedSearchTags: string[] | undefined,
+  ): ResolvedFilters {
+    return {
+      filters,
+      normalizedSearchTags,
+      hasCreatedBound: !!(filters.createdAfter || filters.createdBefore),
+      hasModifiedBound: !!(filters.modifiedAfter || filters.modifiedBefore),
+      createdAfter: parseableBound(filters.createdAfter),
+      createdBefore: parseableBound(filters.createdBefore),
+      modifiedAfter: parseableBound(filters.modifiedAfter),
+      modifiedBefore: parseableBound(filters.modifiedBefore),
+      allowedStatuses: filters.lifecycleStatus ?? [DEFAULT_ENTITY_STATUS],
+    };
   }
 
   /**
@@ -157,6 +215,24 @@ export class SearchFilterChain {
     normalizedSearchTags?: string[],
     visibleSupersededNames?: ReadonlySet<string>,
   ): boolean {
+    return this.entityPassesResolved(
+      entity,
+      this.resolveFilters(filters, normalizedSearchTags),
+      visibleSupersededNames,
+    );
+  }
+
+  /**
+   * Per-entity predicate over pre-resolved filter state. Same checks, in the
+   * same order, as the public {@link SearchFilterChain.entityPassesFilters}.
+   */
+  private static entityPassesResolved(
+    entity: Entity,
+    resolved: ResolvedFilters,
+    visibleSupersededNames?: ReadonlySet<string>,
+  ): boolean {
+    const { filters, normalizedSearchTags } = resolved;
+
     // Tag filter - check if entity has any matching tag
     if (normalizedSearchTags && normalizedSearchTags.length > 0) {
       if (!entity.tags || entity.tags.length === 0) {
@@ -171,12 +247,12 @@ export class SearchFilterChain {
 
     // A date bound that is set but unparseable is ignored. An entity with no
     // date, or with an unparseable date, fails when any bound is set.
-    if (filters.createdAfter || filters.createdBefore) {
+    if (resolved.hasCreatedBound) {
       if (!entity.createdAt || isNaN(new Date(entity.createdAt).getTime())) {
         return false;
       }
     }
-    if (filters.modifiedAfter || filters.modifiedBefore) {
+    if (resolved.hasModifiedBound) {
       if (!entity.lastModified || isNaN(new Date(entity.lastModified).getTime())) {
         return false;
       }
@@ -187,10 +263,10 @@ export class SearchFilterChain {
       minImportance: filters.minImportance,
       maxImportance: filters.maxImportance,
       entityType: filters.entityType,
-      createdAfter: parseableBound(filters.createdAfter),
-      createdBefore: parseableBound(filters.createdBefore),
-      modifiedAfter: parseableBound(filters.modifiedAfter),
-      modifiedBefore: parseableBound(filters.modifiedBefore),
+      createdAfter: resolved.createdAfter,
+      createdBefore: resolved.createdBefore,
+      modifiedAfter: resolved.modifiedAfter,
+      modifiedBefore: resolved.modifiedBefore,
     })) {
       return false;
     }
@@ -210,9 +286,8 @@ export class SearchFilterChain {
     // Lifecycle-status filter: defaults to the entity-state-machine
     // default status only. Entities created before lifecycleStatus
     // existed (undefined) take the same default for back-compat.
-    const allowedStatuses = filters.lifecycleStatus ?? [DEFAULT_ENTITY_STATUS];
     const effective = entity.lifecycleStatus ?? DEFAULT_ENTITY_STATUS;
-    if (!allowedStatuses.includes(effective)) {
+    if (!resolved.allowedStatuses.includes(effective)) {
       return false;
     }
 

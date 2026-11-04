@@ -7,6 +7,7 @@
  */
 
 import type {
+  DocumentVector,
   Entity,
   GraphEventType,
   IGraphStorage,
@@ -24,6 +25,22 @@ import { getFtsCandidateNames, type FtsOwner } from './ftsCandidates.js';
 import { SearchFilterChain, type SearchFilters } from './SearchFilterChain.js';
 import type { IndexHealthSnapshot } from '../utils/IIndexHealth.js';
 import type { GraphRankPrior } from './GraphRankPrior.js';
+
+/**
+ * Sum of term frequencies per document vector. TF-IDF index updates replace
+ * the DocumentVector object instead of mutating `terms`, so a keyed WeakMap
+ * never serves a stale total.
+ */
+const totalTermsCache = new WeakMap<DocumentVector, number>();
+
+function totalTermsOf(docVector: DocumentVector): number {
+  let total = totalTermsCache.get(docVector);
+  if (total === undefined) {
+    total = Object.values(docVector.terms).reduce((sum, count) => sum + count, 0);
+    totalTermsCache.set(docVector, total);
+  }
+  return total;
+}
 
 /**
  * Events that can change entity text content or corpus membership — the two
@@ -347,8 +364,14 @@ export class RankedSearch {
       }
 
       // Calculate total terms in document (sum of all term frequencies)
-      const totalTerms = Object.values(docVector.terms).reduce((sum, count) => sum + count, 0);
+      const totalTerms = totalTermsOf(docVector);
       if (totalTerms === 0) continue;
+
+      // Lowercased copies held by storage; fall back when the entity is not cached
+      // or its cached observation list no longer lines up with the entity's.
+      const cached = this.storage.getLowercased(entity.name);
+      const lowercased =
+        cached && cached.observations.length === entity.observations.length ? cached : undefined;
 
       // Calculate score using pre-calculated term frequencies and IDF
       let totalScore = 0;
@@ -365,15 +388,18 @@ export class RankedSearch {
 
         // Track which fields matched
         if (termCount > 0) {
-          if (entity.name.toLowerCase().includes(term)) {
+          const nameLower = lowercased ? lowercased.name : entity.name.toLowerCase();
+          if (nameLower.includes(term)) {
             matchedFields.name = true;
           }
-          if (entity.entityType.toLowerCase().includes(term)) {
+          const typeLower = lowercased ? lowercased.entityType : entity.entityType.toLowerCase();
+          if (typeLower.includes(term)) {
             matchedFields.entityType = true;
           }
-          const matchedObs = entity.observations.filter(o =>
-            o.toLowerCase().includes(term)
-          );
+          // Original-case observations, selected by the index-aligned lowercase copy.
+          const matchedObs = lowercased
+            ? entity.observations.filter((_, i) => lowercased.observations[i].includes(term))
+            : entity.observations.filter(o => o.toLowerCase().includes(term));
           if (matchedObs.length > 0) {
             matchedFields.observations = matchedObs;
           }
