@@ -88,7 +88,7 @@ ctx.freshnessManager    // TTL/confidence freshness reporting
 ctx.governanceManager   // Governance policies + audit transactions; lazy getter always available. When MEMORY_GOVERNANCE_ENABLED='true' (strict literal, read at first entityManager access), ManagerContext also wires governance hooks into EntityManager so createEntities/updateEntity/batchUpdate/deleteEntities/renameEntity are policy-checked (GovernanceError on denial) + audited (fire-and-forget append; audit failure never fails the write). Audit log path: MEMORY_AUDIT_LOG_FILE, else <basename>-audit.jsonl sidecar.
 ctx.refIndex            // Named reference index for O(1) entity lookup
 ctx.semanticForget      // Two-tier deletion (exact → semantic fallback)
-ctx.queryNaturalLanguage() // LLM-planned query decomposition (optional provider, passed in code; no env var)
+ctx.queryNaturalLanguage(text) // LLM-planned query decomposition; provider set first via ctx.llmQueryPlanner({ llmProvider }); no env var
 ctx.agentMemory()       // Agent Memory System facade
 ctx.procedureManager    // 3B.4 Procedural Memory (steps as procedure-step entities + has_step/precedes/has_fallback relations)
 ctx.createProceduralGraph(config) // Procedural Graph factory (sessions, guidance, offline evolve)
@@ -143,7 +143,7 @@ ctx.eventManager        // R1 event reification: actions as event hub entities (
 - **Context**: `ContextWindowManager` (token budgeting + distillation), `MemoryFormatter` (`formatWithSalienceBudget()` for proportional allocation), `AccessTracker`
 - **Artifacts**: `ArtifactManager` — `createArtifact()` generates stable human-readable names (`toolName-date-shortId`), auto-registers refs; `ArtifactEntity` type + `ArtifactType` union
 - **Distillation**: `IDistillationPolicy` interface + `DefaultDistillationPolicy` (relevance + freshness + dedup), `CompositeDistillationPolicy`, `NoOpDistillationPolicy` — wired into `ContextWindowManager`
-- **Role profiles** (v1.7.0): `RoleProfiles` — five built-in roles (`researcher`, `planner`, `executor`, `reviewer`, `coordinator`) each with salience weight presets and token budget splits; applied via `RoleProfileManager`
+- **Role profiles** (v1.7.0): `RoleProfiles` — five built-in roles (`researcher`, `planner`, `executor`, `reviewer`, `coordinator`) each with salience weight presets and token budget splits; helpers `getRoleProfile` / `listRoleProfiles` / `resolveRoleProfile` / `createCustomProfile` in `src/agent/RoleProfiles.ts` (no `RoleProfileManager` class exists; `MEMORY_AGENT_ROLE` is reserved and not read)
 - **Entropy filtering** (v1.7.0): `EntropyFilter` — Shannon entropy gate that drops low-information memories; integrated as an early `ConsolidationPipeline` stage
 - **Consolidation scheduler** (v1.7.0): `ConsolidationScheduler` — background recursive dedup+merge scheduler; runs `ConsolidationPipeline.runAutoConsolidation()` until a fixed point
 - **Collaborative synthesis** (v1.7.0): `CollaborativeSynthesis` — graph-neighbourhood merge across agents within N hops; returns unified view with provenance metadata
@@ -187,7 +187,7 @@ ctx.eventManager        // R1 event reification: actions as event hub entities (
 - `KeywordExtractor`: Keyword extraction from text
 - `FreshnessManager`: `calculateFreshness`, `getStaleEntities`, `getExpiredEntities`, `generateReport` — uses `Entity.ttl` and `Entity.confidence`
 - `AuditLog`: Immutable JSONL audit trail for all create/update/delete operations
-- `GovernanceManager`: `withTransaction`/`rollback`, `GovernancePolicy` (`canCreate`/`canUpdate`/`canDelete`) enforcement
+- `GovernanceManager`: `withTransaction` groups audit entries (not atomic; storage is not reverted on throw), `rollback(auditEntryId)`, `GovernancePolicy` (`canCreate`/`canUpdate`/`canDelete`) enforcement
 
 ### Graph Algorithms (`src/core/GraphTraversal.ts`)
 
@@ -204,12 +204,16 @@ ctx.eventManager        // R1 event reification: actions as event hub entities (
 - Event-driven cache invalidation: `GraphEventEmitter` notifies subscribers on changes
 - TF-IDF auto-sync: `TFIDFEventSync` keeps index current with storage
 - Worker pool: CPU-intensive Levenshtein calculations offloaded to workers (`dist/workers/` built separately by tsup)
-- Transaction support: `TransactionManager` for atomic batch operations
+- Transaction support: `TransactionManager` (stage ops, `commit()` = full-graph save with backup-based rollback) and `BatchTransaction` / `ctx.batch()` (one load/apply/save under `graphMutex`; with the default `stopOnError: true` nothing is saved after the first failure). See `docs/architecture/API.md`
 - Named references: `RefIndex` JSONL sidecar provides O(1) stable-name lookups independent of entity name changes; wired into `EntityManager` by `ManagerContext` so refs remap on `renameEntity` and purge on delete
 - Entity rename: `EntityManager.renameEntity(oldName, newName)` — storage-level primitive on both backends that atomically rewrites relation endpoints, children `parentId`, and version-chain fields; emits `entity:renamed` + `entity:deleted`/`entity:created` so derived indexes stay consistent
 - Governance: `GovernanceManager` wraps mutations with policy checks and rollback; `AuditLog` appends every operation immutably
 - Distillation: `IDistillationPolicy` applied post-retrieval in `ContextWindowManager` before formatting for LLM prompts
-- Role-aware salience: `RoleProfileManager` applies role presets to `SalienceEngine` weights and `ContextWindowManager` budget splits
+- Role-aware salience: `AgentMemoryManager.createRoleAwareSalienceEngine(agentId)` uses the agent's stored role profile (falls back to the `default` profile) for `SalienceEngine` weights
+- Storage capability guards: `hasDeltaPrimitives` / `hasWriteLock` / `withStorageWriteLock` (`src/core/storageCapabilities.ts`) narrow an `IGraphStorage` before managers use batch delta primitives or `graphMutex`
+- Shared env parsing: `src/utils/envConfig.ts` (`readEnvStrictFlag`, `readEnvLooseFlag`, `readEnvNumber`, `readEnvStrictInt`, ...) is the one implementation of the env idioms below
+- Observation events: `ObservationManager` emits `observation:added` / `observation:deleted` (only the strings actually added or removed)
+- Conditional prospective memory: `ProspectiveMemoryManager` fires `conditional` triggers only through a code-supplied `predicateEvaluator` (`ManagerContextOptions.prospectivePredicateEvaluator`); no env var
 - Entropy gate: `EntropyFilter` runs before consolidation; drops observations that do not increase information diversity
 - Visibility resolution: `VisibilityResolver` evaluates `GroupMembership` against entity visibility level before returning memories to a requesting agent
 
@@ -257,7 +261,7 @@ Vitest with 30s timeout. Coverage excludes `index.ts` barrel files. Custom `per-
 | `MEMORY_MAX_DECOMPRESSED_BYTES` | Integer > 0 | `268435456` (256 MB) | Decompression output cap (brotli/zlib) across `compressionUtil` and compression adapters — guards against decompression bombs. Exceeding throws a distinct error naming the limit. |
 | `MEMORY_SQLITE_READ_POOL_SIZE` | Integer ≥ 1 | `4` | Read connection pool size for `SQLiteStorage` (`fullTextSearch` / `simpleSearch`). Set to `0` or `1` to route reads through the writer connection. |
 | `MEMORY_INDEX_COALESCE_MS` | Integer ≥ 0 | `50` | TF-IDF event-sync coalescing window. Multiple writes to the same entity within the window collapse into a single index update. Set to `0` to disable coalescing (apply immediately). |
-| `MEMORY_SQLITE_AUTO_INDEX` | `true`, `false` | `false` | Storage-side hook (`SQLiteStorage.recordFilter`) is wired, but no in-tree search path records filters or issues SQL filtered by `entityType` / `projectId`, so the flag currently has no effect on query plans (it only makes `close()` drop advisor-created `idx_advisor_*` indexes). Call `recordFilter` yourself if you drive raw SQL. See `PartialIndexAdvisor`. |
+| `MEMORY_SQLITE_AUTO_INDEX` | `true`, `false`, `1` | `false` | **Deprecated, no effect** on query plans (DES-9). Constructing a `SQLiteStorage` with it set logs a warning. Full indexes cover the hot filters. Scheduled for removal in v5. |
 | `MEMORY_CACHE_BUDGET_ENTRIES` | Integer ≥ 1 | unset (disabled) | Global entry budget for caches registered with `CachePressureCoordinator`. When the sum of `currentEntries()` across registered caches exceeds the budget, `evictIfOverBudget()` shrinks each cache proportionally to its current share (with a small per-cache floor). |
 
 ### JSONL backend layout (Phase 7 + Phase 8)
@@ -308,7 +312,7 @@ Query logging: `MEMORY_QUERY_LOGGING` (false), `MEMORY_QUERY_LOG_FILE`, `MEMORY_
 ### Role Profiles & Advanced Agent Features (v1.7.0)
 | Variable | Values | Default |
 |----------|--------|---------|
-| `MEMORY_AGENT_ROLE` | `researcher`, `planner`, `executor`, `reviewer`, `coordinator` | - |
+| `MEMORY_AGENT_ROLE` | `researcher`, `planner`, `executor`, `reviewer`, `coordinator` | - | **Reserved; not read by `src/`.** Catalogued only. Use `getRoleProfile(role)` in code. Wiring is an owner decision (DESIGN_PASS_2026-11-04 §5 Q3). |
 | `MEMORY_ENTROPY_FILTER_ENABLED` | `true`, `false` | `false` |
 | `MEMORY_ENTROPY_THRESHOLD` | Number (0–1) | `0.3` |
 | `MEMORY_CONSOLIDATION_SCHEDULER_ENABLED` | `true`, `false` | `false` |

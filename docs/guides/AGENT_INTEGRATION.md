@@ -4,9 +4,12 @@
 **Last Updated**: 2026-07-24
 
 > **Updated agent-memory surface (v1.7+):**
-> - **Role profiles** — `MEMORY_AGENT_ROLE` env var (`researcher` /
->   `planner` / `executor` / `reviewer` / `coordinator`) auto-tunes
->   salience weights + context budget splits.
+> - **Role profiles** — built-in presets (`researcher` / `planner` /
+>   `executor` / `reviewer` / `coordinator`) exposed as code helpers
+>   (`getRoleProfile`, `resolveRoleProfile`, `listRoleProfiles` in
+>   `src/agent/RoleProfiles.ts`). `AgentMemoryManager.createRoleAwareSalienceEngine(agentId)`
+>   applies a stored profile. The `MEMORY_AGENT_ROLE` env var is reserved and
+>   not read by the library (no effect).
 > - **Memory Engine** (v1.11) — `ctx.memoryEngine.addTurn()` for turn-aware
 >   conversation memory with four-tier dedup.
 > - **Procedural memory** (3B.4) — `ctx.procedureManager.addProcedure()`

@@ -862,8 +862,9 @@ await ctx.entityManager.deleteEntities(['critical-decision']); // throws Governa
 ```
 
 With the flag unset, `ctx.governanceManager` is still constructible and
-usable manually (`withTransaction`/`rollback`), but ordinary
-`EntityManager` writes bypass it entirely — zero overhead, unchanged from
+usable manually (`withTransaction` groups audit entries; it is not an atomic
+transaction and does not revert storage on throw; `rollback(auditEntryId)`
+reverses that one recorded operation with a full graph save and appends a `rolled_back` audit entry), but ordinary `EntityManager` writes bypass it entirely — zero overhead, unchanged from
 pre-Unreleased behavior. A related bug is also fixed: `rollback()` used to
 spread the raw audit snapshot **before** the field whitelist, so any field
 present in the (writable) audit file could land back on a restored entity;
