@@ -47,6 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `MEMORY_SQLITE_AUTO_INDEX` / `PartialIndexAdvisor` are a no-op that logs a one-time warning.
 
 ### Fixed
+- The CLI error-path tests no longer depend on the Node version. Newer Node versions add the file path to an EISDIR message; the test harness removes it (`withoutSyscallPath`), and the reindex test matches the detail with a pattern.
 
 - `RefIndex.persistAll` writes the JSONL sidecar through `durableWriteFile` instead of truncating the live path with `fs.writeFile` on failure. A failed write drops the in-memory maps so the next call reloads the sidecar.
 - `GovernanceTransaction.createEntity/updateEntity/deleteEntity` call `storage.ensureLoaded()` before synchronous cache lookups, so the first governed op on a fresh storage no longer reports "not found" or skips the duplicate guard (JSONL and SQLite).
