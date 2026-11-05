@@ -38,6 +38,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `TransitionLedger` no longer subscribes to `observation:*` events directly.
 - `ConsolidationPipeline.promoteMemories`: an access-tracking failure after the promotion write keeps the names in `promoted` and reports a "Promoted, but access tracking failed" error instead of un-counting them.
 
+### Security
+- `rimraf` ^6.1.4 (dev). It pulls glob 14.0.3 and minimatch 11.0.4, which clear GHSA-3g3m-2fjr-6pw4 and GHSA-g3hv-75wg-m249. `bun audit` reports no vulnerabilities.
+
 ### Deprecated
 
 - `CompressedCache` is deprecated in favour of `CompressedMap`.
