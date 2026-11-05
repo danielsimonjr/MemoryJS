@@ -41,6 +41,7 @@ import {
   type ITieredIndex,
   type TierAccessStats,
   makeFreshStats,
+  snapshotTierStats,
 } from './ITieredIndex.js';
 import { logger } from '../../utils/logger.js';
 
@@ -204,13 +205,7 @@ export class TieredIndex<V> implements ITieredIndex<string, V> {
   }
 
   stats(): TierAccessStats {
-    return {
-      hits: this.accessStats.hits,
-      misses: this.accessStats.misses,
-      promotions: this.accessStats.promotions,
-      demotions: this.accessStats.demotions,
-      perTierHits: { ...this.accessStats.perTierHits },
-    };
+    return snapshotTierStats(this.accessStats);
   }
 
   /**

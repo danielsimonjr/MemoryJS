@@ -8,7 +8,7 @@
  */
 
 import type { QueryAnalysis, QueryPlan } from '../types/index.js';
-import { evictOldest } from '../utils/searchCache.js';
+import { evictOldest, pruneExpiredEntries } from '../utils/searchCache.js';
 
 /**
  * Cached query entry with metadata.
@@ -399,14 +399,7 @@ export class QueryPlanCache {
    * @returns Number of entries removed
    */
   cleanup(): number {
-    let count = 0;
-    for (const [key, entry] of this.cache) {
-      if (this.isExpired(entry)) {
-        this.cache.delete(key);
-        count++;
-      }
-    }
-    return count;
+    return pruneExpiredEntries(this.cache, entry => this.isExpired(entry));
   }
 
   /**

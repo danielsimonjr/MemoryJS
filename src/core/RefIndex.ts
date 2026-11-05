@@ -11,6 +11,7 @@ import { promises as fs } from 'fs';
 import { Mutex } from 'async-mutex';
 import { durableWriteFile } from '../utils/durableWriteFile.js';
 import { RefConflictError } from '../utils/errors.js';
+import { addToSetBucket, removeFromSetBucket } from '../utils/indexes.js';
 
 /**
  * A single registered alias entry.
@@ -366,22 +367,13 @@ export class RefIndex {
    * Add a ref to the reverse index for a given entity name.
    */
   private addToReverseIndex(entityName: string, ref: string): void {
-    if (!this.reverseIndex.has(entityName)) {
-      this.reverseIndex.set(entityName, new Set());
-    }
-    this.reverseIndex.get(entityName)!.add(ref);
+    addToSetBucket(this.reverseIndex, entityName, ref);
   }
 
   /**
    * Remove a ref from the reverse index for a given entity name.
    */
   private removeFromReverseIndex(entityName: string, ref: string): void {
-    const refs = this.reverseIndex.get(entityName);
-    if (refs) {
-      refs.delete(ref);
-      if (refs.size === 0) {
-        this.reverseIndex.delete(entityName);
-      }
-    }
+    removeFromSetBucket(this.reverseIndex, entityName, ref);
   }
 }

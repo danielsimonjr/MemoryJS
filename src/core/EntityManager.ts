@@ -27,6 +27,7 @@ import type { RefIndex, RefEntry } from './RefIndex.js';
 import { EntityStateMachine } from './EntityStateMachine.js';
 import { GovernanceError, type GovernancePolicy } from '../features/GovernanceManager.js';
 import { logger } from '../utils/logger.js';
+import { deleteNamesFromSnapshot } from './storageCache.js';
 
 // Stateless validator — hoisted to a singleton so updateEntity doesn't
 // allocate one per call.
@@ -336,11 +337,7 @@ export class EntityManager {
     }
     // Legacy fallback: full-graph rewrite.
     const graph = await this.storage.getGraphForMutation();
-    const namesToDelete = new Set(entityNames);
-    graph.entities = graph.entities.filter(e => !namesToDelete.has(e.name));
-    graph.relations = graph.relations.filter(
-      r => !namesToDelete.has(r.from) && !namesToDelete.has(r.to)
-    );
+    deleteNamesFromSnapshot(graph, new Set(entityNames));
     await this.storage.saveGraph(graph);
   }
 

@@ -212,6 +212,55 @@ export function removeEntitiesFromIndexes(
 }
 
 /**
+ * Collects the entities of one type from the name and type indexes.
+ *
+ * Names come from the type index in its iteration order. A name with no entry in the
+ * name index is skipped.
+ *
+ * @param typeIndex - Type index to read the names from
+ * @param nameIndex - Name index to resolve each name
+ * @param entityType - Entity type to look up (case-insensitive)
+ * @returns The matching entities, in type-index order
+ */
+export function entitiesByTypeFromIndexes(
+  typeIndex: TypeIndex,
+  nameIndex: NameIndex,
+  entityType: string,
+): Entity[] {
+  const names = typeIndex.getNames(entityType);
+  const entities: Entity[] = [];
+  for (const name of names) {
+    const entity = nameIndex.get(name);
+    if (entity) {
+      entities.push(entity);
+    }
+  }
+  return entities;
+}
+
+/**
+ * Rebuilds the relation adjacency index and the composite-key map from a relation array.
+ *
+ * Both structures are cleared first. The key map holds one entry per relation, and a
+ * later duplicate key replaces an earlier one.
+ *
+ * @param relationIndex - Adjacency index to rebuild
+ * @param relationKeyMap - Composite-key map to rebuild
+ * @param relations - Relations to index
+ */
+export function rebuildRelationIndexes(
+  relationIndex: RelationIndex,
+  relationKeyMap: Map<string, Relation>,
+  relations: Relation[],
+): void {
+  relationIndex.build(relations);
+  relationKeyMap.clear();
+  for (const relation of relations) {
+    relationKeyMap.set(relationKeyOf(relation), relation);
+  }
+}
+
+/**
  * Remove entities and incident relations from an in-memory graph snapshot.
  *
  * The caller runs this after the durable delete. Index maintenance is separate
