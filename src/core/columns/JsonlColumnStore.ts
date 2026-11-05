@@ -30,7 +30,11 @@ import { promises as fs } from 'fs';
 import { Mutex } from 'async-mutex';
 import { durableWriteFile } from '../../utils/durableWriteFile.js';
 import { parseJsonlMapLines, serializeJsonlMap } from '../../utils/jsonlMapFile.js';
-import { clearMapWithFlushRollback, mutateMapWithFlushRollback } from '../../utils/mutateMapWithFlushRollback.js';
+import {
+  clearMapWithFlushRollback,
+  deleteFromMapWithFlushRollback,
+  mutateMapWithFlushRollback,
+} from '../../utils/mutateMapWithFlushRollback.js';
 import type { IColumnStore } from './IColumnStore.js';
 
 /**
@@ -107,17 +111,7 @@ export class JsonlColumnStore<T> implements IColumnStore<T> {
   async delete(name: string): Promise<boolean> {
     return this.mutex.runExclusive(async () => {
       const cache = await this.ensureLoaded();
-      if (!cache.has(name)) return false;
-      const snapshot = new Map(cache);
-      cache.delete(name);
-      try {
-        await this.flush(cache);
-      } catch (err) {
-        cache.clear();
-        for (const [k, v] of snapshot) cache.set(k, v);
-        throw err;
-      }
-      return true;
+      return deleteFromMapWithFlushRollback(cache, name, (c) => this.flush(c));
     });
   }
 

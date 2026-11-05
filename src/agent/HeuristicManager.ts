@@ -18,7 +18,11 @@
  *   semantic-similarity matching.
  */
 
-import { jaccard } from '../utils/textSimilarity.js';
+import {
+  ENGLISH_STOPWORDS_SMALL,
+  jaccard,
+  tokenSetWithoutStopwords,
+} from '../utils/textSimilarity.js';
 import { randomUUID } from 'crypto';
 import type { Entity, IGraphStorage } from '../types/types.js';
 import type {
@@ -310,24 +314,8 @@ export class HeuristicManager {
 
 // ==================== Helpers ====================
 
-/**
- * Common English stopwords filtered from condition / input tokens.
- * Conservative — favours retaining short but meaningful tokens like
- * "PR" / "AI" / "go" while dropping pure noise like "is" / "the".
- */
-const HEURISTIC_STOPWORDS: ReadonlySet<string> = new Set([
-  'a', 'an', 'the', 'is', 'be', 'are', 'was', 'were', 'to', 'of', 'in', 'on',
-  'at', 'by', 'for', 'with', 'and', 'or', 'but', 'if', 'as', 'it', 'its',
-  'this', 'that', 'these', 'those',
-]);
-
 function tokenSet(s: string): Set<string> {
-  return new Set(
-    s
-      .toLowerCase()
-      .split(/[^a-z0-9]+/)
-      .filter((t) => t.length >= 2 && !HEURISTIC_STOPWORDS.has(t)),
-  );
+  return tokenSetWithoutStopwords(s, ENGLISH_STOPWORDS_SMALL, 2);
 }
 
 function clamp01(n: number): number {

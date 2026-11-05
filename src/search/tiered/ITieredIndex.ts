@@ -191,19 +191,29 @@ export class HotOnlyIndex<K, V> implements ITieredIndex<K, V> {
 
   stats(): TierAccessStats {
     // Return a snapshot — callers shouldn't mutate our counters.
-    return {
-      hits: this.accessStats.hits,
-      misses: this.accessStats.misses,
-      promotions: this.accessStats.promotions,
-      demotions: this.accessStats.demotions,
-      perTierHits: { ...this.accessStats.perTierHits },
-    };
+    return snapshotTierStats(this.accessStats);
   }
 
   async clear(): Promise<void> {
     await this.hot.clear();
     this.accessStats = makeFreshStats(this.hot.name);
   }
+}
+
+/**
+ * Copies a stats object so the caller cannot change the counters. `perTierHits` is copied too.
+ *
+ * @param stats - Counters to copy
+ * @returns A new TierAccessStats with the same values
+ */
+export function snapshotTierStats(stats: TierAccessStats): TierAccessStats {
+  return {
+    hits: stats.hits,
+    misses: stats.misses,
+    promotions: stats.promotions,
+    demotions: stats.demotions,
+    perTierHits: { ...stats.perTierHits },
+  };
 }
 
 /**

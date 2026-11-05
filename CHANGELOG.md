@@ -28,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Clone consolidation (docs/development/CLONES_REVIEW_2026-11-05.md, from `repo-tools clones`): 23 duplicated function bodies now share one implementation each — `tokenizeUnicodeToSet`, `tokenSetWithoutStopwords`, `estimateTokensFromText`, procedural `compareEdges`, `assertValidSegmentId`, `readGraphMlDataValue`, `dedupByKey`, `deleteFromMapWithFlushRollback`, `entitiesByTypeFromIndexes` / `rebuildRelationIndexes`, `addToSetBucket` / `removeFromSetBucket`, `pruneExpiredEntries`, `snapshotTierStats`, `forEachSearchCache`, `assertNonEmptyString`, plus private helpers in ConflictResolver, IncrementalIndexer, schemas, validators, EntityValidator, GraphEventEmitter and EventManager. Behaviour is unchanged (differential tests against the previous bodies); structural exact-clone groups at 30 nodes fell from 30 to 13, near pairs from 141 to 103. New helpers are exported from the utils barrel.
+
 - `HierarchyManager.setEntityParent` now emits `entity:updated` instead of `graph:saved`. Listeners that relied on `graph:saved` for parent changes must also subscribe to `entity:updated`.
 
 - `ConsolidationPipeline.mergeMemories` delta path (DES-11): re-reads the merged entities and survivor, updates the survivor, retargets relations, deletes and appends all under the storage write lock, with compensating rollback (merged entities, relations and the survivor's pre-merge state) on failure. The merge audit entry is written only after the merge commits. The `saveGraph` fallback is unchanged.

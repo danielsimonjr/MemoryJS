@@ -12,7 +12,10 @@
  * @module search/tiered/MapFileTier
  */
 
-import { clearMapWithFlushRollback } from '../../utils/mutateMapWithFlushRollback.js';
+import {
+  clearMapWithFlushRollback,
+  deleteFromMapWithFlushRollback,
+} from '../../utils/mutateMapWithFlushRollback.js';
 import { Mutex } from 'async-mutex';
 import {
   parseJsonlMapLines,
@@ -77,17 +80,7 @@ export abstract class MapFileTier<V> implements IIndexTier<string, V> {
   async delete(key: string): Promise<boolean> {
     return this.mutex.runExclusive(async () => {
       const cache = await this.ensureLoaded();
-      if (!cache.has(key)) return false;
-      const snapshot = new Map(cache);
-      cache.delete(key);
-      try {
-        await this.persistDelete(cache, key);
-      } catch (err) {
-        cache.clear();
-        for (const [k, v] of snapshot) cache.set(k, v);
-        throw err;
-      }
-      return true;
+      return deleteFromMapWithFlushRollback(cache, key, c => this.persistDelete(c, key));
     });
   }
 

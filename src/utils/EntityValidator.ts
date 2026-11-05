@@ -162,13 +162,7 @@ export class EntityValidator {
         const result = await rule.validate(entity);
 
         if (!result.valid) {
-          const issue: EntityValidationIssue = {
-            field: rule.field,
-            message: result.message || rule.message,
-            severity: rule.severity || 'error',
-            value: this.getFieldValue(entity, rule.field),
-            rule: rule.name,
-          };
+          const issue = this.issueFor(rule, result, entity);
 
           if (issue.severity === 'error') {
             errors.push(issue);
@@ -178,24 +172,12 @@ export class EntityValidator {
           }
         }
       } catch (error) {
-        errors.push({
-          field: rule.field,
-          message: `Validation error: ${(error as Error).message}`,
-          severity: 'error',
-          rule: rule.name,
-        });
+        errors.push(this.errorIssueFor(rule, error));
         if (this.config.failFast) break;
       }
     }
 
-    const isValid = errors.length === 0 && (!this.config.strict || warnings.length === 0);
-
-    return {
-      isValid,
-      errors,
-      warnings,
-      entity,
-    };
+    return this.buildResult(errors, warnings, entity);
   }
 
   /**
@@ -230,13 +212,7 @@ export class EntityValidator {
         }
 
         if (!result.valid) {
-          const issue: EntityValidationIssue = {
-            field: rule.field,
-            message: result.message || rule.message,
-            severity: rule.severity || 'error',
-            value: this.getFieldValue(entity, rule.field),
-            rule: rule.name,
-          };
+          const issue = this.issueFor(rule, result, entity);
 
           if (issue.severity === 'error') {
             errors.push(issue);
@@ -246,16 +222,66 @@ export class EntityValidator {
           }
         }
       } catch (error) {
-        errors.push({
-          field: rule.field,
-          message: `Validation error: ${(error as Error).message}`,
-          severity: 'error',
-          rule: rule.name,
-        });
+        errors.push(this.errorIssueFor(rule, error));
         if (this.config.failFast) break;
       }
     }
 
+    return this.buildResult(errors, warnings, entity);
+  }
+
+  /**
+   * Build the issue reported when a rule returned an invalid result.
+   * The result's message overrides the rule's message; severity defaults to `error`.
+   *
+   * @param rule - Rule that failed
+   * @param result - Result the rule returned with `valid: false`
+   * @param entity - Entity that was validated
+   * @returns Issue for the failed rule
+   */
+  private issueFor(
+    rule: EntityValidationRule,
+    result: EntityRuleResult,
+    entity: Entity
+  ): EntityValidationIssue {
+    return {
+      field: rule.field,
+      message: result.message || rule.message,
+      severity: rule.severity || 'error',
+      value: this.getFieldValue(entity, rule.field),
+      rule: rule.name,
+    };
+  }
+
+  /**
+   * Build the error issue reported when a rule throws or rejects.
+   *
+   * @param rule - Rule that threw
+   * @param error - Thrown value
+   * @returns Error issue with a `Validation error:` message
+   */
+  private errorIssueFor(rule: EntityValidationRule, error: unknown): EntityValidationIssue {
+    return {
+      field: rule.field,
+      message: `Validation error: ${(error as Error).message}`,
+      severity: 'error',
+      rule: rule.name,
+    };
+  }
+
+  /**
+   * Assemble the final result. Valid means no errors, and no warnings when `strict` is set.
+   *
+   * @param errors - Collected error issues
+   * @param warnings - Collected warning issues
+   * @param entity - Entity that was validated
+   * @returns Complete validation result
+   */
+  private buildResult(
+    errors: EntityValidationIssue[],
+    warnings: EntityValidationIssue[],
+    entity: Entity
+  ): EntityValidationResult {
     const isValid = errors.length === 0 && (!this.config.strict || warnings.length === 0);
 
     return {

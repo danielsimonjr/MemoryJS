@@ -720,18 +720,31 @@ const relationValidationSchema = z.object({
   relationType: nonEmptyString,
 }).passthrough();
 
-/** Validate an entity object. */
-export function validateEntity(entity: unknown): ValidationResult {
-  const result = entityValidationSchema.safeParse(entity);
+/**
+ * Run a Zod schema against a value and convert the outcome to a `ValidationResult`.
+ * Success yields `{ valid: true, errors: [] }`; failure yields the formatted Zod issues.
+ *
+ * @param schema - Zod schema to apply (any schema with `safeParse`)
+ * @param value - Value to validate
+ * @returns Validation result with `valid` and formatted `errors`
+ */
+function runSchemaValidation(
+  schema: ZodSchema,
+  value: unknown
+): ValidationResult {
+  const result = schema.safeParse(value);
   if (result.success) return { valid: true, errors: [] };
   return { valid: false, errors: formatZodErrors(result.error) };
 }
 
+/** Validate an entity object. */
+export function validateEntity(entity: unknown): ValidationResult {
+  return runSchemaValidation(entityValidationSchema, entity);
+}
+
 /** Validate a relation object. */
 export function validateRelation(relation: unknown): ValidationResult {
-  const result = relationValidationSchema.safeParse(relation);
-  if (result.success) return { valid: true, errors: [] };
-  return { valid: false, errors: formatZodErrors(result.error) };
+  return runSchemaValidation(relationValidationSchema, relation);
 }
 
 /** Validate importance level (must be 0-10). */

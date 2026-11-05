@@ -6,6 +6,40 @@
 import type { Entity, LowercaseData, Relation } from '../types/index.js';
 import { removeIdFromPostings } from './postingIndex.js';
 
+/**
+ * Adds `value` to the Set stored under `key`, creating the Set when the key is absent.
+ *
+ * @param map - Bucket map to change in place
+ * @param key - Bucket key
+ * @param value - Value to add to the bucket
+ */
+export function addToSetBucket<K, V>(map: Map<K, Set<V>>, key: K, value: V): void {
+  let bucket = map.get(key);
+  if (!bucket) {
+    bucket = new Set();
+    map.set(key, bucket);
+  }
+  bucket.add(value);
+}
+
+/**
+ * Removes `value` from the Set stored under `key`. When the Set becomes empty, the key is removed too.
+ * A missing key or value does nothing.
+ *
+ * @param map - Bucket map to change in place
+ * @param key - Bucket key
+ * @param value - Value to remove from the bucket
+ */
+export function removeFromSetBucket<K, V>(map: Map<K, Set<V>>, key: K, value: V): void {
+  const bucket = map.get(key);
+  if (bucket) {
+    bucket.delete(value);
+    if (bucket.size === 0) {
+      map.delete(key);
+    }
+  }
+}
+
 /** O(1) entity lookup by name. */
 export class NameIndex {
   private index: Map<string, Entity> = new Map();
@@ -110,22 +144,11 @@ export class TypeIndex {
       this.removeFromBucket(entityName, heldType);
     }
     this.typeOfName.set(entityName, typeLower);
-    let names = this.index.get(typeLower);
-    if (!names) {
-      names = new Set();
-      this.index.set(typeLower, names);
-    }
-    names.add(entityName);
+    addToSetBucket(this.index, typeLower, entityName);
   }
 
   private removeFromBucket(entityName: string, typeLower: string): void {
-    const names = this.index.get(typeLower);
-    if (names) {
-      names.delete(entityName);
-      if (names.size === 0) {
-        this.index.delete(typeLower);
-      }
-    }
+    removeFromSetBucket(this.index, typeLower, entityName);
   }
 }
 

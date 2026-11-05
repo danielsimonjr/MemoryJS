@@ -377,15 +377,7 @@ export class GraphEventEmitter implements IGraphEventEmitter {
    * @param observations - Observations that were added
    */
   emitObservationAdded(entityName: string, observations: string[]): void {
-    if (observations.length === 0) return;
-
-    const event: ObservationAddedEvent = {
-      type: 'observation:added',
-      timestamp: new Date().toISOString(),
-      entityName,
-      observations,
-    };
-    this.emit(event);
+    this.emitObservationEvent('observation:added', entityName, observations);
   }
 
   /**
@@ -395,14 +387,30 @@ export class GraphEventEmitter implements IGraphEventEmitter {
    * @param observations - Observations that were deleted
    */
   emitObservationDeleted(entityName: string, observations: string[]): void {
+    this.emitObservationEvent('observation:deleted', entityName, observations);
+  }
+
+  /**
+   * Shared body of the observation events: skips empty lists, otherwise emits
+   * `{ type, timestamp, entityName, observations }`.
+   *
+   * @param type - Event type to emit
+   * @param entityName - Name of the entity
+   * @param observations - Observations added or deleted
+   */
+  private emitObservationEvent(
+    type: ObservationAddedEvent['type'] | ObservationDeletedEvent['type'],
+    entityName: string,
+    observations: string[]
+  ): void {
     if (observations.length === 0) return;
 
-    const event: ObservationDeletedEvent = {
-      type: 'observation:deleted',
+    const event = {
+      type,
       timestamp: new Date().toISOString(),
       entityName,
       observations,
-    };
+    } as ObservationAddedEvent | ObservationDeletedEvent;
     this.emit(event);
   }
 

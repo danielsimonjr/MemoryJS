@@ -4,7 +4,7 @@
 
 # @danielsimonjr/memoryjs - Dependency Graph
 
-**Version**: 4.4.0 | **Last Updated**: 2026-11-04
+**Version**: 4.4.0 | **Last Updated**: 2026-11-05
 
 This document provides a comprehensive dependency graph of all files, components, imports, functions, and variables in the codebase.
 
@@ -48,7 +48,7 @@ The codebase is organized into the following modules:
 - **security**: 5 files
 - **root**: 1 file
 - **types**: 12 files
-- **utils**: 48 files
+- **utils**: 50 files
 - **workers**: 1 file
 
 ---
@@ -63,7 +63,7 @@ Seeded build/entry roots (package `exports`, `bin` targets, tsup entries, script
 - `src/sqlite.ts`
 - `src/workers/levenshteinWorker.ts`
 
-Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
+Reachable from a root: **319** of 319 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
 
 ---
 
@@ -403,6 +403,7 @@ Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-
 | `./ObservationDedupManager.js` | `ObservationDedupManager, ObservationDedupFilter` | Import (type-only) |
 | `../types/agent-memory.js` | `ReflectionScope` | Import (type-only) |
 | `../utils/fillDefaults.js` | `fillDefaults` | Import |
+| `../utils/validation.js` | `assertNonEmptyString` | Import |
 
 **Exports:**
 - Classes: `ConsolidationPipeline`, `ProspectivePromotionStage`, `ReflectionStage`, `HeuristicExtractionStage`, `ObservationDedupReportStage`
@@ -463,6 +464,7 @@ Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-
 | `./SummarizationService.js` | `SummarizationService` | Import (type-only) |
 | `../types/agent-memory.js` | `ContextWindowManagerConfig` | Import (type-only) |
 | `../utils/fillDefaults.js` | `fillDefaults` | Import |
+| `../utils/tokenEstimate.js` | `estimateTokensFromText` | Import |
 | `./ProjectContextManager.js` | `ProjectContextManager` | Dynamic import |
 | `../core/EntityManager.js` | `EntityManager` | Dynamic import |
 | `./ProfileManager.js` | `ProfileManager` | Dynamic import |
@@ -773,7 +775,7 @@ Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `../utils/textSimilarity.js` | `jaccard` | Import |
+| `../utils/textSimilarity.js` | `ENGLISH_STOPWORDS_SMALL, jaccard, tokenSetWithoutStopwords` | Import |
 | `../types/types.js` | `Entity, IGraphStorage` | Import (type-only) |
 | `../types/agent-memory.js` | `Heuristic, HeuristicEntity, HeuristicId` | Import (type-only) |
 | `../types/agent-memory.js` | `isHeuristicMemory, toIsoDateTime` | Import |
@@ -788,6 +790,11 @@ Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-
 ---
 
 ### `src/agent/ImportanceScorer.ts` - Configuration for `ImportanceScorer`. The three weights combine the length, keyword and overlap signals. The defaults ar
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../utils/textSimilarity.js` | `tokenizeUnicodeToSet` | Import |
 
 **Exports:**
 - Classes: `ImportanceScorer`
@@ -828,7 +835,7 @@ Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `../utils/textSimilarity.js` | `jaccard` | Import |
+| `../utils/textSimilarity.js` | `jaccard, tokenizeUnicodeToSet` | Import |
 | `../types/types.js` | `IGraphStorage, ReadonlyKnowledgeGraph` | Import (type-only) |
 | `../types/agent-memory.js` | `AgentEntity` | Import (type-only) |
 | `../core/EntityManager.js` | `EntityManager` | Import (type-only) |
@@ -853,6 +860,7 @@ Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-
 |------|---------|------|
 | `../types/agent-memory.js` | `AgentEntity, ContextPackage` | Import (type-only) |
 | `../utils/fillDefaults.js` | `fillDefaults` | Import |
+| `../utils/tokenEstimate.js` | `estimateTokensFromText` | Import |
 
 **Exports:**
 - Classes: `MemoryFormatter`
@@ -909,7 +917,7 @@ Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `../utils/textSimilarity.js` | `jaccard` | Import |
+| `../utils/textSimilarity.js` | `ENGLISH_STOPWORDS_SMALL, jaccard, tokenSetWithoutStopwords` | Import |
 | `../types/types.js` | `Entity, IGraphStorage` | Import (type-only) |
 
 **Exports:**
@@ -1001,6 +1009,7 @@ Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-
 **Exports:**
 - Classes: `ProjectContextManager`
 - Interfaces: `ProjectContextUpsertInput`, `ProjectContextManagerConfig`, `ForContextOptions`
+- Functions: `dedupByKey`
 
 ---
 
@@ -1545,7 +1554,7 @@ Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `../../../types/proceduralGraph.js` | `PGDiagnostic, PGEdge, PGEditSet, PGLocalization, PGNode, PGSnapshot` | Import (type-only) |
-| `./canonical.js` | `graphDigest` | Import |
+| `./canonical.js` | `compareEdges, compareString, graphDigest` | Import |
 
 **Exports:**
 - Classes: `ProceduralGraph`
@@ -1651,7 +1660,7 @@ Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `../../../types/proceduralGraph.js` | `PGEdge, PGLocalization, PGNode` | Import (type-only) |
-| `./canonical.js` | `canonicalJson` | Import |
+| `./canonical.js` | `canonicalJson, compareEdges, compareString` | Import |
 | `./ProceduralGraph.js` | `ProceduralGraph` | Import (type-only) |
 
 **Exports:**
@@ -1866,7 +1875,7 @@ Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-
 | `../../../types/proceduralGraph.js` | `PGSnapshot` | Import (type-only) |
 
 **Exports:**
-- Functions: `canonicalJson`, `sha256Hex`, `graphDigest`, `toolCatalogHash`, `storageKey`, `evaluationFingerprint`
+- Functions: `canonicalJson`, `sha256Hex`, `graphDigest`, `toolCatalogHash`, `storageKey`, `evaluationFingerprint`, `compareString`, `compareEdges`
 
 ---
 
@@ -2948,6 +2957,7 @@ Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-
 | `./EntityStateMachine.js` | `EntityStateMachine` | Import |
 | `../features/GovernanceManager.js` | `GovernanceError, GovernancePolicy` | Import |
 | `../utils/logger.js` | `logger` | Import |
+| `./storageCache.js` | `deleteNamesFromSnapshot` | Import |
 | `../utils/index.js` | `BatchCreateEntitiesSchema, UpdateEntitySchema, EntityNamesSchema, checkCancellation, createProgressReporter, createProgress` | Import |
 | `../utils/constants.js` | `GRAPH_LIMITS` | Import |
 | `../utils/graphCopy.js` | `borrowGraphView` | Import |
@@ -3017,7 +3027,7 @@ Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-
 | `./segments/ISegmentStorage.js` | `FnvSegmentRouter` | Import |
 | `./mmap/FsReadMmapBackend.js` | `FsReadMmapBackend` | Import |
 | `./mmap/IMmapBackend.js` | `streamLines` | Import |
-| `./storageCache.js` | `deleteNamesFromSnapshot, deleteRelationsFromSnapshot, bindStorageCacheState, relationKeyOf, removeEntitiesFromIndexes, upsertEntityInCache, upsertRelationInCache, StorageCacheOwner, StorageCacheState` | Import |
+| `./storageCache.js` | `deleteNamesFromSnapshot, entitiesByTypeFromIndexes, rebuildRelationIndexes, deleteRelationsFromSnapshot, bindStorageCacheState, relationKeyOf, removeEntitiesFromIndexes, upsertEntityInCache, upsertRelationInCache, StorageCacheOwner, StorageCacheState` | Import |
 
 **Exports:**
 - Classes: `GraphStorage`
@@ -3230,6 +3240,7 @@ Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-
 |------|---------|------|
 | `../utils/durableWriteFile.js` | `durableWriteFile` | Import |
 | `../utils/errors.js` | `RefConflictError` | Import |
+| `../utils/indexes.js` | `addToSetBucket, removeFromSetBucket` | Import |
 
 **Exports:**
 - Classes: `RefIndex`
@@ -3284,7 +3295,7 @@ Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-
 | `../utils/envConfig.js` | `readEnvPositiveIntOrDefault` | Import |
 | `../search/PartialIndexAdvisor.js` | `PartialIndexAdvisor, FilterObservation` | Import |
 | `./GraphEventEmitter.js` | `GraphEventEmitter` | Import |
-| `./storageCache.js` | `deleteNamesFromSnapshot, deleteRelationsFromSnapshot, bindStorageCacheState, relationKeyOf, removeEntitiesFromIndexes, upsertEntityInCache, upsertRelationInCache, StorageCacheOwner, StorageCacheState` | Import |
+| `./storageCache.js` | `deleteNamesFromSnapshot, entitiesByTypeFromIndexes, rebuildRelationIndexes, deleteRelationsFromSnapshot, bindStorageCacheState, relationKeyOf, removeEntitiesFromIndexes, upsertEntityInCache, upsertRelationInCache, StorageCacheOwner, StorageCacheState` | Import |
 
 **Exports:**
 - Classes: `SQLiteStorage`
@@ -3375,7 +3386,7 @@ Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-
 |------|---------|------|
 | `../../utils/durableWriteFile.js` | `durableWriteFile` | Import |
 | `../../utils/jsonlMapFile.js` | `parseJsonlMapLines, serializeJsonlMap` | Import |
-| `../../utils/mutateMapWithFlushRollback.js` | `clearMapWithFlushRollback, mutateMapWithFlushRollback` | Import |
+| `../../utils/mutateMapWithFlushRollback.js` | `clearMapWithFlushRollback, deleteFromMapWithFlushRollback, mutateMapWithFlushRollback` | Import |
 | `./IColumnStore.js` | `IColumnStore` | Import (type-only) |
 
 **Exports:**
@@ -3494,7 +3505,7 @@ Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-
 | `../../utils/logger.js` | `logger` | Import |
 | `../../utils/entityUtils.js` | `sanitizeObject` | Import |
 | `../../utils/durableWriteFile.js` | `durableWriteFile, renameOver, syncParentDirectory, writeSyncedTmp` | Import |
-| `./ISegmentStorage.js` | `ISegmentStorage, Segment, SegmentId, SegmentRouter, assertSegmentOwnership, mergeSegmentsIntoGraph, splitGraphIntoSegments` | Import |
+| `./ISegmentStorage.js` | `ISegmentStorage, Segment, SegmentId, SegmentRouter, assertSegmentOwnership, assertValidSegmentId, mergeSegmentsIntoGraph, splitGraphIntoSegments` | Import |
 
 **Exports:**
 - Classes: `FileSegmentStorage`, `SegmentCommitIncompleteError`
@@ -3514,7 +3525,7 @@ Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-
 - Classes: `FnvSegmentRouter`, `InMemorySegmentStorage`
 - Interfaces: `SegmentRouter`, `Segment`, `ISegmentStorage`
 - Types: `SegmentId`
-- Functions: `splitGraphIntoSegments`, `mergeSegmentsIntoGraph`, `assertSegmentOwnership`
+- Functions: `splitGraphIntoSegments`, `mergeSegmentsIntoGraph`, `assertValidSegmentId`, `assertSegmentOwnership`
 - Re-exports: `fnv1aHash`
 
 ---
@@ -3543,7 +3554,7 @@ Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-
 **Exports:**
 - Interfaces: `StorageCacheState`
 - Types: `StorageCacheOwner`
-- Functions: `bindStorageCacheState`, `relationKeyOf`, `upsertEntityInCache`, `upsertRelationInCache`, `removeEntitiesFromIndexes`, `deleteNamesFromSnapshot`, `deleteRelationsFromSnapshot`
+- Functions: `bindStorageCacheState`, `relationKeyOf`, `upsertEntityInCache`, `upsertRelationInCache`, `removeEntitiesFromIndexes`, `entitiesByTypeFromIndexes`, `rebuildRelationIndexes`, `deleteNamesFromSnapshot`, `deleteRelationsFromSnapshot`
 
 ---
 
@@ -3770,6 +3781,7 @@ Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-
 - Classes: `IOManager`
 - Interfaces: `PiiRedactionOption`, `IngestInput`, `IngestTokenUsage`, `IngestProduced`, `IngestValidationFeedback`, `IngestOptions`, `IngestResult`, `BackupMetadata`, `BackupInfo`, `SplitOptions`, `SplitResult`, `VisualizeOptions`, `VisualizeOptions`, `IOManagerOptions`
 - Types: `ExportFormat`, `ImportFormat`, `MergeStrategy`, `IngestMode`
+- Functions: `readGraphMlDataValue`
 - Constants: `INGEST_DERIVED_FROM_RELATION`, `INGEST_MANIFEST_ENTITY_TYPE`, `INGEST_CHUNK_PREFIX`
 
 ---
@@ -4032,7 +4044,7 @@ Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `../utils/searchCache.js` | `evictOldest` | Import |
+| `../utils/searchCache.js` | `evictOldest, pruneExpiredEntries` | Import |
 
 **Exports:**
 - Classes: `EmbeddingCache`
@@ -4375,7 +4387,7 @@ Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `../types/index.js` | `QueryAnalysis, QueryPlan` | Import (type-only) |
-| `../utils/searchCache.js` | `evictOldest` | Import |
+| `../utils/searchCache.js` | `evictOldest, pruneExpiredEntries` | Import |
 
 **Exports:**
 - Classes: `QueryPlanCache`
@@ -4807,7 +4819,7 @@ Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-
 **Exports:**
 - Classes: `InMemoryTier`, `HotOnlyIndex`
 - Interfaces: `TierAccessStats`, `IIndexTier`, `ITieredIndex`
-- Functions: `makeFreshStats`
+- Functions: `snapshotTierStats`, `makeFreshStats`
 
 ---
 
@@ -4835,7 +4847,7 @@ Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `../../utils/mutateMapWithFlushRollback.js` | `clearMapWithFlushRollback` | Import |
+| `../../utils/mutateMapWithFlushRollback.js` | `clearMapWithFlushRollback, deleteFromMapWithFlushRollback` | Import |
 | `../../utils/jsonlMapFile.js` | `parseJsonlMapLines, serializeJsonlMap, JsonlMapFormat` | Import |
 | `./ITieredIndex.js` | `IIndexTier` | Import (type-only) |
 
@@ -4850,7 +4862,7 @@ Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `./ITieredIndex.js` | `IIndexTier, ITieredIndex, TierAccessStats, makeFreshStats` | Import |
+| `./ITieredIndex.js` | `IIndexTier, ITieredIndex, TierAccessStats, makeFreshStats, snapshotTierStats` | Import |
 | `../../utils/logger.js` | `logger` | Import |
 
 **Exports:**
@@ -5448,8 +5460,10 @@ Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-
 | `./logger.js` | `logger` | Re-export |
 | `./envConfig.js` | `readEnvStrictFlag, readEnvLooseFlag, readEnvNumber, readEnvNumberOrUndefined, readEnvStrictInt, parseStrictDecimalInt, parseSegmentCount, readEnvPositiveIntOrDefault, readEnvNonNegativeIntOrDefault, MAX_SEGMENT_COUNT, EnvNumberBounds, EnvStrictIntBounds` | Re-export |
 | `./searchAlgorithms.js` | `levenshteinDistance, calculateTF, calculateTFFromTokens, calculateIDF, calculateIDFFromTokenSets, calculateTFIDF, tokenize` | Re-export |
-| `./indexes.js` | `NameIndex, TypeIndex, LowercaseCache, RelationIndex` | Re-export |
-| `./searchCache.js` | `SearchCache, searchCaches, clearAllSearchCaches, getAllCacheStats, cleanupAllCaches, CacheStats` | Re-export |
+| `./indexes.js` | `NameIndex, TypeIndex, LowercaseCache, RelationIndex, addToSetBucket, removeFromSetBucket` | Re-export |
+| `./searchCache.js` | `SearchCache, searchCaches, clearAllSearchCaches, getAllCacheStats, cleanupAllCaches, forEachSearchCache, pruneExpiredEntries, CacheStats` | Re-export |
+| `./mutateMapWithFlushRollback.js` | `mutateMapWithFlushRollback, clearMapWithFlushRollback, deleteFromMapWithFlushRollback` | Re-export |
+| `./validation.js` | `assertNonEmptyString` | Re-export |
 | `./graphCopy.js` | `deepCopyPlain, deepFreeze, borrowGraphView, isReadViewGuardEnabled` | Re-export |
 | `./schemas.js` | `EntitySchema, CreateEntitySchema, UpdateEntitySchema, RelationSchema, CreateRelationSchema, SearchQuerySchema, DateRangeSchema, TagAliasSchema, ExportFormatSchema, BatchCreateEntitiesSchema, BatchCreateRelationsSchema, EntityNamesSchema, DeleteRelationsSchema, AddObservationInputSchema, AddObservationsInputSchema, DeleteObservationInputSchema, DeleteObservationsInputSchema, ArchiveCriteriaSchema, SavedSearchInputSchema, SavedSearchUpdateSchema, ImportFormatSchema, ExtendedExportFormatSchema, MergeStrategySchema, ExportFilterSchema, OptionalTagsSchema, OptionalEntityNamesSchema, EntityInput, CreateEntityInput, UpdateEntityInput, RelationInput, CreateRelationInput, SearchQuery, DateRange, TagAliasInput, AddObservationInput, DeleteObservationInput, ArchiveCriteriaInput, SavedSearchInput, SavedSearchUpdateInput, ImportFormatInput, ExtendedExportFormatInput, MergeStrategyInput, ExportFilterInput, ValidationResult, formatZodErrors, validateWithSchema, validateSafe, validateArrayWithSchema, validateEntity, validateRelation, validateImportance, validateTags, validateNonEmpty, validateNonEmptyArray` | Re-export |
 | `./formatters.js` | `formatToolResponse, formatTextResponse, formatRawResponse, formatErrorResponse, ToolResponse, validatePagination, applyPagination, paginateArray, getPaginationMeta, ValidatedPagination` | Re-export |
@@ -5467,7 +5481,8 @@ Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-
 | `./validators.js` | `required, minLength, maxLength, pattern, range, min, max, oneOf, minItems, maxItems, email, url, isoDate, typeOf, custom, customSync, asWarning, all, when` | Re-export |
 | `./SchemaValidator.js` | `SchemaValidator, JsonSchema` | Re-export |
 | `./AsyncMutex.js` | `AsyncMutex, AsyncMutexOptions, AcquireOptions` | Re-export |
-| `./textSimilarity.js` | `tokenizeStripped, tokenizeStripped, buildTFVector, cosineSimilarity, calculateTextSimilarity` | Re-export |
+| `./textSimilarity.js` | `tokenizeStripped, tokenizeStripped, tokenizeUnicodeToSet, tokenSetWithoutStopwords, ENGLISH_STOPWORDS_SMALL, buildTFVector, cosineSimilarity, calculateTextSimilarity` | Re-export |
+| `./tokenEstimate.js` | `estimateTokensFromText` | Re-export |
 | `./CachePressureCoordinator.js` | `CachePressureCoordinator, PressureAwareCache, CachePressureSnapshot` | Re-export |
 | `./IndexHealthMonitor.js` | `IndexHealthMonitor, IndexHealthReport, IndexHealthSources` | Re-export |
 | `./compression/CompressedMap.js` | `CompressedMap, CompressedMapOptions` | Re-export |
@@ -5477,7 +5492,7 @@ Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-
 | `./IIndexHealth.js` | `IIndexHealth, IndexHealthSnapshot` | Re-export (type-only) |
 
 **Exports:**
-- Re-exports: `ErrorCode`, `KnowledgeGraphError`, `EntityNotFoundError`, `RelationNotFoundError`, `DuplicateEntityError`, `ValidationError`, `CycleDetectedError`, `InvalidImportanceError`, `FileOperationError`, `ImportError`, `ExportError`, `InsufficientEntitiesError`, `OperationCancelledError`, `RefConflictError`, `RefNotFoundError`, `ErrorOptions`, `generateSuggestions`, `getQuickHint`, `FILE_EXTENSIONS`, `FILE_SUFFIXES`, `DEFAULT_FILE_NAMES`, `ENV_VARS`, `DEFAULT_BASE_DIR`, `LOG_PREFIXES`, `SIMILARITY_WEIGHTS`, `DEFAULT_DUPLICATE_THRESHOLD`, `SEARCH_LIMITS`, `IMPORTANCE_RANGE`, `GRAPH_LIMITS`, `QUERY_LIMITS`, `COMPRESSION_CONFIG`, `STREAMING_CONFIG`, `CompressionQuality`, `compress`, `decompress`, `compressFile`, `decompressFile`, `compressToBase64`, `decompressFromBase64`, `hasBrotliExtension`, `getCompressionRatio`, `createMetadata`, `createUncompressedMetadata`, `CompressionOptions`, `CompressionResult`, `CompressionMetadata`, `CompressedCache`, `CompressedCacheOptions`, `CompressedCacheStats`, `logger`, `readEnvStrictFlag`, `readEnvLooseFlag`, `readEnvNumber`, `readEnvNumberOrUndefined`, `readEnvStrictInt`, `parseStrictDecimalInt`, `parseSegmentCount`, `readEnvPositiveIntOrDefault`, `readEnvNonNegativeIntOrDefault`, `MAX_SEGMENT_COUNT`, `EnvNumberBounds`, `EnvStrictIntBounds`, `levenshteinDistance`, `calculateTF`, `calculateTFFromTokens`, `calculateIDF`, `calculateIDFFromTokenSets`, `calculateTFIDF`, `tokenize`, `NameIndex`, `TypeIndex`, `LowercaseCache`, `RelationIndex`, `SearchCache`, `searchCaches`, `clearAllSearchCaches`, `getAllCacheStats`, `cleanupAllCaches`, `CacheStats`, `deepCopyPlain`, `deepFreeze`, `borrowGraphView`, `isReadViewGuardEnabled`, `EntitySchema`, `CreateEntitySchema`, `UpdateEntitySchema`, `RelationSchema`, `CreateRelationSchema`, `SearchQuerySchema`, `DateRangeSchema`, `TagAliasSchema`, `ExportFormatSchema`, `BatchCreateEntitiesSchema`, `BatchCreateRelationsSchema`, `EntityNamesSchema`, `DeleteRelationsSchema`, `AddObservationInputSchema`, `AddObservationsInputSchema`, `DeleteObservationInputSchema`, `DeleteObservationsInputSchema`, `ArchiveCriteriaSchema`, `SavedSearchInputSchema`, `SavedSearchUpdateSchema`, `ImportFormatSchema`, `ExtendedExportFormatSchema`, `MergeStrategySchema`, `ExportFilterSchema`, `OptionalTagsSchema`, `OptionalEntityNamesSchema`, `EntityInput`, `CreateEntityInput`, `UpdateEntityInput`, `RelationInput`, `CreateRelationInput`, `SearchQuery`, `DateRange`, `TagAliasInput`, `AddObservationInput`, `DeleteObservationInput`, `ArchiveCriteriaInput`, `SavedSearchInput`, `SavedSearchUpdateInput`, `ImportFormatInput`, `ExtendedExportFormatInput`, `MergeStrategyInput`, `ExportFilterInput`, `ValidationResult`, `formatZodErrors`, `validateWithSchema`, `validateSafe`, `validateArrayWithSchema`, `validateEntity`, `validateRelation`, `validateImportance`, `validateTags`, `validateNonEmpty`, `validateNonEmptyArray`, `formatToolResponse`, `formatTextResponse`, `formatRawResponse`, `formatErrorResponse`, `ToolResponse`, `validatePagination`, `applyPagination`, `paginateArray`, `getPaginationMeta`, `ValidatedPagination`, `fnv1aHash`, `findEntityByName`, `findEntitiesByNames`, `entityExists`, `getEntityIndex`, `removeEntityByName`, `getEntityNameSet`, `groupEntitiesByType`, `touchEntity`, `normalizeTag`, `normalizeTags`, `hasMatchingTag`, `hasAllTags`, `filterByTags`, `addUniqueTags`, `removeTags`, `isWithinDateRange`, `parseDateRange`, `isValidISODate`, `getCurrentTimestamp`, `isWithinImportanceRange`, `filterByImportance`, `filterByCreatedDate`, `filterByModifiedDate`, `filterByEntityType`, `entityPassesFilters`, `CommonSearchFilters`, `validateFilePath`, `defaultMemoryPath`, `ensureMemoryFilePath`, `sanitizeObject`, `escapeCsvFormula`, `parallelMap`, `parallelFilter`, `getPoolStats`, `shutdownParallelUtils`, `TaskPriority`, `TaskStatus`, `Task`, `TaskResult`, `ProgressCallback`, `TaskBatchOptions`, `QueueStats`, `TaskQueue`, `batchProcess`, `rateLimitedProcess`, `withRetry`, `debounce`, `throttle`, `checkCancellation`, `createProgressReporter`, `createProgress`, `executeWithPhases`, `processBatchesWithProgress`, `PhaseDefinition`, `WorkerPoolManager`, `getWorkerPoolManager`, `WorkerPoolConfig`, `ExtendedPoolStats`, `PoolEventCallback`, `WorkerTaskManager`, `getWorkerTaskManager`, `batchProcessViaWorkers`, `TaskSubmitOptions`, `TaskHandle`, `WorkerTaskManagerStats`, `BatchProcessor`, `processBatch`, `processWithRetry`, `chunkArray`, `parallelLimit`, `mapParallel`, `filterParallel`, `BatchProgress`, `BatchProgressCallback`, `BatchItemResult`, `BatchProcessResult`, `BatchProcessorOptions`, `MemoryMonitor`, `globalMemoryMonitor`, `ComponentMemoryUsage`, `MemoryUsageStats`, `MemoryThresholds`, `MemoryAlert`, `MemoryChangeCallback`, `isWeightedRelation`, `isTemporalRelation`, `isBidirectionalRelation`, `hasConfidence`, `isCurrentlyValid`, `RelationBuilder`, `validateRelationMetadata`, `validateRelationsMetadata`, `allRelationsValidMetadata`, `RelationValidationResult`, `RelationValidationError`, `RelationValidationWarning`, `EntityValidator`, `EntityValidatorConfig`, `EntityValidationRule`, `EntityRuleResult`, `EntityValidationIssue`, `EntityValidationResult`, `required`, `minLength`, `maxLength`, `pattern`, `range`, `min`, `max`, `oneOf`, `minItems`, `maxItems`, `email`, `url`, `isoDate`, `typeOf`, `custom`, `customSync`, `asWarning`, `all`, `when`, `SchemaValidator`, `JsonSchema`, `AsyncMutex`, `AsyncMutexOptions`, `AcquireOptions`, `tokenizeStripped`, `buildTFVector`, `cosineSimilarity`, `calculateTextSimilarity`, `CachePressureCoordinator`, `PressureAwareCache`, `CachePressureSnapshot`, `IndexHealthMonitor`, `IndexHealthReport`, `IndexHealthSources`, `CompressedMap`, `CompressedMapOptions`, `ZlibCompressionAdapter`, `ICompressionAdapter`, `sidecarPath`, `DiagnosticsOptions`, `DiagnosticsReport`, `TieredIndexStatsSnapshot`, `IIndexHealth`, `IndexHealthSnapshot`
+- Re-exports: `ErrorCode`, `KnowledgeGraphError`, `EntityNotFoundError`, `RelationNotFoundError`, `DuplicateEntityError`, `ValidationError`, `CycleDetectedError`, `InvalidImportanceError`, `FileOperationError`, `ImportError`, `ExportError`, `InsufficientEntitiesError`, `OperationCancelledError`, `RefConflictError`, `RefNotFoundError`, `ErrorOptions`, `generateSuggestions`, `getQuickHint`, `FILE_EXTENSIONS`, `FILE_SUFFIXES`, `DEFAULT_FILE_NAMES`, `ENV_VARS`, `DEFAULT_BASE_DIR`, `LOG_PREFIXES`, `SIMILARITY_WEIGHTS`, `DEFAULT_DUPLICATE_THRESHOLD`, `SEARCH_LIMITS`, `IMPORTANCE_RANGE`, `GRAPH_LIMITS`, `QUERY_LIMITS`, `COMPRESSION_CONFIG`, `STREAMING_CONFIG`, `CompressionQuality`, `compress`, `decompress`, `compressFile`, `decompressFile`, `compressToBase64`, `decompressFromBase64`, `hasBrotliExtension`, `getCompressionRatio`, `createMetadata`, `createUncompressedMetadata`, `CompressionOptions`, `CompressionResult`, `CompressionMetadata`, `CompressedCache`, `CompressedCacheOptions`, `CompressedCacheStats`, `logger`, `readEnvStrictFlag`, `readEnvLooseFlag`, `readEnvNumber`, `readEnvNumberOrUndefined`, `readEnvStrictInt`, `parseStrictDecimalInt`, `parseSegmentCount`, `readEnvPositiveIntOrDefault`, `readEnvNonNegativeIntOrDefault`, `MAX_SEGMENT_COUNT`, `EnvNumberBounds`, `EnvStrictIntBounds`, `levenshteinDistance`, `calculateTF`, `calculateTFFromTokens`, `calculateIDF`, `calculateIDFFromTokenSets`, `calculateTFIDF`, `tokenize`, `NameIndex`, `TypeIndex`, `LowercaseCache`, `RelationIndex`, `addToSetBucket`, `removeFromSetBucket`, `SearchCache`, `searchCaches`, `clearAllSearchCaches`, `getAllCacheStats`, `cleanupAllCaches`, `forEachSearchCache`, `pruneExpiredEntries`, `CacheStats`, `mutateMapWithFlushRollback`, `clearMapWithFlushRollback`, `deleteFromMapWithFlushRollback`, `assertNonEmptyString`, `deepCopyPlain`, `deepFreeze`, `borrowGraphView`, `isReadViewGuardEnabled`, `EntitySchema`, `CreateEntitySchema`, `UpdateEntitySchema`, `RelationSchema`, `CreateRelationSchema`, `SearchQuerySchema`, `DateRangeSchema`, `TagAliasSchema`, `ExportFormatSchema`, `BatchCreateEntitiesSchema`, `BatchCreateRelationsSchema`, `EntityNamesSchema`, `DeleteRelationsSchema`, `AddObservationInputSchema`, `AddObservationsInputSchema`, `DeleteObservationInputSchema`, `DeleteObservationsInputSchema`, `ArchiveCriteriaSchema`, `SavedSearchInputSchema`, `SavedSearchUpdateSchema`, `ImportFormatSchema`, `ExtendedExportFormatSchema`, `MergeStrategySchema`, `ExportFilterSchema`, `OptionalTagsSchema`, `OptionalEntityNamesSchema`, `EntityInput`, `CreateEntityInput`, `UpdateEntityInput`, `RelationInput`, `CreateRelationInput`, `SearchQuery`, `DateRange`, `TagAliasInput`, `AddObservationInput`, `DeleteObservationInput`, `ArchiveCriteriaInput`, `SavedSearchInput`, `SavedSearchUpdateInput`, `ImportFormatInput`, `ExtendedExportFormatInput`, `MergeStrategyInput`, `ExportFilterInput`, `ValidationResult`, `formatZodErrors`, `validateWithSchema`, `validateSafe`, `validateArrayWithSchema`, `validateEntity`, `validateRelation`, `validateImportance`, `validateTags`, `validateNonEmpty`, `validateNonEmptyArray`, `formatToolResponse`, `formatTextResponse`, `formatRawResponse`, `formatErrorResponse`, `ToolResponse`, `validatePagination`, `applyPagination`, `paginateArray`, `getPaginationMeta`, `ValidatedPagination`, `fnv1aHash`, `findEntityByName`, `findEntitiesByNames`, `entityExists`, `getEntityIndex`, `removeEntityByName`, `getEntityNameSet`, `groupEntitiesByType`, `touchEntity`, `normalizeTag`, `normalizeTags`, `hasMatchingTag`, `hasAllTags`, `filterByTags`, `addUniqueTags`, `removeTags`, `isWithinDateRange`, `parseDateRange`, `isValidISODate`, `getCurrentTimestamp`, `isWithinImportanceRange`, `filterByImportance`, `filterByCreatedDate`, `filterByModifiedDate`, `filterByEntityType`, `entityPassesFilters`, `CommonSearchFilters`, `validateFilePath`, `defaultMemoryPath`, `ensureMemoryFilePath`, `sanitizeObject`, `escapeCsvFormula`, `parallelMap`, `parallelFilter`, `getPoolStats`, `shutdownParallelUtils`, `TaskPriority`, `TaskStatus`, `Task`, `TaskResult`, `ProgressCallback`, `TaskBatchOptions`, `QueueStats`, `TaskQueue`, `batchProcess`, `rateLimitedProcess`, `withRetry`, `debounce`, `throttle`, `checkCancellation`, `createProgressReporter`, `createProgress`, `executeWithPhases`, `processBatchesWithProgress`, `PhaseDefinition`, `WorkerPoolManager`, `getWorkerPoolManager`, `WorkerPoolConfig`, `ExtendedPoolStats`, `PoolEventCallback`, `WorkerTaskManager`, `getWorkerTaskManager`, `batchProcessViaWorkers`, `TaskSubmitOptions`, `TaskHandle`, `WorkerTaskManagerStats`, `BatchProcessor`, `processBatch`, `processWithRetry`, `chunkArray`, `parallelLimit`, `mapParallel`, `filterParallel`, `BatchProgress`, `BatchProgressCallback`, `BatchItemResult`, `BatchProcessResult`, `BatchProcessorOptions`, `MemoryMonitor`, `globalMemoryMonitor`, `ComponentMemoryUsage`, `MemoryUsageStats`, `MemoryThresholds`, `MemoryAlert`, `MemoryChangeCallback`, `isWeightedRelation`, `isTemporalRelation`, `isBidirectionalRelation`, `hasConfidence`, `isCurrentlyValid`, `RelationBuilder`, `validateRelationMetadata`, `validateRelationsMetadata`, `allRelationsValidMetadata`, `RelationValidationResult`, `RelationValidationError`, `RelationValidationWarning`, `EntityValidator`, `EntityValidatorConfig`, `EntityValidationRule`, `EntityRuleResult`, `EntityValidationIssue`, `EntityValidationResult`, `required`, `minLength`, `maxLength`, `pattern`, `range`, `min`, `max`, `oneOf`, `minItems`, `maxItems`, `email`, `url`, `isoDate`, `typeOf`, `custom`, `customSync`, `asWarning`, `all`, `when`, `SchemaValidator`, `JsonSchema`, `AsyncMutex`, `AsyncMutexOptions`, `AcquireOptions`, `tokenizeStripped`, `tokenizeUnicodeToSet`, `tokenSetWithoutStopwords`, `ENGLISH_STOPWORDS_SMALL`, `buildTFVector`, `cosineSimilarity`, `calculateTextSimilarity`, `estimateTokensFromText`, `CachePressureCoordinator`, `PressureAwareCache`, `CachePressureSnapshot`, `IndexHealthMonitor`, `IndexHealthReport`, `IndexHealthSources`, `CompressedMap`, `CompressedMapOptions`, `ZlibCompressionAdapter`, `ICompressionAdapter`, `sidecarPath`, `DiagnosticsOptions`, `DiagnosticsReport`, `TieredIndexStatsSnapshot`, `IIndexHealth`, `IndexHealthSnapshot`
 
 ---
 
@@ -5491,7 +5506,7 @@ Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-
 
 **Exports:**
 - Classes: `NameIndex`, `TypeIndex`, `LowercaseCache`, `RelationIndex`, `ObservationIndex`
-- Functions: `computeLowercase`
+- Functions: `addToSetBucket`, `removeFromSetBucket`, `computeLowercase`
 
 ---
 
@@ -5530,7 +5545,7 @@ Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-
 ### `src/utils/mutateMapWithFlushRollback.ts` - Updates a map entry and flushes; restores the prior entry if flush fails.
 
 **Exports:**
-- Functions: `mutateMapWithFlushRollback`, `clearMapWithFlushRollback`
+- Functions: `mutateMapWithFlushRollback`, `clearMapWithFlushRollback`, `deleteFromMapWithFlushRollback`
 
 ---
 
@@ -5639,8 +5654,8 @@ Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-
 **Exports:**
 - Classes: `SearchCache`
 - Interfaces: `CacheStats`
-- Types: `GraphGenerationDependency`
-- Functions: `getCacheOwnerId`, `bumpEntityGeneration`, `bumpRelationGeneration`, `getGraphGenerations`, `clearAllSearchCaches`, `getAllCacheStats`, `cleanupAllCaches`, `evictOldest`, `evictInsertionOrder`, `cleanupExpiredEntries`
+- Types: `GraphGenerationDependency`, `SearchCacheName`
+- Functions: `getCacheOwnerId`, `bumpEntityGeneration`, `bumpRelationGeneration`, `getGraphGenerations`, `forEachSearchCache`, `clearAllSearchCaches`, `getAllCacheStats`, `cleanupAllCaches`, `evictOldest`, `evictInsertionOrder`, `pruneExpiredEntries`, `cleanupExpiredEntries`
 - Constants: `searchCaches`
 
 ---
@@ -5683,7 +5698,8 @@ Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-
 ### `src/utils/textSimilarity.ts` - Text Similarity Utilities
 
 **Exports:**
-- Functions: `tokenizeStripped`, `tokenizeToSet`, `tokenizeAlphanumeric`, `buildTFVector`, `cosineParts`, `cosineSimilarity`, `calculateTextSimilarity`, `jaccard`
+- Functions: `tokenizeStripped`, `tokenizeToSet`, `tokenizeUnicodeToSet`, `tokenSetWithoutStopwords`, `tokenizeAlphanumeric`, `buildTFVector`, `cosineParts`, `cosineSimilarity`, `calculateTextSimilarity`, `jaccard`
+- Constants: `ENGLISH_STOPWORDS_SMALL`
 
 ---
 
@@ -5695,11 +5711,25 @@ Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-
 
 ---
 
+### `src/utils/tokenEstimate.ts` - Token Estimation Helpers
+
+**Exports:**
+- Functions: `estimateTokensFromText`
+
+---
+
 ### `src/utils/unrefInterval.ts` - unrefInterval module
 
 **Exports:**
 - Interfaces: `IntervalRunState`
 - Functions: `beginUnrefInterval`, `stopUnrefInterval`
+
+---
+
+### `src/utils/validation.ts` - Shared validation helpers for runtime argument guards.
+
+**Exports:**
+- Functions: `assertNonEmptyString`
 
 ---
 
@@ -5752,21 +5782,21 @@ Reachable from a root: **317** of 317 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/core/ManagerContext` | 89 files | 9 files |
 | `src/types/index` | 10 files | 68 files |
 | `src/types/types` | 1 file | 68 files |
+| `src/utils/index` | 38 files | 27 files |
 | `src/agent/index` | 63 files | 1 file |
-| `src/utils/index` | 35 files | 27 files |
 | `src/search/index` | 50 files | 1 file |
 | `src/types/agent-memory` | 1 file | 48 files |
 | `src/core/GraphStorage` | 16 files | 32 files |
-| `src/core/EntityManager` | 11 files | 31 files |
+| `src/core/EntityManager` | 12 files | 31 files |
 | `src/agent/AgentMemoryManager` | 29 files | 2 files |
 | `src/utils/logger` | 0 files | 30 files |
 | `src/utils/errors` | 0 files | 28 files |
 | `src/cli/commands/helpers` | 4 files | 23 files |
-| `src/agent/ConsolidationPipeline` | 18 files | 7 files |
+| `src/agent/ConsolidationPipeline` | 19 files | 7 files |
 | `src/cli/commands/index` | 24 files | 1 file |
 | `src/cli/formatters` | 2 files | 20 files |
-| `src/utils/textSimilarity` | 0 files | 21 files |
-| `src/agent/ContextWindowManager` | 15 files | 5 files |
+| `src/utils/textSimilarity` | 0 files | 22 files |
+| `src/agent/ContextWindowManager` | 16 files | 5 files |
 | `src/search/SearchManager` | 17 files | 3 files |
 | `src/types/proceduralGraph` | 0 files | 20 files |
 | `src/utils/constants` | 0 files | 20 files |
@@ -5941,7 +5971,7 @@ graph TD
         N87[MemoryMonitor]
         N88[SchemaValidator]
         N89[WorkerPoolManager]
-        N90[...38 more]
+        N90[...40 more]
     end
 
     subgraph Workers
@@ -6032,24 +6062,24 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 317 |
+| Total TypeScript Files | 319 |
 | Total Modules | 12 |
-| Total Lines of Code | 107017 |
-| Total Exports | 2186 |
-| Total Re-exports | 1415 |
+| Total Lines of Code | 107245 |
+| Total Exports | 2216 |
+| Total Re-exports | 1427 |
 | Total Classes | 238 |
 | Total Interfaces | 638 |
-| Total Functions | 392 |
+| Total Functions | 409 |
 | Total Type Guards | 31 |
 | Total Enums | 4 |
 | Type-only Imports | 511 |
 | Runtime Circular Deps | 0 |
 | Type-only Circular Deps | 8 |
 | Entry/Build Roots | 4 |
-| Reachable Files | 317 |
+| Reachable Files | 319 |
 | Dormant Files (orphaned / test-only) | 0 (0 / 0) |
 
 ---
 
-*Last Updated*: 2026-11-04
+*Last Updated*: 2026-11-05
 *Version*: 4.4.0

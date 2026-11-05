@@ -1,4 +1,4 @@
-import { jaccard } from '../utils/textSimilarity.js';
+import { jaccard, tokenizeUnicodeToSet } from '../utils/textSimilarity.js';
 import { EventEmitter } from 'node:events';
 import { createHash } from 'node:crypto';
 import type { IGraphStorage, ReadonlyKnowledgeGraph } from '../types/types.js';
@@ -22,16 +22,6 @@ function longestCommonPrefix(a: string, b: string): string {
   let i = 0;
   while (i < max && a[i] === b[i]) i += 1;
   return a.slice(0, i);
-}
-
-function tokeniseForDedup(text: string): Set<string> {
-  return new Set(
-    text
-      .toLowerCase()
-      .replace(/[^\p{L}\p{N}\s]/gu, ' ')
-      .split(/\s+/)
-      .filter((t) => t.length > 0),
-  );
 }
 
 /**
@@ -555,12 +545,12 @@ export class MemoryEngine {
   }
 
   private checkTierJaccard(content: string, candidates: AgentEntity[]): DuplicateCheckResult {
-    const contentTokens = tokeniseForDedup(content);
+    const contentTokens = tokenizeUnicodeToSet(content);
     if (contentTokens.size === 0) return { isDuplicate: false };
 
     for (const candidate of candidates) {
       const candidateContent = stripRolePrefix(candidate.observations[0] ?? '');
-      const candidateTokens = tokeniseForDedup(candidateContent);
+      const candidateTokens = tokenizeUnicodeToSet(candidateContent);
       if (candidateTokens.size === 0) continue;
 
       const score = jaccard(contentTokens, candidateTokens);

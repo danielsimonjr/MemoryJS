@@ -1,10 +1,10 @@
 metadata:
   name: "@danielsimonjr/memoryjs"
   version: 4.4.0
-  lastUpdated: "2026-11-04"
-  totalFiles: 317
+  lastUpdated: "2026-11-05"
+  totalFiles: 319
   totalModules: 12
-  totalExports: 2186
+  totalExports: 2216
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -791,6 +791,9 @@ modules:
         - file: ../utils/fillDefaults.js
           imports:
             - fillDefaults
+        - file: ../utils/validation.js
+          imports:
+            - assertNonEmptyString
       exports:
         - ConsolidationPipeline
         - ProspectivePromotionStage
@@ -924,6 +927,9 @@ modules:
         - file: ../utils/fillDefaults.js
           imports:
             - fillDefaults
+        - file: ../utils/tokenEstimate.js
+          imports:
+            - estimateTokensFromText
         - file: ./ProjectContextManager.js
           imports:
             - ProjectContextManager
@@ -1548,7 +1554,9 @@ modules:
       internalDependencies:
         - file: ../utils/textSimilarity.js
           imports:
+            - ENGLISH_STOPWORDS_SMALL
             - jaccard
+            - tokenSetWithoutStopwords
         - file: ../types/types.js
           imports:
             - Entity
@@ -1586,7 +1594,10 @@ modules:
         defaults ar
       externalDependencies: []
       nodeDependencies: []
-      internalDependencies: []
+      internalDependencies:
+        - file: ../utils/textSimilarity.js
+          imports:
+            - tokenizeUnicodeToSet
       exports:
         - ImportanceScorer
       classes:
@@ -1648,6 +1659,7 @@ modules:
         - file: ../utils/textSimilarity.js
           imports:
             - jaccard
+            - tokenizeUnicodeToSet
         - file: ../types/types.js
           imports:
             - IGraphStorage
@@ -1707,6 +1719,9 @@ modules:
         - file: ../utils/fillDefaults.js
           imports:
             - fillDefaults
+        - file: ../utils/tokenEstimate.js
+          imports:
+            - estimateTokensFromText
       exports:
         - MemoryFormatter
       classes:
@@ -1797,7 +1812,9 @@ modules:
       internalDependencies:
         - file: ../utils/textSimilarity.js
           imports:
+            - ENGLISH_STOPWORDS_SMALL
             - jaccard
+            - tokenSetWithoutStopwords
         - file: ../types/types.js
           imports:
             - Entity
@@ -1966,6 +1983,7 @@ modules:
           imports:
             - validateNonEmpty
       exports:
+        - dedupByKey
         - ProjectContextManager
       classes:
         - ProjectContextManager
@@ -1973,6 +1991,8 @@ modules:
         - ProjectContextUpsertInput
         - ProjectContextManagerConfig
         - ForContextOptions
+      functions:
+        - dedupByKey
     src/agent/ProspectiveMemoryManager.ts:
       description: Prospective Memory Manager
       externalDependencies: []
@@ -4298,6 +4318,8 @@ modules:
           typeOnly: true
         - file: ./canonical.js
           imports:
+            - compareEdges
+            - compareString
             - graphDigest
       exports:
         - ProceduralGraph
@@ -4531,6 +4553,8 @@ modules:
         - file: ./canonical.js
           imports:
             - canonicalJson
+            - compareEdges
+            - compareString
         - file: ./ProceduralGraph.js
           imports:
             - ProceduralGraph
@@ -4927,6 +4951,8 @@ modules:
         - toolCatalogHash
         - storageKey
         - evaluationFingerprint
+        - compareString
+        - compareEdges
       functions:
         - canonicalJson
         - sha256Hex
@@ -4934,6 +4960,8 @@ modules:
         - toolCatalogHash
         - storageKey
         - evaluationFingerprint
+        - compareString
+        - compareEdges
     src/agent/procedural/graph/index.ts:
       description: Procedural Graph public surface (implementation plan Section 4).
       externalDependencies: []
@@ -6977,6 +7005,9 @@ modules:
         - file: ../utils/logger.js
           imports:
             - logger
+        - file: ./storageCache.js
+          imports:
+            - deleteNamesFromSnapshot
         - file: ../utils/index.js
           imports:
             - BatchCreateEntitiesSchema
@@ -7143,6 +7174,8 @@ modules:
         - file: ./storageCache.js
           imports:
             - deleteNamesFromSnapshot
+            - entitiesByTypeFromIndexes
+            - rebuildRelationIndexes
             - deleteRelationsFromSnapshot
             - bindStorageCacheState
             - relationKeyOf
@@ -7673,6 +7706,10 @@ modules:
         - file: ../utils/errors.js
           imports:
             - RefConflictError
+        - file: ../utils/indexes.js
+          imports:
+            - addToSetBucket
+            - removeFromSetBucket
       exports:
         - RefIndex
       classes:
@@ -7794,6 +7831,8 @@ modules:
         - file: ./storageCache.js
           imports:
             - deleteNamesFromSnapshot
+            - entitiesByTypeFromIndexes
+            - rebuildRelationIndexes
             - deleteRelationsFromSnapshot
             - bindStorageCacheState
             - relationKeyOf
@@ -7958,6 +7997,7 @@ modules:
         - file: ../../utils/mutateMapWithFlushRollback.js
           imports:
             - clearMapWithFlushRollback
+            - deleteFromMapWithFlushRollback
             - mutateMapWithFlushRollback
         - file: ./IColumnStore.js
           imports:
@@ -8302,6 +8342,7 @@ modules:
             - SegmentId
             - SegmentRouter
             - assertSegmentOwnership
+            - assertValidSegmentId
             - mergeSegmentsIntoGraph
             - splitGraphIntoSegments
       exports:
@@ -8332,6 +8373,7 @@ modules:
         - fnv1a32
         - splitGraphIntoSegments
         - mergeSegmentsIntoGraph
+        - assertValidSegmentId
         - assertSegmentOwnership
         - FnvSegmentRouter
         - InMemorySegmentStorage
@@ -8348,6 +8390,7 @@ modules:
       functions:
         - splitGraphIntoSegments
         - mergeSegmentsIntoGraph
+        - assertValidSegmentId
         - assertSegmentOwnership
     src/core/sqlite-register.ts:
       description: SQLiteStorage registration shim (S9).
@@ -8390,6 +8433,8 @@ modules:
         - upsertEntityInCache
         - upsertRelationInCache
         - removeEntitiesFromIndexes
+        - entitiesByTypeFromIndexes
+        - rebuildRelationIndexes
         - deleteNamesFromSnapshot
         - deleteRelationsFromSnapshot
       interfaces:
@@ -8400,6 +8445,8 @@ modules:
         - upsertEntityInCache
         - upsertRelationInCache
         - removeEntitiesFromIndexes
+        - entitiesByTypeFromIndexes
+        - rebuildRelationIndexes
         - deleteNamesFromSnapshot
         - deleteRelationsFromSnapshot
     src/core/storageCapabilities.ts:
@@ -8849,6 +8896,7 @@ modules:
         - INGEST_DERIVED_FROM_RELATION
         - INGEST_MANIFEST_ENTITY_TYPE
         - INGEST_CHUNK_PREFIX
+        - readGraphMlDataValue
         - IOManager
       classes:
         - IOManager
@@ -8867,6 +8915,8 @@ modules:
         - VisualizeOptions
         - VisualizeOptions
         - IOManagerOptions
+      functions:
+        - readGraphMlDataValue
       constants:
         - INGEST_DERIVED_FROM_RELATION
         - INGEST_MANIFEST_ENTITY_TYPE
@@ -9498,6 +9548,7 @@ modules:
         - file: ../utils/searchCache.js
           imports:
             - evictOldest
+            - pruneExpiredEntries
       exports:
         - DEFAULT_EMBEDDING_CACHE_OPTIONS
         - EmbeddingCache
@@ -10107,6 +10158,7 @@ modules:
         - file: ../utils/searchCache.js
           imports:
             - evictOldest
+            - pruneExpiredEntries
       exports:
         - QueryPlanCache
       classes:
@@ -11376,6 +11428,7 @@ modules:
       nodeDependencies: []
       internalDependencies: []
       exports:
+        - snapshotTierStats
         - makeFreshStats
         - InMemoryTier
         - HotOnlyIndex
@@ -11387,6 +11440,7 @@ modules:
         - IIndexTier
         - ITieredIndex
       functions:
+        - snapshotTierStats
         - makeFreshStats
     src/search/tiered/LRUHotTier.ts:
       description: LRU Hot Tier
@@ -11417,6 +11471,7 @@ modules:
         - file: ../../utils/mutateMapWithFlushRollback.js
           imports:
             - clearMapWithFlushRollback
+            - deleteFromMapWithFlushRollback
         - file: ../../utils/jsonlMapFile.js
           imports:
             - parseJsonlMapLines
@@ -11444,6 +11499,7 @@ modules:
             - ITieredIndex
             - TierAccessStats
             - makeFreshStats
+            - snapshotTierStats
         - file: ../../utils/logger.js
           imports:
             - logger
@@ -13575,6 +13631,8 @@ modules:
             - TypeIndex
             - LowercaseCache
             - RelationIndex
+            - addToSetBucket
+            - removeFromSetBucket
           reExport: true
         - file: ./searchCache.js
           imports:
@@ -13583,7 +13641,19 @@ modules:
             - clearAllSearchCaches
             - getAllCacheStats
             - cleanupAllCaches
+            - forEachSearchCache
+            - pruneExpiredEntries
             - CacheStats
+          reExport: true
+        - file: ./mutateMapWithFlushRollback.js
+          imports:
+            - mutateMapWithFlushRollback
+            - clearMapWithFlushRollback
+            - deleteFromMapWithFlushRollback
+          reExport: true
+        - file: ./validation.js
+          imports:
+            - assertNonEmptyString
           reExport: true
         - file: ./graphCopy.js
           imports:
@@ -13835,9 +13905,16 @@ modules:
           imports:
             - tokenizeStripped
             - tokenizeStripped
+            - tokenizeUnicodeToSet
+            - tokenSetWithoutStopwords
+            - ENGLISH_STOPWORDS_SMALL
             - buildTFVector
             - cosineSimilarity
             - calculateTextSimilarity
+          reExport: true
+        - file: ./tokenEstimate.js
+          imports:
+            - estimateTokensFromText
           reExport: true
         - file: ./CachePressureCoordinator.js
           imports:
@@ -13952,12 +14029,20 @@ modules:
         - TypeIndex
         - LowercaseCache
         - RelationIndex
+        - addToSetBucket
+        - removeFromSetBucket
         - SearchCache
         - searchCaches
         - clearAllSearchCaches
         - getAllCacheStats
         - cleanupAllCaches
+        - forEachSearchCache
+        - pruneExpiredEntries
         - CacheStats
+        - mutateMapWithFlushRollback
+        - clearMapWithFlushRollback
+        - deleteFromMapWithFlushRollback
+        - assertNonEmptyString
         - deepCopyPlain
         - deepFreeze
         - borrowGraphView
@@ -14155,9 +14240,13 @@ modules:
         - AcquireOptions
         - tokenizeStripped
         - textTokenize
+        - tokenizeUnicodeToSet
+        - tokenSetWithoutStopwords
+        - ENGLISH_STOPWORDS_SMALL
         - buildTFVector
         - textCosineSimilarity
         - calculateTextSimilarity
+        - estimateTokensFromText
         - CachePressureCoordinator
         - PressureAwareCache
         - CachePressureSnapshot
@@ -14249,12 +14338,20 @@ modules:
         - TypeIndex
         - LowercaseCache
         - RelationIndex
+        - addToSetBucket
+        - removeFromSetBucket
         - SearchCache
         - searchCaches
         - clearAllSearchCaches
         - getAllCacheStats
         - cleanupAllCaches
+        - forEachSearchCache
+        - pruneExpiredEntries
         - CacheStats
+        - mutateMapWithFlushRollback
+        - clearMapWithFlushRollback
+        - deleteFromMapWithFlushRollback
+        - assertNonEmptyString
         - deepCopyPlain
         - deepFreeze
         - borrowGraphView
@@ -14451,9 +14548,13 @@ modules:
         - AsyncMutexOptions
         - AcquireOptions
         - tokenizeStripped
+        - tokenizeUnicodeToSet
+        - tokenSetWithoutStopwords
+        - ENGLISH_STOPWORDS_SMALL
         - buildTFVector
         - cosineSimilarity
         - calculateTextSimilarity
+        - estimateTokensFromText
         - CachePressureCoordinator
         - PressureAwareCache
         - CachePressureSnapshot
@@ -14485,6 +14586,8 @@ modules:
           imports:
             - removeIdFromPostings
       exports:
+        - addToSetBucket
+        - removeFromSetBucket
         - computeLowercase
         - NameIndex
         - TypeIndex
@@ -14498,6 +14601,8 @@ modules:
         - RelationIndex
         - ObservationIndex
       functions:
+        - addToSetBucket
+        - removeFromSetBucket
         - computeLowercase
     src/utils/jsonlMapFile.ts:
       description: JSONL map file codec
@@ -14549,9 +14654,11 @@ modules:
       exports:
         - mutateMapWithFlushRollback
         - clearMapWithFlushRollback
+        - deleteFromMapWithFlushRollback
       functions:
         - mutateMapWithFlushRollback
         - clearMapWithFlushRollback
+        - deleteFromMapWithFlushRollback
     src/utils/nextMonotonicIsoTimestamp.ts:
       description: Returns the next ISO-8601 timestamp strictly after `lastTimestamp`.
       externalDependencies: []
@@ -14800,11 +14907,13 @@ modules:
         - bumpEntityGeneration
         - bumpRelationGeneration
         - getGraphGenerations
+        - forEachSearchCache
         - clearAllSearchCaches
         - getAllCacheStats
         - cleanupAllCaches
         - evictOldest
         - evictInsertionOrder
+        - pruneExpiredEntries
         - cleanupExpiredEntries
         - SearchCache
       classes:
@@ -14816,11 +14925,13 @@ modules:
         - bumpEntityGeneration
         - bumpRelationGeneration
         - getGraphGenerations
+        - forEachSearchCache
         - clearAllSearchCaches
         - getAllCacheStats
         - cleanupAllCaches
         - evictOldest
         - evictInsertionOrder
+        - pruneExpiredEntries
         - cleanupExpiredEntries
       constants:
         - searchCaches
@@ -14887,8 +14998,11 @@ modules:
       nodeDependencies: []
       internalDependencies: []
       exports:
+        - ENGLISH_STOPWORDS_SMALL
         - tokenizeStripped
         - tokenizeToSet
+        - tokenizeUnicodeToSet
+        - tokenSetWithoutStopwords
         - tokenizeAlphanumeric
         - buildTFVector
         - cosineParts
@@ -14898,12 +15012,16 @@ modules:
       functions:
         - tokenizeStripped
         - tokenizeToSet
+        - tokenizeUnicodeToSet
+        - tokenSetWithoutStopwords
         - tokenizeAlphanumeric
         - buildTFVector
         - cosineParts
         - cosineSimilarity
         - calculateTextSimilarity
         - jaccard
+      constants:
+        - ENGLISH_STOPWORDS_SMALL
     src/utils/timing.ts:
       description: Timing Helpers
       externalDependencies: []
@@ -14920,6 +15038,15 @@ modules:
         - sleep
         - createTimeout
         - withTimeout
+    src/utils/tokenEstimate.ts:
+      description: Token Estimation Helpers
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies: []
+      exports:
+        - estimateTokensFromText
+      functions:
+        - estimateTokensFromText
     src/utils/unrefInterval.ts:
       description: unrefInterval module
       externalDependencies: []
@@ -14933,6 +15060,15 @@ modules:
       functions:
         - beginUnrefInterval
         - stopUnrefInterval
+    src/utils/validation.ts:
+      description: Shared validation helpers for runtime argument guards.
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies: []
+      exports:
+        - assertNonEmptyString
+      functions:
+        - assertNonEmptyString
     src/utils/validators.ts:
       description: Built-in Validators
       externalDependencies: []
@@ -15393,7 +15529,9 @@ dependencyGraph:
         - src/utils/taskScheduler.ts
         - src/utils/textSimilarity.ts
         - src/utils/timing.ts
+        - src/utils/tokenEstimate.ts
         - src/utils/unrefInterval.ts
+        - src/utils/validation.ts
         - src/utils/validators.ts
     - name: Workers
       files:
@@ -15404,29 +15542,29 @@ reachability:
     - src/index.ts
     - src/sqlite.ts
     - src/workers/levenshteinWorker.ts
-  reachableCount: 317
+  reachableCount: 319
   dormantCount: 0
   orphaned: []
   testOnly: []
 statistics:
-  totalTypeScriptFiles: 317
+  totalTypeScriptFiles: 319
   totalModules: 12
-  totalLinesOfCode: 107017
-  totalExports: 2186
+  totalLinesOfCode: 107245
+  totalExports: 2216
   totalClasses: 238
   totalInterfaces: 638
-  totalFunctions: 392
+  totalFunctions: 409
   totalTypeGuards: 31
   totalEnums: 4
-  totalConstants: 126
-  totalReExports: 1415
+  totalConstants: 127
+  totalReExports: 1427
   totalTypeOnlyImports: 511
   runtimeCircularDeps: 0
   typeOnlyCircularDeps: 8
   entryRoots: 4
-  reachableFiles: 317
+  reachableFiles: 319
   dormantFiles: 0
   orphanedFiles: 0
   testOnlyFiles: 0
   unusedFilesCount: 0
-  unusedExportsCount: 61
+  unusedExportsCount: 62

@@ -113,6 +113,8 @@ export {
   TypeIndex,
   LowercaseCache,
   RelationIndex,
+  addToSetBucket,
+  removeFromSetBucket,
 } from './indexes.js';
 
 // ==================== Search Cache ====================
@@ -122,8 +124,20 @@ export {
   clearAllSearchCaches,
   getAllCacheStats,
   cleanupAllCaches,
+  forEachSearchCache,
+  pruneExpiredEntries,
   type CacheStats,
 } from './searchCache.js';
+
+// ==================== Map Mutation Helpers ====================
+export {
+  mutateMapWithFlushRollback,
+  clearMapWithFlushRollback,
+  deleteFromMapWithFlushRollback,
+} from './mutateMapWithFlushRollback.js';
+
+// ==================== Validation Helpers ====================
+export { assertNonEmptyString } from './validation.js';
 
 // ==================== Graph Copy / Ownership ====================
 export { deepCopyPlain, deepFreeze, borrowGraphView, isReadViewGuardEnabled } from './graphCopy.js';
@@ -404,10 +418,16 @@ export { AsyncMutex, type AsyncMutexOptions, type AcquireOptions } from './Async
 export {
   tokenizeStripped,
   tokenizeStripped as textTokenize,
+  tokenizeUnicodeToSet,
+  tokenSetWithoutStopwords,
+  ENGLISH_STOPWORDS_SMALL,
   buildTFVector,
   cosineSimilarity as textCosineSimilarity,
   calculateTextSimilarity,
 } from './textSimilarity.js';
+
+// ==================== Token Estimation ====================
+export { estimateTokensFromText } from './tokenEstimate.js';
 
 // ==================== CMP-4: types returned by public ManagerContext getters ====================
 export {

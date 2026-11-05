@@ -156,6 +156,8 @@ import { PartialIndexAdvisor, type FilterObservation } from '../search/PartialIn
 import { GraphEventEmitter } from './GraphEventEmitter.js';
 import {
   deleteNamesFromSnapshot,
+  entitiesByTypeFromIndexes,
+  rebuildRelationIndexes,
   deleteRelationsFromSnapshot,
   bindStorageCacheState,
   relationKeyOf,
@@ -857,11 +859,7 @@ export class SQLiteStorage implements IGraphStorage {
    * Rebuild the adjacency and composite-key indexes from a relation array.
    */
   private rebuildRelationIndexes(relations: Relation[]): void {
-    this.relationIndex.build(relations);
-    this.relationKeyMap.clear();
-    for (const relation of relations) {
-      this.relationKeyMap.set(relationKeyOf(relation), relation);
-    }
+    rebuildRelationIndexes(this.relationIndex, this.relationKeyMap, relations);
   }
 
   /**
@@ -1924,15 +1922,7 @@ export class SQLiteStorage implements IGraphStorage {
    * @returns Array of entities with the given type
    */
   getEntitiesByType(entityType: string): Entity[] {
-    const names = this.typeIndex.getNames(entityType);
-    const entities: Entity[] = [];
-    for (const name of names) {
-      const entity = this.nameIndex.get(name);
-      if (entity) {
-        entities.push(entity);
-      }
-    }
-    return entities;
+    return entitiesByTypeFromIndexes(this.typeIndex, this.nameIndex, entityType);
   }
 
   /**

@@ -8,7 +8,7 @@
  */
 
 import { createHash } from 'crypto';
-import { evictOldest } from '../utils/searchCache.js';
+import { evictOldest, pruneExpiredEntries } from '../utils/searchCache.js';
 
 /**
  * Cache entry for embedding vectors.
@@ -288,14 +288,7 @@ export class EmbeddingCache {
    * @returns Number of entries removed
    */
   pruneExpired(): number {
-    let removed = 0;
-    for (const [key, entry] of this.cache) {
-      if (this.isExpired(entry)) {
-        this.cache.delete(key);
-        removed++;
-      }
-    }
-    return removed;
+    return pruneExpiredEntries(this.cache, entry => this.isExpired(entry));
   }
 
   /**

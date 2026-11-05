@@ -25,7 +25,11 @@
  * @module agent/ObservationDedupManager
  */
 
-import { jaccard } from '../utils/textSimilarity.js';
+import {
+  ENGLISH_STOPWORDS_SMALL,
+  jaccard,
+  tokenSetWithoutStopwords,
+} from '../utils/textSimilarity.js';
 import { createHash } from 'crypto';
 import type { Entity, IGraphStorage } from '../types/types.js';
 
@@ -127,7 +131,9 @@ export class ObservationDedupManager {
     const byHash = this.bucketObservationsByHash(candidates);
     const all: Indexed[] = [...byHash.entries()].map(([hash, bucket]) => ({
       normalized: bucket.observation,
-      tokens: tokenSet(bucket.observation),
+      // bucket.observation is normalizeObservation() output (already lowercase), so the
+      // lowercasing inside tokenSetWithoutStopwords is a no-op here.
+      tokens: tokenSetWithoutStopwords(bucket.observation, ENGLISH_STOPWORDS_SMALL, 2),
       hash,
       occurrences: bucket.occurrences,
     }));
@@ -233,18 +239,4 @@ function sha256(s: string): string {
 function normalizeTypeFilter(t: string | string[] | undefined): Set<string> | undefined {
   if (t === undefined) return undefined;
   return new Set(Array.isArray(t) ? t : [t]);
-}
-
-const STOPWORDS = new Set([
-  'a', 'an', 'the', 'is', 'be', 'are', 'was', 'were', 'to', 'of', 'in', 'on',
-  'at', 'by', 'for', 'with', 'and', 'or', 'but', 'if', 'as', 'it', 'its',
-  'this', 'that', 'these', 'those',
-]);
-
-function tokenSet(s: string): Set<string> {
-  return new Set(
-    s
-      .split(/[^a-z0-9]+/)
-      .filter((t) => t.length >= 2 && !STOPWORDS.has(t)),
-  );
 }

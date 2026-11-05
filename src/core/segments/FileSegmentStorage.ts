@@ -57,6 +57,7 @@ import {
   type SegmentId,
   type SegmentRouter,
   assertSegmentOwnership,
+  assertValidSegmentId,
   mergeSegmentsIntoGraph,
   splitGraphIntoSegments,
 } from './ISegmentStorage.js';
@@ -111,7 +112,7 @@ export class FileSegmentStorage implements ISegmentStorage {
 
   /** Path to the JSONL file backing segment `id`. */
   segmentPath(id: SegmentId): string {
-    this.assertValidId(id);
+    assertValidSegmentId(id, this.segmentCount);
     return join(this.segmentsDir, `${id}.jsonl`);
   }
 
@@ -220,7 +221,7 @@ export class FileSegmentStorage implements ISegmentStorage {
   }
 
   async loadSegment(id: SegmentId): Promise<Segment> {
-    this.assertValidId(id);
+    assertValidSegmentId(id, this.segmentCount);
     const path = this.segmentPath(id);
     let raw: string;
     try {
@@ -235,7 +236,7 @@ export class FileSegmentStorage implements ISegmentStorage {
   }
 
   async saveSegment(segment: Segment): Promise<void> {
-    this.assertValidId(segment.id);
+    assertValidSegmentId(segment.id, this.segmentCount);
     this.assertOwnership(segment);
     await this.ensureDir();
     const content = serializeSegment(segment);
@@ -412,14 +413,6 @@ export class FileSegmentStorage implements ISegmentStorage {
 
   private async ensureDir(): Promise<void> {
     await fs.mkdir(this.segmentsDir, { recursive: true });
-  }
-
-  private assertValidId(id: SegmentId): void {
-    if (!Number.isInteger(id) || id < 0 || id >= this.segmentCount) {
-      throw new Error(
-        `Segment id must be an integer in [0, ${this.segmentCount}), got ${id}`,
-      );
-    }
   }
 
   private assertOwnership(segment: Segment): void {

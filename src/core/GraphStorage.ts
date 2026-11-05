@@ -38,6 +38,8 @@ import { FsReadMmapBackend } from './mmap/FsReadMmapBackend.js';
 import { streamLines } from './mmap/IMmapBackend.js';
 import {
   deleteNamesFromSnapshot,
+  entitiesByTypeFromIndexes,
+  rebuildRelationIndexes,
   deleteRelationsFromSnapshot,
   bindStorageCacheState,
   relationKeyOf,
@@ -802,11 +804,7 @@ export class GraphStorage implements IGraphStorage {
    * Build relation index (and relation key map) from relation array.
    */
   private buildRelationIndex(relations: Relation[]): void {
-    this.relationIndex.build(relations);
-    this.relationKeyMap.clear();
-    for (const relation of relations) {
-      this.relationKeyMap.set(relationKeyOf(relation), relation);
-    }
+    rebuildRelationIndexes(this.relationIndex, this.relationKeyMap, relations);
   }
 
   /**
@@ -1702,15 +1700,7 @@ export class GraphStorage implements IGraphStorage {
    * @returns Array of entities with the given type
    */
   getEntitiesByType(entityType: string): Entity[] {
-    const names = this.typeIndex.getNames(entityType);
-    const entities: Entity[] = [];
-    for (const name of names) {
-      const entity = this.nameIndex.get(name);
-      if (entity) {
-        entities.push(entity);
-      }
-    }
-    return entities;
+    return entitiesByTypeFromIndexes(this.typeIndex, this.nameIndex, entityType);
   }
 
   /**

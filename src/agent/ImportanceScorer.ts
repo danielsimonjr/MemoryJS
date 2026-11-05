@@ -1,3 +1,5 @@
+import { tokenizeUnicodeToSet } from '../utils/textSimilarity.js';
+
 /**
  * Configuration for `ImportanceScorer`. The three weights combine the length, keyword and overlap signals. The defaults are 0.3, 0.4 and 0.3.
  */
@@ -47,7 +49,7 @@ export class ImportanceScorer {
   score(content: string, options: ScoreOptions = {}): number {
     if (content.length === 0) return 0;
 
-    const contentTokens = tokenise(content);
+    const contentTokens = tokenizeUnicodeToSet(content);
 
     const lengthSignal = Math.min(1, Math.log10(content.length) / 4); // log10(10000) = 4
     const keywordSignal =
@@ -63,7 +65,7 @@ export class ImportanceScorer {
     if (overlapCorpus.length === 0) {
       overlapSignal = 0.5;
     } else {
-      const corpusTokens = tokenise(overlapCorpus.join(' '));
+      const corpusTokens = tokenizeUnicodeToSet(overlapCorpus.join(' '));
       overlapSignal =
         contentTokens.size > 0
           ? countIntersection(contentTokens, corpusTokens) / contentTokens.size
@@ -77,16 +79,6 @@ export class ImportanceScorer {
 
     return Math.max(0, Math.min(10, Math.round(raw * 10)));
   }
-}
-
-function tokenise(text: string): Set<string> {
-  return new Set(
-    text
-      .toLowerCase()
-      .replace(/[^\p{L}\p{N}\s]/gu, ' ')
-      .split(/\s+/)
-      .filter((t) => t.length > 0),
-  );
 }
 
 function countIntersection(a: Set<string>, b: Set<string>): number {

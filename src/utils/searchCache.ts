@@ -392,38 +392,47 @@ export const searchCaches = {
   fuzzy: new SearchCache<KnowledgeGraph>(500, 5 * 60 * 1000, { generationDeps: ['entity', 'relation'] }),
 };
 
+/** Name of one of the global search caches in {@link searchCaches}. */
+export type SearchCacheName = keyof typeof searchCaches;
+
+/**
+ * Calls `fn` once for each global search cache, in the order basic, ranked, boolean, fuzzy.
+ *
+ * @param fn - Receives each cache and its name
+ */
+export function forEachSearchCache(
+  fn: (cache: (typeof searchCaches)[SearchCacheName], name: SearchCacheName) => void,
+): void {
+  for (const name of Object.keys(searchCaches) as SearchCacheName[]) {
+    fn(searchCaches[name], name);
+  }
+}
+
 /**
  * Clear all search caches.
  *
  * Should be called when graph is modified to ensure cache consistency.
  */
 export function clearAllSearchCaches(): void {
-  searchCaches.basic.clear();
-  searchCaches.ranked.clear();
-  searchCaches.boolean.clear();
-  searchCaches.fuzzy.clear();
+  forEachSearchCache(cache => cache.clear());
 }
 
 /**
  * Get combined statistics for all caches.
  */
 export function getAllCacheStats(): Record<string, CacheStats> {
-  return {
-    basic: searchCaches.basic.getStats(),
-    ranked: searchCaches.ranked.getStats(),
-    boolean: searchCaches.boolean.getStats(),
-    fuzzy: searchCaches.fuzzy.getStats(),
-  };
+  const stats: Record<string, CacheStats> = {};
+  forEachSearchCache((cache, name) => {
+    stats[name] = cache.getStats();
+  });
+  return stats;
 }
 
 /**
  * Clean up expired entries in all caches.
  */
 export function cleanupAllCaches(): void {
-  searchCaches.basic.cleanupExpired();
-  searchCaches.ranked.cleanupExpired();
-  searchCaches.boolean.cleanupExpired();
-  searchCaches.fuzzy.cleanupExpired();
+  forEachSearchCache(cache => cache.cleanupExpired());
 }
 
 /**
@@ -467,6 +476,24 @@ export function evictInsertionOrder<K, E>(map: Map<K, E>, targetEntries: number)
     if (oldestKey === undefined) break;
     map.delete(oldestKey);
   }
+}
+
+/**
+ * Removes every entry for which `isExpired` returns true. Deletion during iteration is safe for a Map.
+ *
+ * @param map - Map to clean in place
+ * @param isExpired - Returns true when an entry must be removed
+ * @returns Number of entries removed
+ */
+export function pruneExpiredEntries<K, E>(map: Map<K, E>, isExpired: (entry: E) => boolean): number {
+  let removed = 0;
+  for (const [key, entry] of map) {
+    if (isExpired(entry)) {
+      map.delete(key);
+      removed++;
+    }
+  }
+  return removed;
 }
 
 /**

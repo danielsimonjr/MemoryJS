@@ -41,3 +41,35 @@ export async function clearMapWithFlushRollback<K, V>(
     throw err;
   }
 }
+
+/**
+ * Removes `key` from `cache` and flushes. Returns `false` without flushing when the key is absent.
+ * On flush failure, clears `cache`, restores the snapshotted entries in their previous
+ * order and rethrows.
+ *
+ * @param cache - Map to change in place
+ * @param key - Key to remove
+ * @param flush - Persists the map after the removal
+ * @returns `true` when the key was present and removed
+ */
+export async function deleteFromMapWithFlushRollback<K, V>(
+  cache: Map<K, V>,
+  key: K,
+  flush: (map: Map<K, V>) => Promise<void>,
+): Promise<boolean> {
+  if (!cache.has(key)) {
+    return false;
+  }
+  const snapshot = new Map(cache);
+  cache.delete(key);
+  try {
+    await flush(cache);
+  } catch (err) {
+    cache.clear();
+    for (const [k, v] of snapshot) {
+      cache.set(k, v);
+    }
+    throw err;
+  }
+  return true;
+}

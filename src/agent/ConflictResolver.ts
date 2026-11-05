@@ -347,11 +347,19 @@ export class ConflictResolver extends EventEmitter {
    * @internal
    */
   private resolveMostRecent(memories: AgentEntity[]): AgentEntity {
-    return memories.reduce((best, m) => {
-      const bestTime = best.lastModified ?? best.createdAt ?? '1970-01-01';
-      const mTime = m.lastModified ?? m.createdAt ?? '1970-01-01';
-      return mTime > bestTime ? m : best;
-    });
+    return this.pickFirstMax(memories, (m) => m.lastModified ?? m.createdAt ?? '1970-01-01');
+  }
+
+  /**
+   * Reduce to the memory with the greatest key. Ties keep the earlier memory
+   * (strict `>`), and an empty array throws, as `Array.prototype.reduce` does.
+   * @internal
+   */
+  private pickFirstMax<K extends string | number>(
+    memories: AgentEntity[],
+    keyOf: (memory: AgentEntity) => K
+  ): AgentEntity {
+    return memories.reduce((best, m) => (keyOf(m) > keyOf(best) ? m : best));
   }
 
   /**
@@ -359,11 +367,7 @@ export class ConflictResolver extends EventEmitter {
    * @internal
    */
   private resolveHighestConfidence(memories: AgentEntity[]): AgentEntity {
-    return memories.reduce((best, m) => {
-      const bestConf = best.confidence ?? 0.5;
-      const mConf = m.confidence ?? 0.5;
-      return mConf > bestConf ? m : best;
-    });
+    return this.pickFirstMax(memories, (m) => m.confidence ?? 0.5);
   }
 
   /**
@@ -371,11 +375,7 @@ export class ConflictResolver extends EventEmitter {
    * @internal
    */
   private resolveMostConfirmations(memories: AgentEntity[]): AgentEntity {
-    return memories.reduce((best, m) => {
-      const bestConf = best.confirmationCount ?? 0;
-      const mConf = m.confirmationCount ?? 0;
-      return mConf > bestConf ? m : best;
-    });
+    return this.pickFirstMax(memories, (m) => m.confirmationCount ?? 0);
   }
 
   /**
@@ -386,12 +386,9 @@ export class ConflictResolver extends EventEmitter {
     memories: AgentEntity[],
     agents: Map<string, AgentMetadata>
   ): AgentEntity {
-    return memories.reduce((best, m) => {
-      const bestAgent = best.agentId ? agents.get(best.agentId) : undefined;
-      const mAgent = m.agentId ? agents.get(m.agentId) : undefined;
-      const bestTrust = bestAgent?.trustLevel ?? 0.5;
-      const mTrust = mAgent?.trustLevel ?? 0.5;
-      return mTrust > bestTrust ? m : best;
+    return this.pickFirstMax(memories, (m) => {
+      const agent = m.agentId ? agents.get(m.agentId) : undefined;
+      return agent?.trustLevel ?? 0.5;
     });
   }
 
