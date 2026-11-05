@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `tools/create-dependency-graph` is an ES module package (`"type": "module"`, tsc `NodeNext`). Node no longer re-parses the generator on each `tools:deps` and `tools:check-census` run, and prints no `MODULE_TYPELESS_PACKAGE_JSON` warning. The built `dist/` output is ESM and runs the same.
+
 ## [4.5.0] - 2026-11-05
 
 ### Performance
