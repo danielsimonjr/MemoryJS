@@ -130,8 +130,8 @@ describe('reindex error path', () => {
         ok: false,
         failed: 2,
         result: {
-          ranked: { ok: false, detail: 'EISDIR: illegal operation on a directory, read' },
-          spell: { ok: false, detail: 'EISDIR: illegal operation on a directory, read' },
+          ranked: { ok: false, detail: expect.stringMatching(/^EISDIR: illegal operation on a directory, read( '.*')?$/) },
+          spell: { ok: false, detail: expect.stringMatching(/^EISDIR: illegal operation on a directory, read( '.*')?$/) },
         },
       });
       expect(errorLines(h.errorSpy)).toEqual(['[ERROR] ✗ 2 index(es) failed to rebuild']);

@@ -98,5 +98,16 @@ export async function cleanupCliHarness(h: CliHarness): Promise<void> {
  * @returns One string per `console.error` call, in call order.
  */
 export function errorLines(errorSpy: MockInstance): string[] {
-  return errorSpy.mock.calls.map((call) => stripVTControlCharacters(String(call[0])));
+  return errorSpy.mock.calls.map((call) => withoutSyscallPath(stripVTControlCharacters(String(call[0]))));
+}
+
+/**
+ * Removes the quoted path that newer Node versions add after the syscall of an EISDIR error message,
+ * for example `EISDIR: illegal operation on a directory, read '<path>'`. The tests then match on every Node version.
+ *
+ * @param message - One error message.
+ * @returns The message without a trailing quoted path.
+ */
+export function withoutSyscallPath(message: string): string {
+  return message.replace(/^(.*\bEISDIR: illegal operation on a directory, \w+) '[^']*'$/, '$1');
 }
