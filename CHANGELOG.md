@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.5.0] - 2026-11-05
+
 ### Performance
 
 - Audit OPT-1..13 (docs/development/AUDIT_2026-11-04.md): hot-path and delta-write optimizations across storage, search, hierarchy, governance and compression. OPT-14/15 are deferred.
