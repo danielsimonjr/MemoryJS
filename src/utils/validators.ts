@@ -111,35 +111,58 @@ export function range(field: string, min: number, max: number, message?: string)
 }
 
 /**
- * Require a numeric field to be at least a minimum value.
+ * Builds a rule that applies a numeric bound to a field. A non-number value passes.
+ * A number runs `passes`. The message is `message` when given, else `defaultMessage`.
+ *
+ * @param name - Rule name recorded on the result (e.g. `min`)
+ * @param field - Field path to read
+ * @param passes - Predicate applied to numeric values
+ * @param defaultMessage - Message used when no custom message is supplied
+ * @param message - Optional custom message
  */
-export function min(field: string, minValue: number, message?: string): EntityValidationRule {
+function numericBoundRule(
+  name: string,
+  field: string,
+  passes: (value: number) => boolean,
+  defaultMessage: string,
+  message?: string
+): EntityValidationRule {
   return {
-    name: 'min',
+    name,
     field,
-    message: message ?? `${field} must be at least ${minValue}`,
+    message: message ?? defaultMessage,
     validate: (entity: Entity): EntityRuleResult => {
       const value = getFieldByDotPath(entity, field);
       if (typeof value !== 'number') return { valid: true };
-      return { valid: value >= minValue };
+      return { valid: passes(value) };
     },
   };
+}
+
+/**
+ * Require a numeric field to be at least a minimum value.
+ */
+export function min(field: string, minValue: number, message?: string): EntityValidationRule {
+  return numericBoundRule(
+    'min',
+    field,
+    (value) => value >= minValue,
+    `${field} must be at least ${minValue}`,
+    message
+  );
 }
 
 /**
  * Require a numeric field to be at most a maximum value.
  */
 export function max(field: string, maxValue: number, message?: string): EntityValidationRule {
-  return {
-    name: 'max',
+  return numericBoundRule(
+    'max',
     field,
-    message: message ?? `${field} must be at most ${maxValue}`,
-    validate: (entity: Entity): EntityRuleResult => {
-      const value = getFieldByDotPath(entity, field);
-      if (typeof value !== 'number') return { valid: true };
-      return { valid: value <= maxValue };
-    },
-  };
+    (value) => value <= maxValue,
+    `${field} must be at most ${maxValue}`,
+    message
+  );
 }
 
 /**

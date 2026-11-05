@@ -163,21 +163,7 @@ export class IncrementalIndexer {
    * @param text - Text content to embed
    */
   queueCreate(entityName: string, text: string): void {
-    if (this.isShutdown) {
-      throw new Error('Indexer is shutdown');
-    }
-
-    // Remove any existing operations for this entity
-    this.removeFromQueue(entityName);
-
-    this.queue.push({
-      type: 'create',
-      entityName,
-      text,
-      queuedAt: Date.now(),
-    });
-
-    this.checkAutoFlush();
+    this.enqueue({ type: 'create', entityName, text });
   }
 
   /**
@@ -187,21 +173,7 @@ export class IncrementalIndexer {
    * @param text - Updated text content to embed
    */
   queueUpdate(entityName: string, text: string): void {
-    if (this.isShutdown) {
-      throw new Error('Indexer is shutdown');
-    }
-
-    // Remove any existing operations for this entity
-    this.removeFromQueue(entityName);
-
-    this.queue.push({
-      type: 'update',
-      entityName,
-      text,
-      queuedAt: Date.now(),
-    });
-
-    this.checkAutoFlush();
+    this.enqueue({ type: 'update', entityName, text });
   }
 
   /**
@@ -210,18 +182,25 @@ export class IncrementalIndexer {
    * @param entityName - Name of the entity to delete
    */
   queueDelete(entityName: string): void {
+    this.enqueue({ type: 'delete', entityName });
+  }
+
+  /**
+   * Shared queueing path for all operation types: rejects after shutdown,
+   * drops any earlier queued operation for the same entity (last write wins),
+   * appends the new operation with a timestamp, and checks the auto-flush threshold.
+   *
+   * @param op - Operation to queue, without `queuedAt` (stamped here)
+   */
+  private enqueue(op: Omit<IndexOperation, 'queuedAt'>): void {
     if (this.isShutdown) {
       throw new Error('Indexer is shutdown');
     }
 
     // Remove any existing operations for this entity
-    this.removeFromQueue(entityName);
+    this.removeFromQueue(op.entityName);
 
-    this.queue.push({
-      type: 'delete',
-      entityName,
-      queuedAt: Date.now(),
-    });
+    this.queue.push({ ...op, queuedAt: Date.now() });
 
     this.checkAutoFlush();
   }

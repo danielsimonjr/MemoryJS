@@ -277,15 +277,9 @@ export class EventManager {
   async queryEvents(filter: EventQueryFilter = {}): Promise<EventRecord[]> {
     let candidates: string[];
     if (filter.actor !== undefined) {
-      const rels = await this.relationManager.getRelations(filter.actor);
-      candidates = rels
-        .filter(r => r.from === filter.actor && r.relationType === ACTOR_OF_RELATION)
-        .map(r => r.to);
+      candidates = await this.candidatesVia(filter.actor, ACTOR_OF_RELATION, 'from');
     } else if (filter.target !== undefined) {
-      const rels = await this.relationManager.getRelations(filter.target);
-      candidates = rels
-        .filter(r => r.to === filter.target && r.relationType === TARGETED_RELATION)
-        .map(r => r.from);
+      candidates = await this.candidatesVia(filter.target, TARGETED_RELATION, 'to');
     } else {
       const entities = await this.entityManager.listEntities({ entityType: EVENT_ENTITY_TYPE });
       candidates = entities.map(e => e.name);
@@ -326,15 +320,9 @@ export class EventManager {
   async whoDidWhat(filter: WhoDidWhatFilter = {}): Promise<WhoDidWhatEntry[]> {
     let candidates: string[];
     if (filter.target !== undefined) {
-      const rels = await this.relationManager.getRelations(filter.target);
-      candidates = rels
-        .filter(r => r.to === filter.target && r.relationType === TARGETED_RELATION)
-        .map(r => r.from);
+      candidates = await this.candidatesVia(filter.target, TARGETED_RELATION, 'to');
     } else if (filter.context !== undefined) {
-      const rels = await this.relationManager.getRelations(filter.context);
-      candidates = rels
-        .filter(r => r.to === filter.context && r.relationType === OCCURRED_IN_RELATION)
-        .map(r => r.from);
+      candidates = await this.candidatesVia(filter.context, OCCURRED_IN_RELATION, 'to');
     } else {
       const entities = await this.entityManager.listEntities({ entityType: EVENT_ENTITY_TYPE });
       candidates = entities.map(e => e.name);
@@ -362,6 +350,27 @@ export class EventManager {
   // ----------------------------------------------------------
   // Internals
   // ----------------------------------------------------------
+
+  /**
+   * Event names linked to `anchor` by `relationType`, where `anchor` sits on
+   * `anchorEndpoint` (`'from'` or `'to'`). Returns the opposite endpoint of
+   * each matching relation. Uses the relation index for `anchor` (O(degree)).
+   *
+   * @param anchor - Entity whose relations are scanned
+   * @param relationType - Relation type to keep
+   * @param anchorEndpoint - Which endpoint of the relation `anchor` must occupy
+   * @returns Candidate event names (may contain duplicates)
+   */
+  private async candidatesVia(
+    anchor: string,
+    relationType: string,
+    anchorEndpoint: 'from' | 'to',
+  ): Promise<string[]> {
+    const rels = await this.relationManager.getRelations(anchor);
+    return rels
+      .filter(r => r[anchorEndpoint] === anchor && r.relationType === relationType)
+      .map(r => (anchorEndpoint === 'from' ? r.to : r.from));
+  }
 
   private async collectEvents(
     candidates: readonly string[],

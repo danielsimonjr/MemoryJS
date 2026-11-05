@@ -58,6 +58,7 @@ import type {
 import { createHash } from 'crypto';
 import type { ReflectionScope } from '../types/agent-memory.js';
 import { fillDefaults } from '../utils/fillDefaults.js';
+import { assertNonEmptyString } from '../utils/validation.js';
 
 /**
  * Configuration for ConsolidationPipeline.
@@ -1742,13 +1743,7 @@ export class ReflectionStage implements PipelineStage {
    * `sourceSessionId` on the resulting reflection.
    */
   async runOnSessionEnd(sessionId: string): Promise<StageResult> {
-    if (typeof sessionId !== 'string' || sessionId.trim().length === 0) {
-      throw new Error(
-        `ReflectionStage.runOnSessionEnd: sessionId must be a non-empty string; received ${
-          typeof sessionId === 'string' ? `'${sessionId}'` : typeof sessionId
-        }`
-      );
-    }
+    assertNonEmptyString(sessionId, 'sessionId', 'ReflectionStage.runOnSessionEnd');
     return this.runInternal(sessionId);
   }
 
@@ -1964,13 +1959,7 @@ export class HeuristicExtractionStage implements PipelineStage {
    * cycle.
    */
   async runOnResolution(failureId: string): Promise<StageResult> {
-    if (typeof failureId !== 'string' || failureId.trim().length === 0) {
-      throw new Error(
-        `HeuristicExtractionStage.runOnResolution: failureId must be a non-empty string; received ${
-          typeof failureId === 'string' ? `'${failureId}'` : typeof failureId
-        }`,
-      );
-    }
+    assertNonEmptyString(failureId, 'failureId', 'HeuristicExtractionStage.runOnResolution');
     return this.runInternal(failureId);
   }
 
