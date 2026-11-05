@@ -57,7 +57,6 @@ export interface PiiRedactionOption {
 /** Shared default redactor — stateless, safe to reuse across calls. */
 const DEFAULT_EXPORT_REDACTOR = new PiiRedactor();
 
-/** Decode the five XML entities emitted by MemoryJS exporters. */
 /**
  * Reads the text of a GraphML `<data key="...">` element from one node or edge body.
  * Returns the raw text between the tags (no entity decoding), or `undefined` when the key is absent.
@@ -73,6 +72,7 @@ export function readGraphMlDataValue(xml: string, key: string): string | undefin
   return match ? match[1] : undefined;
 }
 
+/** Decode the five XML entities emitted by MemoryJS exporters. */
 function decodeXmlEntities(value: string): string {
   // `&amp;` must be decoded last so double-encoded values such as
   // `&amp;lt;` remain the literal text `&lt;`, rather than becoming `<`.

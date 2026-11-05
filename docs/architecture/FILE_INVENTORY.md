@@ -76,7 +76,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/DreamEngine.ts` | src | reachable | 646 |
 | `src/agent/EntropyFilter.ts` | src | reachable | 179 |
 | `src/agent/EpisodicMemoryManager.ts` | src | reachable | 531 |
-| `src/agent/events/EventManager.ts` | src | reachable | 517 |
+| `src/agent/events/EventManager.ts` | src | reachable | 513 |
 | `src/agent/events/index.ts` | src | reachable | 20 |
 | `src/agent/ExclusionManager.ts` | src | reachable | 210 |
 | `src/agent/ExperienceExtractor.ts` | src | reachable | 435 |
@@ -93,7 +93,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/MemoryFormatter.ts` | src | reachable | 518 |
 | `src/agent/MemoryValidator.ts` | src | reachable | 332 |
 | `src/agent/MultiAgentMemoryManager.ts` | src | reachable | 1150 |
-| `src/agent/ObservationDedupManager.ts` | src | reachable | 245 |
+| `src/agent/ObservationDedupManager.ts` | src | reachable | 243 |
 | `src/agent/ObserverPipeline.ts` | src | reachable | 380 |
 | `src/agent/PatternDetector.ts` | src | reachable | 372 |
 | `src/agent/PlanManager.ts` | src | reachable | 543 |
@@ -355,7 +355,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/utils/searchCache.ts` | src | reachable | 523 |
 | `src/utils/sidecarPath.ts` | src | reachable | 40 |
 | `src/utils/taskScheduler.ts` | src | reachable | 642 |
-| `src/utils/textSimilarity.ts` | src | reachable | 210 |
+| `src/utils/textSimilarity.ts` | src | reachable | 214 |
 | `src/utils/timing.ts` | src | reachable | 100 |
 | `src/utils/tokenEstimate.ts` | src | reachable | 28 |
 | `src/utils/unrefInterval.ts` | src | reachable | 32 |

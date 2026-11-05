@@ -69,6 +69,10 @@ export const ENGLISH_STOPWORDS_SMALL: ReadonlySet<string> = new Set([
  * and return the set of tokens that are at least `minLength` characters
  * long and not in `stopwords`.
  *
+ * The text is lowercased here, so passing already-normalised (lowercase)
+ * text is idempotent; callers that previously tokenised raw text without
+ * lowercasing get a different result for mixed-case input.
+ *
  * @param text - Input text (lowercased internally)
  * @param stopwords - Tokens to exclude
  * @param minLength - Minimum token length to keep

@@ -270,7 +270,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 517
+      "loc": 513
     },
     {
       "file": "src/agent/events/index.ts",
@@ -389,7 +389,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 245
+      "loc": 243
     },
     {
       "file": "src/agent/ObserverPipeline.ts",
@@ -2223,7 +2223,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 210
+      "loc": 214
     },
     {
       "file": "src/utils/timing.ts",

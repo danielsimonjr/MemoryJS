@@ -240,5 +240,3 @@ function normalizeTypeFilter(t: string | string[] | undefined): Set<string> | un
   if (t === undefined) return undefined;
   return new Set(Array.isArray(t) ? t : [t]);
 }
-
-
