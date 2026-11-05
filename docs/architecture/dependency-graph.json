@@ -2,10 +2,10 @@
   "metadata": {
     "name": "@danielsimonjr/memoryjs",
     "version": "4.4.0",
-    "lastUpdated": "2026-11-04",
-    "totalFiles": 317,
+    "lastUpdated": "2026-11-05",
+    "totalFiles": 319,
     "totalModules": 12,
-    "totalExports": 2186
+    "totalExports": 2216
   },
   "entryPoints": [
     {
@@ -1248,6 +1248,12 @@
             "imports": [
               "fillDefaults"
             ]
+          },
+          {
+            "file": "../utils/validation.js",
+            "imports": [
+              "assertNonEmptyString"
+            ]
           }
         ],
         "exports": [
@@ -1456,6 +1462,12 @@
             "file": "../utils/fillDefaults.js",
             "imports": [
               "fillDefaults"
+            ]
+          },
+          {
+            "file": "../utils/tokenEstimate.js",
+            "imports": [
+              "estimateTokensFromText"
             ]
           },
           {
@@ -2451,7 +2463,9 @@
           {
             "file": "../utils/textSimilarity.js",
             "imports": [
-              "jaccard"
+              "ENGLISH_STOPWORDS_SMALL",
+              "jaccard",
+              "tokenSetWithoutStopwords"
             ]
           },
           {
@@ -2509,7 +2523,14 @@
         "description": "Configuration for `ImportanceScorer`. The three weights combine the length, keyword and overlap signals. The defaults ar",
         "externalDependencies": [],
         "nodeDependencies": [],
-        "internalDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../utils/textSimilarity.js",
+            "imports": [
+              "tokenizeUnicodeToSet"
+            ]
+          }
+        ],
         "exports": [
           "ImportanceScorer"
         ],
@@ -2598,7 +2619,8 @@
           {
             "file": "../utils/textSimilarity.js",
             "imports": [
-              "jaccard"
+              "jaccard",
+              "tokenizeUnicodeToSet"
             ]
           },
           {
@@ -2696,6 +2718,12 @@
             "file": "../utils/fillDefaults.js",
             "imports": [
               "fillDefaults"
+            ]
+          },
+          {
+            "file": "../utils/tokenEstimate.js",
+            "imports": [
+              "estimateTokensFromText"
             ]
           }
         ],
@@ -2842,7 +2870,9 @@
           {
             "file": "../utils/textSimilarity.js",
             "imports": [
-              "jaccard"
+              "ENGLISH_STOPWORDS_SMALL",
+              "jaccard",
+              "tokenSetWithoutStopwords"
             ]
           },
           {
@@ -3109,6 +3139,7 @@
           }
         ],
         "exports": [
+          "dedupByKey",
           "ProjectContextManager"
         ],
         "classes": [
@@ -3118,6 +3149,9 @@
           "ProjectContextUpsertInput",
           "ProjectContextManagerConfig",
           "ForContextOptions"
+        ],
+        "functions": [
+          "dedupByKey"
         ]
       },
       "src/agent/ProspectiveMemoryManager.ts": {
@@ -6107,6 +6141,8 @@
           {
             "file": "./canonical.js",
             "imports": [
+              "compareEdges",
+              "compareString",
               "graphDigest"
             ]
           }
@@ -6468,7 +6504,9 @@
           {
             "file": "./canonical.js",
             "imports": [
-              "canonicalJson"
+              "canonicalJson",
+              "compareEdges",
+              "compareString"
             ]
           },
           {
@@ -7095,7 +7133,9 @@
           "graphDigest",
           "toolCatalogHash",
           "storageKey",
-          "evaluationFingerprint"
+          "evaluationFingerprint",
+          "compareString",
+          "compareEdges"
         ],
         "functions": [
           "canonicalJson",
@@ -7103,7 +7143,9 @@
           "graphDigest",
           "toolCatalogHash",
           "storageKey",
-          "evaluationFingerprint"
+          "evaluationFingerprint",
+          "compareString",
+          "compareEdges"
         ]
       },
       "src/agent/procedural/graph/index.ts": {
@@ -10223,6 +10265,12 @@
             ]
           },
           {
+            "file": "./storageCache.js",
+            "imports": [
+              "deleteNamesFromSnapshot"
+            ]
+          },
+          {
             "file": "../utils/index.js",
             "imports": [
               "BatchCreateEntitiesSchema",
@@ -10479,6 +10527,8 @@
             "file": "./storageCache.js",
             "imports": [
               "deleteNamesFromSnapshot",
+              "entitiesByTypeFromIndexes",
+              "rebuildRelationIndexes",
               "deleteRelationsFromSnapshot",
               "bindStorageCacheState",
               "relationKeyOf",
@@ -11412,6 +11462,13 @@
             "imports": [
               "RefConflictError"
             ]
+          },
+          {
+            "file": "../utils/indexes.js",
+            "imports": [
+              "addToSetBucket",
+              "removeFromSetBucket"
+            ]
           }
         ],
         "exports": [
@@ -11615,6 +11672,8 @@
             "file": "./storageCache.js",
             "imports": [
               "deleteNamesFromSnapshot",
+              "entitiesByTypeFromIndexes",
+              "rebuildRelationIndexes",
               "deleteRelationsFromSnapshot",
               "bindStorageCacheState",
               "relationKeyOf",
@@ -11865,6 +11924,7 @@
             "file": "../../utils/mutateMapWithFlushRollback.js",
             "imports": [
               "clearMapWithFlushRollback",
+              "deleteFromMapWithFlushRollback",
               "mutateMapWithFlushRollback"
             ]
           },
@@ -12376,6 +12436,7 @@
               "SegmentId",
               "SegmentRouter",
               "assertSegmentOwnership",
+              "assertValidSegmentId",
               "mergeSegmentsIntoGraph",
               "splitGraphIntoSegments"
             ]
@@ -12422,6 +12483,7 @@
           "fnv1a32",
           "splitGraphIntoSegments",
           "mergeSegmentsIntoGraph",
+          "assertValidSegmentId",
           "assertSegmentOwnership",
           "FnvSegmentRouter",
           "InMemorySegmentStorage",
@@ -12442,6 +12504,7 @@
         "functions": [
           "splitGraphIntoSegments",
           "mergeSegmentsIntoGraph",
+          "assertValidSegmentId",
           "assertSegmentOwnership"
         ]
       },
@@ -12505,6 +12568,8 @@
           "upsertEntityInCache",
           "upsertRelationInCache",
           "removeEntitiesFromIndexes",
+          "entitiesByTypeFromIndexes",
+          "rebuildRelationIndexes",
           "deleteNamesFromSnapshot",
           "deleteRelationsFromSnapshot"
         ],
@@ -12517,6 +12582,8 @@
           "upsertEntityInCache",
           "upsertRelationInCache",
           "removeEntitiesFromIndexes",
+          "entitiesByTypeFromIndexes",
+          "rebuildRelationIndexes",
           "deleteNamesFromSnapshot",
           "deleteRelationsFromSnapshot"
         ]
@@ -13220,6 +13287,7 @@
           "INGEST_DERIVED_FROM_RELATION",
           "INGEST_MANIFEST_ENTITY_TYPE",
           "INGEST_CHUNK_PREFIX",
+          "readGraphMlDataValue",
           "IOManager"
         ],
         "classes": [
@@ -13240,6 +13308,9 @@
           "VisualizeOptions",
           "VisualizeOptions",
           "IOManagerOptions"
+        ],
+        "functions": [
+          "readGraphMlDataValue"
         ],
         "constants": [
           "INGEST_DERIVED_FROM_RELATION",
@@ -14165,7 +14236,8 @@
           {
             "file": "../utils/searchCache.js",
             "imports": [
-              "evictOldest"
+              "evictOldest",
+              "pruneExpiredEntries"
             ]
           }
         ],
@@ -15110,7 +15182,8 @@
           {
             "file": "../utils/searchCache.js",
             "imports": [
-              "evictOldest"
+              "evictOldest",
+              "pruneExpiredEntries"
             ]
           }
         ],
@@ -16914,6 +16987,7 @@
         "nodeDependencies": [],
         "internalDependencies": [],
         "exports": [
+          "snapshotTierStats",
           "makeFreshStats",
           "InMemoryTier",
           "HotOnlyIndex"
@@ -16928,6 +17002,7 @@
           "ITieredIndex"
         ],
         "functions": [
+          "snapshotTierStats",
           "makeFreshStats"
         ]
       },
@@ -16975,7 +17050,8 @@
           {
             "file": "../../utils/mutateMapWithFlushRollback.js",
             "imports": [
-              "clearMapWithFlushRollback"
+              "clearMapWithFlushRollback",
+              "deleteFromMapWithFlushRollback"
             ]
           },
           {
@@ -17016,7 +17092,8 @@
               "IIndexTier",
               "ITieredIndex",
               "TierAccessStats",
-              "makeFreshStats"
+              "makeFreshStats",
+              "snapshotTierStats"
             ]
           },
           {
@@ -19587,7 +19664,9 @@
               "NameIndex",
               "TypeIndex",
               "LowercaseCache",
-              "RelationIndex"
+              "RelationIndex",
+              "addToSetBucket",
+              "removeFromSetBucket"
             ],
             "reExport": true
           },
@@ -19599,7 +19678,25 @@
               "clearAllSearchCaches",
               "getAllCacheStats",
               "cleanupAllCaches",
+              "forEachSearchCache",
+              "pruneExpiredEntries",
               "CacheStats"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./mutateMapWithFlushRollback.js",
+            "imports": [
+              "mutateMapWithFlushRollback",
+              "clearMapWithFlushRollback",
+              "deleteFromMapWithFlushRollback"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./validation.js",
+            "imports": [
+              "assertNonEmptyString"
             ],
             "reExport": true
           },
@@ -19905,9 +20002,19 @@
             "imports": [
               "tokenizeStripped",
               "tokenizeStripped",
+              "tokenizeUnicodeToSet",
+              "tokenSetWithoutStopwords",
+              "ENGLISH_STOPWORDS_SMALL",
               "buildTFVector",
               "cosineSimilarity",
               "calculateTextSimilarity"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./tokenEstimate.js",
+            "imports": [
+              "estimateTokensFromText"
             ],
             "reExport": true
           },
@@ -20046,12 +20153,20 @@
           "TypeIndex",
           "LowercaseCache",
           "RelationIndex",
+          "addToSetBucket",
+          "removeFromSetBucket",
           "SearchCache",
           "searchCaches",
           "clearAllSearchCaches",
           "getAllCacheStats",
           "cleanupAllCaches",
+          "forEachSearchCache",
+          "pruneExpiredEntries",
           "CacheStats",
+          "mutateMapWithFlushRollback",
+          "clearMapWithFlushRollback",
+          "deleteFromMapWithFlushRollback",
+          "assertNonEmptyString",
           "deepCopyPlain",
           "deepFreeze",
           "borrowGraphView",
@@ -20249,9 +20364,13 @@
           "AcquireOptions",
           "tokenizeStripped",
           "textTokenize",
+          "tokenizeUnicodeToSet",
+          "tokenSetWithoutStopwords",
+          "ENGLISH_STOPWORDS_SMALL",
           "buildTFVector",
           "textCosineSimilarity",
           "calculateTextSimilarity",
+          "estimateTokensFromText",
           "CachePressureCoordinator",
           "PressureAwareCache",
           "CachePressureSnapshot",
@@ -20344,12 +20463,20 @@
           "TypeIndex",
           "LowercaseCache",
           "RelationIndex",
+          "addToSetBucket",
+          "removeFromSetBucket",
           "SearchCache",
           "searchCaches",
           "clearAllSearchCaches",
           "getAllCacheStats",
           "cleanupAllCaches",
+          "forEachSearchCache",
+          "pruneExpiredEntries",
           "CacheStats",
+          "mutateMapWithFlushRollback",
+          "clearMapWithFlushRollback",
+          "deleteFromMapWithFlushRollback",
+          "assertNonEmptyString",
           "deepCopyPlain",
           "deepFreeze",
           "borrowGraphView",
@@ -20546,9 +20673,13 @@
           "AsyncMutexOptions",
           "AcquireOptions",
           "tokenizeStripped",
+          "tokenizeUnicodeToSet",
+          "tokenSetWithoutStopwords",
+          "ENGLISH_STOPWORDS_SMALL",
           "buildTFVector",
           "cosineSimilarity",
           "calculateTextSimilarity",
+          "estimateTokensFromText",
           "CachePressureCoordinator",
           "PressureAwareCache",
           "CachePressureSnapshot",
@@ -20589,6 +20720,8 @@
           }
         ],
         "exports": [
+          "addToSetBucket",
+          "removeFromSetBucket",
           "computeLowercase",
           "NameIndex",
           "TypeIndex",
@@ -20604,6 +20737,8 @@
           "ObservationIndex"
         ],
         "functions": [
+          "addToSetBucket",
+          "removeFromSetBucket",
           "computeLowercase"
         ]
       },
@@ -20674,11 +20809,13 @@
         "internalDependencies": [],
         "exports": [
           "mutateMapWithFlushRollback",
-          "clearMapWithFlushRollback"
+          "clearMapWithFlushRollback",
+          "deleteFromMapWithFlushRollback"
         ],
         "functions": [
           "mutateMapWithFlushRollback",
-          "clearMapWithFlushRollback"
+          "clearMapWithFlushRollback",
+          "deleteFromMapWithFlushRollback"
         ]
       },
       "src/utils/nextMonotonicIsoTimestamp.ts": {
@@ -20995,11 +21132,13 @@
           "bumpEntityGeneration",
           "bumpRelationGeneration",
           "getGraphGenerations",
+          "forEachSearchCache",
           "clearAllSearchCaches",
           "getAllCacheStats",
           "cleanupAllCaches",
           "evictOldest",
           "evictInsertionOrder",
+          "pruneExpiredEntries",
           "cleanupExpiredEntries",
           "SearchCache"
         ],
@@ -21014,11 +21153,13 @@
           "bumpEntityGeneration",
           "bumpRelationGeneration",
           "getGraphGenerations",
+          "forEachSearchCache",
           "clearAllSearchCaches",
           "getAllCacheStats",
           "cleanupAllCaches",
           "evictOldest",
           "evictInsertionOrder",
+          "pruneExpiredEntries",
           "cleanupExpiredEntries"
         ],
         "constants": [
@@ -21118,8 +21259,11 @@
         "nodeDependencies": [],
         "internalDependencies": [],
         "exports": [
+          "ENGLISH_STOPWORDS_SMALL",
           "tokenizeStripped",
           "tokenizeToSet",
+          "tokenizeUnicodeToSet",
+          "tokenSetWithoutStopwords",
           "tokenizeAlphanumeric",
           "buildTFVector",
           "cosineParts",
@@ -21130,12 +21274,17 @@
         "functions": [
           "tokenizeStripped",
           "tokenizeToSet",
+          "tokenizeUnicodeToSet",
+          "tokenSetWithoutStopwords",
           "tokenizeAlphanumeric",
           "buildTFVector",
           "cosineParts",
           "cosineSimilarity",
           "calculateTextSimilarity",
           "jaccard"
+        ],
+        "constants": [
+          "ENGLISH_STOPWORDS_SMALL"
         ]
       },
       "src/utils/timing.ts": {
@@ -21158,6 +21307,18 @@
           "withTimeout"
         ]
       },
+      "src/utils/tokenEstimate.ts": {
+        "description": "Token Estimation Helpers",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "estimateTokensFromText"
+        ],
+        "functions": [
+          "estimateTokensFromText"
+        ]
+      },
       "src/utils/unrefInterval.ts": {
         "description": "unrefInterval module",
         "externalDependencies": [],
@@ -21173,6 +21334,18 @@
         "functions": [
           "beginUnrefInterval",
           "stopUnrefInterval"
+        ]
+      },
+      "src/utils/validation.ts": {
+        "description": "Shared validation helpers for runtime argument guards.",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "assertNonEmptyString"
+        ],
+        "functions": [
+          "assertNonEmptyString"
         ]
       },
       "src/utils/validators.ts": {
@@ -21719,7 +21892,9 @@
           "src/utils/taskScheduler.ts",
           "src/utils/textSimilarity.ts",
           "src/utils/timing.ts",
+          "src/utils/tokenEstimate.ts",
           "src/utils/unrefInterval.ts",
+          "src/utils/validation.ts",
           "src/utils/validators.ts"
         ]
       },
@@ -21738,32 +21913,32 @@
       "src/sqlite.ts",
       "src/workers/levenshteinWorker.ts"
     ],
-    "reachableCount": 317,
+    "reachableCount": 319,
     "dormantCount": 0,
     "orphaned": [],
     "testOnly": []
   },
   "statistics": {
-    "totalTypeScriptFiles": 317,
+    "totalTypeScriptFiles": 319,
     "totalModules": 12,
-    "totalLinesOfCode": 107017,
-    "totalExports": 2186,
+    "totalLinesOfCode": 107247,
+    "totalExports": 2216,
     "totalClasses": 238,
     "totalInterfaces": 638,
-    "totalFunctions": 392,
+    "totalFunctions": 409,
     "totalTypeGuards": 31,
     "totalEnums": 4,
-    "totalConstants": 126,
-    "totalReExports": 1415,
+    "totalConstants": 127,
+    "totalReExports": 1427,
     "totalTypeOnlyImports": 511,
     "runtimeCircularDeps": 0,
     "typeOnlyCircularDeps": 8,
     "entryRoots": 4,
-    "reachableFiles": 317,
+    "reachableFiles": 319,
     "dormantFiles": 0,
     "orphanedFiles": 0,
     "testOnlyFiles": 0,
     "unusedFilesCount": 0,
-    "unusedExportsCount": 61
+    "unusedExportsCount": 62
   }
 }

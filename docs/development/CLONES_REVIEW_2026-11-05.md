@@ -78,4 +78,29 @@ existing tests unchanged; files < 500 lines (src) / < 400 (tests).
 
 ## 4. Result
 
-_Filled in after the consolidation lands._
+All 23 §1 items landed (helper names differ in two places: CL-13 applies to `HotOnlyIndex`,
+the class the review called `SingleTierIndex`; CL-18's helper is `runSchemaValidation`
+because `validateWithSchema` already existed). Every new exported helper has a doc comment
+and a direct unit test; the suite grew from 420 files / 10522 tests to 442 / 10693 with no
+new skips.
+
+| Threshold | Units | Exact groups | Near pairs |
+|---|---|---|---|
+| `--min-nodes=30` before | 1952 | 30 (61 units) | 141 |
+| `--min-nodes=30` after | 1926 | 13 (26 units) | 103 |
+| `--min-nodes=50` before | 1379 | 0 | 16 |
+| `--min-nodes=50` after | 1377 | 0 | 13 |
+
+The 13 remaining exact groups at 30 nodes are all §2 Keep decisions or three-line wrappers
+over a shared helper: `onScored`/`onEvent`; `addCue`/`addTag`; `appendEntitiesCompat`/
+`appendRelationsCompat`; the four `appendEntity(ies)`/`appendRelation(s)` pairs in
+`GraphStorage` and `SQLiteStorage`; `JsonlColumnStore.put`/`BrotliColdTier.put` and
+`JsonlColumnStore.clear`/`MapFileTier.clear` (both already delegate to the shared
+`mutateMapWithFlushRollback` helpers); `decodeXmlEntities`/`escapeHtml`;
+`validateImportedEntity`/`validateImportedRelation` (zod-style parse wrappers over different
+schemas, kept for the same reason as `validateEntity`/`validateRelation` before CL-18 — a
+shared wrapper would need a generic over two result types for two four-line functions);
+`guessMasculine`/`guessFeminine`; two `errors.ts` constructors.
+
+Re-run: `repo-tools clones . --src=src --min-nodes=30 --out=<dir>` (the `--out` path must be
+relative to the repo root; delete the output folder before committing).

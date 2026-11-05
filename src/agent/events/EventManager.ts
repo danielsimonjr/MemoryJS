@@ -354,12 +354,8 @@ export class EventManager {
   /**
    * Event names linked to `anchor` by `relationType`, where `anchor` sits on
    * `anchorEndpoint` (`'from'` or `'to'`). Returns the opposite endpoint of
-   * each matching relation. Uses the relation index for `anchor` (O(degree)).
-   *
-   * @param anchor - Entity whose relations are scanned
-   * @param relationType - Relation type to keep
-   * @param anchorEndpoint - Which endpoint of the relation `anchor` must occupy
-   * @returns Candidate event names (may contain duplicates)
+   * each matching relation (the result may contain duplicates). Uses the
+   * relation index for `anchor` (O(degree)).
    */
   private async candidatesVia(
     anchor: string,

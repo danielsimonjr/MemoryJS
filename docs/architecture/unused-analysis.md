@@ -4,7 +4,7 @@
 
 # Unused Files and Exports Analysis
 
-**Generated**: 2026-11-04
+**Generated**: 2026-11-05
 
 ## Summary
 
@@ -12,9 +12,9 @@
 - **Dormant files** (runtime code on disk, unreachable from any entry/build root): 0
   - **Orphaned (reachable from nothing — delete/wire candidates)**: 0
   - **Test-only (exercised by a test, ships nothing)**: 0
-- **Potentially unused exports**: 61
+- **Potentially unused exports**: 62
   - **Unreferenced anywhere (deletion candidates)**: 0
-  - **Referenced in-module (type contracts / helpers backing live exports)**: 61
+  - **Referenced in-module (type contracts / helpers backing live exports)**: 62
 
 Seeded reachability roots (4):
 
@@ -223,4 +223,5 @@ support exports that ARE used, so they cannot be deleted in isolation.
 ### `src/utils/searchCache.ts`
 
 - `GraphGenerationDependency` (type) — 2 in-file refs
+- `SearchCacheName` (type) — 3 in-file refs
 
