@@ -90,11 +90,25 @@ function sortKeys(value: unknown): unknown {
   return sorted;
 }
 
-function compareString(a: string, b: string): number {
+/**
+ * Code-unit order comparison for strings (`<` / `>`, not `localeCompare`).
+ *
+ * @param a - Left operand.
+ * @param b - Right operand.
+ * @returns Negative, zero or positive, as in a `sort` comparator.
+ */
+export function compareString(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 
-function compareEdges(
+/**
+ * Orders edges by `source`, then `target`, then `relation`, using {@link compareString}.
+ *
+ * @param a - Left edge.
+ * @param b - Right edge.
+ * @returns Negative, zero or positive, as in a `sort` comparator.
+ */
+export function compareEdges(
   a: { source: string; target: string; relation: string },
   b: { source: string; target: string; relation: string },
 ): number {

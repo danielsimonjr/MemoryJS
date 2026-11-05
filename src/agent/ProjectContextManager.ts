@@ -300,14 +300,24 @@ function dedupStrings(arr: string[]): string[] {
   return Array.from(new Set(arr));
 }
 
+/**
+ * Removes duplicate items by key. The last item with a given key wins, but the
+ * result keeps the position of the key's first occurrence.
+ *
+ * @param items - Items to dedupe; the input array is not modified.
+ * @param keyOf - Returns the key that identifies an item.
+ * @returns One item per distinct key, in first-occurrence key order.
+ */
+export function dedupByKey<T>(items: readonly T[], keyOf: (item: T) => string): T[] {
+  const byKey = new Map<string, T>();
+  for (const item of items) byKey.set(keyOf(item), item);
+  return Array.from(byKey.values());
+}
+
 function dedupCommands(arr: ProjectContextCommand[]): ProjectContextCommand[] {
-  const byName = new Map<string, ProjectContextCommand>();
-  for (const c of arr) byName.set(c.name, c);
-  return Array.from(byName.values());
+  return dedupByKey(arr, c => c.name);
 }
 
 function dedupGlossary(arr: ProjectContextGlossaryTerm[]): ProjectContextGlossaryTerm[] {
-  const byTerm = new Map<string, ProjectContextGlossaryTerm>();
-  for (const g of arr) byTerm.set(g.term, g);
-  return Array.from(byTerm.values());
+  return dedupByKey(arr, g => g.term);
 }

@@ -184,7 +184,7 @@ export class InMemorySegmentStorage implements ISegmentStorage {
   }
 
   async loadSegment(id: SegmentId): Promise<Segment> {
-    this.assertValidId(id);
+    assertValidSegmentId(id, this.segmentCount);
     const existing = this.segments.get(id);
     if (existing) {
       // Defensive copy so caller mutations don't bleed into our state.
@@ -198,7 +198,7 @@ export class InMemorySegmentStorage implements ISegmentStorage {
   }
 
   async saveSegment(segment: Segment): Promise<void> {
-    this.assertValidId(segment.id);
+    assertValidSegmentId(segment.id, this.segmentCount);
     // Validate ownership — every entity must route back to this segment id.
     // Catches caller bugs early; without it a misrouted write silently
     // breaks every later `loadAll()` consistency invariant.
@@ -231,12 +231,21 @@ export class InMemorySegmentStorage implements ISegmentStorage {
     return total;
   }
 
-  private assertValidId(id: SegmentId): void {
-    if (!Number.isInteger(id) || id < 0 || id >= this.segmentCount) {
-      throw new Error(
-        `Segment id must be an integer in [0, ${this.segmentCount}), got ${id}`,
-      );
-    }
+}
+
+/**
+ * Checks that a segment id is an integer in `[0, segmentCount)`.
+ * Throws the shared storage error text when it is not.
+ *
+ * @param id - Segment id to check.
+ * @param segmentCount - Number of segments the storage was configured with.
+ * @throws Error when `id` is not an integer in range.
+ */
+export function assertValidSegmentId(id: SegmentId, segmentCount: number): void {
+  if (!Number.isInteger(id) || id < 0 || id >= segmentCount) {
+    throw new Error(
+      `Segment id must be an integer in [0, ${segmentCount}), got ${id}`,
+    );
   }
 }
 

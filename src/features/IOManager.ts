@@ -58,6 +58,21 @@ export interface PiiRedactionOption {
 const DEFAULT_EXPORT_REDACTOR = new PiiRedactor();
 
 /** Decode the five XML entities emitted by MemoryJS exporters. */
+/**
+ * Reads the text of a GraphML `<data key="...">` element from one node or edge body.
+ * Returns the raw text between the tags (no entity decoding), or `undefined` when the key is absent.
+ * Only the first matching element is considered.
+ *
+ * @param xml - Inner XML of one `<node>` or `<edge>` element.
+ * @param key - The `key` attribute to look up; regex characters are escaped.
+ * @returns The element text, or `undefined` when no element has that key.
+ */
+export function readGraphMlDataValue(xml: string, key: string): string | undefined {
+  const dataRegex = new RegExp(`<data\\s+key="${escapeRegExp(key)}">([^<]*)<\\/data>`);
+  const match = dataRegex.exec(xml);
+  return match ? match[1] : undefined;
+}
+
 function decodeXmlEntities(value: string): string {
   // `&amp;` must be decoded last so double-encoded values such as
   // `&amp;lt;` remain the literal text `&lt;`, rather than becoming `<`.
@@ -1281,25 +1296,20 @@ export class IOManager {
       const nodeId = nodeMatch[1];
       const nodeContent = nodeMatch[2];
 
-      const getDataValue = (key: string): string | undefined => {
-        const dataRegex = new RegExp(`<data\\s+key="${escapeRegExp(key)}">([^<]*)<\\/data>`);
-        const match = dataRegex.exec(nodeContent);
-        return match ? match[1] : undefined;
-      };
 
       const rawImportance = decodeXmlEntities(
-        getDataValue('d5') || getDataValue('importance') || '',
+        readGraphMlDataValue(nodeContent, 'd5') || readGraphMlDataValue(nodeContent, 'importance') || '',
       ).trim();
       const entity = this.validateImportedEntity({
         name: decodeXmlEntities(nodeId),
-        entityType: decodeXmlEntities(getDataValue('d0') || getDataValue('entityType') || 'unknown'),
-        observations: decodeXmlEntities(getDataValue('d1') || getDataValue('observations') || '')
+        entityType: decodeXmlEntities(readGraphMlDataValue(nodeContent, 'd0') || readGraphMlDataValue(nodeContent, 'entityType') || 'unknown'),
+        observations: decodeXmlEntities(readGraphMlDataValue(nodeContent, 'd1') || readGraphMlDataValue(nodeContent, 'observations') || '')
           .split(';')
           .map(s => s.trim())
           .filter(s => s),
-        createdAt: decodeXmlEntities(getDataValue('d2') || getDataValue('createdAt') || '') || undefined,
-        lastModified: decodeXmlEntities(getDataValue('d3') || getDataValue('lastModified') || '') || undefined,
-        tags: decodeXmlEntities(getDataValue('d4') || getDataValue('tags') || '')
+        createdAt: decodeXmlEntities(readGraphMlDataValue(nodeContent, 'd2') || readGraphMlDataValue(nodeContent, 'createdAt') || '') || undefined,
+        lastModified: decodeXmlEntities(readGraphMlDataValue(nodeContent, 'd3') || readGraphMlDataValue(nodeContent, 'lastModified') || '') || undefined,
+        tags: decodeXmlEntities(readGraphMlDataValue(nodeContent, 'd4') || readGraphMlDataValue(nodeContent, 'tags') || '')
           .split(';')
           .map(s => s.trim())
           .filter(s => s),
@@ -1330,18 +1340,13 @@ export class IOManager {
       const source = sourceMatch[1];
       const target = targetMatch[1];
 
-      const getDataValue = (key: string): string | undefined => {
-        const dataRegex = new RegExp(`<data\\s+key="${escapeRegExp(key)}">([^<]*)<\\/data>`);
-        const match = dataRegex.exec(edgeContent);
-        return match ? match[1] : undefined;
-      };
 
       const relation = this.validateImportedRelation({
         from: decodeXmlEntities(source),
         to: decodeXmlEntities(target),
-        relationType: decodeXmlEntities(getDataValue('e0') || getDataValue('relationType') || 'related_to'),
-        createdAt: decodeXmlEntities(getDataValue('e1') || getDataValue('createdAt') || '') || undefined,
-        lastModified: decodeXmlEntities(getDataValue('e2') || getDataValue('lastModified') || '') || undefined,
+        relationType: decodeXmlEntities(readGraphMlDataValue(edgeContent, 'e0') || readGraphMlDataValue(edgeContent, 'relationType') || 'related_to'),
+        createdAt: decodeXmlEntities(readGraphMlDataValue(edgeContent, 'e1') || readGraphMlDataValue(edgeContent, 'createdAt') || '') || undefined,
+        lastModified: decodeXmlEntities(readGraphMlDataValue(edgeContent, 'e2') || readGraphMlDataValue(edgeContent, 'lastModified') || '') || undefined,
       }, 'GraphML', relations.length + 1);
 
       relations.push(relation);

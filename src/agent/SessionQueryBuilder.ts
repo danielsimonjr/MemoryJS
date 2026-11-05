@@ -206,10 +206,7 @@ export class SessionQueryBuilder {
    * @param hours - Number of hours
    */
   createdInLastHours(hours: number): this {
-    const now = new Date();
-    const past = new Date(now.getTime() - hours * 60 * 60 * 1000);
-    this.startDate = past.toISOString();
-    return this;
+    return this.createdWithinMs(hours * 60 * 60 * 1000);
   }
 
   /**
@@ -218,8 +215,17 @@ export class SessionQueryBuilder {
    * @param days - Number of days
    */
   createdInLastDays(days: number): this {
+    return this.createdWithinMs(days * 24 * 60 * 60 * 1000);
+  }
+
+  /**
+   * Sets the start date to `ms` milliseconds before now.
+   *
+   * @param ms - Window length in milliseconds.
+   */
+  private createdWithinMs(ms: number): this {
     const now = new Date();
-    const past = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    const past = new Date(now.getTime() - ms);
     this.startDate = past.toISOString();
     return this;
   }

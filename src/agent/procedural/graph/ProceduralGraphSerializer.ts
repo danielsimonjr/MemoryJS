@@ -8,7 +8,7 @@
  */
 
 import type { PGEdge, PGLocalization, PGNode } from '../../../types/proceduralGraph.js';
-import { canonicalJson } from './canonical.js';
+import { canonicalJson, compareEdges, compareString } from './canonical.js';
 import type { ProceduralGraph } from './ProceduralGraph.js';
 
 /** Text format for serialized graphs: the paper format or the MemoryJS format. */
@@ -108,12 +108,3 @@ function formatTransition(edge: PGEdge, style: PGSerializerStyle): string[] {
   ];
 }
 
-function compareString(a: string, b: string): number {
-  return a < b ? -1 : a > b ? 1 : 0;
-}
-
-function compareEdges(a: PGEdge, b: PGEdge): number {
-  return compareString(a.source, b.source)
-    || compareString(a.target, b.target)
-    || compareString(a.relation, b.relation);
-}

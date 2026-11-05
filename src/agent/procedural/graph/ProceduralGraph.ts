@@ -15,7 +15,7 @@ import type {
   PGNode,
   PGSnapshot,
 } from '../../../types/proceduralGraph.js';
-import { graphDigest } from './canonical.js';
+import { compareEdges, compareString, graphDigest } from './canonical.js';
 
 /**
  * Immutable, indexed view of one Procedural Graph snapshot.
@@ -421,22 +421,12 @@ function cloneEdge(edge: PGEdge): PGEdge {
   };
 }
 
-function compareString(a: string, b: string): number {
-  return a < b ? -1 : a > b ? 1 : 0;
-}
-
 function compareOutgoing(a: PGEdge, b: PGEdge): number {
   return compareString(a.target, b.target) || compareString(a.relation, b.relation);
 }
 
 function compareIncoming(a: PGEdge, b: PGEdge): number {
   return compareString(a.source, b.source) || compareString(a.relation, b.relation);
-}
-
-function compareEdges(a: PGEdge, b: PGEdge): number {
-  return compareString(a.source, b.source)
-    || compareString(a.target, b.target)
-    || compareString(a.relation, b.relation);
 }
 
 function edgeKey(edge: Pick<PGEdge, 'source' | 'relation' | 'target'>): string {
