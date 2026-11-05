@@ -113,6 +113,8 @@ export {
   TypeIndex,
   LowercaseCache,
   RelationIndex,
+  addToSetBucket,
+  removeFromSetBucket,
 } from './indexes.js';
 
 // ==================== Search Cache ====================
@@ -122,8 +124,20 @@ export {
   clearAllSearchCaches,
   getAllCacheStats,
   cleanupAllCaches,
+  forEachSearchCache,
+  pruneExpiredEntries,
   type CacheStats,
 } from './searchCache.js';
+
+// ==================== Map Mutation Helpers ====================
+export {
+  mutateMapWithFlushRollback,
+  clearMapWithFlushRollback,
+  deleteFromMapWithFlushRollback,
+} from './mutateMapWithFlushRollback.js';
+
+// ==================== Validation Helpers ====================
+export { assertNonEmptyString } from './validation.js';
 
 // ==================== Graph Copy / Ownership ====================
 export { deepCopyPlain, deepFreeze, borrowGraphView, isReadViewGuardEnabled } from './graphCopy.js';
