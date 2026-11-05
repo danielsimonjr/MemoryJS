@@ -9,6 +9,7 @@
 
 import type { AgentEntity, ContextPackage } from '../types/agent-memory.js';
 import { fillDefaults } from '../utils/fillDefaults.js';
+import { estimateTokensFromText } from '../utils/tokenEstimate.js';
 
 /**
  * Configuration for MemoryFormatter.
@@ -349,8 +350,7 @@ export class MemoryFormatter {
    * @internal
    */
   private estimateTokens(text: string): number {
-    const wordCount = text.split(/\s+/).filter((w) => w.length > 0).length;
-    return Math.ceil(wordCount * this.config.tokenMultiplier);
+    return estimateTokensFromText(text, this.config.tokenMultiplier);
   }
 
   /**

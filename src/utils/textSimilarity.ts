@@ -36,6 +36,58 @@ export function tokenizeToSet(text: string, minLength: number = 1): Set<string> 
 }
 
 /**
+ * Tokenize text into a set of lowercase Unicode words. Letters (`\p{L}`) and
+ * digits (`\p{N}`) are kept; every other character (punctuation, symbols) is
+ * replaced by a space, so 'naïve, café-30' yields {'naïve', 'café', '30'}.
+ *
+ * @param text - Input text to tokenize
+ * @returns Set of lowercase Unicode tokens (empty for empty or whitespace-only input)
+ */
+export function tokenizeUnicodeToSet(text: string): Set<string> {
+  return new Set(
+    text
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+      .split(/\s+/)
+      .filter((t) => t.length > 0),
+  );
+}
+
+/**
+ * Common English stopwords (conservative list). Retains short but meaningful
+ * tokens such as "PR", "AI" and "go", and drops function words such as "is"
+ * and "the".
+ */
+export const ENGLISH_STOPWORDS_SMALL: ReadonlySet<string> = new Set([
+  'a', 'an', 'the', 'is', 'be', 'are', 'was', 'were', 'to', 'of', 'in', 'on',
+  'at', 'by', 'for', 'with', 'and', 'or', 'but', 'if', 'as', 'it', 'its',
+  'this', 'that', 'these', 'those',
+]);
+
+/**
+ * Lowercase the text, split on runs of non-ASCII-alphanumeric characters,
+ * and return the set of tokens that are at least `minLength` characters
+ * long and not in `stopwords`.
+ *
+ * @param text - Input text (lowercased internally)
+ * @param stopwords - Tokens to exclude
+ * @param minLength - Minimum token length to keep
+ * @returns Set of lowercase ASCII-alphanumeric tokens
+ */
+export function tokenSetWithoutStopwords(
+  text: string,
+  stopwords: ReadonlySet<string>,
+  minLength: number,
+): Set<string> {
+  return new Set(
+    text
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((t) => t.length >= minLength && !stopwords.has(t)),
+  );
+}
+
+/**
  * Tokenize text into lowercase alphanumeric words, splitting on all non-alphanumeric characters.
  *
  * @param s - Input text to tokenize

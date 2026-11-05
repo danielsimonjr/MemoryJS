@@ -33,6 +33,7 @@ import type { SummarizationService } from './SummarizationService.js';
 // Re-exported here for backwards compatibility.
 import type { ContextWindowManagerConfig } from '../types/agent-memory.js';
 import { fillDefaults } from '../utils/fillDefaults.js';
+import { estimateTokensFromText } from '../utils/tokenEstimate.js';
 export type { ContextWindowManagerConfig };
 
 /** Compression intensity level for compressForContext. */
@@ -255,10 +256,7 @@ export class ContextWindowManager {
     if (entity.sessionId) parts.push(entity.sessionId);
     if (entity.taskId) parts.push(entity.taskId);
 
-    const text = parts.join(' ');
-    const wordCount = text.split(/\s+/).filter((w) => w.length > 0).length;
-
-    return Math.ceil(wordCount * this.config.tokenMultiplier);
+    return estimateTokensFromText(parts.join(' '), this.config.tokenMultiplier);
   }
 
   /**
@@ -1410,8 +1408,7 @@ export class ContextWindowManager {
    * Uses the same word-count heuristic as estimateTokens(entity).
    */
   private estimateStringTokens(text: string): number {
-    const wordCount = text.split(/\s+/).filter((w) => w.length > 0).length;
-    return Math.ceil(wordCount * this.config.tokenMultiplier);
+    return estimateTokensFromText(text, this.config.tokenMultiplier);
   }
 
   /**

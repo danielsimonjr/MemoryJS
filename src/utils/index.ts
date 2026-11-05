@@ -404,10 +404,16 @@ export { AsyncMutex, type AsyncMutexOptions, type AcquireOptions } from './Async
 export {
   tokenizeStripped,
   tokenizeStripped as textTokenize,
+  tokenizeUnicodeToSet,
+  tokenSetWithoutStopwords,
+  ENGLISH_STOPWORDS_SMALL,
   buildTFVector,
   cosineSimilarity as textCosineSimilarity,
   calculateTextSimilarity,
 } from './textSimilarity.js';
+
+// ==================== Token Estimation ====================
+export { estimateTokensFromText } from './tokenEstimate.js';
 
 // ==================== CMP-4: types returned by public ManagerContext getters ====================
 export {
