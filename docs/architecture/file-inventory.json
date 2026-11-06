@@ -2902,7 +2902,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 170
+      "loc": 173
     },
     {
       "file": "tests/integration/backup-compression.test.ts",

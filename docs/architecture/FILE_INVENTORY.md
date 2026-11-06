@@ -452,7 +452,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/integration/agent/agent-memory-manager-profile.test.ts` | tests | test | 33 |
 | `tests/integration/agent/recursa-end-to-end.test.ts` | tests | test | 110 |
 | `tests/integration/agent/recursa-leaf-learner.test.ts` | tests | test | 216 |
-| `tests/integration/agent/recursa-loop.test.ts` | tests | test | 170 |
+| `tests/integration/agent/recursa-loop.test.ts` | tests | test | 173 |
 | `tests/integration/backup-compression.test.ts` | tests | test | 432 |
 | `tests/integration/compression-optimization.test.ts` | tests | test | 134 |
 | `tests/integration/core/manager-context-semantic-forget.test.ts` | tests | test | 38 |
