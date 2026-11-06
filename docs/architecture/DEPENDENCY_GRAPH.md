@@ -39,7 +39,7 @@ This document provides a comprehensive dependency graph of all files, components
 The codebase is organized into the following modules:
 
 - **adapters**: 7 files
-- **agent**: 111 files
+- **agent**: 118 files
 - **cli**: 31 files
 - **core**: 28 files
 - **features**: 18 files
@@ -63,7 +63,7 @@ Seeded build/entry roots (package `exports`, `bin` targets, tsup entries, script
 - `src/sqlite.ts`
 - `src/workers/levenshteinWorker.ts`
 
-Reachable from a root: **321** of 321 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
+Reachable from a root: **324** of 328 files. Dormant: **4** (0 orphaned, 4 test-only) — see `unused-analysis.md` for the file lists.
 
 ---
 
@@ -1481,6 +1481,92 @@ Reachable from a root: **321** of 321 files. Dormant: **0** (0 orphaned, 0 test-
 
 ---
 
+### `src/agent/knowledge/InstructionSetManager.ts` - Instruction-set manager (Recursa RS-4).
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../types/types.js` | `Entity, IGraphStorage` | Import (type-only) |
+| `../../types/skills.js` | `InstructionSection, InstructionSetEntity, InstructionSetRecord, InstructionSetRole, SkillSource` | Import (type-only) |
+| `../../types/agent-memory.js` | `isInstructionSetEntity, toIsoDateTime` | Import |
+| `../../core/TransitionLedger.js` | `TransitionEvent` | Import (type-only) |
+| `../../core/storageCapabilities.js` | `withStorageWriteLock` | Import |
+| `./knowledgeDigest.js` | `fitInOrder, shortId` | Import |
+
+**Exports:**
+- Classes: `InstructionSetManager`
+- Interfaces: `InstructionHistorySource`, `InstructionSetManagerOptions`, `InstructionItem`
+- Types: `InstructionPatchResult`
+- Functions: `instructionItemsFor`, `renderInstructionItems`, `buildInstructionSetEntity`
+
+---
+
+### `src/agent/knowledge/KnowledgeRepository.ts` - Knowledge repository (Recursa RS-5): the paper's `K`.
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../types/types.js` | `Entity, IGraphStorage` | Import (type-only) |
+| `../../types/skills.js` | `InstructionSetRecord, InstructionSetRole, KnowledgeRevisionRecord, KnowledgeSnapshotEntity, KnowledgeSnapshotRecord, SkillId, SkillRecord` | Import (type-only) |
+| `../../types/agent-memory.js` | `isFailureMemory, isHeuristicMemory, isInstructionSetEntity, isKnowledgeSnapshotEntity, isReflectionMemory, isSkillEntity, toIsoDateTime` | Import |
+| `../../types/agent-memory.js` | `FailureRecord` | Import (type-only) |
+| `../../core/TransactionManager.js` | `BatchTransaction` | Import |
+| `../../utils/tokenEstimate.js` | `estimateTokensFromText` | Import |
+| `./InstructionSetManager.js` | `instructionItemsFor, renderInstructionItems, InstructionItem, InstructionSetManager` | Import |
+| `./knowledgeDigest.js` | `clone, compareIds, diffSnapshots, digestOf, fitInOrder, KnowledgeDiff` | Import |
+| `./knowledgeRevision.js` | `applyOp, planWrites, workFrom, PlannedWrite` | Import |
+| `./knowledgeDigest.js` | `KnowledgeDiff, IdDelta` | Re-export (type-only) |
+
+**Exports:**
+- Classes: `KnowledgeRepository`
+- Interfaces: `SkillMatchLike`, `SkillManagerLike`, `FailureLookupLike`, `KnowledgeRepositoryOptions`, `LoadForContextOptions`, `LoadedKnowledge`
+- Types: `ApplyResult`, `RollbackResult`
+- Re-exports: `KnowledgeDiff`, `IdDelta`
+
+---
+
+### `src/agent/knowledge/knowledgeDigest.ts` - Canonical JSON, digest and budget helpers shared by the Recursa knowledge
+
+**Node.js Built-in Dependencies:**
+| Module | Import |
+|--------|--------|
+| `crypto` | `createHash, randomUUID` |
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../utils/tokenEstimate.js` | `estimateTokensFromText` | Import |
+| `../../types/skills.js` | `InstructionSetRecord, KnowledgeSnapshotRecord, SkillId, SkillRecord` | Import (type-only) |
+
+**Exports:**
+- Interfaces: `IdDelta`, `KnowledgeDiff`
+- Functions: `compareIds`, `canonicalJson`, `clone`, `sha256Hex`, `digestOf`, `slugify`, `shortId`, `fitInOrder`, `idDelta`, `diffSnapshots`
+
+---
+
+### `src/agent/knowledge/knowledgeRevision.ts` - Revision machinery for `KnowledgeRepository` (Recursa RS-5/RS-6): applies
+
+**Node.js Built-in Dependencies:**
+| Module | Import |
+|--------|--------|
+| `crypto` | `randomUUID` |
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../types/types.js` | `Entity` | Import (type-only) |
+| `../../types/skills.js` | `InstructionSection, InstructionSetRecord, RevisionOp, SkillId, SkillRecord, SkillSource` | Import (type-only) |
+| `../../types/agent-memory.js` | `isInstructionSetEntity, isSkillEntity, toIsoDateTime, Heuristic, HeuristicId, ReflectionId, ReflectionRecord` | Import |
+| `./InstructionSetManager.js` | `buildInstructionSetEntity` | Import |
+| `./knowledgeDigest.js` | `canonicalJson, clone, compareIds, sha256Hex, shortId, slugify` | Import |
+
+**Exports:**
+- Interfaces: `WorkState`
+- Types: `PlannedWrite`
+- Functions: `workFrom`, `applyOp`, `planWrites`
+
+---
+
 ### `src/agent/procedural/ProcedureManager.ts` - Procedure Manager (3B.4)
 
 **Node.js Built-in Dependencies:**
@@ -2203,6 +2289,80 @@ Reachable from a root: **321** of 321 files. Dormant: **0** (0 orphaned, 0 test-
 
 **Exports:**
 - Functions: `selectWeightedTurns`
+
+---
+
+### `src/agent/skills/SkillFormat.ts` - SKILL.md front-matter codec for Recursa skills (spec RS-3).
+
+**Node.js Built-in Dependencies:**
+| Module | Import |
+|--------|--------|
+| `crypto` | `createHash` |
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../utils/tokenEstimate.js` | `estimateTokensFromText` | Import |
+| `../../types/skills.js` | `SkillKind, SkillRecord, SkillResource, SkillSource` | Import (type-only) |
+
+**Exports:**
+- Interfaces: `ParsedSkillDocument`, `SkillParseFailure`, `YamlModuleLike`, `ParseSkillOptions`
+- Types: `SkillParseResult`
+- Functions: `loadOptionalYaml`, `serializeSkillMarkdown`, `parseSkillMarkdown`, `skillContentHash`, `renderSkillSection`, `fitSkillSectionToBudget`
+- Constants: `SKILL_FRONT_MATTER_KEYS`
+
+---
+
+### `src/agent/skills/SkillManager.ts` - Skill registry for Recursa (spec RS-2): storage-backed skills with lexical
+
+**Node.js Built-in Dependencies:**
+| Module | Import |
+|--------|--------|
+| `crypto` | `createHash, randomUUID` |
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../utils/textSimilarity.js` | `ENGLISH_STOPWORDS_SMALL, jaccard, tokenSetWithoutStopwords` | Import |
+| `../../utils/tokenEstimate.js` | `estimateTokensFromText` | Import |
+| `../../utils/envConfig.js` | `readEnvNumber` | Import |
+| `../../utils/errors.js` | `ValidationError` | Import |
+| `../../core/storageCapabilities.js` | `withStorageWriteLock` | Import |
+| `./SkillFormat.js` | `fitSkillSectionToBudget, renderSkillSection` | Import |
+| `../../types/types.js` | `Entity, IGraphStorage` | Import (type-only) |
+| `../../types/agent-memory.js` | `isSkillEntity, toIsoDateTime` | Import |
+| `../../types/skills.js` | `SkillEntity, SkillId, SkillKind, SkillRecord, SkillResource, SkillSource` | Import (type-only) |
+
+**Exports:**
+- Classes: `SkillManager`
+- Interfaces: `AddSkillInput`, `SkillListOptions`, `SkillMatch`, `SkillMatchOptions`, `LoadForContextOptions`, `SkillSimilarityProvider`
+- Types: `SkillPatch`, `SkillOutcome`, `SkillUpdateResult`, `SkillRetireResult`, `SkillOutcomeResult`
+
+---
+
+### `src/agent/skills/SkillPublisher.ts` - Publishes skills as a SKILL.md tree and absorbs human edits back (spec RS-3).
+
+**Node.js Built-in Dependencies:**
+| Module | Import |
+|--------|--------|
+| `fs` | `promises` |
+| `crypto` | `randomBytes` |
+| `path` | `dirname, join, resolve` |
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../types/types.js` | `IGraphStorage` | Import (type-only) |
+| `../../types/agent-memory.js` | `isSkillEntity, toIsoDateTime` | Import |
+| `../../types/skills.js` | `SkillId` | Import (type-only) |
+| `../../utils/durableWriteFile.js` | `durableWriteFile, renameOver` | Import |
+| `./SkillManager.js` | `SkillManager, SkillPatch` | Import |
+| `./SkillFormat.js` | `loadOptionalYaml, parseSkillMarkdown, serializeSkillMarkdown, skillContentHash, ParsedSkillDocument` | Import |
+
+**Exports:**
+- Classes: `SkillPublisher`
+- Interfaces: `SkillPublishMarker`, `PublishResult`, `ImportConflict`, `ImportParseError`, `ImportReport`, `PublishOptions`
+- Constants: `SKILL_MARKER_FILE`
 
 ---
 
@@ -3774,6 +3934,8 @@ Reachable from a root: **321** of 321 files. Dormant: **0** (0 orphaned, 0 test-
 | `../utils/schemas.js` | `EntitySchema, RelationSchema` | Import |
 | `../security/PiiRedactor.js` | `PiiRedactor` | Import |
 | `../utils/durableWriteFile.js` | `durableWriteFile` | Import |
+| `../agent/skills/SkillManager.js` | `SkillManager` | Import |
+| `../agent/skills/SkillPublisher.js` | `SkillPublisher, PublishResult, ImportReport` | Import |
 | `../agent/reconstruction/MemoryDistiller.js` | `MemoryDistiller` | Dynamic import |
 | `../search/LLMQueryPlanner.js` | `` | Dynamic import |
 
@@ -5813,22 +5975,23 @@ Reachable from a root: **321** of 321 files. Dormant: **0** (0 orphaned, 0 test-
 |------|--------------|------------|
 | `src/core/ManagerContext` | 89 files | 9 files |
 | `src/types/index` | 12 files | 68 files |
-| `src/types/types` | 1 file | 68 files |
+| `src/types/types` | 1 file | 73 files |
 | `src/utils/index` | 38 files | 27 files |
 | `src/agent/index` | 63 files | 1 file |
-| `src/types/agent-memory` | 3 files | 50 files |
+| `src/types/agent-memory` | 3 files | 55 files |
 | `src/search/index` | 50 files | 1 file |
 | `src/core/GraphStorage` | 16 files | 32 files |
 | `src/core/EntityManager` | 12 files | 31 files |
 | `src/agent/AgentMemoryManager` | 29 files | 2 files |
 | `src/utils/logger` | 0 files | 30 files |
-| `src/utils/errors` | 0 files | 28 files |
+| `src/utils/errors` | 0 files | 29 files |
 | `src/cli/commands/helpers` | 4 files | 23 files |
 | `src/agent/ConsolidationPipeline` | 19 files | 7 files |
 | `src/cli/commands/index` | 24 files | 1 file |
+| `src/utils/textSimilarity` | 0 files | 23 files |
 | `src/cli/formatters` | 2 files | 20 files |
-| `src/utils/textSimilarity` | 0 files | 22 files |
 | `src/agent/ContextWindowManager` | 16 files | 5 files |
+| `src/features/IOManager` | 16 files | 4 files |
 | `src/search/SearchManager` | 17 files | 3 files |
 | `src/types/proceduralGraph` | 0 files | 20 files |
 | `src/utils/constants` | 0 files | 20 files |
@@ -5837,7 +6000,6 @@ Reachable from a root: **321** of 321 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/agent/DecayEngine` | 8 files | 10 files |
 | `src/agent/procedural/graph/index` | 16 files | 2 files |
 | `src/core/ObservationManager` | 12 files | 6 files |
-| `src/features/IOManager` | 14 files | 4 files |
 | `src/search/RankedSearch` | 11 files | 7 files |
 | `src/core/RelationManager` | 6 files | 11 files |
 | `src/core/index` | 16 files | 1 file |
@@ -5905,7 +6067,7 @@ graph TD
         N14[ConflictResolver]
         N15[ConsolidationPipeline]
         N16[ConsolidationScheduler]
-        N17[...101 more]
+        N17[...108 more]
     end
 
     subgraph Cli
@@ -6096,22 +6258,22 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 321 |
+| Total TypeScript Files | 328 |
 | Total Modules | 12 |
-| Total Lines of Code | 107924 |
-| Total Exports | 2270 |
-| Total Re-exports | 1473 |
-| Total Classes | 238 |
-| Total Interfaces | 668 |
-| Total Functions | 417 |
+| Total Lines of Code | 110472 |
+| Total Exports | 2300 |
+| Total Re-exports | 1475 |
+| Total Classes | 242 |
+| Total Interfaces | 696 |
+| Total Functions | 439 |
 | Total Type Guards | 39 |
 | Total Enums | 4 |
-| Type-only Imports | 518 |
+| Type-only Imports | 533 |
 | Runtime Circular Deps | 0 |
 | Type-only Circular Deps | 10 |
 | Entry/Build Roots | 4 |
-| Reachable Files | 321 |
-| Dormant Files (orphaned / test-only) | 0 (0 / 0) |
+| Reachable Files | 324 |
+| Dormant Files (orphaned / test-only) | 4 (0 / 4) |
 
 ---
 

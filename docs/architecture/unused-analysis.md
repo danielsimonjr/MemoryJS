@@ -9,12 +9,12 @@
 ## Summary
 
 - **Potentially unused files**: 0
-- **Dormant files** (runtime code on disk, unreachable from any entry/build root): 0
+- **Dormant files** (runtime code on disk, unreachable from any entry/build root): 4
   - **Orphaned (reachable from nothing — delete/wire candidates)**: 0
-  - **Test-only (exercised by a test, ships nothing)**: 0
-- **Potentially unused exports**: 62
+  - **Test-only (exercised by a test, ships nothing)**: 4
+- **Potentially unused exports**: 91
   - **Unreferenced anywhere (deletion candidates)**: 0
-  - **Referenced in-module (type contracts / helpers backing live exports)**: 62
+  - **Referenced in-module (type contracts / helpers backing live exports)**: 91
 
 Seeded reachability roots (4):
 
@@ -38,7 +38,10 @@ Not reachable from any package entry point, but imported by a test — deliberat
 kept, standalone-tested code or a helper a test drives directly. Not dead; not
 shipped. No action needed.
 
-_None._
+- `src/agent/knowledge/InstructionSetManager.ts`
+- `src/agent/knowledge/KnowledgeRepository.ts`
+- `src/agent/knowledge/knowledgeDigest.ts`
+- `src/agent/knowledge/knowledgeRevision.ts`
 
 ## Potentially Unused Files
 
@@ -95,6 +98,27 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 - `PatternDetectorOptions` (interface) — 1 in-file ref
 
+### `src/agent/knowledge/InstructionSetManager.ts`
+
+- `InstructionHistorySource` (interface) — 2 in-file refs
+- `InstructionSetManagerOptions` (interface) — 1 in-file ref
+- `InstructionPatchResult` (type) — 1 in-file ref
+
+### `src/agent/knowledge/KnowledgeRepository.ts`
+
+- `SkillMatchLike` (interface) — 2 in-file refs
+- `SkillManagerLike` (interface) — 2 in-file refs
+- `FailureLookupLike` (interface) — 2 in-file refs
+- `KnowledgeRepositoryOptions` (interface) — 1 in-file ref
+- `LoadForContextOptions` (interface) — 1 in-file ref
+- `LoadedKnowledge` (interface) — 1 in-file ref
+- `ApplyResult` (type) — 2 in-file refs
+- `RollbackResult` (type) — 2 in-file refs
+
+### `src/agent/knowledge/knowledgeRevision.ts`
+
+- `WorkState` (interface) — 3 in-file refs
+
 ### `src/agent/procedural/graph/backing/ProceduralGraphState.ts`
 
 - `PGRevisionListItem` (interface) — 6 in-file refs
@@ -105,6 +129,32 @@ support exports that ARE used, so they cannot be deleted in isolation.
 - `DistillerTokenUsage` (interface) — 1 in-file ref
 - `UsageReportingLLMProvider` (interface) — 1 in-file ref
 - `DistillerMode` (type) — 2 in-file refs
+
+### `src/agent/skills/SkillFormat.ts`
+
+- `SkillParseFailure` (interface) — 4 in-file refs
+- `ParseSkillOptions` (interface) — 1 in-file ref
+- `SkillParseResult` (type) — 2 in-file refs
+- `SKILL_FRONT_MATTER_KEYS` (constant) — 2 in-file refs
+
+### `src/agent/skills/SkillManager.ts`
+
+- `SkillListOptions` (interface) — 1 in-file ref
+- `SkillMatch` (interface) — 2 in-file refs
+- `SkillMatchOptions` (interface) — 1 in-file ref
+- `LoadForContextOptions` (interface) — 1 in-file ref
+- `SkillSimilarityProvider` (interface) — 2 in-file refs
+- `SkillOutcome` (type) — 1 in-file ref
+- `SkillUpdateResult` (type) — 2 in-file refs
+- `SkillRetireResult` (type) — 2 in-file refs
+- `SkillOutcomeResult` (type) — 1 in-file ref
+
+### `src/agent/skills/SkillPublisher.ts`
+
+- `SkillPublishMarker` (interface) — 5 in-file refs
+- `ImportConflict` (interface) — 1 in-file ref
+- `ImportParseError` (interface) — 1 in-file ref
+- `PublishOptions` (interface) — 1 in-file ref
 
 ### `src/cli/commands/audit.ts`
 
