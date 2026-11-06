@@ -100,6 +100,7 @@ const ctx = new ManagerContext('./memory.db');
 | `instructionSets` | `InstructionSetManager` | Recursa role-scoped instruction sets (RS-5); `history()` uses `transitionLedger` when enabled |
 | `knowledgeRepository` | `KnowledgeRepository` | Recursa snapshots, revisions and budgeted `loadForContext` (RS-5), composed from `skillManager`, `instructionSets` and `failureManager` |
 | `skillPublisher` | `SkillPublisher` | Recursa atomic SKILL.md publish and import over `skillManager` (RS-3) |
+| `learningLoop(deps)` | `LearningLoop` | Recursa leaf learning loop (RS-18); a fresh, independent loop per call |
 | `semanticForget` | `SemanticForget` | Two-tier deletion with audit (v1.8.0) |
 | `temporalSearch` | `TemporalSearch` | NL time-range search (v1.9.0) |
 | `procedureManager` | `ProcedureManager` | Procedural memory (3B.4) |
@@ -2413,6 +2414,30 @@ const issues = auditRubrics(tasks); // placeholder | files | contradicts (adviso
 
 ---
 
+## Learning loop (Recursa RS-14..RS-18, RS-22, RS-23)
+
+`@experimental`. Exported from `src/agent` (`src/agent/learning/`); wired as `ctx.learningLoop(deps)`.
+
+```typescript
+const loop = ctx.learningLoop({ solver, judge, publishDir, interactionLog });
+const result = await loop.learn({ taskIds, tasks, budget: { maxRounds: 3 } });
+// result.stoppedBecause: 'all-pass' | 'no-progress' | 'budget-rounds' | 'budget-tokens' | 'budget-time' | 'aborted'
+// result.report: LearningReport (rework, stalls, signals, tokens and wall-clock per phase)
+
+// Step-wise, one harness tool call at a time:
+const { traceId } = await loop.start({ taskIds, tasks, budget: { maxRounds: 3 } });
+let step = await loop.next(traceId);          // { kind: 'solve' | 'judge' | 'done', ... }
+await loop.submit(traceId, 'solve', { [taskId]: { answer, traceAddrs } });
+const status = await loop.status(traceId);    // LeafState + { report }
+```
+
+- Each `learningLoop()` call returns a fresh, independent loop (own `LeafLearner` and `Diagnoser`). All run state, including failure-record dedup ids (`traceId + taskId + round`), lives on the run's `learning_trace` entity, so loops can resume each other's runs.
+- Single driver per run: saves are compare-and-swap on `stateRev`; a concurrent driver gets `LeafLearner: stale state (expected rev N)` and should reload and retry.
+- `submit` rejects an empty payload or a malformed result (`TypeError`). `null` marks a failed solve or judge call.
+- Apply: `conflict` records `apply-conflict: …` and starts the next round from live `K`; `rejected` records `apply-rejected: failedOpIndex=…` and stops `no-progress`; a publish failure records `publish-failed: …`. None of these throw. Apply is idempotent across crashes.
+- Validation reuses one persisted plan; if live `K` moves mid-validation the revision is rejected (`validation-stale`).
+- `deps.interactionLog` feeds the `Diagnoser`'s trace excerpts and keeps solve trace addresses on trace actions (`includeTraceAddrs` overrides). `plan`, `submitChild`, `merge` and `reflect` are Phase 5 and throw.
+
 ## Verification
 
 Two tools measure this repository. The two tools use different scopes.
@@ -2422,8 +2447,8 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 
 | Claim | Value | Source |
 |---|---|---|
-| totalExports | 3468 | repo-tools map |
-| totalSourceFiles | 884 | repo-tools map |
+| totalExports | 3661 | repo-tools map |
+| totalSourceFiles | 917 | repo-tools map |
 
 The figures below come from `bun run tools:deps` and `bun run tools:deps:full`. These generators read `src/` only. The gate does not check these figures. Read them in `dependency-summary.compact.json` and `TEST_COVERAGE.md`.
 

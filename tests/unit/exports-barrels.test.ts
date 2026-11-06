@@ -294,3 +294,70 @@ describe('Recursa Phase 1D agent and root barrel exports', () => {
     expect(recursaTypeProbes).toBeUndefined();
   });
 });
+
+// Recursa Phase 4 (leaf learner) barrel: src/agent/learning/index.ts, re-exported from src/agent/index.ts.
+import type {
+  DiagnoserLike,
+  KnowledgeEditorLike,
+  LeafCallContext,
+  LeafLearnerOptions,
+  LeafStartOptions,
+  LearningDeps,
+  LearningLoadedKnowledge,
+  LearningReport,
+  LearningSolver,
+  LearningTrace as LearningTraceType,
+  StepRequest,
+  TraceTree,
+  ValidationPlan,
+  ValidationVerdictResult,
+  LeafLearnerDeps,
+} from '../../src/agent/index.js';
+
+type LearningTypeProbes = [
+  DiagnoserLike,
+  KnowledgeEditorLike,
+  LeafCallContext,
+  LeafLearnerOptions,
+  LeafStartOptions,
+  LearningDeps,
+  LearningLoadedKnowledge,
+  LearningReport,
+  LearningSolver,
+  LearningTraceType,
+  StepRequest,
+  TraceTree,
+  ValidationPlan,
+  ValidationVerdictResult,
+  LeafLearnerDeps,
+];
+const learningTypeProbes: LearningTypeProbes | undefined = undefined;
+
+describe('Recursa Phase 4 learning barrel exports', () => {
+  const runtimeNames = [
+    'LeafLearner',
+    'Diagnoser',
+    'KnowledgeEditor',
+    'RevisionValidator',
+    'planValidation',
+    'decideValidation',
+    'LearningTrace',
+    'LearningAccountant',
+    'createLeafLearnerDeps',
+  ] as const;
+
+  it('exports the leaf-learner public surface from src/agent/index.ts and the package root', () => {
+    for (const name of runtimeNames) {
+      expect(agent as Record<string, unknown>, `agent barrel: ${name}`).toHaveProperty(name);
+      expect(root as Record<string, unknown>, `root barrel: ${name}`).toHaveProperty(name);
+    }
+    expect(root.LeafLearner).toBe(agent.LeafLearner);
+    expect(learningTypeProbes).toBeUndefined();
+  });
+
+  it('keeps internal leaf-learner plumbing out of the barrel', () => {
+    for (const name of ['submitRoundSolve', 'serializeRun', 'capAnswer', 'ANSWER_CAP_BYTES', 'loadRun', 'beginRound']) {
+      expect(agent as Record<string, unknown>, `agent barrel must not export ${name}`).not.toHaveProperty(name);
+    }
+  });
+});

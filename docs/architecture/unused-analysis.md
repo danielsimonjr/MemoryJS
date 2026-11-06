@@ -12,9 +12,9 @@
 - **Dormant files** (runtime code on disk, unreachable from any entry/build root): 0
   - **Orphaned (reachable from nothing — delete/wire candidates)**: 0
   - **Test-only (exercised by a test, ships nothing)**: 0
-- **Potentially unused exports**: 72
+- **Potentially unused exports**: 89
   - **Unreferenced anywhere (deletion candidates)**: 0
-  - **Referenced in-module (type contracts / helpers backing live exports)**: 72
+  - **Referenced in-module (type contracts / helpers backing live exports)**: 89
 
 Seeded reachability roots (4):
 
@@ -111,6 +111,45 @@ support exports that ARE used, so they cannot be deleted in isolation.
 - `MAX_MATCH_LINE_BYTES_TWO_UNBOUNDED` (constant) — 2 in-file refs
 - `SELECT_TIME_BUDGET_MS` (constant) — 3 in-file refs
 
+### `src/agent/knowledge/ScratchKnowledge.ts`
+
+- `ScratchPayload` (interface) — 1 in-file ref
+- `ScratchOptions` (interface) — 1 in-file ref
+- `ScratchApplyResult` (type) — 1 in-file ref
+- `SkillMatcher` (type) — 5 in-file refs
+
+### `src/agent/learning/Diagnoser.ts`
+
+- `buildDiagnosisPrompt` (function) — 1 in-file ref
+
+### `src/agent/learning/KnowledgeEditor.ts`
+
+- `buildDraftPrompt` (function) — 1 in-file ref
+
+### `src/agent/learning/LeafLearnerContext.ts`
+
+- `countBudget` (function) — 1 in-file ref
+
+### `src/agent/learning/LeafLearnerStore.ts`
+
+- `ValidationRun` (interface) — 1 in-file ref
+
+### `src/agent/learning/LeafRound.ts`
+
+- `resultsFor` (function) — 2 in-file refs
+- `runDedup` (function) — 1 in-file ref
+- `callContextOf` (function) — 2 in-file refs
+- `completeEvaluation` (function) — 2 in-file refs
+
+### `src/agent/learning/LearningTrace.ts`
+
+- `buildTraceEntity` (function) — 1 in-file ref
+- `DEFAULT_TRACE_MAX_ACTIONS` (constant) — 2 in-file refs
+
+### `src/agent/learning/llmJson.ts`
+
+- `escapeFenceContent` (function) — 2 in-file refs
+
 ### `src/agent/procedural/graph/backing/ProceduralGraphState.ts`
 
 - `PGRevisionListItem` (interface) — 6 in-file refs
@@ -121,6 +160,10 @@ support exports that ARE used, so they cannot be deleted in isolation.
 - `DistillerTokenUsage` (interface) — 1 in-file ref
 - `UsageReportingLLMProvider` (interface) — 1 in-file ref
 - `DistillerMode` (type) — 2 in-file refs
+
+### `src/agent/skills/skillRecordUtils.ts`
+
+- `LexicalSkillMatch` (interface) — 4 in-file refs
 
 ### `src/cli/commands/audit.ts`
 
@@ -154,6 +197,10 @@ support exports that ARE used, so they cannot be deleted in isolation.
 ### `src/core/SQLiteStorage.ts`
 
 - `DatabaseCtor` (type) — 6 in-file refs
+
+### `src/core/context/LearningFacade.ts`
+
+- `LearningFacadeDeps` (interface) — 1 in-file ref
 
 ### `src/core/context/StorageInfraFacade.ts`
 

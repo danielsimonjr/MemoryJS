@@ -2,9 +2,9 @@ metadata:
   name: "@danielsimonjr/memoryjs"
   version: 4.5.0
   lastUpdated: "2026-11-06"
-  totalFiles: 351
+  totalFiles: 370
   totalModules: 12
-  totalExports: 2456
+  totalExports: 2588
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -3248,6 +3248,10 @@ modules:
           imports:
             - "*"
           reExport: true
+        - file: ./learning/index.js
+          imports:
+            - "*"
+          reExport: true
         - file: ./AccessTracker.js
           imports:
             - AccessTracker
@@ -4260,6 +4264,7 @@ modules:
         - "* from ./harness/index.js"
         - "* from ./evaluation/index.js"
         - "* from ./knowledgeContext.js"
+        - "* from ./learning/index.js"
         - AccessTracker
         - AccessStats
         - AccessTrackerConfig
@@ -4780,8 +4785,6 @@ modules:
         - file: ./InstructionSetManager.js
           imports:
             - instructionItemsFor
-            - renderInstructionItems
-            - InstructionItem
             - InstructionSetManager
         - file: ./knowledgeDigest.js
           imports:
@@ -4798,6 +4801,14 @@ modules:
             - planWrites
             - workFrom
             - PlannedWrite
+        - file: ./ScratchKnowledge.js
+          imports:
+            - ScratchKnowledge
+            - renderLoadedKnowledge
+            - LoadItem
+        - file: ../skills/skillRecordUtils.js
+          imports:
+            - rankSkillsLexically
         - file: ./knowledgeDigest.js
           imports:
             - KnowledgeDiff
@@ -4820,6 +4831,62 @@ modules:
         - KnowledgeRepositoryOptions
         - LoadForContextOptions
         - LoadedKnowledge
+    src/agent/knowledge/ScratchKnowledge.ts:
+      description: In-memory scratch copy of `K` for validating a revision (Recursa RS-17).
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../../types/skills.js
+          imports:
+            - InstructionSetRecord
+            - InstructionSetRole
+            - RevisionOp
+            - SkillRecord
+          typeOnly: true
+        - file: ../../types/agent-memory.js
+          imports:
+            - FailureRecord
+          typeOnly: true
+        - file: ../../utils/envConfig.js
+          imports:
+            - readEnvNumber
+        - file: ../../utils/tokenEstimate.js
+          imports:
+            - estimateTokensFromText
+        - file: ./InstructionSetManager.js
+          imports:
+            - instructionItemsFor
+            - renderInstructionItems
+            - InstructionItem
+        - file: ./knowledgeDigest.js
+          imports:
+            - assertBudgetTokens
+            - clone
+            - fitInOrder
+        - file: ./knowledgeRevision.js
+          imports:
+            - safeApplyOp
+            - workFrom
+        - file: ../skills/skillRecordUtils.js
+          imports:
+            - rankSkillsLexically
+        - file: ./KnowledgeRepository.js
+          imports:
+            - FailureLookupLike
+            - LoadedKnowledge
+            - LoadForContextOptions
+            - SkillMatchLike
+          typeOnly: true
+      exports:
+        - renderLoadedKnowledge
+        - ScratchKnowledge
+      classes:
+        - ScratchKnowledge
+      interfaces:
+        - ScratchPayload
+        - ScratchOptions
+      functions:
+        - renderLoadedKnowledge
     src/agent/knowledge/index.ts:
       description: "Recursa knowledge layer (RS-5): `InstructionSetManager`, the"
       externalDependencies: []
@@ -5071,6 +5138,1038 @@ modules:
         - KnowledgeLayers
       functions:
         - knowledgeLayersForWakeUp
+    src/agent/learning/Diagnoser.ts:
+      description: "Diagnoser (spec RS-15): classifies why a failed task failed and records failure memory."
+      externalDependencies:
+        - package: zod
+          imports:
+            - z
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../FailureManager.js
+          imports:
+            - FailureManager
+          typeOnly: true
+        - file: ../AgentReflectionManager.js
+          imports:
+            - AgentReflectionManager
+          typeOnly: true
+        - file: ../harness/InteractionLog.js
+          imports:
+            - InteractionLog
+          typeOnly: true
+        - file: ../procedural/graph/CompletionProvider.js
+          imports:
+            - PGCompletionProvider
+          typeOnly: true
+        - file: ../../types/skills.js
+          imports:
+            - SkillId
+          typeOnly: true
+        - file: ../../types/learning.js
+          imports:
+            - Criterion
+            - Diagnosis
+            - DiagnosisKind
+            - Feedback
+            - SolveResult
+            - TaskRecord
+          typeOnly: true
+        - file: ./types.js
+          imports:
+            - LoadedKnowledge
+          typeOnly: true
+        - file: ../../utils/logger.js
+          imports:
+            - logger
+        - file: ./llmJson.js
+          imports:
+            - ABORTED
+            - describeError
+            - extractJsonObject
+            - fencedText
+            - raceAbort
+        - file: ../harness/ConcurrencyLimiter.js
+          imports:
+            - AbortError
+      exports:
+        - classifyFallback
+        - buildDiagnosisPrompt
+        - Diagnoser
+      classes:
+        - Diagnoser
+      interfaces:
+        - DiagnoserDeps
+        - DiagnoseItem
+        - FailureDedupStore
+        - DiagnoseOptions
+      functions:
+        - classifyFallback
+        - buildDiagnosisPrompt
+    src/agent/learning/KnowledgeEditor.ts:
+      description: "KnowledgeEditor (spec RS-16): turns diagnoses into one knowledge revision."
+      externalDependencies:
+        - package: zod
+          imports:
+            - z
+      nodeDependencies:
+        - module: crypto
+          imports:
+            - randomUUID
+      internalDependencies:
+        - file: ../skills/SkillManager.js
+          imports:
+            - SkillManager
+          typeOnly: true
+        - file: ../procedural/graph/CompletionProvider.js
+          imports:
+            - PGCompletionProvider
+          typeOnly: true
+        - file: ../../types/skills.js
+          imports:
+            - SkillRecord
+            - SkillSource
+            - KnowledgeRevisionRecord
+            - RevisionOp
+          typeOnly: true
+        - file: ../../types/learning.js
+          imports:
+            - Diagnosis
+            - SolveResult
+            - TaskRecord
+          typeOnly: true
+        - file: ../../types/agent-memory.js
+          imports:
+            - toIsoDateTime
+        - file: ./types.js
+          imports:
+            - LoadedKnowledge
+          typeOnly: true
+        - file: ../../utils/logger.js
+          imports:
+            - logger
+        - file: ./llmJson.js
+          imports:
+            - ABORTED
+            - describeError
+            - escapeProse
+            - extractJsonObject
+            - fencedText
+            - inlineSafe
+            - raceAbort
+      exports:
+        - buildDraftPrompt
+        - KnowledgeEditor
+      classes:
+        - KnowledgeEditor
+      interfaces:
+        - KnowledgeEditorDeps
+        - KnowledgeEditContext
+      functions:
+        - buildDraftPrompt
+    src/agent/learning/LeafApply.ts:
+      description: "Apply phase of the leaf learner (Recursa RS-18): writes an accepted revision to live `K` with"
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ./llmJson.js
+          imports:
+            - describeError
+        - file: ./LeafLearnerContext.js
+          imports:
+            - Ctx
+            - LeafEnv
+            - beginRound
+            - budgetStopFor
+            - recordAction
+            - saveCtx
+            - stopRun
+      exports:
+        - applyStep
+      functions:
+        - applyStep
+    src/agent/learning/LeafLearner.ts:
+      description: "Leaf learner (Recursa RS-18): Algorithm 1 lines 2-7 as a resumable state machine."
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../../types/learning.js
+          imports:
+            - CriterionResult
+            - LearnResult
+            - LeafState
+            - SolveResult
+          typeOnly: true
+        - file: ../harness/ConcurrencyLimiter.js
+          imports:
+            - runAllWithStats
+        - file: ./LeafLearnerStore.js
+          imports:
+            - EMPTY_METRICS
+            - taskRecordsJson
+        - file: ./LeafLearnerContext.js
+          imports:
+            - Ctx
+            - LeafEnv
+            - beginRound
+            - copyState
+            - knowledgeFor
+            - loadCtx
+            - pendingTasks
+            - resultOf
+            - saveCtx
+            - stopRun
+        - file: ./LeafValidation.js
+          imports:
+            - inValidationStage
+            - submitValidationJudge
+            - submitValidationSolve
+            - validateStep
+        - file: ./LeafApply.js
+          imports:
+            - applyStep
+        - file: ../harness/ConcurrencyLimiter.js
+          imports:
+            - AbortError
+        - file: ./LeafRound.js
+          imports:
+            - FullAnswers
+            - diagnoseRound
+            - editRound
+            - pendingJudgeAnswers
+            - submitRoundJudge
+            - submitRoundSolve
+        - file: ./LearningAccountant.js
+          imports:
+            - LearningAccountant
+            - LearningReport
+        - file: ./types.js
+          imports:
+            - LearningDeps
+            - StepRequest
+          typeOnly: true
+        - file: ./LeafLearnerOptions.js
+          imports:
+            - LeafLearnerOptions
+            - LeafStartOptions
+            - assertPayload
+            - resolveOptions
+        - file: ./LeafLearnerOptions.js
+          imports:
+            - DiagnoserLike
+            - KnowledgeEditorLike
+            - LeafCallContext
+            - LeafLearnerOptions
+            - LeafStartOptions
+          reExport: true
+          typeOnly: true
+      exports:
+        - LeafLearner
+        - DiagnoserLike
+        - KnowledgeEditorLike
+        - LeafCallContext
+        - LeafLearnerOptions
+        - LeafStartOptions
+      reExported:
+        - DiagnoserLike
+        - KnowledgeEditorLike
+        - LeafCallContext
+        - LeafLearnerOptions
+        - LeafStartOptions
+      classes:
+        - LeafLearner
+    src/agent/learning/LeafLearnerContext.ts:
+      description: "Shared plumbing for the leaf learner's phases (Recursa RS-18): loading and saving the run"
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../../types/learning.js
+          imports:
+            - LearnResult
+            - LearnStopReason
+            - LeafState
+            - LearningBudget
+            - TaskRecord
+          typeOnly: true
+        - file: ../../types/skills.js
+          imports:
+            - InstructionSetRole
+          typeOnly: true
+        - file: ../../types/agent-memory.js
+          imports:
+            - toIsoDateTime
+        - file: ../knowledge/KnowledgeRepository.js
+          imports:
+            - KnowledgeRepository
+          typeOnly: true
+        - file: ./LearningAccountant.js
+          imports:
+            - LearningAccountant
+        - file: ./LearningTrace.js
+          imports:
+            - LearningTrace
+          typeOnly: true
+        - file: ./RevisionValidator.js
+          imports:
+            - ValidationPlanOptions
+          typeOnly: true
+        - file: ./types.js
+          imports:
+            - LoadedKnowledge
+          typeOnly: true
+        - file: ./LeafLearnerStore.js
+          imports:
+            - EMPTY_METRICS
+            - accountantFrom
+            - loadRun
+            - serializeRun
+            - syncAccounting
+            - LeafRun
+      exports:
+        - copyState
+        - resultOf
+        - countBudget
+        - loadCtx
+        - saveCtx
+        - enterPhase
+        - recordAction
+        - budgetStopFor
+        - tokenTimeStop
+        - stopRun
+        - beginRound
+        - failedTasks
+        - pendingTasks
+        - knowledgeFor
+        - knowledgeForTasks
+        - planOptions
+      interfaces:
+        - LeafEnv
+        - Ctx
+      functions:
+        - copyState
+        - resultOf
+        - countBudget
+        - loadCtx
+        - saveCtx
+        - enterPhase
+        - recordAction
+        - budgetStopFor
+        - tokenTimeStop
+        - stopRun
+        - beginRound
+        - failedTasks
+        - pendingTasks
+        - knowledgeFor
+        - knowledgeForTasks
+        - planOptions
+    src/agent/learning/LeafLearnerDeps.ts:
+      description: Adapters from the real {@link Diagnoser} (RS-15) and {@link KnowledgeEditor} (RS-16) to the leaf
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../../types/learning.js
+          imports:
+            - Diagnosis
+            - Feedback
+            - SolveResult
+            - TaskRecord
+          typeOnly: true
+        - file: ./Diagnoser.js
+          imports:
+            - Diagnoser
+            - DiagnoseItem
+          typeOnly: true
+        - file: ./KnowledgeEditor.js
+          imports:
+            - KnowledgeEditContext
+            - KnowledgeEditor
+          typeOnly: true
+        - file: ./LeafLearner.js
+          imports:
+            - DiagnoserLike
+            - KnowledgeEditorLike
+            - LeafCallContext
+          typeOnly: true
+        - file: ./types.js
+          imports:
+            - LoadedKnowledge
+          typeOnly: true
+        - file: ../../types/skills.js
+          imports:
+            - KnowledgeRevisionRecord
+          typeOnly: true
+      exports:
+        - createLeafLearnerDeps
+      interfaces:
+        - LeafDepsParts
+        - LeafLearnerDeps
+      functions:
+        - createLeafLearnerDeps
+    src/agent/learning/LeafLearnerOptions.ts:
+      description: "Option, callback and payload contracts of the leaf learner (Recursa RS-18): the diagnoser and"
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../../types/learning.js
+          imports:
+            - Diagnosis
+            - Feedback
+            - LearnOptions
+            - LearningBudget
+            - SolveResult
+            - TaskRecord
+          typeOnly: true
+        - file: ../../types/skills.js
+          imports:
+            - InstructionSetRole
+            - KnowledgeRevisionRecord
+          typeOnly: true
+        - file: ../knowledge/KnowledgeRepository.js
+          imports:
+            - KnowledgeRepository
+          typeOnly: true
+        - file: ./LearningTrace.js
+          imports:
+            - LearningTrace
+          typeOnly: true
+        - file: ./LeafLearnerStore.js
+          imports:
+            - LeafRunOptions
+          typeOnly: true
+        - file: ./Diagnoser.js
+          imports:
+            - FailureDedupStore
+          typeOnly: true
+        - file: ./types.js
+          imports:
+            - LoadedKnowledge
+          typeOnly: true
+      exports:
+        - resolveOptions
+        - assertPayload
+      interfaces:
+        - LeafCallContext
+        - DiagnoserLike
+        - KnowledgeEditorLike
+        - LeafLearnerOptions
+      functions:
+        - resolveOptions
+        - assertPayload
+    src/agent/learning/LeafLearnerStore.ts:
+      description: Persisted run record and pure helpers for {@link LeafLearner} (Recursa RS-18).
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../../types/learning.js
+          imports:
+            - CriterionResult
+            - Diagnosis
+            - EvalMetrics
+            - Feedback
+            - LearningBudget
+            - LeafState
+            - TaskRecord
+          typeOnly: true
+        - file: ../../types/skills.js
+          imports:
+            - KnowledgeRevisionRecord
+          typeOnly: true
+        - file: ../../types/agent-memory.js
+          imports:
+            - IsoDateTime
+          typeOnly: true
+        - file: ./LearningTrace.js
+          imports:
+            - LearningTrace
+          typeOnly: true
+        - file: ./LearningAccountant.js
+          imports:
+            - LearningAccountant
+            - AccountantState
+        - file: ./types.js
+          imports:
+            - LoadedKnowledge
+          typeOnly: true
+      exports:
+        - ANSWER_CAP_BYTES
+        - EMPTY_METRICS
+        - capAnswer
+        - feedbackFromCriteria
+        - failedFeedback
+        - summarize
+        - accountantFrom
+        - syncAccounting
+        - serializeRun
+        - taskRecordsJson
+        - loadRun
+      interfaces:
+        - LeafRunOptions
+        - CappedAnswer
+        - PersistedPlan
+        - ValidationRun
+        - LeafRun
+      functions:
+        - capAnswer
+        - feedbackFromCriteria
+        - failedFeedback
+        - summarize
+        - accountantFrom
+        - syncAccounting
+        - serializeRun
+        - taskRecordsJson
+        - loadRun
+      constants:
+        - ANSWER_CAP_BYTES
+        - EMPTY_METRICS
+    src/agent/learning/LeafRound.ts:
+      description: "Round phases of the leaf learner (Recursa RS-18): recording solver results, judging, closing a"
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../../types/learning.js
+          imports:
+            - CriterionResult
+            - Diagnosis
+            - EvalMetrics
+            - SolveResult
+          typeOnly: true
+        - file: ../../types/skills.js
+          imports:
+            - KnowledgeRevisionRecord
+          typeOnly: true
+        - file: ../knowledge/knowledgeDigest.js
+          imports:
+            - sha256Hex
+        - file: ./LeafLearner.js
+          imports:
+            - DiagnoserLike
+            - KnowledgeEditorLike
+            - LeafCallContext
+          typeOnly: true
+        - file: ./Diagnoser.js
+          imports:
+            - FailureDedupStore
+          typeOnly: true
+        - file: ./LeafLearnerStore.js
+          imports:
+            - CappedAnswer
+            - LeafRun
+            - capAnswer
+            - feedbackFromCriteria
+            - failedFeedback
+            - summarize
+        - file: ./LeafLearnerContext.js
+          imports:
+            - Ctx
+            - LeafEnv
+            - enterPhase
+            - failedTasks
+            - knowledgeFor
+            - knowledgeForTasks
+            - recordAction
+            - saveCtx
+            - stopRun
+            - tokenTimeStop
+        - file: ./types.js
+          imports:
+            - JudgeAnswer
+          typeOnly: true
+      exports:
+        - resultsFor
+        - runDedup
+        - callContextOf
+        - judgeInput
+        - submitRoundSolve
+        - submitRoundJudge
+        - completeEvaluation
+        - diagnoseRound
+        - editRound
+        - pendingJudgeAnswers
+      functions:
+        - resultsFor
+        - runDedup
+        - callContextOf
+        - judgeInput
+        - submitRoundSolve
+        - submitRoundJudge
+        - completeEvaluation
+        - diagnoseRound
+        - editRound
+        - pendingJudgeAnswers
+    src/agent/learning/LeafValidation.ts:
+      description: Validation and apply phases of the leaf learner (Recursa RS-17 driven by RS-18).
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../../types/learning.js
+          imports:
+            - CriterionResult
+            - SolveResult
+            - TaskRecord
+          typeOnly: true
+        - file: ./RevisionValidator.js
+          imports:
+            - passesRubric
+            - decideValidation
+            - planValidation
+            - ValidationPlan
+        - file: ./types.js
+          imports:
+            - StepRequest
+          typeOnly: true
+        - file: ./LeafLearnerStore.js
+          imports:
+            - LeafRun
+            - PersistedPlan
+            - capAnswer
+        - file: ./LeafRound.js
+          imports:
+            - FullAnswers
+            - judgeInput
+        - file: ./LeafLearnerContext.js
+          imports:
+            - Ctx
+            - LeafEnv
+            - enterPhase
+            - planOptions
+            - recordAction
+            - saveCtx
+            - stopRun
+            - tokenTimeStop
+      exports:
+        - validateStep
+        - submitValidationSolve
+        - submitValidationJudge
+        - inValidationStage
+      functions:
+        - validateStep
+        - submitValidationSolve
+        - submitValidationJudge
+        - inValidationStage
+    src/agent/learning/LearningAccountant.ts:
+      description: "Learning accountant (Recursa RS-23): counts learning waste and signal, phase timing and"
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../../types/learning.js
+          imports:
+            - LearnStopReason
+            - LearningBudget
+            - LearningReport
+            - TokenTotals
+          typeOnly: true
+        - file: ./types.js
+          imports:
+            - LeafPhase
+          typeOnly: true
+        - file: ../../types/learning.js
+          imports:
+            - LearningReport
+            - TokenTotals
+          reExport: true
+          typeOnly: true
+      exports:
+        - LearningAccountant
+        - LearningReport
+        - TokenTotals
+      reExported:
+        - LearningReport
+        - TokenTotals
+      classes:
+        - LearningAccountant
+      interfaces:
+        - AccountantState
+        - LearningAccountantOptions
+    src/agent/learning/LearningTrace.ts:
+      description: Learning-trace manager (Recursa RS-22).
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../../types/types.js
+          imports:
+            - Entity
+            - IGraphStorage
+            - Relation
+          typeOnly: true
+        - file: ../../types/learning.js
+          imports:
+            - EvalMetrics
+            - LearningTraceAction
+            - LearningTraceEntity
+            - LearningTraceRecord
+          typeOnly: true
+        - file: ../../types/agent-memory.js
+          imports:
+            - isLearningTraceEntity
+            - toIsoDateTime
+        - file: ../../core/EntityManager.js
+          imports:
+            - EntityManager
+        - file: ../../core/RelationManager.js
+          imports:
+            - RelationManager
+        - file: ../../core/GraphStorage.js
+          imports:
+            - GraphStorage
+          typeOnly: true
+        - file: ../../utils/errors.js
+          imports:
+            - VersionConflictError
+        - file: ../knowledge/knowledgeDigest.js
+          imports:
+            - shortId
+        - file: ../WorkThreadManager.js
+          imports:
+            - CHILD_OF_RELATION
+        - file: ./observationChunks.js
+          imports:
+            - decodeChunks
+            - encodeChunks
+            - isTagged
+      exports:
+        - TRACE_RECORD_BYTE_BUDGET
+        - DEFAULT_TRACE_MAX_ACTIONS
+        - foldTraceActions
+        - buildTraceEntity
+        - LearningTrace
+      classes:
+        - LearningTrace
+      interfaces:
+        - LearningTraceDeps
+        - LearningTraceOptions
+        - TraceTree
+      functions:
+        - foldTraceActions
+        - buildTraceEntity
+      constants:
+        - TRACE_RECORD_BYTE_BUDGET
+        - DEFAULT_TRACE_MAX_ACTIONS
+    src/agent/learning/RevisionValidator.ts:
+      description: Revision validator (Recursa RS-17).
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../../types/skills.js
+          imports:
+            - InstructionSetRole
+            - KnowledgeRevisionRecord
+          typeOnly: true
+        - file: ../../types/learning.js
+          imports:
+            - CriterionResult
+            - Feedback
+            - TaskRecord
+          typeOnly: true
+        - file: ../knowledge/KnowledgeRepository.js
+          imports:
+            - KnowledgeRepository
+          typeOnly: true
+        - file: ../knowledge/knowledgeDigest.js
+          imports:
+            - sha256Hex
+        - file: ../evaluation/DeterministicJudge.js
+          imports:
+            - RubricJudge
+          typeOnly: true
+        - file: ../harness/ConcurrencyLimiter.js
+          imports:
+            - AbortError
+            - runAll
+        - file: ./types.js
+          imports:
+            - LoadedKnowledge
+            - LearningSolver
+          typeOnly: true
+      exports:
+        - DEFAULT_VALIDATION_SEED
+        - passesRubric
+        - stratifiedSample
+        - planValidation
+        - decideValidation
+        - RevisionValidator
+      classes:
+        - RevisionValidator
+      interfaces:
+        - ValidationVerdictResult
+        - ValidationPlanOptions
+        - ValidationPlan
+        - ValidateOptions
+      functions:
+        - passesRubric
+        - stratifiedSample
+        - planValidation
+        - decideValidation
+      constants:
+        - DEFAULT_VALIDATION_SEED
+    src/agent/learning/index.ts:
+      description: "Recursa Phase 4 public surface: learning-loop callbacks, the diagnoser, the knowledge editor,"
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ./Diagnoser.js
+          imports:
+            - Diagnoser
+          reExport: true
+        - file: ./KnowledgeEditor.js
+          imports:
+            - KnowledgeEditor
+          reExport: true
+        - file: ./RevisionValidator.js
+          imports:
+            - RevisionValidator
+            - planValidation
+            - decideValidation
+          reExport: true
+        - file: ./LeafLearner.js
+          imports:
+            - LeafLearner
+          reExport: true
+        - file: ./LeafLearnerDeps.js
+          imports:
+            - createLeafLearnerDeps
+          reExport: true
+        - file: ./LearningTrace.js
+          imports:
+            - LearningTrace
+          reExport: true
+        - file: ./LearningAccountant.js
+          imports:
+            - LearningAccountant
+          reExport: true
+        - file: ./Diagnoser.js
+          imports:
+            - DiagnoserDeps
+            - DiagnoseItem
+            - DiagnoseOptions
+            - FailureDedupStore
+          reExport: true
+          typeOnly: true
+        - file: ./KnowledgeEditor.js
+          imports:
+            - KnowledgeEditorDeps
+            - KnowledgeEditContext
+          reExport: true
+          typeOnly: true
+        - file: ./RevisionValidator.js
+          imports:
+            - ValidateOptions
+            - ValidationPlan
+            - ValidationPlanOptions
+            - ValidationPlanResult
+            - ValidationVerdictResult
+          reExport: true
+          typeOnly: true
+        - file: ./LeafLearner.js
+          imports:
+            - DiagnoserLike
+            - KnowledgeEditorLike
+            - LeafCallContext
+            - LeafLearnerOptions
+            - LeafStartOptions
+          reExport: true
+          typeOnly: true
+        - file: ./LeafLearnerDeps.js
+          imports:
+            - LeafDepsParts
+            - LeafLearnerDeps
+          reExport: true
+          typeOnly: true
+        - file: ./LearningTrace.js
+          imports:
+            - LearningTraceDeps
+            - LearningTraceOptions
+            - TraceTree
+          reExport: true
+          typeOnly: true
+        - file: ./LearningAccountant.js
+          imports:
+            - AccountantState
+            - LearningAccountantOptions
+            - LearningReport
+            - TokenTotals
+          reExport: true
+          typeOnly: true
+        - file: ./types.js
+          imports:
+            - LearningSolver
+            - LoadedKnowledge
+            - LearningDeps
+            - JudgeAnswer
+            - StepRequest
+          reExport: true
+          typeOnly: true
+      exports:
+        - Diagnoser
+        - KnowledgeEditor
+        - RevisionValidator
+        - planValidation
+        - decideValidation
+        - LeafLearner
+        - createLeafLearnerDeps
+        - LearningTrace
+        - LearningAccountant
+        - DiagnoserDeps
+        - DiagnoseItem
+        - DiagnoseOptions
+        - FailureDedupStore
+        - KnowledgeEditorDeps
+        - KnowledgeEditContext
+        - ValidateOptions
+        - ValidationPlan
+        - ValidationPlanOptions
+        - ValidationPlanResult
+        - ValidationVerdictResult
+        - DiagnoserLike
+        - KnowledgeEditorLike
+        - LeafCallContext
+        - LeafLearnerOptions
+        - LeafStartOptions
+        - LeafDepsParts
+        - LeafLearnerDeps
+        - LearningTraceDeps
+        - LearningTraceOptions
+        - TraceTree
+        - AccountantState
+        - LearningAccountantOptions
+        - LearningReport
+        - TokenTotals
+        - LearningSolver
+        - LoadedKnowledge
+        - LearningDeps
+        - JudgeAnswer
+        - StepRequest
+      reExported:
+        - Diagnoser
+        - KnowledgeEditor
+        - RevisionValidator
+        - planValidation
+        - decideValidation
+        - LeafLearner
+        - createLeafLearnerDeps
+        - LearningTrace
+        - LearningAccountant
+        - DiagnoserDeps
+        - DiagnoseItem
+        - DiagnoseOptions
+        - FailureDedupStore
+        - KnowledgeEditorDeps
+        - KnowledgeEditContext
+        - ValidateOptions
+        - ValidationPlan
+        - ValidationPlanOptions
+        - ValidationPlanResult
+        - ValidationVerdictResult
+        - DiagnoserLike
+        - KnowledgeEditorLike
+        - LeafCallContext
+        - LeafLearnerOptions
+        - LeafStartOptions
+        - LeafDepsParts
+        - LeafLearnerDeps
+        - LearningTraceDeps
+        - LearningTraceOptions
+        - TraceTree
+        - AccountantState
+        - LearningAccountantOptions
+        - LearningReport
+        - TokenTotals
+        - LearningSolver
+        - LoadedKnowledge
+        - LearningDeps
+        - JudgeAnswer
+        - StepRequest
+    src/agent/learning/llmJson.ts:
+      description: "Shared helpers for LLM-backed learning steps: JSON extraction from model output,"
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies: []
+      exports:
+        - ABORTED
+        - extractJsonObject
+        - raceAbort
+        - describeError
+        - escapeFenceContent
+        - fencedText
+        - escapeProse
+        - inlineSafe
+      functions:
+        - extractJsonObject
+        - raceAbort
+        - describeError
+        - escapeFenceContent
+        - fencedText
+        - escapeProse
+        - inlineSafe
+      constants:
+        - ABORTED
+    src/agent/learning/observationChunks.ts:
+      description: Chunked observation storage for leaf-learner records (Recursa RS-18).
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies: []
+      exports:
+        - OBSERVATION_CHUNK_CHARS
+        - splitForObservations
+        - encodeChunks
+        - isTagged
+        - decodeChunks
+      functions:
+        - splitForObservations
+        - encodeChunks
+        - isTagged
+        - decodeChunks
+      constants:
+        - OBSERVATION_CHUNK_CHARS
+    src/agent/learning/types.ts:
+      description: Callback interfaces and step contracts for the Recursa learning loop (spec RS-14, RS-18).
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../../types/learning.js
+          imports:
+            - LearnResult
+            - SolveResult
+            - TaskRecord
+          typeOnly: true
+        - file: ../evaluation/DeterministicJudge.js
+          imports:
+            - RubricJudge
+          typeOnly: true
+        - file: ../procedural/graph/CompletionProvider.js
+          imports:
+            - PGCompletionProvider
+          typeOnly: true
+        - file: ../harness/ConcurrencyLimiter.js
+          imports:
+            - SubagentRunner
+          typeOnly: true
+        - file: ../knowledge/KnowledgeRepository.js
+          imports:
+            - LoadedKnowledge
+          typeOnly: true
+        - file: ../../types/learning.js
+          imports:
+            - LeafPhase
+            - LeafState
+          reExport: true
+          typeOnly: true
+        - file: ../knowledge/KnowledgeRepository.js
+          imports:
+            - LoadedKnowledge
+          reExport: true
+          typeOnly: true
+      exports:
+        - LeafPhase
+        - LeafState
+        - LoadedKnowledge
+      reExported:
+        - LeafPhase
+        - LeafState
+        - LoadedKnowledge
+      interfaces:
+        - LearningSolver
+        - LearningDeps
+        - JudgeAnswer
     src/agent/procedural/ProcedureManager.ts:
       description: Procedure Manager (3B.4)
       externalDependencies: []
@@ -6854,9 +7953,7 @@ modules:
       internalDependencies:
         - file: ../../utils/textSimilarity.js
           imports:
-            - ENGLISH_STOPWORDS_SMALL
             - jaccard
-            - tokenSetWithoutStopwords
         - file: ../../utils/tokenEstimate.js
           imports:
             - estimateTokensFromText
@@ -6876,9 +7973,13 @@ modules:
           typeOnly: true
         - file: ./skillRecordUtils.js
           imports:
+            - compareSkillMatches
             - mintSkillId
+            - rankSkillsLexically
             - skillDedupHash
             - skillObservations
+            - skillSearchableText
+            - skillTokenSet
         - file: ./SkillFormat.js
           imports:
             - fitSkillSectionToBudget
@@ -7136,15 +8237,30 @@ modules:
             - SkillKind
             - SkillRecord
           typeOnly: true
+        - file: ../../utils/textSimilarity.js
+          imports:
+            - ENGLISH_STOPWORDS_SMALL
+            - jaccard
+            - tokenSetWithoutStopwords
       exports:
         - SKILL_KIND_VALUES
         - skillDedupHash
         - mintSkillId
         - skillObservations
+        - skillTokenSet
+        - skillSearchableText
+        - compareSkillMatches
+        - rankSkillsLexically
+      interfaces:
+        - LexicalSkillMatch
       functions:
         - skillDedupHash
         - mintSkillId
         - skillObservations
+        - skillTokenSet
+        - skillSearchableText
+        - compareSkillMatches
+        - rankSkillsLexically
       constants:
         - SKILL_KIND_VALUES
     src/agent/skills/skillTreeFs.ts:
@@ -8616,6 +9732,11 @@ modules:
         - file: ./context/KnowledgeGovernanceFacade.js
           imports:
             - KnowledgeGovernanceFacade
+        - file: ./context/LearningFacade.js
+          imports:
+            - LearningFacade
+            - LearningLoop
+            - LearningLoopDeps
         - file: ../utils/envConfig.js
           imports:
             - readEnvNumber
@@ -9641,6 +10762,86 @@ modules:
         - KnowledgeGovernanceFacade
       interfaces:
         - KnowledgeGovernanceFacadeDeps
+    src/core/context/LearningFacade.ts:
+      description: LearningFacade
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../GraphStorage.js
+          imports:
+            - GraphStorage
+          typeOnly: true
+        - file: ../EntityManager.js
+          imports:
+            - EntityManager
+          typeOnly: true
+        - file: ../RelationManager.js
+          imports:
+            - RelationManager
+          typeOnly: true
+        - file: ../../agent/knowledge/KnowledgeRepository.js
+          imports:
+            - KnowledgeRepository
+          typeOnly: true
+        - file: ../../agent/skills/SkillManager.js
+          imports:
+            - SkillManager
+          typeOnly: true
+        - file: ../../agent/skills/SkillPublisher.js
+          imports:
+            - SkillPublisher
+          typeOnly: true
+        - file: ../../agent/FailureManager.js
+          imports:
+            - FailureManager
+          typeOnly: true
+        - file: ../../agent/AgentReflectionManager.js
+          imports:
+            - AgentReflectionManager
+          typeOnly: true
+        - file: ../../agent/harness/InteractionLog.js
+          imports:
+            - InteractionLog
+          typeOnly: true
+        - file: ../../agent/learning/LearningAccountant.js
+          imports:
+            - LearningReport
+          typeOnly: true
+        - file: ../../agent/learning/LearningTrace.js
+          imports:
+            - LearningTrace
+        - file: ../../agent/learning/Diagnoser.js
+          imports:
+            - Diagnoser
+        - file: ../../agent/learning/KnowledgeEditor.js
+          imports:
+            - KnowledgeEditor
+        - file: ../../agent/learning/LeafLearner.js
+          imports:
+            - LeafLearner
+            - LeafStartOptions
+        - file: ../../agent/learning/LeafLearnerDeps.js
+          imports:
+            - createLeafLearnerDeps
+        - file: ../../agent/learning/types.js
+          imports:
+            - LearningDeps
+            - StepRequest
+          typeOnly: true
+        - file: ../../types/learning.js
+          imports:
+            - CriterionResult
+            - LearnResult
+            - LeafState
+            - SolveResult
+          typeOnly: true
+      exports:
+        - LearningFacade
+      classes:
+        - LearningFacade
+      interfaces:
+        - LearningFacadeDeps
+        - LearningLoop
     src/core/context/SearchFacade.ts:
       description: SearchFacade
       externalDependencies: []
@@ -14590,6 +15791,8 @@ modules:
         - Diagnosis
         - LearnOptions
         - LearnResult
+        - TokenTotals
+        - LearningReport
         - Criterion
         - TaskRecord
         - TaskEntity
@@ -17188,6 +18391,9 @@ dependencyGraph:
         - src/agent/WorkingMemoryManager.ts
         - src/agent/EntropyFilter.ts
         - src/agent/ConsolidationPipeline.ts
+      - - src/agent/knowledge/KnowledgeRepository.ts
+        - src/agent/knowledge/ScratchKnowledge.ts
+        - src/agent/knowledge/KnowledgeRepository.ts
       - - src/agent/procedural/graph/backing/IProceduralGraphBacking.ts
         - src/agent/procedural/graph/backing/InMemoryProceduralGraphBacking.ts
         - src/agent/procedural/graph/backing/LockedProceduralGraphBacking.ts
@@ -17203,12 +18409,16 @@ dependencyGraph:
       - - src/agent/procedural/graph/ProceduralGraphSession.ts
         - src/agent/procedural/graph/ProceduralGuidance.ts
         - src/agent/procedural/graph/ProceduralGraphSession.ts
+      - - src/agent/learning/LeafLearner.ts
+        - src/agent/learning/LeafValidation.ts
+        - src/agent/learning/LeafRound.ts
+        - src/agent/learning/LeafLearner.ts
       - - src/adapters/ApiKeyAuthMiddleware.ts
         - src/adapters/RestRouter.ts
         - src/adapters/ApiKeyAuthMiddleware.ts
-    total: 10
+    total: 12
     runtimeCount: 0
-    typeOnlyCount: 10
+    typeOnlyCount: 12
   layers:
     - name: Adapters
       files:
@@ -17298,10 +18508,28 @@ dependencyGraph:
         - src/agent/keyValueLine.ts
         - src/agent/knowledge/InstructionSetManager.ts
         - src/agent/knowledge/KnowledgeRepository.ts
+        - src/agent/knowledge/ScratchKnowledge.ts
         - src/agent/knowledge/index.ts
         - src/agent/knowledge/knowledgeDigest.ts
         - src/agent/knowledge/knowledgeRevision.ts
         - src/agent/knowledgeContext.ts
+        - src/agent/learning/Diagnoser.ts
+        - src/agent/learning/KnowledgeEditor.ts
+        - src/agent/learning/LeafApply.ts
+        - src/agent/learning/LeafLearner.ts
+        - src/agent/learning/LeafLearnerContext.ts
+        - src/agent/learning/LeafLearnerDeps.ts
+        - src/agent/learning/LeafLearnerOptions.ts
+        - src/agent/learning/LeafLearnerStore.ts
+        - src/agent/learning/LeafRound.ts
+        - src/agent/learning/LeafValidation.ts
+        - src/agent/learning/LearningAccountant.ts
+        - src/agent/learning/LearningTrace.ts
+        - src/agent/learning/RevisionValidator.ts
+        - src/agent/learning/index.ts
+        - src/agent/learning/llmJson.ts
+        - src/agent/learning/observationChunks.ts
+        - src/agent/learning/types.ts
         - src/agent/procedural/ProcedureManager.ts
         - src/agent/procedural/ProcedureStore.ts
         - src/agent/procedural/StepSequencer.ts
@@ -17413,6 +18641,7 @@ dependencyGraph:
         - src/core/context/AgentCognitionFacade.ts
         - src/core/context/AgentMemoryFacade.ts
         - src/core/context/KnowledgeGovernanceFacade.ts
+        - src/core/context/LearningFacade.ts
         - src/core/context/SearchFacade.ts
         - src/core/context/StorageInfraFacade.ts
         - src/core/context/envBounds.ts
@@ -17591,29 +18820,29 @@ reachability:
     - src/index.ts
     - src/sqlite.ts
     - src/workers/levenshteinWorker.ts
-  reachableCount: 351
+  reachableCount: 370
   dormantCount: 0
   orphaned: []
   testOnly: []
 statistics:
-  totalTypeScriptFiles: 351
+  totalTypeScriptFiles: 370
   totalModules: 12
-  totalLinesOfCode: 114490
-  totalExports: 2456
-  totalClasses: 256
-  totalInterfaces: 731
-  totalFunctions: 477
-  totalTypeGuards: 40
+  totalLinesOfCode: 119085
+  totalExports: 2588
+  totalClasses: 264
+  totalInterfaces: 769
+  totalFunctions: 545
+  totalTypeGuards: 41
   totalEnums: 4
-  totalConstants: 138
-  totalReExports: 1581
-  totalTypeOnlyImports: 639
+  totalConstants: 145
+  totalReExports: 1631
+  totalTypeOnlyImports: 726
   runtimeCircularDeps: 0
-  typeOnlyCircularDeps: 10
+  typeOnlyCircularDeps: 12
   entryRoots: 4
-  reachableFiles: 351
+  reachableFiles: 370
   dormantFiles: 0
   orphanedFiles: 0
   testOnlyFiles: 0
   unusedFilesCount: 0
-  unusedExportsCount: 72
+  unusedExportsCount: 89

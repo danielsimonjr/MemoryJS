@@ -387,7 +387,12 @@ separate genuine solver errors from noisy or ambiguous feedback (§5.1 Diagnose)
 `missing-knowledge` / `wrong-behaviour` diagnosis call `FailureManager.record` with **all five required
 `FailureInput` fields**: `context` (task input head), `attempted` (answer head), `failure_mode` (failed
 criteria text), `root_cause` (diagnosis summary), `applicability_hint` (`<category>: <failed criterion
-ids>`), plus `sourceSessionId`. One failure record per task per round (dedup on `taskId + round`).
+ids>`), plus `sourceSessionId`. One failure record per trace, task and round (dedup key
+`traceId + taskId + round`). *Decided in Phase 4:* the dedup is durable — the leaf learner passes a
+`FailureDedupStore` backed by its persisted run (`recordedFailures: Record<key, failureId>`, saved as
+soon as a record is written), so a resumed run or a new `Diagnoser` instance never records twice and a
+new run never reuses an old id; without a store the `Diagnoser` uses an in-memory map. An abort during
+the LLM call rejects with `AbortError` (no fallback, no record).
 Earlier reflections come from `AgentReflectionManager.getRelevantForSession` (§5.3). LLM path: prompt →
 zod-validated `Diagnosis` JSON, retry once, else fallback. Fallback classification: all criteria of
 kind `free` failed → `ambiguous`; failed criteria reference sources absent from `LoadedKnowledge` →
@@ -411,7 +416,13 @@ stratified sample (`validationSampleSize`, by category) of previously passing ta
 `Solver` and the same `RubricJudge`, `validationRepeats` times (default 1; a task counts as passing
 only if it passes every repeat), and returns `{ verdict: 'accept' | 'reject'; fixed; regressed;
 unchanged }`. Accept iff `fixed.length > 0 && regressed.length === 0` (§5.1 Validate). On accept the
-caller applies the same ops to the live `K` with `expectedSnapshotId` OCC. This implements the same
+caller applies the same ops to the live `K` with `expectedSnapshotId` OCC. *Decided in Phase 4:* the
+scratch copy is a `ScratchKnowledge` (not a `LoadedKnowledge` builder) with an injectable `matcher`;
+`cloneForValidation` passes the pure lexical scorer shared with `SkillManager.match`
+(`rankSkillsLexically` in `skillRecordUtils`), so scratch and live rank skills identically (the
+semantic blend is not available in scratch). The leaf learner computes the validation plan once,
+persists it (tasks, scratch knowledge, live digest) on the run and reuses it for every repeat; when the
+live digest moves mid-validation it records `validation-stale` and rejects the revision (`no-progress`). This implements the same
 retain-on-improvement gate as `ProceduralGraphEvolution`; sharing code between them is a follow-up,
 not part of this plan.
 
@@ -433,6 +444,24 @@ work (validate issues its own `solve` / `judge` `StepRequest`s for the affected 
 with `deps.solver` / `deps.judge` through `ConcurrencyLimiter`, and `submit`s, until `done`. After
 every accepted revision it calls `SkillPublisher.publish` when a publish directory is configured.
 Stops on `all-pass`, `no-progress` (a round that accepts no edit) or `LearningAccountant.exceeded`.
+
+*Decided in Phase 4 (persistence and failure handling):*
+- The run record is JSON in numbered `[leaf-state i/n] <chunk>` observations of the trace entity
+  (each ≤ 4000 characters, under the 5000-character observation cap); tasks are written once as
+  `[leaf-tasks i/n]`. Decoding requires chunk indices exactly `1..n`.
+- Single driver: the record carries `stateRev`; every save is compare-and-swap on it. A second
+  learner stepping the same trace gets `LeafLearner: stale state (expected rev N)` and nothing it
+  computed is stored (entity-version conflicts from trace actions are retried, a moved `stateRev` is not).
+- Apply `conflict` (live `K` moved): trace action `edit` / `apply-conflict: <reason>`, nothing applied,
+  the next round starts from a fresh snapshot of live `K` unless a budget is spent. Apply `rejected`:
+  `apply-rejected: failedOpIndex=<i> <reason>`, the round counts as no progress. Neither throws.
+- `snapshotId`, `revisionCount` and `appliedRevisionIds` are saved before `publish`; publishing is best
+  effort (`publish-failed: <message>`, never thrown). Apply is idempotent: a revision id already in
+  `appliedRevisionIds`, or one whose `revision:<id>`-labelled snapshot exists (crash between
+  `applyRevision` and the save), is not applied again.
+- Token and wall-clock budgets are also checked after each solve and judge stage; `start` rejects
+  non-positive or non-finite `maxTokens` / `maxWallClockMs`. The accountant state (rework digests,
+  diagnosed failures, stalls, signals, phase timing) is persisted, and `LearnResult.report` carries it.
 
 **RS-19 `SplitStrategy`** (`src/agent/learning/SplitStrategies.ts`)
 `split(name, tasks, ctx) → TaskSubset[]` (`{ label, taskIds, rationale }`), a partition: every task
@@ -533,7 +562,10 @@ instructions and L1 only skills, each with its own budget and one skill match pe
 Lazy getters: `ctx.skillManager`, `ctx.instructionSets`, `ctx.knowledgeRepository`,
 `ctx.interactionLog` (`null` unless `MEMORY_INTERACTION_LOG === 'true'`, strict literal),
 `ctx.evaluator`; factories `ctx.bootstrapper(deps)` and `ctx.learningLoop(deps)` (`LearningDeps`)
-returning `{ run }` / `{ learn }`. Getters are created on first access and released in `close()`.
+returning `{ run }` / `{ learn }`. *Phase 4:* `learningLoop(deps)` returns a fresh, independent loop
+(`learn`, `start`, `next`, `submit`, `status` → state plus `LearningReport`) on each call; `deps` adds
+`publishDir`, `solverInstructionSetId`, `sessionId`, `interactionLog` (passed to the `Diagnoser`; solve
+trace addresses are then kept on trace actions) and `includeTraceAddrs`. Getters are created on first access and released in `close()`.
 Env vars (read via `readEnvStrictFlag` / `readEnvPositiveIntOrDefault`; documented in CLAUDE.md,
 README and CONFIGURATION.md):
 

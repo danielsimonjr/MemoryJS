@@ -630,3 +630,6 @@ export * from './harness/index.js';
 // ==================== Recursa — Phase 3 (evaluation + knowledge context) ====================
 export * from './evaluation/index.js';
 export * from './knowledgeContext.js';
+
+// ==================== Recursa — Phase 4 (leaf learner) ====================
+export * from './learning/index.js';
