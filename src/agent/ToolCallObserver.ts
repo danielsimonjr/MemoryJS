@@ -14,6 +14,7 @@
 import { EventEmitter } from 'node:events';
 import { randomUUID } from 'node:crypto';
 import type { RecordOutcomeInput, ToolAffordanceManager } from './ToolAffordanceManager.js';
+import type { InteractionLog } from './harness/InteractionLog.js';
 
 interface InFlightCall {
   toolName: string;
@@ -41,6 +42,19 @@ export class ToolCallObserver {
 
   private readonly manager: ToolAffordanceManager;
   private readonly inFlight: Map<string, InFlightCall> = new Map();
+  private interactionLog?: Pick<InteractionLog, 'append'>;
+  private interactionSessionId = 'tool-call-observer';
+  /**
+   * Attach or detach (no argument) the InteractionLog that receives tool_call / tool_output
+   * records. Off by default. Appends are fire-and-forget: they never delay `toolCall:*` events.
+   *
+   * @param log - Log to append to, or undefined to detach
+   * @param sessionId - Session id written on each record (default `tool-call-observer`)
+   */
+  setInteractionLog(log?: Pick<InteractionLog, 'append'>, sessionId = 'tool-call-observer'): void {
+    this.interactionLog = log;
+    this.interactionSessionId = sessionId;
+  }
 
   constructor(manager: ToolAffordanceManager) {
     this.manager = manager;
@@ -65,6 +79,7 @@ export class ToolCallObserver {
     };
     this.inFlight.set(callId, entry);
     this.events.emit('toolCall:start', { callId, toolName, args });
+    void this.recordInteraction('tool_call', toolName, { args });
     return callId;
   }
 
@@ -130,12 +145,22 @@ export class ToolCallObserver {
     const durationMs = Date.now() - entry.startedAtMs;
     const { outcome, eventFields } = describe();
     await this.manager.recordOutcome(entry.toolName, { ...outcome, durationMs });
+    const fields = eventFields();
+    void this.recordInteraction('tool_output', entry.toolName, { outcome: outcome.outcome, durationMs, errorMessage: outcome.errorMessage, result: fields.result });
     this.events.emit(eventName, {
       callId,
       toolName: entry.toolName,
       durationMs,
-      ...eventFields(),
+      ...fields,
     });
+  }
+
+  /** Append one interaction record. Never throws or rejects. @internal */
+  private async recordInteraction(kind: 'tool_call' | 'tool_output', toolName: string, payload: unknown): Promise<void> {
+    try {
+      const content = JSON.stringify(payload, (_k, v: unknown) => (v instanceof Error ? String(v) : v)) ?? '';
+      await this.interactionLog?.append({ sessionId: this.interactionSessionId, kind, tag: toolName, content });
+    } catch { /* ignored */ }
   }
 
   /**

@@ -623,3 +623,6 @@ export {
 
 export * from './skills/index.js';
 export * from './knowledge/index.js';
+
+// ==================== Recursa — Phase 2 (harness support) ====================
+export * from './harness/index.js';

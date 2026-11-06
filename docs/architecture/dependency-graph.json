@@ -3,9 +3,9 @@
     "name": "@danielsimonjr/memoryjs",
     "version": "4.5.0",
     "lastUpdated": "2026-11-06",
-    "totalFiles": 332,
+    "totalFiles": 339,
     "totalModules": 12,
-    "totalExports": 2390
+    "totalExports": 2436
   },
   "entryPoints": [
     {
@@ -1468,6 +1468,13 @@
             "file": "../utils/tokenEstimate.js",
             "imports": [
               "estimateTokensFromText"
+            ]
+          },
+          {
+            "file": "./harness/EvictionIndex.js",
+            "imports": [
+              "formatEvictionLine",
+              "EvictionIndex"
             ]
           },
           {
@@ -3834,6 +3841,13 @@
               "ToolAffordanceManager"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "./harness/InteractionLog.js",
+            "imports": [
+              "InteractionLog"
+            ],
+            "typeOnly": true
           }
         ],
         "exports": [
@@ -4310,6 +4324,436 @@
           "EventManagerConfig"
         ]
       },
+      "src/agent/harness/ConcurrencyLimiter.ts": {
+        "description": "Bounded-concurrency runner with per-item error isolation, abort, and stall accounting.",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../utils/errors.js",
+            "imports": [
+              "ErrorCode",
+              "KnowledgeGraphError"
+            ]
+          },
+          {
+            "file": "../../types/learning.js",
+            "imports": [
+              "LearningBudget"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "runAll",
+          "runAllWithStats",
+          "AbortError",
+          "InProcessSubagentRunner"
+        ],
+        "classes": [
+          "AbortError",
+          "InProcessSubagentRunner"
+        ],
+        "interfaces": [
+          "ConcurrencyStats",
+          "RunAllOptions",
+          "SubagentTask",
+          "SubagentRunner"
+        ],
+        "functions": [
+          "runAll",
+          "runAllWithStats"
+        ]
+      },
+      "src/agent/harness/EvictionIndex.ts": {
+        "description": "Eviction index: a record of context ranges that were pushed out of the working window.",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../utils/errors.js",
+            "imports": [
+              "ErrorCode",
+              "KnowledgeGraphError"
+            ]
+          }
+        ],
+        "exports": [
+          "formatEvictionLine",
+          "addrSpan",
+          "EvictionIndex"
+        ],
+        "classes": [
+          "EvictionIndex"
+        ],
+        "interfaces": [
+          "EvictionRange"
+        ],
+        "functions": [
+          "formatEvictionLine",
+          "addrSpan"
+        ]
+      },
+      "src/agent/harness/InteractionLog.ts": {
+        "description": "InteractionLog: an append-only JSONL sidecar of model turns, tool calls,",
+        "externalDependencies": [
+          {
+            "package": "async-mutex",
+            "imports": [
+              "Mutex"
+            ]
+          }
+        ],
+        "nodeDependencies": [
+          {
+            "module": "fs",
+            "imports": [
+              "promises"
+            ]
+          },
+          {
+            "module": "fs/promises",
+            "imports": [
+              "FileHandle"
+            ]
+          },
+          {
+            "module": "path",
+            "imports": [
+              "join",
+              "basename",
+              "resolve"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "../../utils/sidecarPath.js",
+            "imports": [
+              "sidecarPath"
+            ]
+          },
+          {
+            "file": "../../utils/durableWriteFile.js",
+            "imports": [
+              "durableAppendFile"
+            ]
+          },
+          {
+            "file": "./InteractionLogRegex.js",
+            "imports": [
+              "compileSelectRegex",
+              "matchSelectLines"
+            ]
+          },
+          {
+            "file": "./InteractionLogBlobs.js",
+            "imports": [
+              "fileSize",
+              "readBlobHead",
+              "readRange",
+              "sharedMutex",
+              "readLogFile",
+              "writeBlobExclusive"
+            ]
+          },
+          {
+            "file": "../../utils/entityUtils.js",
+            "imports": [
+              "validateFilePath"
+            ]
+          },
+          {
+            "file": "../../utils/textSimilarity.js",
+            "imports": [
+              "tokenizeUnicodeToSet",
+              "jaccard"
+            ]
+          },
+          {
+            "file": "../../utils/envConfig.js",
+            "imports": [
+              "readEnvStrictInt"
+            ]
+          },
+          {
+            "file": "../../utils/errors.js",
+            "imports": [
+              "ErrorCode"
+            ]
+          },
+          {
+            "file": "./InteractionLogFormat.js",
+            "imports": [
+              "InteractionLogError",
+              "checkLimit",
+              "decodeLine",
+              "encodeInteractionLine",
+              "formatAddr",
+              "parseAddr",
+              "scanInteractionLog",
+              "truncateToBytes",
+              "SELECTABLE_FIELDS",
+              "validateAppendInput",
+              "InteractionAppendInput",
+              "InteractionRecord",
+              "InteractionSpill",
+              "InteractionLogOptions",
+              "RangeOptions",
+              "SearchOptions",
+              "SearchHit",
+              "SelectOptions",
+              "SelectResult",
+              "SemanticSimilarityProvider"
+            ]
+          },
+          {
+            "file": "./InteractionLogFormat.js",
+            "imports": [
+              "InteractionLogError"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./InteractionLogFormat.js",
+            "imports": [
+              "InteractionAppendInput",
+              "InteractionKind",
+              "InteractionRecord",
+              "InteractionSpill",
+              "InteractionLogOptions",
+              "RangeOptions",
+              "SearchOptions",
+              "SearchHit",
+              "SelectOptions",
+              "SelectResult",
+              "SemanticSimilarityProvider"
+            ],
+            "reExport": true,
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "InteractionLogError",
+          "InteractionLog",
+          "InteractionAppendInput",
+          "InteractionKind",
+          "InteractionRecord",
+          "InteractionSpill",
+          "InteractionLogOptions",
+          "RangeOptions",
+          "SearchOptions",
+          "SearchHit",
+          "SelectOptions",
+          "SelectResult",
+          "SemanticSimilarityProvider"
+        ],
+        "reExported": [
+          "InteractionLogError",
+          "InteractionAppendInput",
+          "InteractionKind",
+          "InteractionRecord",
+          "InteractionSpill",
+          "InteractionLogOptions",
+          "RangeOptions",
+          "SearchOptions",
+          "SearchHit",
+          "SelectOptions",
+          "SelectResult",
+          "SemanticSimilarityProvider"
+        ],
+        "classes": [
+          "InteractionLog"
+        ]
+      },
+      "src/agent/harness/InteractionLogBlobs.ts": {
+        "description": "File helpers for InteractionLog: tolerant log reads, tail reads, exclusive blob writes",
+        "externalDependencies": [
+          {
+            "package": "async-mutex",
+            "imports": [
+              "Mutex"
+            ]
+          }
+        ],
+        "nodeDependencies": [
+          {
+            "module": "fs",
+            "imports": [
+              "promises"
+            ]
+          },
+          {
+            "module": "path",
+            "imports": [
+              "dirname"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "../../utils/errors.js",
+            "imports": [
+              "ErrorCode"
+            ]
+          },
+          {
+            "file": "./InteractionLogFormat.js",
+            "imports": [
+              "InteractionLogError",
+              "truncateToBytes"
+            ]
+          }
+        ],
+        "exports": [
+          "sharedMutex",
+          "readLogFile",
+          "fileSize",
+          "readRange",
+          "writeBlobExclusive",
+          "readBlobHead"
+        ],
+        "functions": [
+          "sharedMutex",
+          "readLogFile",
+          "fileSize",
+          "readRange",
+          "writeBlobExclusive",
+          "readBlobHead"
+        ]
+      },
+      "src/agent/harness/InteractionLogFormat.ts": {
+        "description": "InteractionLog wire format: record type, line encoding, torn-line tolerant",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../utils/errors.js",
+            "imports": [
+              "KnowledgeGraphError",
+              "ErrorCode"
+            ]
+          }
+        ],
+        "exports": [
+          "INTERACTION_KINDS",
+          "SELECTABLE_FIELDS",
+          "MAX_RESULT_LIMIT",
+          "parseAddr",
+          "formatAddr",
+          "isInteractionRecord",
+          "encodeInteractionLine",
+          "scanInteractionLog",
+          "decodeLine",
+          "truncateToBytes",
+          "checkLimit",
+          "validateAppendInput",
+          "InteractionLogError"
+        ],
+        "classes": [
+          "InteractionLogError"
+        ],
+        "interfaces": [
+          "InteractionSpill",
+          "InteractionRecord",
+          "InteractionAppendInput",
+          "ScannedRecord",
+          "ScanResult",
+          "InteractionLogOptions",
+          "RangeOptions",
+          "SearchOptions",
+          "SearchHit",
+          "SelectOptions",
+          "SelectResult",
+          "SemanticSimilarityProvider"
+        ],
+        "functions": [
+          "parseAddr",
+          "formatAddr",
+          "isInteractionRecord",
+          "encodeInteractionLine",
+          "scanInteractionLog",
+          "decodeLine",
+          "truncateToBytes",
+          "checkLimit",
+          "validateAppendInput"
+        ],
+        "constants": [
+          "INTERACTION_KINDS",
+          "SELECTABLE_FIELDS",
+          "MAX_RESULT_LIMIT"
+        ]
+      },
+      "src/agent/harness/InteractionLogRegex.ts": {
+        "description": "Bounded regex matching for `InteractionLog.select`.",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./InteractionLogFormat.js",
+            "imports": [
+              "InteractionLogError"
+            ]
+          }
+        ],
+        "exports": [
+          "MAX_REGEX_SOURCE_LENGTH",
+          "MAX_MATCH_LINE_BYTES",
+          "MAX_MATCH_LINE_BYTES_TWO_UNBOUNDED",
+          "SELECT_TIME_BUDGET_MS",
+          "analyzeSelectRegex",
+          "compileSelectRegex",
+          "matchSelectLines"
+        ],
+        "interfaces": [
+          "CompiledSelectRegex"
+        ],
+        "functions": [
+          "analyzeSelectRegex",
+          "compileSelectRegex",
+          "matchSelectLines"
+        ],
+        "constants": [
+          "MAX_REGEX_SOURCE_LENGTH",
+          "MAX_MATCH_LINE_BYTES",
+          "MAX_MATCH_LINE_BYTES_TWO_UNBOUNDED",
+          "SELECT_TIME_BUDGET_MS"
+        ]
+      },
+      "src/agent/harness/index.ts": {
+        "description": "Recursa harness support (RS-7..RS-9): the append-only `InteractionLog`",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./InteractionLog.js",
+            "imports": [
+              "*"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./EvictionIndex.js",
+            "imports": [
+              "*"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./ConcurrencyLimiter.js",
+            "imports": [
+              "*"
+            ],
+            "reExport": true
+          }
+        ],
+        "exports": [],
+        "reExported": [
+          "* from ./InteractionLog.js",
+          "* from ./EvictionIndex.js",
+          "* from ./ConcurrencyLimiter.js"
+        ]
+      },
       "src/agent/index.ts": {
         "description": "Agent Module - Barrel Export",
         "externalDependencies": [],
@@ -4324,6 +4768,13 @@
           },
           {
             "file": "./knowledge/index.js",
+            "imports": [
+              "*"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./harness/index.js",
             "imports": [
               "*"
             ],
@@ -5538,6 +5989,7 @@
         "reExported": [
           "* from ./skills/index.js",
           "* from ./knowledge/index.js",
+          "* from ./harness/index.js",
           "AccessTracker",
           "AccessStats",
           "AccessTrackerConfig",
@@ -22976,6 +23428,13 @@
           "src/agent/connectivity.ts",
           "src/agent/events/EventManager.ts",
           "src/agent/events/index.ts",
+          "src/agent/harness/ConcurrencyLimiter.ts",
+          "src/agent/harness/EvictionIndex.ts",
+          "src/agent/harness/InteractionLog.ts",
+          "src/agent/harness/InteractionLogBlobs.ts",
+          "src/agent/harness/InteractionLogFormat.ts",
+          "src/agent/harness/InteractionLogRegex.ts",
+          "src/agent/harness/index.ts",
           "src/agent/index.ts",
           "src/agent/keyValueLine.ts",
           "src/agent/knowledge/InstructionSetManager.ts",
@@ -23301,32 +23760,32 @@
       "src/sqlite.ts",
       "src/workers/levenshteinWorker.ts"
     ],
-    "reachableCount": 332,
+    "reachableCount": 339,
     "dormantCount": 0,
     "orphaned": [],
     "testOnly": []
   },
   "statistics": {
-    "totalTypeScriptFiles": 332,
+    "totalTypeScriptFiles": 339,
     "totalModules": 12,
-    "totalLinesOfCode": 110925,
-    "totalExports": 2390,
-    "totalClasses": 242,
-    "totalInterfaces": 697,
-    "totalFunctions": 447,
-    "totalTypeGuards": 39,
+    "totalLinesOfCode": 112611,
+    "totalExports": 2436,
+    "totalClasses": 247,
+    "totalInterfaces": 715,
+    "totalFunctions": 469,
+    "totalTypeGuards": 40,
     "totalEnums": 4,
-    "totalConstants": 130,
-    "totalReExports": 1557,
-    "totalTypeOnlyImports": 538,
+    "totalConstants": 137,
+    "totalReExports": 1573,
+    "totalTypeOnlyImports": 541,
     "runtimeCircularDeps": 0,
     "typeOnlyCircularDeps": 10,
     "entryRoots": 4,
-    "reachableFiles": 332,
+    "reachableFiles": 339,
     "dormantFiles": 0,
     "orphanedFiles": 0,
     "testOnlyFiles": 0,
     "unusedFilesCount": 0,
-    "unusedExportsCount": 62
+    "unusedExportsCount": 72
   }
 }

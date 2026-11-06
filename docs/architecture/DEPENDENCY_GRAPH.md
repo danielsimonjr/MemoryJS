@@ -39,7 +39,7 @@ This document provides a comprehensive dependency graph of all files, components
 The codebase is organized into the following modules:
 
 - **adapters**: 7 files
-- **agent**: 122 files
+- **agent**: 129 files
 - **cli**: 31 files
 - **core**: 28 files
 - **features**: 18 files
@@ -63,7 +63,7 @@ Seeded build/entry roots (package `exports`, `bin` targets, tsup entries, script
 - `src/sqlite.ts`
 - `src/workers/levenshteinWorker.ts`
 
-Reachable from a root: **332** of 332 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
+Reachable from a root: **339** of 339 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
 
 ---
 
@@ -465,6 +465,7 @@ Reachable from a root: **332** of 332 files. Dormant: **0** (0 orphaned, 0 test-
 | `../types/agent-memory.js` | `ContextWindowManagerConfig` | Import (type-only) |
 | `../utils/fillDefaults.js` | `fillDefaults` | Import |
 | `../utils/tokenEstimate.js` | `estimateTokensFromText` | Import |
+| `./harness/EvictionIndex.js` | `formatEvictionLine, EvictionIndex` | Import |
 | `./ProjectContextManager.js` | `ProjectContextManager` | Dynamic import |
 | `../core/EntityManager.js` | `EntityManager` | Dynamic import |
 | `./ProfileManager.js` | `ProfileManager` | Dynamic import |
@@ -1226,6 +1227,7 @@ Reachable from a root: **332** of 332 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `./ToolAffordanceManager.js` | `RecordOutcomeInput, ToolAffordanceManager` | Import (type-only) |
+| `./harness/InteractionLog.js` | `InteractionLog` | Import (type-only) |
 
 **Exports:**
 - Classes: `ToolCallObserver`
@@ -1397,6 +1399,139 @@ Reachable from a root: **332** of 332 files. Dormant: **0** (0 orphaned, 0 test-
 
 ---
 
+### `src/agent/harness/ConcurrencyLimiter.ts` - Bounded-concurrency runner with per-item error isolation, abort, and stall accounting.
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../utils/errors.js` | `ErrorCode, KnowledgeGraphError` | Import |
+| `../../types/learning.js` | `LearningBudget` | Import (type-only) |
+
+**Exports:**
+- Classes: `AbortError`, `InProcessSubagentRunner`
+- Interfaces: `ConcurrencyStats`, `RunAllOptions`, `SubagentTask`, `SubagentRunner`
+- Types: `RunResult`, `SubagentHandler`
+- Functions: `runAll`, `runAllWithStats`
+
+---
+
+### `src/agent/harness/EvictionIndex.ts` - Eviction index: a record of context ranges that were pushed out of the working window.
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../utils/errors.js` | `ErrorCode, KnowledgeGraphError` | Import |
+
+**Exports:**
+- Classes: `EvictionIndex`
+- Interfaces: `EvictionRange`
+- Functions: `formatEvictionLine`, `addrSpan`
+
+---
+
+### `src/agent/harness/InteractionLog.ts` - InteractionLog: an append-only JSONL sidecar of model turns, tool calls,
+
+**External Dependencies:**
+| Package | Import |
+|---------|--------|
+| `async-mutex` | `Mutex` |
+
+**Node.js Built-in Dependencies:**
+| Module | Import |
+|--------|--------|
+| `fs` | `promises` |
+| `fs/promises` | `FileHandle` |
+| `path` | `join, basename, resolve` |
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../utils/sidecarPath.js` | `sidecarPath` | Import |
+| `../../utils/durableWriteFile.js` | `durableAppendFile` | Import |
+| `./InteractionLogRegex.js` | `compileSelectRegex, matchSelectLines` | Import |
+| `./InteractionLogBlobs.js` | `fileSize, readBlobHead, readRange, sharedMutex, readLogFile, writeBlobExclusive` | Import |
+| `../../utils/entityUtils.js` | `validateFilePath` | Import |
+| `../../utils/textSimilarity.js` | `tokenizeUnicodeToSet, jaccard` | Import |
+| `../../utils/envConfig.js` | `readEnvStrictInt` | Import |
+| `../../utils/errors.js` | `ErrorCode` | Import |
+| `./InteractionLogFormat.js` | `InteractionLogError, checkLimit, decodeLine, encodeInteractionLine, formatAddr, parseAddr, scanInteractionLog, truncateToBytes, SELECTABLE_FIELDS, validateAppendInput, InteractionAppendInput, InteractionRecord, InteractionSpill, InteractionLogOptions, RangeOptions, SearchOptions, SearchHit, SelectOptions, SelectResult, SemanticSimilarityProvider` | Import |
+| `./InteractionLogFormat.js` | `InteractionLogError` | Re-export |
+| `./InteractionLogFormat.js` | `InteractionAppendInput, InteractionKind, InteractionRecord, InteractionSpill, InteractionLogOptions, RangeOptions, SearchOptions, SearchHit, SelectOptions, SelectResult, SemanticSimilarityProvider` | Re-export (type-only) |
+
+**Exports:**
+- Classes: `InteractionLog`
+- Re-exports: `InteractionLogError`, `InteractionAppendInput`, `InteractionKind`, `InteractionRecord`, `InteractionSpill`, `InteractionLogOptions`, `RangeOptions`, `SearchOptions`, `SearchHit`, `SelectOptions`, `SelectResult`, `SemanticSimilarityProvider`
+
+---
+
+### `src/agent/harness/InteractionLogBlobs.ts` - File helpers for InteractionLog: tolerant log reads, tail reads, exclusive blob writes
+
+**External Dependencies:**
+| Package | Import |
+|---------|--------|
+| `async-mutex` | `Mutex` |
+
+**Node.js Built-in Dependencies:**
+| Module | Import |
+|--------|--------|
+| `fs` | `promises` |
+| `path` | `dirname` |
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../utils/errors.js` | `ErrorCode` | Import |
+| `./InteractionLogFormat.js` | `InteractionLogError, truncateToBytes` | Import |
+
+**Exports:**
+- Functions: `sharedMutex`, `readLogFile`, `fileSize`, `readRange`, `writeBlobExclusive`, `readBlobHead`
+
+---
+
+### `src/agent/harness/InteractionLogFormat.ts` - InteractionLog wire format: record type, line encoding, torn-line tolerant
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../utils/errors.js` | `KnowledgeGraphError, ErrorCode` | Import |
+
+**Exports:**
+- Classes: `InteractionLogError`
+- Interfaces: `InteractionSpill`, `InteractionRecord`, `InteractionAppendInput`, `ScannedRecord`, `ScanResult`, `InteractionLogOptions`, `RangeOptions`, `SearchOptions`, `SearchHit`, `SelectOptions`, `SelectResult`, `SemanticSimilarityProvider`
+- Types: `InteractionKind`
+- Functions: `parseAddr`, `formatAddr`, `isInteractionRecord`, `encodeInteractionLine`, `scanInteractionLog`, `decodeLine`, `truncateToBytes`, `checkLimit`, `validateAppendInput`
+- Constants: `INTERACTION_KINDS`, `SELECTABLE_FIELDS`, `MAX_RESULT_LIMIT`
+
+---
+
+### `src/agent/harness/InteractionLogRegex.ts` - Bounded regex matching for `InteractionLog.select`.
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `./InteractionLogFormat.js` | `InteractionLogError` | Import |
+
+**Exports:**
+- Interfaces: `CompiledSelectRegex`
+- Functions: `analyzeSelectRegex`, `compileSelectRegex`, `matchSelectLines`
+- Constants: `MAX_REGEX_SOURCE_LENGTH`, `MAX_MATCH_LINE_BYTES`, `MAX_MATCH_LINE_BYTES_TWO_UNBOUNDED`, `SELECT_TIME_BUDGET_MS`
+
+---
+
+### `src/agent/harness/index.ts` - Recursa harness support (RS-7..RS-9): the append-only `InteractionLog`
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `./InteractionLog.js` | `*` | Re-export |
+| `./EvictionIndex.js` | `*` | Re-export |
+| `./ConcurrencyLimiter.js` | `*` | Re-export |
+
+**Exports:**
+- Re-exports: `* from ./InteractionLog.js`, `* from ./EvictionIndex.js`, `* from ./ConcurrencyLimiter.js`
+
+---
+
 ### `src/agent/index.ts` - Agent Module - Barrel Export
 
 **Internal Dependencies:**
@@ -1404,6 +1539,7 @@ Reachable from a root: **332** of 332 files. Dormant: **0** (0 orphaned, 0 test-
 |------|---------|------|
 | `./skills/index.js` | `*` | Re-export |
 | `./knowledge/index.js` | `*` | Re-export |
+| `./harness/index.js` | `*` | Re-export |
 | `./AccessTracker.js` | `AccessTracker, AccessStats, AccessTrackerConfig, AccessContext` | Re-export |
 | `./DecayEngine.js` | `DecayEngine, DecayEngineConfig, DecayOperationOptions, ReinforcementOptions, DecayResult, ForgetOptions, ForgetResult` | Re-export |
 | `./DecayScheduler.js` | `DecayScheduler, DecaySchedulerConfig, DecayCycleResult` | Re-export |
@@ -1472,7 +1608,7 @@ Reachable from a root: **332** of 332 files. Dormant: **0** (0 orphaned, 0 test-
 | `./procedural/index.js` | `ProceduralGraphManagerConfig, PGPolicy, PGGraphStats, PGEvolutionOptions, PGEvolutionResult, PGEvolutionStopReason, PGEvolutionDependencies, PGSessionOptions, PGRefinerInput, PGCommitInput, PGCommitResult, IProceduralGraphBacking, PGValidatorOptions, PGCompletionProvider, PGTokenizer, PGSerializerStyle` | Re-export (type-only) |
 
 **Exports:**
-- Re-exports: `* from ./skills/index.js`, `* from ./knowledge/index.js`, `AccessTracker`, `AccessStats`, `AccessTrackerConfig`, `AccessContext`, `DecayEngine`, `DecayEngineConfig`, `DecayOperationOptions`, `ReinforcementOptions`, `DecayResult`, `ForgetOptions`, `ForgetResult`, `DecayScheduler`, `DecaySchedulerConfig`, `DecayCycleResult`, `WorkingMemoryManager`, `WorkingMemoryConfig`, `SessionMemoryFilter`, `PromotionMarkOptions`, `PromotionCriteria`, `PromotionResult`, `ConfirmationResult`, `SessionManager`, `SessionConfig`, `StartSessionOptions`, `SessionHistoryOptions`, `EndSessionResult`, `SessionQueryBuilder`, `SessionSearchOptions`, `EntityWithContext`, `SearchFunction`, `EpisodicMemoryManager`, `EpisodicRelations`, `EpisodicMemoryConfig`, `CreateEpisodeOptions`, `TimelineOptions`, `ProspectiveMemoryManager`, `ProspectiveMemoryConfig`, `ProcedureInvoker`, `PredicateEvaluator`, `ScheduleOptions`, `FailureManager`, `FailureManagerConfig`, `FailureInput`, `FailureEntityOptions`, `LookupOptions`, `GetAllOptions`, `applyGuardedEdit`, `noteHelped`, `retire`, `GuardedEditError`, `GuardedChange`, `GuardedEditContext`, `GuardedEditErrorCode`, `GuardedEditResult`, `GuardedScalarField`, `PlanManager`, `PlanManagerConfig`, `CreatePlanOptions`, `PushSubGoalOptions`, `ListPlansOptions`, `AgentReflectionManager`, `ArchiveReflectionResult`, `ReflectionManagerConfig`, `ReflectionInput`, `ReflectionEntityOptions`, `ListReflectionsOptions`, `RelevanceOptions`, `ConsolidationPipeline`, `ProspectivePromotionStage`, `ReflectionStage`, `ConsolidationPipelineConfig`, `PipelineStage`, `ReflectionStageConfig`, `StageResult`, `SummarizationService`, `LLMSummarizationProvider`, `ISummarizationProvider`, `SummarizationConfig`, `SummarizationServiceOptions`, `GroupingResult`, `PatternDetector`, `RuleEvaluator`, `EvaluatorRule`, `SalienceEngine`, `SalienceEngineConfig`, `ContextWindowManager`, `ContextWindowManagerConfig`, `PrioritizeOptions`, `SpilloverResult`, `WakeUpOptions`, `WakeUpResult`, `MemoryFormatter`, `MemoryFormatterConfig`, `MultiAgentMemoryManager`, `MultiAgentConfig`, `ConflictResolver`, `ConflictResolverConfig`, `ResolutionResult`, `SessionCheckpointManager`, `SessionCheckpointData`, `SESSION_CHECKPOINT_ENTITY_TYPE`, `HAS_CHECKPOINT_RELATION`, `SNAPSHOTS_RELATION`, `migrateLegacySessionCheckpoints`, `decodeLegacyCheckpoint`, `AgentMemoryManager`, `CreateMemoryOptions`, `RetrieveContextOptions`, `CollaborativeSynthesis`, `CollaborativeSynthesisConfig`, `SynthesisResult`, `AgentMemoryConfig`, `loadConfigFromEnv`, `mergeConfig`, `validateConfig`, `ArtifactManager`, `IDistillationPolicy`, `DistilledMemory`, `DistillationConfig`, `NoOpDistillationPolicy`, `DefaultDistillationPolicy`, `CompositeDistillationPolicy`, `DistillationPipeline`, `DistillationStats`, `DistillationResult`, `AgentRole`, `RoleProfile`, `getRoleProfile`, `listRoleProfiles`, `resolveRoleProfile`, `createCustomProfile`, `EntropyFilterStage`, `computeEntropy`, `passesEntropyFilter`, `EntropyFilterConfig`, `LowEntropyContentError`, `FailureDistillation`, `FailureDistillationResult`, `FailureDistillationConfig`, `CognitiveLoadAnalyzer`, `CognitiveLoadConfig`, `VisibilityResolver`, `ConsolidationScheduler`, `ConsolidationSchedulerConfig`, `ConsolidationCycleResult`, `DreamEngine`, `DreamEngineConfig`, `DreamPhaseConfig`, `DreamEngineCallbacks`, `DreamPhaseResult`, `DreamCycleResult`, `ProfileManager`, `ProfileResponse`, `ProfileManagerConfig`, `ProfileOptions`, `ObserverPipeline`, `ObservationScore`, `ObserverPipelineOptions`, `ObserverPipelineStats`, `WorkThreadManager`, `migrateLegacyWorkThreads`, `decodeLegacyWorkThread`, `WORK_THREAD_ENTITY_TYPE`, `CHILD_OF_RELATION`, `BLOCKED_BY_RELATION`, `WorkThread`, `WorkThreadStatus`, `WorkThreadFilter`, `CreateWorkThreadOptions`, `ContextProfileManager`, `ContextProfile`, `ProfileConfig`, `MemoryEngine`, `MemoryEngineConfig`, `AddTurnOptions`, `AddTurnResult`, `DedupTier`, `DuplicateCheckResult`, `MemoryEngineEventName`, `ImportanceScorer`, `ImportanceScorerConfig`, `ScoreOptions`, `InMemoryBackend`, `SQLiteBackend`, `SQLiteBackendOptions`, `MemoryValidator`, `MemoryValidatorConfig`, `MemoryValidationResult`, `MemoryValidationIssue`, `MemoryContradiction`, `TrajectoryCompressor`, `TrajectoryCompressorConfig`, `DistillOptions`, `CompressedMemory`, `Granularity`, `RedundancyGroup`, `TrajectoryMergeStrategy`, `ExperienceExtractor`, `ExperienceExtractorConfig`, `Trajectory`, `Action`, `Outcome`, `Rule`, `HeuristicGuideline`, `DecisionRule`, `ClusterMethod`, `TrajectoryCluster`, `ExperienceType`, `Experience`, `CollaborationAuditEnforcer`, `AttributionMode`, `CollaborationAuditEnforcerOptions`, `QueryRewriter`, `ActiveRetrievalController`, `RewriteResult`, `RetrievalContext`, `RetrievalDecision`, `RetrievalRound`, `AdaptiveResult`, `ActiveRetrievalConfig`, `WorldStateSnapshot`, `WorldModelManager`, `WorldStateEntity`, `WorldStateChange`, `WorldModelManagerOptions`, `ProcedureManager`, `ProcedureStore`, `StepSequencer`, `decodeProcedure`, `PROCEDURE_ENTITY_TYPE`, `ProcedureManagerConfig`, `ProceduralGraph`, `ProceduralGraphManager`, `ProceduralGraphSession`, `ProceduralGraphEvolution`, `InMemoryProceduralGraphBacking`, `JsonlProceduralGraphBacking`, `SqliteProceduralGraphBacking`, `createProceduralGraphBacking`, `procedureToGraphInput`, `parseEditSet`, `parseSnapshot`, `prepareCandidate`, `validateSnapshot`, `applyCyclePolicy`, `PG_BUILT_IN_RELATIONS`, `PG_LIMITS`, `PGNodeSchema`, `PGEdgeSchema`, `PGSnapshotSchema`, `PGEditSetSchema`, `graphDigest`, `toolCatalogHash`, `evaluationFingerprint`, `storageKey`, `canonicalJson`, `sha256Hex`, `serializeLocalContext`, `serializeFullGraph`, `serializeGraphJson`, `adaptLLMProvider`, `completeWithBudget`, `tokenTail`, `concatTrajectories`, `generateGuidance`, `localizeForGuidance`, `buildRefinerPrompt`, `serializeRejections`, `proposeEdits`, `renderTemplate`, `withDataHandlingNote`, `DATA_HANDLING_NOTE`, `GUIDANCE_PROMPT_TEMPLATE`, `REFINER_PROMPT_TEMPLATE`, `FULL_GRAPH_CONTEXT_DESC`, `FULL_GRAPH_SOURCE`, `LOCAL_GRAPH_CONTEXT_DESC`, `LOCAL_GRAPH_SOURCE`, `CausalReasoner`, `DEFAULT_CAUSAL_RELATION_TYPES`, `CausalRelationType`, `CausalChain`, `CausalCycle`, `CausalReasonerConfig`, `HeuristicManager`, `AddHeuristicOptions`, `HeuristicMatch`, `HeuristicConflict`, `HeuristicUpdateResult`, `ExclusionManager`, `AddExclusionRuleInput`, `ExclusionCheckResult`, `DecisionManager`, `DecisionInput`, `DecisionEntityOptions`, `AcceptDecisionResult`, `RejectDecisionResult`, `SupersedeDecisionResult`, `ListDecisionsOptions`, `ProjectContextManager`, `ProjectContextManagerConfig`, `ProjectContextUpsertInput`, `ForContextOptions`, `ObservationDedupManager`, `DuplicateObservationOccurrence`, `DuplicateObservationGroup`, `ObservationDedupFilter`, `ObservationDedupManagerConfig`, `ToolAffordanceManager`, `ToolAffordanceManagerConfig`, `RecordOutcomeInput`, `ToolAffordanceStats`, `SuggestToolOptions`, `ToolSuggestion`, `ToolCallObserver`, `ToolCallEvent`, `ObservationDedupReportStage`, `HeuristicExtractionStage`, `ObservationDedupReportStageConfig`, `HeuristicExtractionStageConfig`, `DEFAULT_PERMISSION_MATRIX`, `permissionsForRole`, `RoleAssignmentStore`, `RbacMiddleware`, `Role`, `Permission`, `ResourceType`, `RoleAssignment`, `RbacPolicy`, `PermissionMatrix`, `PermissionMatrixRow`, `ResourcePermissionOverrides`, `RoleAssignmentStoreOptions`, `RbacMiddlewareOptions`, `CueTagContentGraph`, `normalizeKey`, `MemoryToolkit`, `EventKeywords`, `MemoryDistiller`, `extractJson`, `MemoryReconstructor`, `ReconstructiveMemory`, `ReconstructiveMemoryConfig`, `MemoryGraphBridge`, `TOPIC_SUMMARIZES`, `ReconstructiveBacking`, `BridgePersistResult`, `RelationConsolidator`, `RelationConsolidationStage`, `normalizeRelationType`, `relationKey`, `RelationConsolidatorRelationOps`, `RelationConsolidatorEntityOps`, `RelationEmbeddingProvider`, `RelationConsolidatorThresholds`, `RelationConsolidatorOptions`, `RelationAnalyzeOptions`, `RelationConsolidateOptions`, `ExactDuplicateGroup`, `InverseDuplicatePair`, `SemanticDuplicateGroup`, `RelationVerdict`, `ConsolidationFeedback`, `RelationConsolidationReport`, `RelationConsolidationResult`, `RelationConsolidationStageConfig`, `EventManager`, `eventEntityName`, `EVENT_ENTITY_TYPE`, `EVENT_STUB_ENTITY_TYPE`, `EVENT_TAG`, `FLOW_TAG_PREFIX`, `ACTOR_OF_RELATION`, `TARGETED_RELATION`, `OCCURRED_IN_RELATION`, `PARTICIPANT_IN_RELATION`, `EventManagerConfig`, `IMemoryBackend`, `MemoryTurn`, `WeightedTurn`, `GetWeightedOptions`, `ProceduralGraphManagerConfig`, `PGPolicy`, `PGGraphStats`, `PGEvolutionOptions`, `PGEvolutionResult`, `PGEvolutionStopReason`, `PGEvolutionDependencies`, `PGSessionOptions`, `PGRefinerInput`, `PGCommitInput`, `PGCommitResult`, `IProceduralGraphBacking`, `PGValidatorOptions`, `PGCompletionProvider`, `PGTokenizer`, `PGSerializerStyle`
+- Re-exports: `* from ./skills/index.js`, `* from ./knowledge/index.js`, `* from ./harness/index.js`, `AccessTracker`, `AccessStats`, `AccessTrackerConfig`, `AccessContext`, `DecayEngine`, `DecayEngineConfig`, `DecayOperationOptions`, `ReinforcementOptions`, `DecayResult`, `ForgetOptions`, `ForgetResult`, `DecayScheduler`, `DecaySchedulerConfig`, `DecayCycleResult`, `WorkingMemoryManager`, `WorkingMemoryConfig`, `SessionMemoryFilter`, `PromotionMarkOptions`, `PromotionCriteria`, `PromotionResult`, `ConfirmationResult`, `SessionManager`, `SessionConfig`, `StartSessionOptions`, `SessionHistoryOptions`, `EndSessionResult`, `SessionQueryBuilder`, `SessionSearchOptions`, `EntityWithContext`, `SearchFunction`, `EpisodicMemoryManager`, `EpisodicRelations`, `EpisodicMemoryConfig`, `CreateEpisodeOptions`, `TimelineOptions`, `ProspectiveMemoryManager`, `ProspectiveMemoryConfig`, `ProcedureInvoker`, `PredicateEvaluator`, `ScheduleOptions`, `FailureManager`, `FailureManagerConfig`, `FailureInput`, `FailureEntityOptions`, `LookupOptions`, `GetAllOptions`, `applyGuardedEdit`, `noteHelped`, `retire`, `GuardedEditError`, `GuardedChange`, `GuardedEditContext`, `GuardedEditErrorCode`, `GuardedEditResult`, `GuardedScalarField`, `PlanManager`, `PlanManagerConfig`, `CreatePlanOptions`, `PushSubGoalOptions`, `ListPlansOptions`, `AgentReflectionManager`, `ArchiveReflectionResult`, `ReflectionManagerConfig`, `ReflectionInput`, `ReflectionEntityOptions`, `ListReflectionsOptions`, `RelevanceOptions`, `ConsolidationPipeline`, `ProspectivePromotionStage`, `ReflectionStage`, `ConsolidationPipelineConfig`, `PipelineStage`, `ReflectionStageConfig`, `StageResult`, `SummarizationService`, `LLMSummarizationProvider`, `ISummarizationProvider`, `SummarizationConfig`, `SummarizationServiceOptions`, `GroupingResult`, `PatternDetector`, `RuleEvaluator`, `EvaluatorRule`, `SalienceEngine`, `SalienceEngineConfig`, `ContextWindowManager`, `ContextWindowManagerConfig`, `PrioritizeOptions`, `SpilloverResult`, `WakeUpOptions`, `WakeUpResult`, `MemoryFormatter`, `MemoryFormatterConfig`, `MultiAgentMemoryManager`, `MultiAgentConfig`, `ConflictResolver`, `ConflictResolverConfig`, `ResolutionResult`, `SessionCheckpointManager`, `SessionCheckpointData`, `SESSION_CHECKPOINT_ENTITY_TYPE`, `HAS_CHECKPOINT_RELATION`, `SNAPSHOTS_RELATION`, `migrateLegacySessionCheckpoints`, `decodeLegacyCheckpoint`, `AgentMemoryManager`, `CreateMemoryOptions`, `RetrieveContextOptions`, `CollaborativeSynthesis`, `CollaborativeSynthesisConfig`, `SynthesisResult`, `AgentMemoryConfig`, `loadConfigFromEnv`, `mergeConfig`, `validateConfig`, `ArtifactManager`, `IDistillationPolicy`, `DistilledMemory`, `DistillationConfig`, `NoOpDistillationPolicy`, `DefaultDistillationPolicy`, `CompositeDistillationPolicy`, `DistillationPipeline`, `DistillationStats`, `DistillationResult`, `AgentRole`, `RoleProfile`, `getRoleProfile`, `listRoleProfiles`, `resolveRoleProfile`, `createCustomProfile`, `EntropyFilterStage`, `computeEntropy`, `passesEntropyFilter`, `EntropyFilterConfig`, `LowEntropyContentError`, `FailureDistillation`, `FailureDistillationResult`, `FailureDistillationConfig`, `CognitiveLoadAnalyzer`, `CognitiveLoadConfig`, `VisibilityResolver`, `ConsolidationScheduler`, `ConsolidationSchedulerConfig`, `ConsolidationCycleResult`, `DreamEngine`, `DreamEngineConfig`, `DreamPhaseConfig`, `DreamEngineCallbacks`, `DreamPhaseResult`, `DreamCycleResult`, `ProfileManager`, `ProfileResponse`, `ProfileManagerConfig`, `ProfileOptions`, `ObserverPipeline`, `ObservationScore`, `ObserverPipelineOptions`, `ObserverPipelineStats`, `WorkThreadManager`, `migrateLegacyWorkThreads`, `decodeLegacyWorkThread`, `WORK_THREAD_ENTITY_TYPE`, `CHILD_OF_RELATION`, `BLOCKED_BY_RELATION`, `WorkThread`, `WorkThreadStatus`, `WorkThreadFilter`, `CreateWorkThreadOptions`, `ContextProfileManager`, `ContextProfile`, `ProfileConfig`, `MemoryEngine`, `MemoryEngineConfig`, `AddTurnOptions`, `AddTurnResult`, `DedupTier`, `DuplicateCheckResult`, `MemoryEngineEventName`, `ImportanceScorer`, `ImportanceScorerConfig`, `ScoreOptions`, `InMemoryBackend`, `SQLiteBackend`, `SQLiteBackendOptions`, `MemoryValidator`, `MemoryValidatorConfig`, `MemoryValidationResult`, `MemoryValidationIssue`, `MemoryContradiction`, `TrajectoryCompressor`, `TrajectoryCompressorConfig`, `DistillOptions`, `CompressedMemory`, `Granularity`, `RedundancyGroup`, `TrajectoryMergeStrategy`, `ExperienceExtractor`, `ExperienceExtractorConfig`, `Trajectory`, `Action`, `Outcome`, `Rule`, `HeuristicGuideline`, `DecisionRule`, `ClusterMethod`, `TrajectoryCluster`, `ExperienceType`, `Experience`, `CollaborationAuditEnforcer`, `AttributionMode`, `CollaborationAuditEnforcerOptions`, `QueryRewriter`, `ActiveRetrievalController`, `RewriteResult`, `RetrievalContext`, `RetrievalDecision`, `RetrievalRound`, `AdaptiveResult`, `ActiveRetrievalConfig`, `WorldStateSnapshot`, `WorldModelManager`, `WorldStateEntity`, `WorldStateChange`, `WorldModelManagerOptions`, `ProcedureManager`, `ProcedureStore`, `StepSequencer`, `decodeProcedure`, `PROCEDURE_ENTITY_TYPE`, `ProcedureManagerConfig`, `ProceduralGraph`, `ProceduralGraphManager`, `ProceduralGraphSession`, `ProceduralGraphEvolution`, `InMemoryProceduralGraphBacking`, `JsonlProceduralGraphBacking`, `SqliteProceduralGraphBacking`, `createProceduralGraphBacking`, `procedureToGraphInput`, `parseEditSet`, `parseSnapshot`, `prepareCandidate`, `validateSnapshot`, `applyCyclePolicy`, `PG_BUILT_IN_RELATIONS`, `PG_LIMITS`, `PGNodeSchema`, `PGEdgeSchema`, `PGSnapshotSchema`, `PGEditSetSchema`, `graphDigest`, `toolCatalogHash`, `evaluationFingerprint`, `storageKey`, `canonicalJson`, `sha256Hex`, `serializeLocalContext`, `serializeFullGraph`, `serializeGraphJson`, `adaptLLMProvider`, `completeWithBudget`, `tokenTail`, `concatTrajectories`, `generateGuidance`, `localizeForGuidance`, `buildRefinerPrompt`, `serializeRejections`, `proposeEdits`, `renderTemplate`, `withDataHandlingNote`, `DATA_HANDLING_NOTE`, `GUIDANCE_PROMPT_TEMPLATE`, `REFINER_PROMPT_TEMPLATE`, `FULL_GRAPH_CONTEXT_DESC`, `FULL_GRAPH_SOURCE`, `LOCAL_GRAPH_CONTEXT_DESC`, `LOCAL_GRAPH_SOURCE`, `CausalReasoner`, `DEFAULT_CAUSAL_RELATION_TYPES`, `CausalRelationType`, `CausalChain`, `CausalCycle`, `CausalReasonerConfig`, `HeuristicManager`, `AddHeuristicOptions`, `HeuristicMatch`, `HeuristicConflict`, `HeuristicUpdateResult`, `ExclusionManager`, `AddExclusionRuleInput`, `ExclusionCheckResult`, `DecisionManager`, `DecisionInput`, `DecisionEntityOptions`, `AcceptDecisionResult`, `RejectDecisionResult`, `SupersedeDecisionResult`, `ListDecisionsOptions`, `ProjectContextManager`, `ProjectContextManagerConfig`, `ProjectContextUpsertInput`, `ForContextOptions`, `ObservationDedupManager`, `DuplicateObservationOccurrence`, `DuplicateObservationGroup`, `ObservationDedupFilter`, `ObservationDedupManagerConfig`, `ToolAffordanceManager`, `ToolAffordanceManagerConfig`, `RecordOutcomeInput`, `ToolAffordanceStats`, `SuggestToolOptions`, `ToolSuggestion`, `ToolCallObserver`, `ToolCallEvent`, `ObservationDedupReportStage`, `HeuristicExtractionStage`, `ObservationDedupReportStageConfig`, `HeuristicExtractionStageConfig`, `DEFAULT_PERMISSION_MATRIX`, `permissionsForRole`, `RoleAssignmentStore`, `RbacMiddleware`, `Role`, `Permission`, `ResourceType`, `RoleAssignment`, `RbacPolicy`, `PermissionMatrix`, `PermissionMatrixRow`, `ResourcePermissionOverrides`, `RoleAssignmentStoreOptions`, `RbacMiddlewareOptions`, `CueTagContentGraph`, `normalizeKey`, `MemoryToolkit`, `EventKeywords`, `MemoryDistiller`, `extractJson`, `MemoryReconstructor`, `ReconstructiveMemory`, `ReconstructiveMemoryConfig`, `MemoryGraphBridge`, `TOPIC_SUMMARIZES`, `ReconstructiveBacking`, `BridgePersistResult`, `RelationConsolidator`, `RelationConsolidationStage`, `normalizeRelationType`, `relationKey`, `RelationConsolidatorRelationOps`, `RelationConsolidatorEntityOps`, `RelationEmbeddingProvider`, `RelationConsolidatorThresholds`, `RelationConsolidatorOptions`, `RelationAnalyzeOptions`, `RelationConsolidateOptions`, `ExactDuplicateGroup`, `InverseDuplicatePair`, `SemanticDuplicateGroup`, `RelationVerdict`, `ConsolidationFeedback`, `RelationConsolidationReport`, `RelationConsolidationResult`, `RelationConsolidationStageConfig`, `EventManager`, `eventEntityName`, `EVENT_ENTITY_TYPE`, `EVENT_STUB_ENTITY_TYPE`, `EVENT_TAG`, `FLOW_TAG_PREFIX`, `ACTOR_OF_RELATION`, `TARGETED_RELATION`, `OCCURRED_IN_RELATION`, `PARTICIPANT_IN_RELATION`, `EventManagerConfig`, `IMemoryBackend`, `MemoryTurn`, `WeightedTurn`, `GetWeightedOptions`, `ProceduralGraphManagerConfig`, `PGPolicy`, `PGGraphStats`, `PGEvolutionOptions`, `PGEvolutionResult`, `PGEvolutionStopReason`, `PGEvolutionDependencies`, `PGSessionOptions`, `PGRefinerInput`, `PGCommitInput`, `PGCommitResult`, `IProceduralGraphBacking`, `PGValidatorOptions`, `PGCompletionProvider`, `PGTokenizer`, `PGSerializerStyle`
 
 ---
 
@@ -6058,26 +6194,26 @@ Reachable from a root: **332** of 332 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/core/ManagerContext` | 93 files | 9 files |
 | `src/types/index` | 12 files | 68 files |
 | `src/types/types` | 1 file | 73 files |
-| `src/agent/index` | 65 files | 1 file |
+| `src/agent/index` | 66 files | 1 file |
 | `src/utils/index` | 38 files | 27 files |
 | `src/types/agent-memory` | 3 files | 55 files |
 | `src/core/GraphStorage` | 16 files | 35 files |
 | `src/search/index` | 50 files | 1 file |
 | `src/core/EntityManager` | 12 files | 34 files |
+| `src/utils/errors` | 0 files | 35 files |
 | `src/agent/AgentMemoryManager` | 29 files | 2 files |
-| `src/utils/errors` | 0 files | 30 files |
 | `src/utils/logger` | 0 files | 30 files |
 | `src/cli/commands/helpers` | 4 files | 23 files |
 | `src/agent/ConsolidationPipeline` | 19 files | 7 files |
 | `src/cli/commands/index` | 24 files | 1 file |
-| `src/utils/textSimilarity` | 0 files | 23 files |
+| `src/utils/textSimilarity` | 0 files | 24 files |
+| `src/agent/ContextWindowManager` | 17 files | 5 files |
 | `src/cli/formatters` | 2 files | 20 files |
-| `src/agent/ContextWindowManager` | 16 files | 5 files |
 | `src/features/IOManager` | 16 files | 4 files |
 | `src/search/SearchManager` | 17 files | 3 files |
 | `src/types/proceduralGraph` | 0 files | 20 files |
 | `src/utils/constants` | 0 files | 20 files |
-| `src/utils/entityUtils` | 3 files | 16 files |
+| `src/utils/entityUtils` | 3 files | 17 files |
 | `src/agent/AgentMemoryConfig` | 15 files | 3 files |
 | `src/agent/DecayEngine` | 8 files | 10 files |
 | `src/agent/procedural/graph/index` | 16 files | 2 files |
@@ -6092,9 +6228,9 @@ Reachable from a root: **332** of 332 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/core/SQLiteStorage` | 12 files | 3 files |
 | `src/core/context/StorageInfraFacade` | 14 files | 1 file |
 | `src/search/HybridSearchManager` | 10 files | 5 files |
+| `src/utils/durableWriteFile` | 0 files | 15 files |
+| `src/utils/envConfig` | 1 file | 14 files |
 | `src/agent/MemoryEngine` | 10 files | 4 files |
-| `src/utils/durableWriteFile` | 0 files | 14 files |
-| `src/utils/envConfig` | 1 file | 13 files |
 
 ---
 
@@ -6149,7 +6285,7 @@ graph TD
         N14[ConflictResolver]
         N15[ConsolidationPipeline]
         N16[ConsolidationScheduler]
-        N17[...112 more]
+        N17[...119 more]
     end
 
     subgraph Cli
@@ -6340,21 +6476,21 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 332 |
+| Total TypeScript Files | 339 |
 | Total Modules | 12 |
-| Total Lines of Code | 110925 |
-| Total Exports | 2390 |
-| Total Re-exports | 1557 |
-| Total Classes | 242 |
-| Total Interfaces | 697 |
-| Total Functions | 447 |
-| Total Type Guards | 39 |
+| Total Lines of Code | 112611 |
+| Total Exports | 2436 |
+| Total Re-exports | 1573 |
+| Total Classes | 247 |
+| Total Interfaces | 715 |
+| Total Functions | 469 |
+| Total Type Guards | 40 |
 | Total Enums | 4 |
-| Type-only Imports | 538 |
+| Type-only Imports | 541 |
 | Runtime Circular Deps | 0 |
 | Type-only Circular Deps | 10 |
 | Entry/Build Roots | 4 |
-| Reachable Files | 332 |
+| Reachable Files | 339 |
 | Dormant Files (orphaned / test-only) | 0 (0 / 0) |
 
 ---

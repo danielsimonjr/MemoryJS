@@ -10,22 +10,22 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 831
+**Total files**: 844
 
 ## Disposition counts
 
 | Disposition | Count | Meaning |
 | --- | --: | --- |
-| `reachable` | 328 | A `src/` file in the module graph, reachable from a root. |
+| `reachable` | 335 | A `src/` file in the module graph, reachable from a root. |
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 483 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 489 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 4 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 0 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **831** | |
+| **Total** | **844** | |
 
 ## Per-area counts
 
@@ -33,8 +33,8 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | --- | --: |
 | `benchmarks` | 4 |
 | `config` | 2 |
-| `src` | 332 |
-| `tests` | 483 |
+| `src` | 339 |
+| `tests` | 489 |
 | `tools` | 10 |
 
 ## All files
@@ -67,7 +67,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/ConsolidationPipeline.ts` | src | reachable | 2140 |
 | `src/agent/ConsolidationScheduler.ts` | src | reachable | 230 |
 | `src/agent/ContextProfileManager.ts` | src | reachable | 301 |
-| `src/agent/ContextWindowManager.ts` | src | reachable | 1951 |
+| `src/agent/ContextWindowManager.ts` | src | reachable | 1984 |
 | `src/agent/DecayEngine.ts` | src | reachable | 831 |
 | `src/agent/DecayScheduler.ts` | src | reachable | 233 |
 | `src/agent/DecisionManager.ts` | src | reachable | 442 |
@@ -83,9 +83,16 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/FailureDistillation.ts` | src | reachable | 314 |
 | `src/agent/FailureManager.ts` | src | reachable | 457 |
 | `src/agent/GuardedComponentEdit.ts` | src | reachable | 711 |
+| `src/agent/harness/ConcurrencyLimiter.ts` | src | reachable | 246 |
+| `src/agent/harness/EvictionIndex.ts` | src | reachable | 163 |
+| `src/agent/harness/index.ts` | src | reachable | 10 |
+| `src/agent/harness/InteractionLog.ts` | src | reachable | 495 |
+| `src/agent/harness/InteractionLogBlobs.ts` | src | reachable | 133 |
+| `src/agent/harness/InteractionLogFormat.ts` | src | reachable | 390 |
+| `src/agent/harness/InteractionLogRegex.ts` | src | reachable | 180 |
 | `src/agent/HeuristicManager.ts` | src | reachable | 342 |
 | `src/agent/ImportanceScorer.ts` | src | reachable | 91 |
-| `src/agent/index.ts` | src | reachable | 626 |
+| `src/agent/index.ts` | src | reachable | 629 |
 | `src/agent/InMemoryBackend.ts` | src | reachable | 115 |
 | `src/agent/keyValueLine.ts` | src | reachable | 63 |
 | `src/agent/knowledge/index.ts` | src | reachable | 49 |
@@ -164,7 +171,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/SQLiteBackend.ts` | src | reachable | 175 |
 | `src/agent/SummarizationService.ts` | src | reachable | 341 |
 | `src/agent/ToolAffordanceManager.ts` | src | reachable | 279 |
-| `src/agent/ToolCallObserver.ts` | src | reachable | 155 |
+| `src/agent/ToolCallObserver.ts` | src | reachable | 180 |
 | `src/agent/TrajectoryCompressor.ts` | src | reachable | 326 |
 | `src/agent/versionedWriteFailure.ts` | src | reachable | 26 |
 | `src/agent/VisibilityResolver.ts` | src | reachable | 104 |
@@ -312,7 +319,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/security/PiiRedactor.ts` | src | reachable | 164 |
 | `src/security/RowLevelFilter.ts` | src | reachable | 133 |
 | `src/sqlite.ts` | src | build-entry | 20 |
-| `src/types/agent-memory.ts` | src | reachable | 2527 |
+| `src/types/agent-memory.ts` | src | reachable | 2535 |
 | `src/types/artifact.ts` | src | reachable | 154 |
 | `src/types/event.ts` | src | reachable | 138 |
 | `src/types/index.ts` | src | reachable | 386 |
@@ -459,6 +466,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/context-window-manager-compress.test.ts` | tests | test | 166 |
 | `tests/unit/agent/context-window-manager-wakeup.test.ts` | tests | test | 226 |
 | `tests/unit/agent/ContextProfileManager.test.ts` | tests | test | 526 |
+| `tests/unit/agent/ContextWindowManager.eviction.test.ts` | tests | test | 231 |
 | `tests/unit/agent/ContextWindowManager.test.ts` | tests | test | 1753 |
 | `tests/unit/agent/DecayEngine.reinforceBatch.test.ts` | tests | test | 150 |
 | `tests/unit/agent/DecayEngine.test.ts` | tests | test | 1318 |
@@ -477,6 +485,10 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/FailureDistillation.test.ts` | tests | test | 617 |
 | `tests/unit/agent/FailureManager.test.ts` | tests | test | 737 |
 | `tests/unit/agent/GuardedComponentEdit.test.ts` | tests | test | 598 |
+| `tests/unit/agent/harness/ConcurrencyLimiter.test.ts` | tests | test | 247 |
+| `tests/unit/agent/harness/EvictionIndex.test.ts` | tests | test | 130 |
+| `tests/unit/agent/harness/InteractionLog.hardening.test.ts` | tests | test | 143 |
+| `tests/unit/agent/harness/InteractionLog.test.ts` | tests | test | 271 |
 | `tests/unit/agent/HeuristicExtractionStage.test.ts` | tests | test | 326 |
 | `tests/unit/agent/HeuristicManager.test.ts` | tests | test | 206 |
 | `tests/unit/agent/IMemoryBackend.contract.test.ts` | tests | test | 229 |
@@ -558,6 +570,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/SQLiteBackend.test.ts` | tests | test | 216 |
 | `tests/unit/agent/SummarizationService.test.ts` | tests | test | 531 |
 | `tests/unit/agent/ToolAffordanceManager.test.ts` | tests | test | 198 |
+| `tests/unit/agent/ToolCallObserver.interactionLog.test.ts` | tests | test | 78 |
 | `tests/unit/agent/ToolCallObserver.test.ts` | tests | test | 339 |
 | `tests/unit/agent/TrajectoryCompressor.test.ts` | tests | test | 159 |
 | `tests/unit/agent/VisibilityResolver.test.ts` | tests | test | 462 |

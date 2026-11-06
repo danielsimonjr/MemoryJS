@@ -12,9 +12,9 @@
 - **Dormant files** (runtime code on disk, unreachable from any entry/build root): 0
   - **Orphaned (reachable from nothing — delete/wire candidates)**: 0
   - **Test-only (exercised by a test, ships nothing)**: 0
-- **Potentially unused exports**: 62
+- **Potentially unused exports**: 72
   - **Unreferenced anywhere (deletion candidates)**: 0
-  - **Referenced in-module (type contracts / helpers backing live exports)**: 62
+  - **Referenced in-module (type contracts / helpers backing live exports)**: 72
 
 Seeded reachability roots (4):
 
@@ -94,6 +94,22 @@ support exports that ARE used, so they cannot be deleted in isolation.
 ### `src/agent/PatternDetector.ts`
 
 - `PatternDetectorOptions` (interface) — 1 in-file ref
+
+### `src/agent/harness/InteractionLogFormat.ts`
+
+- `isInteractionRecord` (function) — 1 in-file ref
+- `ScannedRecord` (interface) — 2 in-file refs
+- `ScanResult` (interface) — 1 in-file ref
+- `INTERACTION_KINDS` (constant) — 4 in-file refs
+- `MAX_RESULT_LIMIT` (constant) — 2 in-file refs
+
+### `src/agent/harness/InteractionLogRegex.ts`
+
+- `analyzeSelectRegex` (function) — 1 in-file ref
+- `CompiledSelectRegex` (interface) — 2 in-file refs
+- `MAX_MATCH_LINE_BYTES` (constant) — 2 in-file refs
+- `MAX_MATCH_LINE_BYTES_TWO_UNBOUNDED` (constant) — 2 in-file refs
+- `SELECT_TIME_BUDGET_MS` (constant) — 3 in-file refs
 
 ### `src/agent/procedural/graph/backing/ProceduralGraphState.ts`
 
