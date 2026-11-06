@@ -301,7 +301,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/security/PiiRedactor.ts` | src | reachable | 164 |
 | `src/security/RowLevelFilter.ts` | src | reachable | 133 |
 | `src/sqlite.ts` | src | build-entry | 20 |
-| `src/types/agent-memory.ts` | src | reachable | 2522 |
+| `src/types/agent-memory.ts` | src | reachable | 2527 |
 | `src/types/artifact.ts` | src | reachable | 154 |
 | `src/types/event.ts` | src | reachable | 138 |
 | `src/types/index.ts` | src | reachable | 385 |
@@ -312,7 +312,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/types/reconstruction.ts` | src | reachable | 206 |
 | `src/types/result.ts` | src | reachable | 97 |
 | `src/types/search.ts` | src | reachable | 345 |
-| `src/types/skills.ts` | src | reachable | 281 |
+| `src/types/skills.ts` | src | reachable | 279 |
 | `src/types/task-scheduler.ts` | src | reachable | 34 |
 | `src/types/types.ts` | src | reachable | 2563 |
 | `src/utils/AsyncMutex.ts` | src | reachable | 174 |
@@ -777,7 +777,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/types/progress.test.ts` | tests | test | 413 |
 | `tests/unit/types/result.test.ts` | tests | test | 91 |
 | `tests/unit/types/search.test.ts` | tests | test | 591 |
-| `tests/unit/types/skills.types.test.ts` | tests | test | 271 |
+| `tests/unit/types/skills.types.test.ts` | tests | test | 279 |
 | `tests/unit/types/trust-level.test.ts` | tests | test | 108 |
 | `tests/unit/utils/AsyncMutex.test.ts` | tests | test | 232 |
 | `tests/unit/utils/BatchProcessor.test.ts` | tests | test | 672 |

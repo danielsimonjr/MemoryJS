@@ -1845,7 +1845,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 2522
+      "loc": 2527
     },
     {
       "file": "src/types/artifact.ts",
@@ -1922,7 +1922,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 281
+      "loc": 279
     },
     {
       "file": "src/types/task-scheduler.ts",
@@ -5177,7 +5177,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 271
+      "loc": 279
     },
     {
       "file": "tests/unit/types/trust-level.test.ts",
