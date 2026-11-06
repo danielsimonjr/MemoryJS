@@ -117,6 +117,8 @@ export interface ContextWindowManagerConfig {
   diversityThreshold?: number;
   /** Enable diversity enforcement (default: true) */
   enforceDiversity?: boolean;
+  /** Maximum `[evicted]` lines appended by wakeUp / retrieveForContext when an eviction index is set (default: 5) */
+  maxEvictionLines?: number;
 }
 
 /**
@@ -552,6 +554,12 @@ export interface AgentEntity extends Entity {
    * a known handoff date — the entity is still stored, just hidden after.
    */
   visibleUntil?: string;
+
+  /**
+   * Address (`e<n>`) of the InteractionLog record this entity was derived from;
+   * consumed by the EvictionIndex hook in `ContextWindowManager` spillover.
+   */
+  interactionAddr?: string;
 }
 
 // ==================== Agent Observation Types ====================

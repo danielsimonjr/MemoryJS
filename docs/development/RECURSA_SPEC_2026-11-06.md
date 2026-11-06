@@ -283,7 +283,7 @@ storage **file path**), written with `durableAppendFile`. Record:
   the log is append-only with no deletes; size is bounded by the caller (`truncateTo(addr)` is not
   offered in this plan).
 - `append(rec) → addr`; `read(addr)`; `range(from, to, { limit })`; `search(query, { kinds, sessionId,
-  limit })` lexical over `tokenizeUnicodeToSet` (cosine when `setSemanticSearch` is called);
+  limit })` lexical over `tokenizeUnicodeToSet` (Jaccard, blended with the semantic provider when set: `(jaccard + similarity) / 2` once `setSemanticSearch` is called);
   `select(addr, { regex?, lines?: [from, to], fields?: string[] })` returns only the selected excerpt
   (§3.2: only selected evidence enters the context). Regex sources are capped at 256 characters,
   patterns with nested quantifiers (`(…+)+`, `(…*)*`) are rejected with `InteractionLogError`, and

@@ -1,12 +1,12 @@
 {
   "generated": "2026-11-06",
-  "totalFiles": 831,
+  "totalFiles": 844,
   "byDisposition": {
-    "reachable": 328,
+    "reachable": 335,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 483,
+    "test": 489,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -14,8 +14,8 @@
   },
   "byArea": {
     "benchmarks": 4,
-    "src": 332,
-    "tests": 483,
+    "src": 339,
+    "tests": 489,
     "tools": 10,
     "config": 2
   },
@@ -207,7 +207,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1951
+      "loc": 1984
     },
     {
       "file": "src/agent/DecayEngine.ts",
@@ -315,6 +315,55 @@
       "loc": 711
     },
     {
+      "file": "src/agent/harness/ConcurrencyLimiter.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 246
+    },
+    {
+      "file": "src/agent/harness/EvictionIndex.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 163
+    },
+    {
+      "file": "src/agent/harness/index.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 10
+    },
+    {
+      "file": "src/agent/harness/InteractionLog.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 495
+    },
+    {
+      "file": "src/agent/harness/InteractionLogBlobs.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 133
+    },
+    {
+      "file": "src/agent/harness/InteractionLogFormat.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 390
+    },
+    {
+      "file": "src/agent/harness/InteractionLogRegex.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 180
+    },
+    {
       "file": "src/agent/HeuristicManager.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
@@ -333,7 +382,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 626
+      "loc": 629
     },
     {
       "file": "src/agent/InMemoryBackend.ts",
@@ -886,7 +935,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 155
+      "loc": 180
     },
     {
       "file": "src/agent/TrajectoryCompressor.ts",
@@ -1922,7 +1971,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 2527
+      "loc": 2535
     },
     {
       "file": "src/types/artifact.ts",
@@ -2947,6 +2996,13 @@
       "loc": 526
     },
     {
+      "file": "tests/unit/agent/ContextWindowManager.eviction.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 231
+    },
+    {
       "file": "tests/unit/agent/ContextWindowManager.test.ts",
       "package": "(root)",
       "area": "tests",
@@ -3071,6 +3127,34 @@
       "area": "tests",
       "disposition": "test",
       "loc": 598
+    },
+    {
+      "file": "tests/unit/agent/harness/ConcurrencyLimiter.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 247
+    },
+    {
+      "file": "tests/unit/agent/harness/EvictionIndex.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 130
+    },
+    {
+      "file": "tests/unit/agent/harness/InteractionLog.hardening.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 146
+    },
+    {
+      "file": "tests/unit/agent/harness/InteractionLog.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 271
     },
     {
       "file": "tests/unit/agent/HeuristicExtractionStage.test.ts",
@@ -3638,6 +3722,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 198
+    },
+    {
+      "file": "tests/unit/agent/ToolCallObserver.interactionLog.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 78
     },
     {
       "file": "tests/unit/agent/ToolCallObserver.test.ts",

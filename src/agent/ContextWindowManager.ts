@@ -34,6 +34,7 @@ import type { SummarizationService } from './SummarizationService.js';
 import type { ContextWindowManagerConfig } from '../types/agent-memory.js';
 import { fillDefaults } from '../utils/fillDefaults.js';
 import { estimateTokensFromText } from '../utils/tokenEstimate.js';
+import { formatEvictionLine, type EvictionIndex } from './harness/EvictionIndex.js';
 export type { ContextWindowManagerConfig };
 
 /** Compression intensity level for compressForContext. */
@@ -158,6 +159,7 @@ export class ContextWindowManager {
   private hybridSearch?: Pick<HybridSearchManager, 'search'>;
   private summarizer?: Pick<SummarizationService, 'summarize'>;
   private readonly contextProfileManager: ContextProfileManager;
+  private evictionIndex?: EvictionIndex;
 
   constructor(
     storage: IGraphStorage,
@@ -178,6 +180,7 @@ export class ContextWindowManager {
       recentSessionCount: 3,
       diversityThreshold: 0.8,
       enforceDiversity: true,
+      maxEvictionLines: 5,
     };
     this.config = fillDefaults(config, defaults);
   }
@@ -196,6 +199,25 @@ export class ContextWindowManager {
    */
   setDistillationPolicy(policy: IDistillationPolicy | undefined): void {
     this.distillationPolicy = policy;
+  }
+
+  /** Set (or clear, with undefined) the eviction index that spillover records into. */
+  setEvictionIndex(index?: EvictionIndex): void {
+    this.evictionIndex = index;
+  }
+
+  /** Newest `[evicted]` lines fitting `remaining` tokens (each costs its words plus 1 for its '\n' joiner), oldest first. */
+  private evictionLinesWithinBudget(remaining: number): { text: string; tokens: number } {
+    const kept: string[] = [];
+    let used = 0;
+    for (const range of this.evictionIndex?.latest(this.config.maxEvictionLines).reverse() ?? []) {
+      const line = formatEvictionLine(range);
+      const cost = this.estimateStringTokens(line) + 1;
+      if (used + cost > remaining) break;
+      used += cost;
+      kept.unshift(line);
+    }
+    return { text: kept.join('\n'), tokens: used };
   }
 
   /**
@@ -503,13 +525,17 @@ export class ContextWindowManager {
       queryText || undefined
     );
 
+    // Eviction lines go last, after the excluded summary, within the remaining budget.
+    const memoryTokens = filtered.reduce((sum, s) => sum + estimateMemo(s.entity), 0);
+    const evictions = this.evictionLinesWithinBudget(effectiveBudget - memoryTokens);
+
     return this.withBudgetReport({
       memories: filtered.map((s) => s.entity),
-      totalTokens: filtered.reduce((sum, s) => sum + estimateMemo(s.entity), 0),
+      totalTokens: memoryTokens + evictions.tokens,
       breakdown,
       excluded: allExcluded,
       suggestions,
-      excludedSummary,
+      excludedSummary: evictions.text ? [excludedSummary, evictions.text].filter(Boolean).join('\n') : excludedSummary,
     });
   }
 
@@ -1069,6 +1095,9 @@ export class ContextWindowManager {
     // Generate suggestions for follow-up
     const suggestions = this.generateSpilloverSuggestions(sorted, spilledTokens);
 
+    // Record the spilled span from entity addresses only; never invent one.
+    this.evictionIndex?.recordSpill(sorted.map((s) => s.entity.interactionAddr), suggestions[0] ?? `${sorted.length} entities spilled`, spilledTokens);
+
     return {
       spilledEntities: sorted.slice(0, pageSize),
       suggestions,
@@ -1562,6 +1591,10 @@ export class ContextWindowManager {
         // Fall through with uncompressed l1
       }
     }
+
+    // Eviction lines go last in L1, within the L1 budget.
+    const evictions = this.evictionLinesWithinBudget(maxL1 - this.estimateStringTokens(l1)).text;
+    if (evictions) l1 = l1 ? `${l1}\n${evictions}` : evictions;
 
     const totalTokens =
       projectContextTokens +

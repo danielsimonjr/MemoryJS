@@ -1057,6 +1057,12 @@ rationale.
 | `MEMORY_AUTO_LINK` | `'true'` (strict literal) | unset = off. Observation writes auto-link detected entity mentions into relations. Takes effect only after `ctx.autoLinker` has been accessed once (lazy getter that wires `AutoLinker` into `ObservationManager`). A per-call `autoLink` option overrides it. |
 | `MEMORY_OBSERVATION_DEDUP` | `'true'` (strict literal) | unset = off. Enables observation de-duplication on writes with the default dedup options, unless the call passes an explicit `dedup` option. |
 
+### Harness support (Recursa RS-7)
+
+| Variable | Values | Default |
+|----------|--------|---------|
+| `MEMORY_INTERACTION_LOG_INLINE_BYTES` | Strict positive decimal integer | `16384`. Largest `InteractionLog` record content kept inline; larger content spills to a blob under `<basename>-interactions-blobs/`. Invalid values (`0`, `-5`, `abc`, `1e3`) are ignored and the default applies. The `maxInlineBytes` constructor option overrides it. |
+
 ### Memory Validator (v1.13 → η.5.5)
 
 | Variable | Values | Default |
