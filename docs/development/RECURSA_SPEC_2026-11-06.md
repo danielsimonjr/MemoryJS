@@ -607,6 +607,63 @@ gate sharing deferred; **Q8** no visibility tiers for shards.
 
 ---
 
+### 3.9 Phase 5 decisions (Checker/Fixer amendments)
+
+These behaviours were decided while checking Phase 5 and are binding on RS-17..RS-21 and §3.7.
+
+- **Loadability contract (D1/D2).** A `skill.add` produced by `KnowledgeEditor` carries
+  `scope.tasks = ['task:<taskId>', ...first 8 stopword-free keywords of the task input]`,
+  `description = '<rubric criteria text head> — <those keywords>'` and a `{ ref: 'task:<taskId>',
+  kind: 'task' }` source (`SkillSource.kind` gains `'task'`). `KnowledgeRepository.loadForContext` and
+  `ScratchKnowledge.loadForContext` take `includeSkillIds` (loaded first, regardless of lexical score)
+  and `maxSkills` (default 20, replacing the fixed lookup limit of 5; the token budget still bounds the
+  output). `skillIdsForTasks(taskIds)` on the repository, the scratch copy and the child overlay
+  returns the live skills whose `scope.tasks` contains `task:<id>` (at most 50). Every solve, diagnose,
+  edit, validation and live-evaluation load passes them. Measured: 40/40 editor-built skills are
+  loaded for their own task on both backends (requirement: at least 38/40).
+- **Live-K results (B1).** A recursive round never reports the children's overlay results. When the
+  merged revision is applied, every task of the run is solved and judged once against the node's
+  repository (live `K` at the root) and that pass map becomes `current`; when it is not applied,
+  `current` returns to the round's `before` (the children's `beforePass`). `all-pass` is reported only
+  when that pass map is all-pass; an unapplied merge, or an applied one that fixed nothing live, stops
+  `no-progress`. `abort` (and a budget stop between children) also discards unmerged child results.
+- **Generalize rule (B2).** Two `skill.add` ops from different children are generalized only when
+  their `kind` matches, their domains overlap and their descriptions have token Jaccard >= 0.5. The
+  merged skill: description = deduplicated union of the member descriptions (<= 400 chars),
+  `scope.tasks` = union, name = `Merged <kind>: <first 3 keywords> <6-hex hash of the members>`,
+  domains = union of evidence domains, else of the members' skill domains; never empty (the group is
+  then not generalized).
+- **Budget split (S1).** Each child gets `floor(remainingTokens / children)` tokens (at least 1) and
+  the remaining wall-clock time. Between child completions the parent checks its own token and time
+  budget; when spent, the remaining children are aborted and the run stops `budget-tokens` /
+  `budget-time`.
+- **One-subset rule (S2).** `plan` passes the previous children's diagnoses and feedback and a
+  repository-backed `skillMatch` into `split`. A one-subset result falls through to the next strategy
+  in `auto` order; if every strategy gives one subset the node runs one forced leaf child (no further
+  recursion). `auto` ranks a single-subset partition last. The reflector stores `prefer-split:<name>`
+  in `keyInsights`; `split('auto')` parses only that exact token for its tie-break.
+- **`submitChild`** requires the child's phase to be `done` (S3). Reflections are idempotent per round
+  (`experienceType = learning-round:<traceId>#<round>`).
+- **Leaf threshold env (S5).** `MEMORY_LEARNING_LEAF_THRESHOLD` (strict integer >= 0, default 20) is
+  read by `LearningFacade`; `opts.leafThreshold` overrides. A run is recursive when
+  `tasks.length > threshold`, or when `opts.split` is set and there is more than one task. The
+  threshold is passed down as the child leaf threshold. `learningLoop.next` / `submit` on a recursive
+  trace throw and name `plan / submitChild / merge / reflect` (N4). The facade passes `llmProvider` to
+  `RevisionMerger` and `LearningReflector` (S4).
+- **Merge-apply conflict (S6).** An OCC conflict on the merged revision is recorded as an
+  `apply-conflict` merge action; the next round rebases on live `K` (fresh round snapshot) and the
+  run stops only on its budget.
+- **Reconcile (S7).** A child's sequential patches to one target are folded into one op before
+  reconciling; `skill.update` patches from different children on disjoint fields are merged into one
+  op; otherwise the winner rule applies and the `[conflict]` note and `memory.reflect` ops name only
+  the children whose edit differs from the winner's.
+- **Bootstrap input checks.** A `CorpusMapper` loader that resolves to a non-string is a
+  `ValidationError` (S8). Refs must be non-empty and at most 493 characters (the spec's 512, lowered so
+  `source:<ref>` fits the 500-character entity-name limit) (N2). Within one `map` call a repeated
+  conflicting text is recorded once (N1). `BoundaryRecorder` keeps the original region name, and a
+  second distinct region with the same slug is a `ValidationError` naming both (S9). Untrusted
+  text in fences and child bodies in a generalized skill have line-start `#` escaped (N5).
+
 ## 4. Subagent-driven implementation plan
 
 Team: Planner (Fable, low) owns this document and batch briefs; Builders (Haiku, low) implement

@@ -1063,6 +1063,12 @@ rationale.
 |----------|--------|---------|
 | `MEMORY_INTERACTION_LOG_INLINE_BYTES` | Strict positive decimal integer | `16384`. Largest `InteractionLog` record content kept inline; larger content spills to a blob under `<basename>-interactions-blobs/`. Invalid values (`0`, `-5`, `abc`, `1e3`) are ignored and the default applies. The `maxInlineBytes` constructor option overrides it. |
 
+### Learning loop (Recursa RS-21)
+
+| Variable | Values | Default |
+|----------|--------|---------|
+| `MEMORY_LEARNING_LEAF_THRESHOLD` | Strict decimal integer ≥ 0 | `20`. `ctx.learningLoop` uses the recursive learner when a run has more tasks than this (or when `split` is set and there is more than one task); the value is also the child leaf threshold. Read on every `learn` / `start`. `opts.leafThreshold` overrides it; invalid values (`3.5`, `-1`, `abc`) fall back to the default. |
+
 ### Memory Validator (v1.13 → η.5.5)
 
 | Variable | Values | Default |

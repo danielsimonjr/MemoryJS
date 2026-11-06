@@ -16,7 +16,7 @@
  * @experimental Part of the Recursa knowledge-repository work (spec RS-17).
  */
 
-import type { InstructionSetRecord, InstructionSetRole, RevisionOp, SkillRecord } from '../../types/skills.js';
+import type { InstructionSetRecord, InstructionSetRole, RevisionOp, SkillId, SkillRecord } from '../../types/skills.js';
 import type { FailureRecord } from '../../types/agent-memory.js';
 import { readEnvNumber } from '../../utils/envConfig.js';
 import { estimateTokensFromText } from '../../utils/tokenEstimate.js';
@@ -24,11 +24,12 @@ import { instructionItemsFor, renderInstructionItems, type InstructionItem } fro
 import { assertBudgetTokens, clone, fitInOrder } from './knowledgeDigest.js';
 import { safeApplyOp, workFrom } from './knowledgeRevision.js';
 import { rankSkillsLexically } from '../skills/skillRecordUtils.js';
+import { resolveMaxSkills, selectSkills, skillIdsForTaskIds } from './knowledgeLoad.js';
 import type { FailureLookupLike, LoadedKnowledge, LoadForContextOptions, SkillMatchLike } from './KnowledgeRepository.js';
 
 /** Default token budget, matching `KnowledgeRepository.loadForContext`. */
 const DEFAULT_BUDGET_TOKENS = 4000;
-/** Maximum skills and failures returned by one load, matching the live path. */
+/** Maximum failures returned by one load, matching the live path. */
 const LOOKUP_LIMIT = 5;
 
 /** Items rendered by {@link ScratchKnowledge.loadForContext}, in priority order. */
@@ -140,6 +141,16 @@ export class ScratchKnowledge {
   }
 
   /**
+   * Live scratch skills learned for the given tasks (`scope.tasks` contains `task:<id>`).
+   *
+   * @param taskIds - Task ids.
+   * @returns Skill ids, at most 50.
+   */
+  async skillIdsForTasks(taskIds: readonly string[]): Promise<SkillId[]> {
+    return skillIdsForTaskIds(this.skills, taskIds);
+  }
+
+  /**
    * Render knowledge for a task from this copy, with the same budget rule and section order as
    * `KnowledgeRepository.loadForContext`. Skills are ranked by the injected {@link SkillMatcher}.
    *
@@ -153,8 +164,11 @@ export class ScratchKnowledge {
     const want = new Set(options.sections ?? ['instructions', 'skills', 'failures']);
     const instructions = want.has('instructions') ? instructionItemsFor(this.sets, options.role) : [];
     const live = this.skills.filter((skill) => skill.retired === undefined);
+    const maxSkills = resolveMaxSkills(options.maxSkills);
+    const byId = new Map(live.map((skill) => [skill.id as string, skill] as const));
+    const included = (options.includeSkillIds ?? []).flatMap((id) => byId.get(id) ?? []);
     const matches: SkillMatchLike[] = want.has('skills')
-      ? this.matcher(options.taskHint, live, LOOKUP_LIMIT).slice(0, LOOKUP_LIMIT).map((skill) => ({ skill, score: 0, matched: [] }))
+      ? selectSkills(included, this.matcher(options.taskHint, live, maxSkills), maxSkills).map((skill) => ({ skill, score: 0, matched: [] }))
       : [];
     const failures = want.has('failures') ? await this.failures.lookupForTask(options.taskHint, { limit: LOOKUP_LIMIT }) : [];
     const candidates: LoadItem[] = [

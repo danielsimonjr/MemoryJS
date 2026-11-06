@@ -67,6 +67,9 @@ export interface ObservationDedupFilter {
   maxGroups?: number;
 }
 
+/** Default token-Jaccard threshold for near-duplicate observations (inclusive). */
+export const DEFAULT_DEDUP_JACCARD = 0.85;
+
 /** Optional manager-level configuration (e.g. Jaccard threshold). */
 export interface ObservationDedupManagerConfig {
   /** Threshold for `findJaccardDuplicates` (0..1). Default 0.85. */
@@ -84,7 +87,7 @@ export class ObservationDedupManager {
 
   constructor(storage: IGraphStorage, config: ObservationDedupManagerConfig = {}) {
     this.storage = storage;
-    this.jaccardThreshold = config.jaccardThreshold ?? 0.85;
+    this.jaccardThreshold = config.jaccardThreshold ?? DEFAULT_DEDUP_JACCARD;
   }
 
   /**

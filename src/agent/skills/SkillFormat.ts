@@ -360,7 +360,7 @@ function isStringArray(v: unknown): v is string[] {
 function isSource(v: unknown): v is SkillSource {
   if (v === null || typeof v !== 'object') return false;
   const s = v as Record<string, unknown>;
-  return typeof s['ref'] === 'string' && ['document', 'entity', 'url', 'trace'].includes(s['kind'] as string);
+  return typeof s['ref'] === 'string' && ['document', 'entity', 'url', 'trace', 'task'].includes(s['kind'] as string);
 }
 
 function isResource(v: unknown): v is SkillResource {

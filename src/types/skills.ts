@@ -19,10 +19,10 @@ export type SkillKind = 'navigation' | 'procedure' | 'judgment' | 'convention' |
 
 /** Provenance link retained by every skill, instruction section and navigation node. */
 export interface SkillSource {
-  /** Stable reference to the origin (document ref, entity name, URL or trace address). */
+  /** Stable reference to the origin (document ref, entity name, URL, trace address or `task:<id>`). */
   ref: string;
   /** Category of the origin. */
-  kind: 'document' | 'entity' | 'url' | 'trace';
+  kind: 'document' | 'entity' | 'url' | 'trace' | 'task';
   /** Optional short quotation supporting the entry. */
   excerpt?: string;
 }

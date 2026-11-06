@@ -100,7 +100,8 @@ const ctx = new ManagerContext('./memory.db');
 | `instructionSets` | `InstructionSetManager` | Recursa role-scoped instruction sets (RS-5); `history()` uses `transitionLedger` when enabled |
 | `knowledgeRepository` | `KnowledgeRepository` | Recursa snapshots, revisions and budgeted `loadForContext` (RS-5), composed from `skillManager`, `instructionSets` and `failureManager` |
 | `skillPublisher` | `SkillPublisher` | Recursa atomic SKILL.md publish and import over `skillManager` (RS-3) |
-| `learningLoop(deps)` | `LearningLoop` | Recursa leaf learning loop (RS-18); a fresh, independent loop per call |
+| `learningLoop(deps)` | `LearningLoop` | Recursa learning loop (RS-18, RS-21); a fresh, independent loop per call. `learn` / `start` route to the recursive learner when the run has more tasks than the leaf threshold (`opts.leafThreshold`, else `MEMORY_LEARNING_LEAF_THRESHOLD`, else 20) or `split` is set with more than one task |
+| `bootstrapper(deps)` | `Bootstrapper` | Recursa bootstrapper (RS-10..RS-13): corpus map, coverage boundaries, exploration notes, practice tasks, optional learning pass through `learningLoop`; a new instance per call |
 | `semanticForget` | `SemanticForget` | Two-tier deletion with audit (v1.8.0) |
 | `temporalSearch` | `TemporalSearch` | NL time-range search (v1.9.0) |
 | `procedureManager` | `ProcedureManager` | Procedural memory (3B.4) |
@@ -2436,7 +2437,44 @@ const status = await loop.status(traceId);    // LeafState + { report }
 - `submit` rejects an empty payload or a malformed result (`TypeError`). `null` marks a failed solve or judge call.
 - Apply: `conflict` records `apply-conflict: …` and starts the next round from live `K`; `rejected` records `apply-rejected: failedOpIndex=…` and stops `no-progress`; a publish failure records `publish-failed: …`. None of these throw. Apply is idempotent across crashes.
 - Validation reuses one persisted plan; if live `K` moves mid-validation the revision is rejected (`validation-stale`).
-- `deps.interactionLog` feeds the `Diagnoser`'s trace excerpts and keeps solve trace addresses on trace actions (`includeTraceAddrs` overrides). `plan`, `submitChild`, `merge` and `reflect` are Phase 5 and throw.
+- `deps.interactionLog` feeds the `Diagnoser`'s trace excerpts and keeps solve trace addresses on trace actions (`includeTraceAddrs` overrides).
+- Learned skills carry `task:<id>` in `scope.tasks`; every load for a task passes `includeSkillIds` (from `skillIdsForTasks`) so the skill is loaded regardless of lexical score. `loadForContext({ includeSkillIds, maxSkills })` — `maxSkills` defaults to 20; the token budget still bounds the output.
+
+## Recursive learner (Recursa RS-19..RS-21)
+
+`@experimental`. Exported from `src/agent` (`src/agent/learning/`); driven through `ctx.learningLoop(deps)`.
+
+```typescript
+const loop = ctx.learningLoop({ solver, judge, llmProvider });
+const result = await loop.learn({ taskIds, tasks, budget: { maxRounds: 3, maxTokens: 50_000 }, split: 'auto' });
+
+// Step-wise (e.g. children hosted by a subagent runner):
+const { traceId } = await loop.start({ taskIds, tasks, budget: { maxRounds: 3 }, split: 'byCategory' });
+const { childTraceIds } = await loop.plan(traceId);
+// drive each child (loop.childDriver(id)), then:
+for (const id of childTraceIds) await loop.submitChild(traceId, id); // child must be in phase 'done'
+const merged = await loop.merge(traceId);   // { verdict, applied, fixed, regressed, notes }
+const decision = await loop.reflect(traceId); // { decision: 'continue' | 'done', stop?, keyInsights }
+```
+
+- `split(name, tasks, ctx)`: `byCategory`, `byFailureMode` (uses the previous round's diagnoses and feedback), `bySkill` (top `skillMatch`), `byTool`, `auto` (most balanced; a single-subset partition ranks last; tie-break by the `prefer-split:<name>` insight). A one-subset result falls through to the next strategy; if all give one subset the node runs one forced leaf child.
+- Children learn over a `ChildKnowledgeOverlay` and never write live `K`. Each child gets `floor(remainingTokens / children)` tokens and the remaining wall-clock; the parent stops `budget-tokens` / `budget-time` between child completions.
+- `merge`: `RevisionMerger` dedupes near-duplicate adds, reconciles same-target updates (per-child folding, disjoint fields merged, `[conflict]` notes name only losers) and generalizes adds (same kind, overlapping domains, description Jaccard ≥ 0.5); the result is validated on a stratified sample and applied with OCC. After an apply, all tasks are evaluated once on live `K`; that pass map is the run's `after`. An `apply-conflict` rebases the next round; the run stops only on budget.
+- `reflect`: one `learning` reflection per round (idempotent), `no-progress` when the merge was not applied or fixed nothing live, `all-pass` only from the live evaluation.
+- `next` / `submit` throw for a recursive trace and name `plan` / `submitChild` / `merge` / `reflect`.
+
+## Bootstrapping (Recursa RS-10..RS-13)
+
+`@experimental`. Exported from `src/agent` (`src/agent/bootstrap/`); wired as `ctx.bootstrapper(deps)`.
+
+```typescript
+const boot = ctx.bootstrapper({ llmProvider });
+const out = await boot.run({ sources, solver, judge, budget: { maxRounds: 2 }, corpusLabel: 'invoices', taskCount: 40 });
+// out: navigation map, coverage records, notesSkillId, practice tasks + rubric audit, optional learn result
+```
+
+- `CorpusMapper.map(sources)`: one navigation leaf per `ref` (first text wins; a different repeat is a conflict recorded once per call), folded into summary levels. A loader must resolve to a string; refs must be non-empty and at most 493 characters (`MAX_REF_CHARS`). All are `ValidationError`s.
+- `BoundaryRecorder.record({ region, status })` keeps the original region name; two distinct regions with the same slug throw a `ValidationError` naming both.
 
 ## Verification
 
@@ -2447,8 +2485,8 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 
 | Claim | Value | Source |
 |---|---|---|
-| totalExports | 3661 | repo-tools map |
-| totalSourceFiles | 917 | repo-tools map |
+| totalExports | 3915 | repo-tools map |
+| totalSourceFiles | 961 | repo-tools map |
 
 The figures below come from `bun run tools:deps` and `bun run tools:deps:full`. These generators read `src/` only. The gate does not check these figures. Read them in `dependency-summary.compact.json` and `TEST_COVERAGE.md`.
 

@@ -633,3 +633,6 @@ export * from './knowledgeContext.js';
 
 // ==================== Recursa — Phase 4 (leaf learner) ====================
 export * from './learning/index.js';
+
+// Recursa — Phase 5 (recursive learner + bootstrapping)
+export * from './bootstrap/index.js';

@@ -361,3 +361,39 @@ describe('Recursa Phase 4 learning barrel exports', () => {
     }
   });
 });
+
+describe('Recursa Phase 5 learner and bootstrap barrel exports', () => {
+  const runtimeNames = [
+    'split',
+    'isPartition',
+    'RevisionMerger',
+    'RecursiveLearner',
+    'LearningReflector',
+    'MAX_KEY_INSIGHTS',
+    'createInProcessLearnHandler',
+    'DEFAULT_CHILD_CONCURRENCY',
+    'Bootstrapper',
+    'CorpusMapper',
+    'BoundaryRecorder',
+    'ExplorationNotes',
+    'PracticeTaskGenerator',
+    'DEFAULT_TASK_COUNT',
+    'defaultPartitioner',
+    'skillNameFor',
+  ] as const;
+
+  it('exports the Phase 5 public surface from src/agent/index.ts and the package root', () => {
+    for (const name of runtimeNames) {
+      expect(agent as Record<string, unknown>, `agent barrel: ${name}`).toHaveProperty(name);
+      expect(root as Record<string, unknown>, `root barrel: ${name}`).toHaveProperty(name);
+    }
+    expect(root.RecursiveLearner).toBe(agent.RecursiveLearner);
+    expect(root.Bootstrapper).toBe(agent.Bootstrapper);
+  });
+
+  it('keeps Phase 5 internal helpers out of the barrel', () => {
+    for (const name of ['bootstrapShared', 'buildMemoryEntity', 'assertPartition', 'KeyedMutex', 'validateAndApplyMerge', 'loadRecursive', 'ChildKnowledgeOverlay', 'shortHash']) {
+      expect(agent as Record<string, unknown>, `agent barrel must not export ${name}`).not.toHaveProperty(name);
+    }
+  });
+});

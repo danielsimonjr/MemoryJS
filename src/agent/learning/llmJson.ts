@@ -112,9 +112,30 @@ export function escapeFenceContent(text: string): string {
 export function fencedText(text: string): string {
   const body = escapeFenceContent(text)
     .split('\n')
-    .map((line) => line.replace(/(^|\r)---/g, '$1\\-\\-\\-'))
+    .map((line) => escapeHeading(line.replace(/(^|\r)---/g, '$1\\-\\-\\-')))
     .join('\n');
   return ['```text', body, '```'].join('\n');
+}
+
+/**
+ * Escape a Markdown heading marker at the start of a line (`# x` → `\# x`), so untrusted text
+ * cannot forge a heading.
+ *
+ * @param line - One line
+ * @returns The line with a leading `#` escaped
+ */
+export function escapeHeading(line: string): string {
+  return line.replace(/^(\s*)#/, '$1\\#');
+}
+
+/**
+ * Escape every line-start `#` of a multi-line text (see {@link escapeHeading}).
+ *
+ * @param text - Untrusted text
+ * @returns Escaped text
+ */
+export function escapeHeadings(text: string): string {
+  return text.split('\n').map(escapeHeading).join('\n');
 }
 
 /**

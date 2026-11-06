@@ -3,9 +3,9 @@
     "name": "@danielsimonjr/memoryjs",
     "version": "4.5.0",
     "lastUpdated": "2026-11-06",
-    "totalFiles": 370,
+    "totalFiles": 394,
     "totalModules": 12,
-    "totalExports": 2588
+    "totalExports": 2769
   },
   "entryPoints": [
     {
@@ -2914,6 +2914,7 @@
           }
         ],
         "exports": [
+          "DEFAULT_DEDUP_JACCARD",
           "ObservationDedupManager"
         ],
         "classes": [
@@ -2924,6 +2925,9 @@
           "DuplicateObservationGroup",
           "ObservationDedupFilter",
           "ObservationDedupManagerConfig"
+        ],
+        "constants": [
+          "DEFAULT_DEDUP_JACCARD"
         ]
       },
       "src/agent/ObserverPipeline.ts": {
@@ -4077,6 +4081,900 @@
           "ConfirmationResult"
         ]
       },
+      "src/agent/bootstrap/Bootstrapper.ts": {
+        "description": "Bootstrapper (Recursa RS-13): one pass from raw corpus to a learned knowledge snapshot.",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../types/types.js",
+            "imports": [
+              "IGraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../types/skills.js",
+            "imports": [
+              "NavigationNodeRecord",
+              "SkillId"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../types/learning.js",
+            "imports": [
+              "LearnResult",
+              "LearningBudget",
+              "TaskRecord"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../types/agent-memory.js",
+            "imports": [
+              "isNavigationNodeEntity"
+            ]
+          },
+          {
+            "file": "../../core/EntityManager.js",
+            "imports": [
+              "EntityManager"
+            ]
+          },
+          {
+            "file": "../../core/RelationManager.js",
+            "imports": [
+              "RelationManager"
+            ]
+          },
+          {
+            "file": "../../core/GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../skills/SkillManager.js",
+            "imports": [
+              "SkillManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../knowledge/KnowledgeRepository.js",
+            "imports": [
+              "KnowledgeRepository"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../SummarizationService.js",
+            "imports": [
+              "SummarizationService"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../features/KeywordExtractor.js",
+            "imports": [
+              "KeywordExtractor"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../procedural/graph/CompletionProvider.js",
+            "imports": [
+              "PGCompletionProvider"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../evaluation/DeterministicJudge.js",
+            "imports": [
+              "DeterministicJudge",
+              "RubricJudge"
+            ]
+          },
+          {
+            "file": "../evaluation/RubricAudit.js",
+            "imports": [
+              "RubricIssue"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../learning/LeafLearner.js",
+            "imports": [
+              "LeafLearner",
+              "LeafStartOptions"
+            ]
+          },
+          {
+            "file": "../learning/LearningTrace.js",
+            "imports": [
+              "LearningTrace"
+            ]
+          },
+          {
+            "file": "../learning/Diagnoser.js",
+            "imports": [
+              "Diagnoser"
+            ]
+          },
+          {
+            "file": "../learning/KnowledgeEditor.js",
+            "imports": [
+              "KnowledgeEditor"
+            ]
+          },
+          {
+            "file": "../learning/LeafLearnerDeps.js",
+            "imports": [
+              "createLeafLearnerDeps"
+            ]
+          },
+          {
+            "file": "../learning/types.js",
+            "imports": [
+              "LearningDeps",
+              "LearningSolver"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./CorpusMapper.js",
+            "imports": [
+              "CorpusMapper",
+              "CorpusMapOptions",
+              "CorpusSource",
+              "NavigationMap",
+              "navigationLeafName"
+            ]
+          },
+          {
+            "file": "./BoundaryRecorder.js",
+            "imports": [
+              "BoundaryRecorder"
+            ]
+          },
+          {
+            "file": "./ExplorationNotes.js",
+            "imports": [
+              "ExplorationNotes"
+            ]
+          },
+          {
+            "file": "./PracticeTaskGenerator.js",
+            "imports": [
+              "PracticeTaskGenerator"
+            ]
+          },
+          {
+            "file": "./bootstrapShared.js",
+            "imports": [
+              "throwIfAbortedSignal"
+            ]
+          }
+        ],
+        "exports": [
+          "Bootstrapper"
+        ],
+        "classes": [
+          "Bootstrapper"
+        ],
+        "interfaces": [
+          "BootstrapLearner",
+          "BootstrapperDeps",
+          "BootstrapRunInput",
+          "BootstrapResult"
+        ]
+      },
+      "src/agent/bootstrap/BoundaryRecorder.ts": {
+        "description": "Coverage boundaries of a corpus (Recursa RS-11): which regions of the material are present,",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../types/types.js",
+            "imports": [
+              "Entity",
+              "IGraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../types/skills.js",
+            "imports": [
+              "CoverageRecord",
+              "SkillSource"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../types/agent-memory.js",
+            "imports": [
+              "isCoverageEntity",
+              "toIsoDateTime"
+            ]
+          },
+          {
+            "file": "../../core/EntityManager.js",
+            "imports": [
+              "EntityManager"
+            ]
+          },
+          {
+            "file": "../../core/GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../knowledge/knowledgeDigest.js",
+            "imports": [
+              "slugify"
+            ]
+          },
+          {
+            "file": "../../utils/errors.js",
+            "imports": [
+              "ValidationError"
+            ]
+          },
+          {
+            "file": "../../utils/tokenEstimate.js",
+            "imports": [
+              "estimateTokensFromText"
+            ]
+          },
+          {
+            "file": "./bootstrapShared.js",
+            "imports": [
+              "buildMemoryEntity",
+              "scalarText"
+            ]
+          }
+        ],
+        "exports": [
+          "DEFAULT_COVERAGE_BUDGET_TOKENS",
+          "coverageEntityName",
+          "summarizeCoverage",
+          "BoundaryRecorder"
+        ],
+        "classes": [
+          "BoundaryRecorder"
+        ],
+        "interfaces": [
+          "RecordCoverageInput",
+          "BoundaryRecorderDeps"
+        ],
+        "functions": [
+          "coverageEntityName",
+          "summarizeCoverage"
+        ],
+        "constants": [
+          "DEFAULT_COVERAGE_BUDGET_TOKENS"
+        ]
+      },
+      "src/agent/bootstrap/CorpusMapper.ts": {
+        "description": "Corpus navigation mapper (Recursa RS-10).",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../types/types.js",
+            "imports": [
+              "Entity",
+              "IGraphStorage",
+              "Relation"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../types/skills.js",
+            "imports": [
+              "NavigationNodeRecord"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../types/agent-memory.js",
+            "imports": [
+              "isNavigationNodeEntity"
+            ]
+          },
+          {
+            "file": "../../core/EntityManager.js",
+            "imports": [
+              "EntityManager"
+            ]
+          },
+          {
+            "file": "../../core/RelationManager.js",
+            "imports": [
+              "RelationManager"
+            ]
+          },
+          {
+            "file": "../../core/HierarchyManager.js",
+            "imports": [
+              "HierarchyManager"
+            ]
+          },
+          {
+            "file": "../../core/GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../SummarizationService.js",
+            "imports": [
+              "SummarizationService"
+            ]
+          },
+          {
+            "file": "../../features/KeywordExtractor.js",
+            "imports": [
+              "KeywordExtractor"
+            ]
+          },
+          {
+            "file": "../harness/ConcurrencyLimiter.js",
+            "imports": [
+              "runAll"
+            ]
+          },
+          {
+            "file": "../reconstruction/MemoryGraphBridge.js",
+            "imports": [
+              "TOPIC_SUMMARIZES"
+            ]
+          },
+          {
+            "file": "../procedural/graph/canonical.js",
+            "imports": [
+              "sha256Hex"
+            ]
+          },
+          {
+            "file": "../../utils/errors.js",
+            "imports": [
+              "ValidationError"
+            ]
+          },
+          {
+            "file": "./bootstrapShared.js",
+            "imports": [
+              "assertDistinctSourceObjects",
+              "assertPartition",
+              "buildMemoryEntity",
+              "chunk",
+              "defaultPartitioner",
+              "nowIso",
+              "shortHash",
+              "throwIfAbortedSignal",
+              "unwrapResults"
+            ]
+          }
+        ],
+        "exports": [
+          "defaultPartitioner",
+          "LOCATED_AT_RELATION",
+          "DEFAULT_SHARD_SIZE",
+          "DEFAULT_MAP_CONCURRENCY",
+          "MAX_REF_CHARS",
+          "navigationLeafName",
+          "sourceEntityName",
+          "CorpusMapper"
+        ],
+        "classes": [
+          "CorpusMapper"
+        ],
+        "interfaces": [
+          "CorpusSource",
+          "CorpusMapOptions",
+          "NavigationMap",
+          "CorpusMapperDeps"
+        ],
+        "functions": [
+          "navigationLeafName",
+          "sourceEntityName"
+        ],
+        "constants": [
+          "LOCATED_AT_RELATION",
+          "DEFAULT_SHARD_SIZE",
+          "DEFAULT_MAP_CONCURRENCY",
+          "MAX_REF_CHARS"
+        ]
+      },
+      "src/agent/bootstrap/ExplorationNotes.ts": {
+        "description": "Exploration notes (Recursa RS-12): one convention skill per corpus, written as a cheatsheet.",
+        "externalDependencies": [
+          {
+            "package": "zod",
+            "imports": [
+              "z"
+            ]
+          }
+        ],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../types/types.js",
+            "imports": [
+              "IGraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../types/skills.js",
+            "imports": [
+              "CoverageRecord",
+              "NavigationNodeRecord",
+              "SkillId",
+              "SkillSource"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../skills/SkillManager.js",
+            "imports": [
+              "SkillManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../procedural/graph/CompletionProvider.js",
+            "imports": [
+              "PGCompletionProvider"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../utils/logger.js",
+            "imports": [
+              "logger"
+            ]
+          },
+          {
+            "file": "../knowledge/knowledgeDigest.js",
+            "imports": [
+              "slugify"
+            ]
+          },
+          {
+            "file": "../learning/llmJson.js",
+            "imports": [
+              "ABORTED",
+              "describeError",
+              "extractJsonObject",
+              "fencedText",
+              "inlineSafe",
+              "raceAbort"
+            ]
+          },
+          {
+            "file": "../harness/ConcurrencyLimiter.js",
+            "imports": [
+              "AbortError"
+            ]
+          },
+          {
+            "file": "./CorpusMapper.js",
+            "imports": [
+              "NavigationMap"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./BoundaryRecorder.js",
+            "imports": [
+              "summarizeCoverage"
+            ]
+          },
+          {
+            "file": "./bootstrapShared.js",
+            "imports": [
+              "scalarText",
+              "throwIfAbortedSignal"
+            ]
+          }
+        ],
+        "exports": [
+          "skillNameFor",
+          "ExplorationNotes"
+        ],
+        "classes": [
+          "ExplorationNotes"
+        ],
+        "interfaces": [
+          "NotesBullet",
+          "WriteNotesInput",
+          "ExplorationNotesDeps"
+        ],
+        "functions": [
+          "skillNameFor"
+        ]
+      },
+      "src/agent/bootstrap/PracticeTaskGenerator.ts": {
+        "description": "Practice task generator (Recursa RS-13): turns navigation nodes and source metadata into",
+        "externalDependencies": [
+          {
+            "package": "zod",
+            "imports": [
+              "z"
+            ]
+          }
+        ],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../types/types.js",
+            "imports": [
+              "Entity",
+              "IGraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../types/skills.js",
+            "imports": [
+              "NavigationNodeRecord",
+              "SkillSource"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../types/learning.js",
+            "imports": [
+              "Criterion",
+              "TaskRecord"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../types/agent-memory.js",
+            "imports": [
+              "isTaskEntity"
+            ]
+          },
+          {
+            "file": "../../core/EntityManager.js",
+            "imports": [
+              "EntityManager"
+            ]
+          },
+          {
+            "file": "../../core/GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../procedural/graph/CompletionProvider.js",
+            "imports": [
+              "PGCompletionProvider"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../evaluation/RubricAudit.js",
+            "imports": [
+              "auditRubrics",
+              "RubricIssue"
+            ]
+          },
+          {
+            "file": "../learning/llmJson.js",
+            "imports": [
+              "ABORTED",
+              "describeError",
+              "fencedText",
+              "inlineSafe",
+              "raceAbort",
+              "extractJsonObject"
+            ]
+          },
+          {
+            "file": "../harness/ConcurrencyLimiter.js",
+            "imports": [
+              "AbortError"
+            ]
+          },
+          {
+            "file": "../../utils/logger.js",
+            "imports": [
+              "logger"
+            ]
+          },
+          {
+            "file": "./bootstrapShared.js",
+            "imports": [
+              "buildMemoryEntity",
+              "nowIso",
+              "scalarText",
+              "shortHash",
+              "throwIfAbortedSignal"
+            ]
+          }
+        ],
+        "exports": [
+          "DEFAULT_TASK_COUNT",
+          "PracticeTaskGenerator"
+        ],
+        "classes": [
+          "PracticeTaskGenerator"
+        ],
+        "interfaces": [
+          "TaskSourceLike",
+          "GenerateTasksInput",
+          "GeneratedTasks",
+          "PracticeTaskGeneratorDeps"
+        ],
+        "constants": [
+          "DEFAULT_TASK_COUNT"
+        ]
+      },
+      "src/agent/bootstrap/bootstrapShared.ts": {
+        "description": "Small helpers shared by the bootstrap (corpus mapping) modules: deterministic short hashes,",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../types/types.js",
+            "imports": [
+              "Entity"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../types/agent-memory.js",
+            "imports": [
+              "toIsoDateTime"
+            ]
+          },
+          {
+            "file": "../procedural/graph/canonical.js",
+            "imports": [
+              "sha256Hex"
+            ]
+          },
+          {
+            "file": "../harness/ConcurrencyLimiter.js",
+            "imports": [
+              "AbortError",
+              "RunResult"
+            ]
+          },
+          {
+            "file": "../../utils/errors.js",
+            "imports": [
+              "ValidationError"
+            ]
+          }
+        ],
+        "exports": [
+          "shortHash",
+          "chunk",
+          "scalarText",
+          "nowIso",
+          "buildMemoryEntity",
+          "defaultPartitioner",
+          "throwIfAbortedSignal",
+          "unwrapResults",
+          "assertDistinctSourceObjects",
+          "assertPartition"
+        ],
+        "interfaces": [
+          "MemoryEntityParts",
+          "PartitionableSource"
+        ],
+        "functions": [
+          "shortHash",
+          "chunk",
+          "scalarText",
+          "nowIso",
+          "buildMemoryEntity",
+          "defaultPartitioner",
+          "throwIfAbortedSignal",
+          "unwrapResults",
+          "assertDistinctSourceObjects",
+          "assertPartition"
+        ]
+      },
+      "src/agent/bootstrap/index.ts": {
+        "description": "Recursa Phase 5 bootstrapping public surface (spec section 3.7, batch 5C): the corpus mapper,",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./Bootstrapper.js",
+            "imports": [
+              "Bootstrapper"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./CorpusMapper.js",
+            "imports": [
+              "CorpusMapper",
+              "LOCATED_AT_RELATION",
+              "DEFAULT_SHARD_SIZE",
+              "DEFAULT_MAP_CONCURRENCY",
+              "defaultPartitioner",
+              "navigationLeafName",
+              "sourceEntityName",
+              "MAX_REF_CHARS"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./BoundaryRecorder.js",
+            "imports": [
+              "BoundaryRecorder",
+              "DEFAULT_COVERAGE_BUDGET_TOKENS",
+              "coverageEntityName",
+              "summarizeCoverage"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./ExplorationNotes.js",
+            "imports": [
+              "ExplorationNotes",
+              "skillNameFor"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./PracticeTaskGenerator.js",
+            "imports": [
+              "PracticeTaskGenerator",
+              "DEFAULT_TASK_COUNT"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./Bootstrapper.js",
+            "imports": [
+              "BootstrapLearner",
+              "BootstrapperDeps",
+              "BootstrapResult",
+              "BootstrapRunInput"
+            ],
+            "reExport": true,
+            "typeOnly": true
+          },
+          {
+            "file": "./CorpusMapper.js",
+            "imports": [
+              "CorpusMapOptions",
+              "CorpusMapperDeps",
+              "CorpusSource",
+              "NavigationMap",
+              "Partitioner"
+            ],
+            "reExport": true,
+            "typeOnly": true
+          },
+          {
+            "file": "./BoundaryRecorder.js",
+            "imports": [
+              "BoundaryRecorderDeps",
+              "ExpectedRegion",
+              "RecordCoverageInput"
+            ],
+            "reExport": true,
+            "typeOnly": true
+          },
+          {
+            "file": "./ExplorationNotes.js",
+            "imports": [
+              "ExplorationNotesDeps",
+              "ExplorationSkillOps",
+              "NotesBullet",
+              "WriteNotesInput"
+            ],
+            "reExport": true,
+            "typeOnly": true
+          },
+          {
+            "file": "./PracticeTaskGenerator.js",
+            "imports": [
+              "GeneratedTasks",
+              "GenerateTasksInput",
+              "PracticeTaskGeneratorDeps",
+              "TaskSourceLike"
+            ],
+            "reExport": true,
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "Bootstrapper",
+          "CorpusMapper",
+          "LOCATED_AT_RELATION",
+          "DEFAULT_SHARD_SIZE",
+          "DEFAULT_MAP_CONCURRENCY",
+          "defaultPartitioner",
+          "navigationLeafName",
+          "sourceEntityName",
+          "MAX_REF_CHARS",
+          "BoundaryRecorder",
+          "DEFAULT_COVERAGE_BUDGET_TOKENS",
+          "coverageEntityName",
+          "summarizeCoverage",
+          "ExplorationNotes",
+          "skillNameFor",
+          "PracticeTaskGenerator",
+          "DEFAULT_TASK_COUNT",
+          "BootstrapLearner",
+          "BootstrapperDeps",
+          "BootstrapResult",
+          "BootstrapRunInput",
+          "CorpusMapOptions",
+          "CorpusMapperDeps",
+          "CorpusSource",
+          "NavigationMap",
+          "Partitioner",
+          "BoundaryRecorderDeps",
+          "ExpectedRegion",
+          "RecordCoverageInput",
+          "ExplorationNotesDeps",
+          "ExplorationSkillOps",
+          "NotesBullet",
+          "WriteNotesInput",
+          "GeneratedTasks",
+          "GenerateTasksInput",
+          "PracticeTaskGeneratorDeps",
+          "TaskSourceLike"
+        ],
+        "reExported": [
+          "Bootstrapper",
+          "CorpusMapper",
+          "LOCATED_AT_RELATION",
+          "DEFAULT_SHARD_SIZE",
+          "DEFAULT_MAP_CONCURRENCY",
+          "defaultPartitioner",
+          "navigationLeafName",
+          "sourceEntityName",
+          "MAX_REF_CHARS",
+          "BoundaryRecorder",
+          "DEFAULT_COVERAGE_BUDGET_TOKENS",
+          "coverageEntityName",
+          "summarizeCoverage",
+          "ExplorationNotes",
+          "skillNameFor",
+          "PracticeTaskGenerator",
+          "DEFAULT_TASK_COUNT",
+          "BootstrapLearner",
+          "BootstrapperDeps",
+          "BootstrapResult",
+          "BootstrapRunInput",
+          "CorpusMapOptions",
+          "CorpusMapperDeps",
+          "CorpusSource",
+          "NavigationMap",
+          "Partitioner",
+          "BoundaryRecorderDeps",
+          "ExpectedRegion",
+          "RecordCoverageInput",
+          "ExplorationNotesDeps",
+          "ExplorationSkillOps",
+          "NotesBullet",
+          "WriteNotesInput",
+          "GeneratedTasks",
+          "GenerateTasksInput",
+          "PracticeTaskGeneratorDeps",
+          "TaskSourceLike"
+        ]
+      },
       "src/agent/causal/CausalReasoner.ts": {
         "description": "Causal Reasoner (3B.6)",
         "externalDependencies": [],
@@ -5026,6 +5924,13 @@
           },
           {
             "file": "./learning/index.js",
+            "imports": [
+              "*"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./bootstrap/index.js",
             "imports": [
               "*"
             ],
@@ -6244,6 +7149,7 @@
           "* from ./evaluation/index.js",
           "* from ./knowledgeContext.js",
           "* from ./learning/index.js",
+          "* from ./bootstrap/index.js",
           "AccessTracker",
           "AccessStats",
           "AccessTrackerConfig",
@@ -6766,10 +7672,8 @@
           {
             "file": "../../types/skills.js",
             "imports": [
-              "InstructionSetRecord",
               "InstructionSetRole",
               "KnowledgeRevisionRecord",
-              "KnowledgeSnapshotEntity",
               "KnowledgeSnapshotRecord",
               "SkillId",
               "SkillRecord"
@@ -6779,12 +7683,7 @@
           {
             "file": "../../types/agent-memory.js",
             "imports": [
-              "isFailureMemory",
-              "isHeuristicMemory",
-              "isInstructionSetEntity",
               "isKnowledgeSnapshotEntity",
-              "isReflectionMemory",
-              "isSkillEntity",
               "toIsoDateTime"
             ]
           },
@@ -6837,7 +7736,6 @@
             "file": "./knowledgeDigest.js",
             "imports": [
               "clone",
-              "compareIds",
               "diffSnapshots",
               "digestOf",
               "assertBudgetTokens",
@@ -6866,6 +7764,18 @@
             "file": "../skills/skillRecordUtils.js",
             "imports": [
               "rankSkillsLexically"
+            ]
+          },
+          {
+            "file": "./knowledgeLoad.js",
+            "imports": [
+              "findSnapshot",
+              "latestSnapshotId",
+              "memoryRefsOf",
+              "payloadOf",
+              "resolveMaxSkills",
+              "selectSkills",
+              "skillIdsForTaskIds"
             ]
           },
           {
@@ -6910,6 +7820,7 @@
               "InstructionSetRecord",
               "InstructionSetRole",
               "RevisionOp",
+              "SkillId",
               "SkillRecord"
             ],
             "typeOnly": true
@@ -6960,6 +7871,14 @@
             "file": "../skills/skillRecordUtils.js",
             "imports": [
               "rankSkillsLexically"
+            ]
+          },
+          {
+            "file": "./knowledgeLoad.js",
+            "imports": [
+              "resolveMaxSkills",
+              "selectSkills",
+              "skillIdsForTaskIds"
             ]
           },
           {
@@ -7194,6 +8113,72 @@
           "diffSnapshots"
         ]
       },
+      "src/agent/knowledge/knowledgeLoad.ts": {
+        "description": "Skill selection shared by `KnowledgeRepository.loadForContext` and",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../types/types.js",
+            "imports": [
+              "Entity"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../types/skills.js",
+            "imports": [
+              "InstructionSetRecord",
+              "KnowledgeSnapshotEntity",
+              "KnowledgeSnapshotRecord",
+              "SkillId",
+              "SkillRecord"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../types/agent-memory.js",
+            "imports": [
+              "isFailureMemory",
+              "isHeuristicMemory",
+              "isInstructionSetEntity",
+              "isKnowledgeSnapshotEntity",
+              "isReflectionMemory",
+              "isSkillEntity"
+            ]
+          },
+          {
+            "file": "./knowledgeDigest.js",
+            "imports": [
+              "compareIds"
+            ]
+          }
+        ],
+        "exports": [
+          "DEFAULT_MAX_SKILLS",
+          "MAX_TASK_SKILLS",
+          "skillIdsForTaskIds",
+          "resolveMaxSkills",
+          "selectSkills",
+          "findSnapshot",
+          "latestSnapshotId",
+          "payloadOf",
+          "memoryRefsOf"
+        ],
+        "functions": [
+          "skillIdsForTaskIds",
+          "resolveMaxSkills",
+          "selectSkills",
+          "findSnapshot",
+          "latestSnapshotId",
+          "payloadOf",
+          "memoryRefsOf"
+        ],
+        "constants": [
+          "DEFAULT_MAX_SKILLS",
+          "MAX_TASK_SKILLS"
+        ]
+      },
       "src/agent/knowledge/knowledgeRevision.ts": {
         "description": "Revision machinery for `KnowledgeRepository` (Recursa RS-5/RS-6): applies",
         "externalDependencies": [],
@@ -7314,6 +8299,89 @@
           "knowledgeLayersForWakeUp"
         ]
       },
+      "src/agent/learning/ChildKnowledgeOverlay.ts": {
+        "description": "Isolated knowledge overlay for one child learner (Recursa RS-21).",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../types/types.js",
+            "imports": [
+              "Entity",
+              "IGraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../types/skills.js",
+            "imports": [
+              "KnowledgeRevisionRecord"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../types/agent-memory.js",
+            "imports": [
+              "isLearningTraceEntity"
+            ]
+          },
+          {
+            "file": "../../core/EntityManager.js",
+            "imports": [
+              "EntityManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../utils/errors.js",
+            "imports": [
+              "VersionConflictError"
+            ]
+          },
+          {
+            "file": "../knowledge/KnowledgeRepository.js",
+            "imports": [
+              "KnowledgeRepository",
+              "ApplyResult",
+              "LoadForContextOptions",
+              "LoadedKnowledge"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../knowledge/ScratchKnowledge.js",
+            "imports": [
+              "ScratchKnowledge"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./observationChunks.js",
+            "imports": [
+              "decodeChunks",
+              "encodeChunks",
+              "isTagged"
+            ]
+          }
+        ],
+        "exports": [
+          "CHILD_REVISIONS_TAG",
+          "readChildRevisions",
+          "ChildKnowledgeOverlay"
+        ],
+        "classes": [
+          "ChildKnowledgeOverlay"
+        ],
+        "interfaces": [
+          "OverlayBase"
+        ],
+        "functions": [
+          "readChildRevisions"
+        ],
+        "constants": [
+          "CHILD_REVISIONS_TAG"
+        ]
+      },
       "src/agent/learning/Diagnoser.ts": {
         "description": "Diagnoser (spec RS-15): classifies why a failed task failed and records failure memory.",
         "externalDependencies": [
@@ -7422,6 +8490,60 @@
           "buildDiagnosisPrompt"
         ]
       },
+      "src/agent/learning/InProcessLearnHandler.ts": {
+        "description": "In-process handler for `kind: 'learn'` subagent tasks (Recursa RS-21).",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../harness/ConcurrencyLimiter.js",
+            "imports": [
+              "SubagentHandler"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./LeafLearner.js",
+            "imports": [
+              "LeafLearner"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./RecursiveLearner.js",
+            "imports": [
+              "RecursiveLearner"
+            ]
+          },
+          {
+            "file": "./RecursiveDrive.js",
+            "imports": [
+              "runLeafTrace"
+            ]
+          },
+          {
+            "file": "./types.js",
+            "imports": [
+              "LearningDeps"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "DEFAULT_CHILD_CONCURRENCY",
+          "createInProcessLearnHandler"
+        ],
+        "interfaces": [
+          "ChildDriverSource",
+          "LearnTaskInput"
+        ],
+        "functions": [
+          "createInProcessLearnHandler"
+        ],
+        "constants": [
+          "DEFAULT_CHILD_CONCURRENCY"
+        ]
+      },
       "src/agent/learning/KnowledgeEditor.ts": {
         "description": "KnowledgeEditor (spec RS-16): turns diagnoses into one knowledge revision.",
         "externalDependencies": [
@@ -7494,6 +8616,13 @@
             ]
           },
           {
+            "file": "../../utils/textSimilarity.js",
+            "imports": [
+              "ENGLISH_STOPWORDS_SMALL",
+              "tokenSetWithoutStopwords"
+            ]
+          },
+          {
             "file": "./llmJson.js",
             "imports": [
               "ABORTED",
@@ -7507,6 +8636,8 @@
           }
         ],
         "exports": [
+          "taskRef",
+          "taskKeywords",
           "buildDraftPrompt",
           "KnowledgeEditor"
         ],
@@ -7518,6 +8649,8 @@
           "KnowledgeEditContext"
         ],
         "functions": [
+          "taskRef",
+          "taskKeywords",
           "buildDraftPrompt"
         ]
       },
@@ -8255,6 +9388,68 @@
           "LearningAccountantOptions"
         ]
       },
+      "src/agent/learning/LearningReflector.ts": {
+        "description": "Learning reflector (Recursa RS-21): one `learning` reflection per recursive round.",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../types/learning.js",
+            "imports": [
+              "EvalMetrics"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../types/agent-memory.js",
+            "imports": [
+              "ReflectionRecord"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../AgentReflectionManager.js",
+            "imports": [
+              "AgentReflectionManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../procedural/graph/CompletionProvider.js",
+            "imports": [
+              "PGCompletionProvider"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./LearningTrace.js",
+            "imports": [
+              "LearningTrace"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "MAX_KEY_INSIGHTS",
+          "preferredStrategyOf",
+          "LearningReflector"
+        ],
+        "classes": [
+          "LearningReflector"
+        ],
+        "interfaces": [
+          "ReflectChild",
+          "ReflectInput",
+          "ReflectResult",
+          "LearningReflectorOptions"
+        ],
+        "functions": [
+          "preferredStrategyOf"
+        ],
+        "constants": [
+          "MAX_KEY_INSIGHTS"
+        ]
+      },
       "src/agent/learning/LearningTrace.ts": {
         "description": "Learning-trace manager (Recursa RS-22).",
         "externalDependencies": [],
@@ -8356,6 +9551,1028 @@
           "DEFAULT_TRACE_MAX_ACTIONS"
         ]
       },
+      "src/agent/learning/RecursiveChildren.ts": {
+        "description": "Child factories of the recursive learner (Recursa RS-21): a leaf learner or a nested recursive",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../types/learning.js",
+            "imports": [
+              "LearningBudget",
+              "TaskRecord"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./LeafLearner.js",
+            "imports": [
+              "LeafStartOptions"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./LeafLearner.js",
+            "imports": [
+              "LeafLearner"
+            ]
+          },
+          {
+            "file": "./ChildKnowledgeOverlay.js",
+            "imports": [
+              "ChildKnowledgeOverlay"
+            ]
+          },
+          {
+            "file": "./RecursiveLearner.js",
+            "imports": [
+              "RecursiveLearner",
+              "RecursiveLearnerOptions"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./RecursiveLearnerState.js",
+            "imports": [
+              "RecursiveState",
+              "SubsetRecord"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./RevisionValidator.js",
+            "imports": [
+              "RevisionValidator"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./RevisionMerger.js",
+            "imports": [
+              "RevisionMerger"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./RecursiveLearner.js",
+            "imports": [
+              "SplitFn"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "leafOver",
+          "recursiveOver",
+          "createChildRun"
+        ],
+        "interfaces": [
+          "ChildFactoryContext"
+        ],
+        "functions": [
+          "leafOver",
+          "recursiveOver",
+          "createChildRun"
+        ]
+      },
+      "src/agent/learning/RecursiveDrive.ts": {
+        "description": "In-process driving of the recursive learner (Recursa RS-21): the plan / children / merge /",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../types/learning.js",
+            "imports": [
+              "LearnResult",
+              "LearnStopReason",
+              "LearningBudget",
+              "TaskRecord"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./LeafLearnerOptions.js",
+            "imports": [
+              "resolveOptions"
+            ]
+          },
+          {
+            "file": "./LearningAccountant.js",
+            "imports": [
+              "LearningAccountant"
+            ]
+          },
+          {
+            "file": "./RecursiveLearnerState.js",
+            "imports": [
+              "DEFAULT_LEAF_THRESHOLD",
+              "DEFAULT_MAX_DEPTH"
+            ]
+          },
+          {
+            "file": "../harness/ConcurrencyLimiter.js",
+            "imports": [
+              "AbortError",
+              "runAll",
+              "runAllWithStats"
+            ]
+          },
+          {
+            "file": "./llmJson.js",
+            "imports": [
+              "describeError"
+            ]
+          },
+          {
+            "file": "./LeafLearner.js",
+            "imports": [
+              "LeafLearner"
+            ]
+          },
+          {
+            "file": "./LearningTrace.js",
+            "imports": [
+              "LearningTrace"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./RecursiveLearnerState.js",
+            "imports": [
+              "SubsetRecord",
+              "ChildSummary",
+              "RecursiveState",
+              "RecursiveOptions"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./RecursiveLearnerState.js",
+            "imports": [
+              "childResultOf",
+              "pick"
+            ]
+          },
+          {
+            "file": "./RecursiveLearnerState.js",
+            "imports": [
+              "loadRecursive"
+            ]
+          },
+          {
+            "file": "./LeafLearnerStore.js",
+            "imports": [
+              "loadRun"
+            ]
+          },
+          {
+            "file": "./RecursivePlan.js",
+            "imports": [
+              "childPhaseBudgetStop"
+            ]
+          },
+          {
+            "file": "./types.js",
+            "imports": [
+              "LearningDeps"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./RecursiveLearner.js",
+            "imports": [
+              "MergeDeps",
+              "RecursiveLearner",
+              "RecursiveStartOptions"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "driveRun",
+          "assertChildDone",
+          "runLeafTrace",
+          "mergeDepsOf",
+          "failedSummary",
+          "wallClockStop",
+          "checkStartOptions",
+          "initialRecursiveState",
+          "summarizeChild",
+          "resetForNextRound",
+          "KeyedMutex"
+        ],
+        "classes": [
+          "KeyedMutex"
+        ],
+        "interfaces": [
+          "CheckedStart"
+        ],
+        "functions": [
+          "driveRun",
+          "assertChildDone",
+          "runLeafTrace",
+          "mergeDepsOf",
+          "failedSummary",
+          "wallClockStop",
+          "checkStartOptions",
+          "initialRecursiveState",
+          "summarizeChild",
+          "resetForNextRound"
+        ]
+      },
+      "src/agent/learning/RecursiveEvaluate.ts": {
+        "description": "Live-`K` evaluation and round settlement of the recursive learner (Recursa RS-21, spec §3.4 B1).",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../types/learning.js",
+            "imports": [
+              "TaskRecord",
+              "TokenTotals"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../evaluation/DeterministicJudge.js",
+            "imports": [
+              "RubricJudge"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../harness/ConcurrencyLimiter.js",
+            "imports": [
+              "runAll"
+            ]
+          },
+          {
+            "file": "../knowledge/KnowledgeRepository.js",
+            "imports": [
+              "KnowledgeRepository"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./LeafLearnerStore.js",
+            "imports": [
+              "feedbackFromCriteria"
+            ]
+          },
+          {
+            "file": "./types.js",
+            "imports": [
+              "LearningSolver"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "evaluateLive",
+          "fixedBetween"
+        ],
+        "interfaces": [
+          "LiveEvaluation"
+        ],
+        "functions": [
+          "evaluateLive",
+          "fixedBetween"
+        ]
+      },
+      "src/agent/learning/RecursiveLearner.ts": {
+        "description": "Recursive learner (Recursa RS-21): Algorithm 1 lines 9-16 as a resumable state machine.",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../types/learning.js",
+            "imports": [
+              "LearnOptions",
+              "LearnResult",
+              "LearnStopReason",
+              "TaskRecord"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../types/types.js",
+            "imports": [
+              "IGraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../types/agent-memory.js",
+            "imports": [
+              "toIsoDateTime"
+            ]
+          },
+          {
+            "file": "../../core/EntityManager.js",
+            "imports": [
+              "EntityManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../knowledge/KnowledgeRepository.js",
+            "imports": [
+              "KnowledgeRepository"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../evaluation/DeterministicJudge.js",
+            "imports": [
+              "RubricJudge"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./ChildKnowledgeOverlay.js",
+            "imports": [
+              "ChildKnowledgeOverlay"
+            ]
+          },
+          {
+            "file": "./LeafLearner.js",
+            "imports": [
+              "LeafLearner"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./LeafLearnerOptions.js",
+            "imports": [
+              "DiagnoserLike",
+              "KnowledgeEditorLike"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./LeafLearnerStore.js",
+            "imports": [
+              "EMPTY_METRICS",
+              "taskRecordsJson"
+            ]
+          },
+          {
+            "file": "./LearningAccountant.js",
+            "imports": [
+              "LearningAccountant"
+            ]
+          },
+          {
+            "file": "./LearningReflector.js",
+            "imports": [
+              "LearningReflector"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./LearningTrace.js",
+            "imports": [
+              "LearningTrace"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./RevisionValidator.js",
+            "imports": [
+              "RevisionValidator"
+            ]
+          },
+          {
+            "file": "./RevisionMerger.js",
+            "imports": [
+              "RevisionMerger"
+            ]
+          },
+          {
+            "file": "./SplitStrategies.js",
+            "imports": [
+              "split"
+            ]
+          },
+          {
+            "file": "./RecursivePlan.js",
+            "imports": [
+              "absorbEvidence",
+              "childBudgetOf",
+              "planSubsets"
+            ]
+          },
+          {
+            "file": "./types.js",
+            "imports": [
+              "LearningDeps",
+              "LearningSolver"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./RecursiveLearnerState.js",
+            "imports": [
+              "MergeRecord",
+              "RecursiveState",
+              "SubsetRecord",
+              "childResultOf",
+              "copyRecursive",
+              "loadRecursive",
+              "metricsOf",
+              "saveRecursive"
+            ]
+          },
+          {
+            "file": "./RecursiveDrive.js",
+            "imports": [
+              "KeyedMutex",
+              "checkStartOptions",
+              "resetForNextRound",
+              "summarizeChild",
+              "assertChildDone",
+              "driveRun",
+              "failedSummary",
+              "initialRecursiveState",
+              "wallClockStop"
+            ]
+          },
+          {
+            "file": "./RecursiveMerge.js",
+            "imports": [
+              "buildChildOutcomes",
+              "mergeOutcomeOf",
+              "publishAccepted",
+              "reflectChildrenOf",
+              "settleRound",
+              "validateAndApplyMerge"
+            ]
+          },
+          {
+            "file": "./RecursiveEvaluate.js",
+            "imports": [
+              "evaluateLive"
+            ]
+          },
+          {
+            "file": "./RecursiveChildren.js",
+            "imports": [
+              "ChildFactoryContext",
+              "createChildRun",
+              "leafOver",
+              "recursiveOver"
+            ]
+          }
+        ],
+        "exports": [
+          "RecursiveLearner"
+        ],
+        "classes": [
+          "RecursiveLearner"
+        ],
+        "interfaces": [
+          "RecursiveLearnerOptions",
+          "MergeDeps",
+          "MergeOutcome",
+          "ReflectDecision"
+        ]
+      },
+      "src/agent/learning/RecursiveLearnerState.ts": {
+        "description": "State, persistence and child-result helpers of the recursive learner (Recursa RS-21).",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../types/learning.js",
+            "imports": [
+              "Diagnosis",
+              "EvalMetrics",
+              "Feedback",
+              "LearnStopReason",
+              "LearningBudget",
+              "SplitStrategyName",
+              "TaskRecord",
+              "TokenTotals"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../types/skills.js",
+            "imports": [
+              "KnowledgeRevisionRecord"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../types/agent-memory.js",
+            "imports": [
+              "IsoDateTime"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./LearningTrace.js",
+            "imports": [
+              "LearningTrace"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./LearningAccountant.js",
+            "imports": [
+              "AccountantState"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./types.js",
+            "imports": [
+              "LeafPhase"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./LeafLearnerStore.js",
+            "imports": [
+              "loadRun",
+              "summarize"
+            ]
+          }
+        ],
+        "exports": [
+          "DEFAULT_MAX_DEPTH",
+          "DEFAULT_LEAF_THRESHOLD",
+          "loadRecursive",
+          "saveRecursive",
+          "metricsOf",
+          "pick",
+          "sumTokens",
+          "childResultOf",
+          "combineRevisions",
+          "copyRecursive"
+        ],
+        "interfaces": [
+          "SubsetRecord",
+          "SplitEvidence",
+          "ChildSummary",
+          "RecursiveOptions",
+          "MergeRecord",
+          "RecursiveState",
+          "LoadedRecursive",
+          "ChildResult"
+        ],
+        "functions": [
+          "loadRecursive",
+          "saveRecursive",
+          "metricsOf",
+          "pick",
+          "sumTokens",
+          "childResultOf",
+          "combineRevisions",
+          "copyRecursive"
+        ],
+        "constants": [
+          "DEFAULT_MAX_DEPTH",
+          "DEFAULT_LEAF_THRESHOLD"
+        ]
+      },
+      "src/agent/learning/RecursiveMerge.ts": {
+        "description": "Validation and application of a recursive round's merged revision (Recursa RS-21, §5.2).",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../types/skills.js",
+            "imports": [
+              "KnowledgeRevisionRecord"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../types/learning.js",
+            "imports": [
+              "LearnStopReason",
+              "TaskRecord"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./RecursiveEvaluate.js",
+            "imports": [
+              "fixedBetween"
+            ]
+          },
+          {
+            "file": "../../types/types.js",
+            "imports": [
+              "IGraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./LearningReflector.js",
+            "imports": [
+              "ReflectChild"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./RevisionMerger.js",
+            "imports": [
+              "ChildOutcome"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../types/agent-memory.js",
+            "imports": [
+              "toIsoDateTime"
+            ]
+          },
+          {
+            "file": "./RecursiveLearnerState.js",
+            "imports": [
+              "combineRevisions",
+              "metricsOf",
+              "RecursiveState"
+            ]
+          },
+          {
+            "file": "./ChildKnowledgeOverlay.js",
+            "imports": [
+              "readChildRevisions"
+            ]
+          },
+          {
+            "file": "../knowledge/KnowledgeRepository.js",
+            "imports": [
+              "KnowledgeRepository"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./LearningTrace.js",
+            "imports": [
+              "LearningTrace"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./RevisionValidator.js",
+            "imports": [
+              "RevisionValidator"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./RecursiveLearnerState.js",
+            "imports": [
+              "MergeRecord"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./RecursiveLearner.js",
+            "imports": [
+              "MergeDeps",
+              "MergeOutcome"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "validateAndApplyMerge",
+          "buildChildOutcomes",
+          "reflectChildrenOf",
+          "publishAccepted",
+          "settleRound",
+          "mergeOutcomeOf"
+        ],
+        "interfaces": [
+          "ValidateAndApplyArgs"
+        ],
+        "functions": [
+          "validateAndApplyMerge",
+          "buildChildOutcomes",
+          "reflectChildrenOf",
+          "publishAccepted",
+          "settleRound",
+          "mergeOutcomeOf"
+        ]
+      },
+      "src/agent/learning/RecursivePlan.ts": {
+        "description": "Planning helpers of the recursive learner (Recursa RS-21, spec §3.7 S1/S2).",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../types/learning.js",
+            "imports": [
+              "LearningBudget",
+              "SplitStrategyName",
+              "TaskRecord"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../knowledge/KnowledgeRepository.js",
+            "imports": [
+              "KnowledgeRepository"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./LearningAccountant.js",
+            "imports": [
+              "LearningAccountant"
+            ]
+          },
+          {
+            "file": "./RecursiveLearnerState.js",
+            "imports": [
+              "ChildResult",
+              "RecursiveState",
+              "SubsetRecord"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./SplitStrategies.js",
+            "imports": [
+              "CONCRETE_SPLITS",
+              "SplitContext",
+              "TaskSubset"
+            ]
+          }
+        ],
+        "exports": [
+          "splitContextOf",
+          "planSubsets",
+          "childBudgetOf",
+          "absorbEvidence",
+          "childPhaseBudgetStop",
+          "normalizeSubsets"
+        ],
+        "functions": [
+          "splitContextOf",
+          "planSubsets",
+          "childBudgetOf",
+          "absorbEvidence",
+          "childPhaseBudgetStop",
+          "normalizeSubsets"
+        ]
+      },
+      "src/agent/learning/RevisionGeneralize.ts": {
+        "description": "Step 3 of the revision merger (spec RS-20, §3.7 B2): generalize `skill.add` ops from two or",
+        "externalDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "crypto",
+            "imports": [
+              "createHash"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "../../types/skills.js",
+            "imports": [
+              "RevisionOp",
+              "SkillSource"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../utils/textSimilarity.js",
+            "imports": [
+              "ENGLISH_STOPWORDS_SMALL",
+              "jaccard",
+              "tokenSetWithoutStopwords"
+            ]
+          },
+          {
+            "file": "./llmJson.js",
+            "imports": [
+              "escapeHeadings",
+              "escapeProse",
+              "fencedText",
+              "inlineSafe"
+            ]
+          },
+          {
+            "file": "./revisionMergeShared.js",
+            "imports": [
+              "BodySchema",
+              "NAME_MAX_CHARS",
+              "labelOfEntry",
+              "union",
+              "CallJson",
+              "ChildOutcome",
+              "Entry",
+              "RevisionMergeResult"
+            ]
+          },
+          {
+            "file": "./RevisionReconcile.js",
+            "imports": [
+              "MergePlan"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "GENERALIZE_DESCRIPTION_JACCARD",
+          "canGeneralize",
+          "generalizeAdds"
+        ],
+        "functions": [
+          "canGeneralize",
+          "generalizeAdds"
+        ],
+        "constants": [
+          "GENERALIZE_DESCRIPTION_JACCARD"
+        ]
+      },
+      "src/agent/learning/RevisionMerger.ts": {
+        "description": "RevisionMerger (spec RS-20): merges the knowledge revisions of child learners into one revision.",
+        "externalDependencies": [
+          {
+            "package": "zod",
+            "imports": [
+              "z"
+            ]
+          }
+        ],
+        "nodeDependencies": [
+          {
+            "module": "crypto",
+            "imports": [
+              "randomUUID"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "../../types/skills.js",
+            "imports": [
+              "RevisionOp",
+              "KnowledgeRevisionRecord"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../types/agent-memory.js",
+            "imports": [
+              "toIsoDateTime"
+            ]
+          },
+          {
+            "file": "../procedural/graph/CompletionProvider.js",
+            "imports": [
+              "PGCompletionProvider"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../ObservationDedupManager.js",
+            "imports": [
+              "DEFAULT_DEDUP_JACCARD"
+            ]
+          },
+          {
+            "file": "../../utils/textSimilarity.js",
+            "imports": [
+              "ENGLISH_STOPWORDS_SMALL",
+              "jaccard",
+              "tokenSetWithoutStopwords"
+            ]
+          },
+          {
+            "file": "../harness/ConcurrencyLimiter.js",
+            "imports": [
+              "AbortError"
+            ]
+          },
+          {
+            "file": "./llmJson.js",
+            "imports": [
+              "ABORTED",
+              "describeError",
+              "extractJsonObject",
+              "raceAbort"
+            ]
+          },
+          {
+            "file": "../../utils/logger.js",
+            "imports": [
+              "logger"
+            ]
+          },
+          {
+            "file": "./revisionMergeShared.js",
+            "imports": [
+              "union",
+              "CallJson",
+              "ChildOutcome",
+              "Entry",
+              "RevisionMergeResult",
+              "RevisionMergerDeps"
+            ]
+          },
+          {
+            "file": "./RevisionReconcile.js",
+            "imports": [
+              "reconcileTargets",
+              "MergePlan"
+            ]
+          },
+          {
+            "file": "./RevisionGeneralize.js",
+            "imports": [
+              "generalizeAdds"
+            ]
+          },
+          {
+            "file": "./revisionMergeShared.js",
+            "imports": [
+              "ChildOutcome",
+              "RevisionMergeResult",
+              "RevisionMergerDeps"
+            ],
+            "reExport": true,
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "RevisionMerger",
+          "ChildOutcome",
+          "RevisionMergeResult",
+          "RevisionMergerDeps"
+        ],
+        "reExported": [
+          "ChildOutcome",
+          "RevisionMergeResult",
+          "RevisionMergerDeps"
+        ],
+        "classes": [
+          "RevisionMerger"
+        ]
+      },
+      "src/agent/learning/RevisionReconcile.ts": {
+        "description": "Step 2 of the revision merger (spec RS-20, §3.7 S7): reconcile `skill.update` /",
+        "externalDependencies": [
+          {
+            "package": "zod",
+            "imports": [
+              "z"
+            ]
+          }
+        ],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../types/skills.js",
+            "imports": [
+              "RevisionOp",
+              "SkillRecord"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./llmJson.js",
+            "imports": [
+              "fencedText",
+              "inlineSafe"
+            ]
+          },
+          {
+            "file": "./revisionMergeShared.js",
+            "imports": [
+              "InstructionPatchSchema",
+              "SkillPatchSchema",
+              "canonical",
+              "fixedOfEntry",
+              "labelOfEntry",
+              "targetOf",
+              "CallJson",
+              "ChildOutcome",
+              "Entry",
+              "RevisionMergeResult"
+            ]
+          }
+        ],
+        "exports": [
+          "foldOps",
+          "reconcileTargets"
+        ],
+        "interfaces": [
+          "MergePlan"
+        ],
+        "functions": [
+          "foldOps",
+          "reconcileTargets"
+        ]
+      },
       "src/agent/learning/RevisionValidator.ts": {
         "description": "Revision validator (Recursa RS-17).",
         "externalDependencies": [],
@@ -8441,8 +10658,42 @@
           "DEFAULT_VALIDATION_SEED"
         ]
       },
+      "src/agent/learning/SplitStrategies.ts": {
+        "description": "Split strategies (spec RS-19): partition a set of tasks into labelled subsets for recursive",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../types/learning.js",
+            "imports": [
+              "Diagnosis",
+              "SplitStrategyName",
+              "TaskRecord"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "CONCRETE_SPLITS",
+          "preferredSplitOf",
+          "isPartition",
+          "split"
+        ],
+        "interfaces": [
+          "TaskSubset",
+          "SplitContext"
+        ],
+        "functions": [
+          "preferredSplitOf",
+          "isPartition",
+          "split"
+        ],
+        "constants": [
+          "CONCRETE_SPLITS"
+        ]
+      },
       "src/agent/learning/index.ts": {
-        "description": "Recursa Phase 4 public surface: learning-loop callbacks, the diagnoser, the knowledge editor,",
+        "description": "Recursa public surface for the learning loop: learning-loop callbacks, the diagnoser, the knowledge",
         "externalDependencies": [],
         "nodeDependencies": [],
         "internalDependencies": [
@@ -8494,6 +10745,44 @@
             "file": "./LearningAccountant.js",
             "imports": [
               "LearningAccountant"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./SplitStrategies.js",
+            "imports": [
+              "split",
+              "isPartition"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./RevisionMerger.js",
+            "imports": [
+              "RevisionMerger"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./RecursiveLearner.js",
+            "imports": [
+              "RecursiveLearner"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./LearningReflector.js",
+            "imports": [
+              "LearningReflector",
+              "MAX_KEY_INSIGHTS"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./InProcessLearnHandler.js",
+            "imports": [
+              "createInProcessLearnHandler",
+              "DEFAULT_CHILD_CONCURRENCY"
             ],
             "reExport": true
           },
@@ -8582,6 +10871,68 @@
             ],
             "reExport": true,
             "typeOnly": true
+          },
+          {
+            "file": "./SplitStrategies.js",
+            "imports": [
+              "TaskSubset",
+              "SplitContext"
+            ],
+            "reExport": true,
+            "typeOnly": true
+          },
+          {
+            "file": "./RevisionMerger.js",
+            "imports": [
+              "ChildOutcome",
+              "RevisionMergeResult",
+              "RevisionMergerDeps"
+            ],
+            "reExport": true,
+            "typeOnly": true
+          },
+          {
+            "file": "./RecursiveLearner.js",
+            "imports": [
+              "MergeDeps",
+              "MergeOutcome",
+              "RecursiveLearnerOptions",
+              "RecursiveStartOptions",
+              "ReflectDecision",
+              "SplitFn"
+            ],
+            "reExport": true,
+            "typeOnly": true
+          },
+          {
+            "file": "./RecursiveLearnerState.js",
+            "imports": [
+              "RecursivePhase",
+              "RecursiveState",
+              "SubsetRecord"
+            ],
+            "reExport": true,
+            "typeOnly": true
+          },
+          {
+            "file": "./LearningReflector.js",
+            "imports": [
+              "LearningReflectorOptions",
+              "ReflectChild",
+              "ReflectInput",
+              "ReflectResult"
+            ],
+            "reExport": true,
+            "typeOnly": true
+          },
+          {
+            "file": "./InProcessLearnHandler.js",
+            "imports": [
+              "ChildDriverSource",
+              "LearnTaskInput"
+            ],
+            "reExport": true,
+            "typeOnly": true
           }
         ],
         "exports": [
@@ -8594,6 +10945,14 @@
           "createLeafLearnerDeps",
           "LearningTrace",
           "LearningAccountant",
+          "split",
+          "isPartition",
+          "RevisionMerger",
+          "RecursiveLearner",
+          "LearningReflector",
+          "MAX_KEY_INSIGHTS",
+          "createInProcessLearnHandler",
+          "DEFAULT_CHILD_CONCURRENCY",
           "DiagnoserDeps",
           "DiagnoseItem",
           "DiagnoseOptions",
@@ -8623,7 +10982,27 @@
           "LoadedKnowledge",
           "LearningDeps",
           "JudgeAnswer",
-          "StepRequest"
+          "StepRequest",
+          "TaskSubset",
+          "SplitContext",
+          "ChildOutcome",
+          "RevisionMergeResult",
+          "RevisionMergerDeps",
+          "MergeDeps",
+          "MergeOutcome",
+          "RecursiveLearnerOptions",
+          "RecursiveStartOptions",
+          "ReflectDecision",
+          "SplitFn",
+          "RecursivePhase",
+          "RecursiveState",
+          "SubsetRecord",
+          "LearningReflectorOptions",
+          "ReflectChild",
+          "ReflectInput",
+          "ReflectResult",
+          "ChildDriverSource",
+          "LearnTaskInput"
         ],
         "reExported": [
           "Diagnoser",
@@ -8635,6 +11014,14 @@
           "createLeafLearnerDeps",
           "LearningTrace",
           "LearningAccountant",
+          "split",
+          "isPartition",
+          "RevisionMerger",
+          "RecursiveLearner",
+          "LearningReflector",
+          "MAX_KEY_INSIGHTS",
+          "createInProcessLearnHandler",
+          "DEFAULT_CHILD_CONCURRENCY",
           "DiagnoserDeps",
           "DiagnoseItem",
           "DiagnoseOptions",
@@ -8664,7 +11051,27 @@
           "LoadedKnowledge",
           "LearningDeps",
           "JudgeAnswer",
-          "StepRequest"
+          "StepRequest",
+          "TaskSubset",
+          "SplitContext",
+          "ChildOutcome",
+          "RevisionMergeResult",
+          "RevisionMergerDeps",
+          "MergeDeps",
+          "MergeOutcome",
+          "RecursiveLearnerOptions",
+          "RecursiveStartOptions",
+          "ReflectDecision",
+          "SplitFn",
+          "RecursivePhase",
+          "RecursiveState",
+          "SubsetRecord",
+          "LearningReflectorOptions",
+          "ReflectChild",
+          "ReflectInput",
+          "ReflectResult",
+          "ChildDriverSource",
+          "LearnTaskInput"
         ]
       },
       "src/agent/learning/llmJson.ts": {
@@ -8679,6 +11086,8 @@
           "describeError",
           "escapeFenceContent",
           "fencedText",
+          "escapeHeading",
+          "escapeHeadings",
           "escapeProse",
           "inlineSafe"
         ],
@@ -8688,6 +11097,8 @@
           "describeError",
           "escapeFenceContent",
           "fencedText",
+          "escapeHeading",
+          "escapeHeadings",
           "escapeProse",
           "inlineSafe"
         ],
@@ -8715,6 +11126,69 @@
         ],
         "constants": [
           "OBSERVATION_CHUNK_CHARS"
+        ]
+      },
+      "src/agent/learning/revisionMergeShared.ts": {
+        "description": "Types and helpers shared by the revision merger's steps (spec RS-20).",
+        "externalDependencies": [
+          {
+            "package": "zod",
+            "imports": [
+              "z"
+            ]
+          }
+        ],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../procedural/graph/CompletionProvider.js",
+            "imports": [
+              "PGCompletionProvider"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../types/skills.js",
+            "imports": [
+              "KnowledgeRevisionRecord",
+              "RevisionOp"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "BODY_MAX_CHARS",
+          "FIELD_MAX_CHARS",
+          "NAME_MAX_CHARS",
+          "SkillPatchSchema",
+          "InstructionPatchSchema",
+          "BodySchema",
+          "canonical",
+          "union",
+          "targetOf",
+          "labelOfEntry",
+          "fixedOfEntry"
+        ],
+        "interfaces": [
+          "ChildOutcome",
+          "RevisionMergeResult",
+          "RevisionMergerDeps",
+          "Entry"
+        ],
+        "functions": [
+          "canonical",
+          "union",
+          "targetOf",
+          "labelOfEntry",
+          "fixedOfEntry"
+        ],
+        "constants": [
+          "BODY_MAX_CHARS",
+          "FIELD_MAX_CHARS",
+          "NAME_MAX_CHARS",
+          "SkillPatchSchema",
+          "InstructionPatchSchema",
+          "BodySchema"
         ]
       },
       "src/agent/learning/types.ts": {
@@ -14222,6 +16696,20 @@
             ]
           },
           {
+            "file": "./context/BootstrapFacade.js",
+            "imports": [
+              "BootstrapFacade",
+              "BootstrapperOptions"
+            ]
+          },
+          {
+            "file": "../agent/bootstrap/Bootstrapper.js",
+            "imports": [
+              "Bootstrapper"
+            ],
+            "typeOnly": true
+          },
+          {
             "file": "../utils/envConfig.js",
             "imports": [
               "readEnvNumber",
@@ -15864,6 +18352,113 @@
           "AgentMemoryFacadeDeps"
         ]
       },
+      "src/core/context/BootstrapFacade.ts": {
+        "description": "BootstrapFacade",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../EntityManager.js",
+            "imports": [
+              "EntityManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../RelationManager.js",
+            "imports": [
+              "RelationManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../agent/knowledge/KnowledgeRepository.js",
+            "imports": [
+              "KnowledgeRepository"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../agent/skills/SkillManager.js",
+            "imports": [
+              "SkillManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../agent/SummarizationService.js",
+            "imports": [
+              "SummarizationService"
+            ]
+          },
+          {
+            "file": "../../agent/procedural/graph/CompletionProvider.js",
+            "imports": [
+              "PGCompletionProvider"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../types/learning.js",
+            "imports": [
+              "LearnResult"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../agent/bootstrap/Bootstrapper.js",
+            "imports": [
+              "Bootstrapper",
+              "BootstrapLearner"
+            ]
+          },
+          {
+            "file": "../../agent/learning/LeafLearner.js",
+            "imports": [
+              "LeafStartOptions"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../agent/learning/types.js",
+            "imports": [
+              "LearningDeps"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../features/KeywordExtractor.js",
+            "imports": [
+              "KeywordExtractor"
+            ]
+          },
+          {
+            "file": "./LearningFacade.js",
+            "imports": [
+              "LearningLoop",
+              "LearningLoopDeps"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "BootstrapFacade"
+        ],
+        "classes": [
+          "BootstrapFacade"
+        ],
+        "interfaces": [
+          "BootstrapFacadeDeps",
+          "BootstrapperOptions"
+        ]
+      },
       "src/core/context/KnowledgeGovernanceFacade.ts": {
         "description": "KnowledgeGovernanceFacade",
         "externalDependencies": [],
@@ -16051,6 +18646,12 @@
             "typeOnly": true
           },
           {
+            "file": "../../agent/learning/LearningAccountant.js",
+            "imports": [
+              "LearningAccountant"
+            ]
+          },
+          {
             "file": "../../agent/learning/LearningTrace.js",
             "imports": [
               "LearningTrace"
@@ -16082,6 +18683,42 @@
             ]
           },
           {
+            "file": "../../agent/learning/LearningReflector.js",
+            "imports": [
+              "LearningReflector"
+            ]
+          },
+          {
+            "file": "../../agent/learning/RecursiveLearner.js",
+            "imports": [
+              "RecursiveLearner",
+              "MergeDeps",
+              "MergeOutcome",
+              "RecursiveStartOptions",
+              "ReflectDecision"
+            ]
+          },
+          {
+            "file": "../../agent/learning/RecursiveLearnerState.js",
+            "imports": [
+              "RecursiveState",
+              "SubsetRecord"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../utils/envConfig.js",
+            "imports": [
+              "readEnvStrictInt"
+            ]
+          },
+          {
+            "file": "../../agent/learning/RevisionMerger.js",
+            "imports": [
+              "RevisionMerger"
+            ]
+          },
+          {
             "file": "../../agent/learning/types.js",
             "imports": [
               "LearningDeps",
@@ -16095,12 +18732,16 @@
               "CriterionResult",
               "LearnResult",
               "LeafState",
-              "SolveResult"
+              "SolveResult",
+              "TaskRecord"
             ],
             "typeOnly": true
           }
         ],
         "exports": [
+          "DEFAULT_LOOP_LEAF_THRESHOLD",
+          "leafThresholdOf",
+          "usesRecursiveLearner",
           "LearningFacade"
         ],
         "classes": [
@@ -16109,6 +18750,13 @@
         "interfaces": [
           "LearningFacadeDeps",
           "LearningLoop"
+        ],
+        "functions": [
+          "leafThresholdOf",
+          "usesRecursiveLearner"
+        ],
+        "constants": [
+          "DEFAULT_LOOP_LEAF_THRESHOLD"
         ]
       },
       "src/core/context/SearchFacade.ts": {
@@ -26210,14 +28858,29 @@
           "src/agent/learning/LeafLearner.ts"
         ],
         [
+          "src/agent/learning/RecursiveLearner.ts",
+          "src/agent/learning/RecursiveDrive.ts",
+          "src/agent/learning/RecursiveLearner.ts"
+        ],
+        [
+          "src/agent/learning/RecursiveLearner.ts",
+          "src/agent/learning/RecursiveMerge.ts",
+          "src/agent/learning/RecursiveLearner.ts"
+        ],
+        [
+          "src/agent/learning/RecursiveLearner.ts",
+          "src/agent/learning/RecursiveChildren.ts",
+          "src/agent/learning/RecursiveLearner.ts"
+        ],
+        [
           "src/adapters/ApiKeyAuthMiddleware.ts",
           "src/adapters/RestRouter.ts",
           "src/adapters/ApiKeyAuthMiddleware.ts"
         ]
       ],
-      "total": 12,
+      "total": 15,
       "runtimeCount": 0,
-      "typeOnlyCount": 12
+      "typeOnlyCount": 15
     },
     "layers": [
       {
@@ -26290,6 +28953,13 @@
           "src/agent/VisibilityResolver.ts",
           "src/agent/WorkThreadManager.ts",
           "src/agent/WorkingMemoryManager.ts",
+          "src/agent/bootstrap/Bootstrapper.ts",
+          "src/agent/bootstrap/BoundaryRecorder.ts",
+          "src/agent/bootstrap/CorpusMapper.ts",
+          "src/agent/bootstrap/ExplorationNotes.ts",
+          "src/agent/bootstrap/PracticeTaskGenerator.ts",
+          "src/agent/bootstrap/bootstrapShared.ts",
+          "src/agent/bootstrap/index.ts",
           "src/agent/causal/CausalReasoner.ts",
           "src/agent/causal/index.ts",
           "src/agent/collaboration/CollaborationAuditEnforcer.ts",
@@ -26315,9 +28985,12 @@
           "src/agent/knowledge/ScratchKnowledge.ts",
           "src/agent/knowledge/index.ts",
           "src/agent/knowledge/knowledgeDigest.ts",
+          "src/agent/knowledge/knowledgeLoad.ts",
           "src/agent/knowledge/knowledgeRevision.ts",
           "src/agent/knowledgeContext.ts",
+          "src/agent/learning/ChildKnowledgeOverlay.ts",
           "src/agent/learning/Diagnoser.ts",
+          "src/agent/learning/InProcessLearnHandler.ts",
           "src/agent/learning/KnowledgeEditor.ts",
           "src/agent/learning/LeafApply.ts",
           "src/agent/learning/LeafLearner.ts",
@@ -26328,11 +29001,24 @@
           "src/agent/learning/LeafRound.ts",
           "src/agent/learning/LeafValidation.ts",
           "src/agent/learning/LearningAccountant.ts",
+          "src/agent/learning/LearningReflector.ts",
           "src/agent/learning/LearningTrace.ts",
+          "src/agent/learning/RecursiveChildren.ts",
+          "src/agent/learning/RecursiveDrive.ts",
+          "src/agent/learning/RecursiveEvaluate.ts",
+          "src/agent/learning/RecursiveLearner.ts",
+          "src/agent/learning/RecursiveLearnerState.ts",
+          "src/agent/learning/RecursiveMerge.ts",
+          "src/agent/learning/RecursivePlan.ts",
+          "src/agent/learning/RevisionGeneralize.ts",
+          "src/agent/learning/RevisionMerger.ts",
+          "src/agent/learning/RevisionReconcile.ts",
           "src/agent/learning/RevisionValidator.ts",
+          "src/agent/learning/SplitStrategies.ts",
           "src/agent/learning/index.ts",
           "src/agent/learning/llmJson.ts",
           "src/agent/learning/observationChunks.ts",
+          "src/agent/learning/revisionMergeShared.ts",
           "src/agent/learning/types.ts",
           "src/agent/procedural/ProcedureManager.ts",
           "src/agent/procedural/ProcedureStore.ts",
@@ -26450,6 +29136,7 @@
           "src/core/context/AgentBookkeepingFacade.ts",
           "src/core/context/AgentCognitionFacade.ts",
           "src/core/context/AgentMemoryFacade.ts",
+          "src/core/context/BootstrapFacade.ts",
           "src/core/context/KnowledgeGovernanceFacade.ts",
           "src/core/context/LearningFacade.ts",
           "src/core/context/SearchFacade.ts",
@@ -26659,32 +29346,32 @@
       "src/sqlite.ts",
       "src/workers/levenshteinWorker.ts"
     ],
-    "reachableCount": 370,
+    "reachableCount": 394,
     "dormantCount": 0,
     "orphaned": [],
     "testOnly": []
   },
   "statistics": {
-    "totalTypeScriptFiles": 370,
+    "totalTypeScriptFiles": 394,
     "totalModules": 12,
-    "totalLinesOfCode": 119085,
-    "totalExports": 2588,
-    "totalClasses": 264,
-    "totalInterfaces": 769,
-    "totalFunctions": 545,
-    "totalTypeGuards": 41,
+    "totalLinesOfCode": 124937,
+    "totalExports": 2769,
+    "totalClasses": 275,
+    "totalInterfaces": 820,
+    "totalFunctions": 623,
+    "totalTypeGuards": 42,
     "totalEnums": 4,
-    "totalConstants": 145,
-    "totalReExports": 1631,
-    "totalTypeOnlyImports": 726,
+    "totalConstants": 168,
+    "totalReExports": 1700,
+    "totalTypeOnlyImports": 846,
     "runtimeCircularDeps": 0,
-    "typeOnlyCircularDeps": 12,
+    "typeOnlyCircularDeps": 15,
     "entryRoots": 4,
-    "reachableFiles": 370,
+    "reachableFiles": 394,
     "dormantFiles": 0,
     "orphanedFiles": 0,
     "testOnlyFiles": 0,
     "unusedFilesCount": 0,
-    "unusedExportsCount": 89
+    "unusedExportsCount": 115
   }
 }

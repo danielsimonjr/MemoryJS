@@ -1543,6 +1543,26 @@ Debug and inspection tools:
 - Access pattern graphs
 - Consolidation audit trail
 
+## Knowledge repository and recursive learning
+
+Recursa (`docs/development/RECURSA_SPEC_2026-11-06.md`) maps the paper's concepts onto MemoryJS (spec §1):
+
+| Paper | MemoryJS |
+|---|---|
+| Knowledge repository `K`, snapshots `K^(t)` | `KnowledgeRepository` over skills (`SkillManager`) and instruction sets; `K-<n>` snapshot entities |
+| `SOLVE(x, K)` | caller's `LearningSolver` with `loadForContext` output |
+| Leaf `LEARN` (diagnose → edit → validate) | `Diagnoser`, `KnowledgeEditor`, `RevisionValidator`, `LeafLearner` |
+| Recursive `LEARN` (split → children → merge → reflect) | `SplitStrategies`, `RecursiveLearner`, `ChildKnowledgeOverlay`, `RevisionMerger`, `LearningReflector` |
+| Learning trace `T` | `learning_trace` entities (`LearningTrace`), `child_of` relations |
+| Bootstrapping on a new corpus | `CorpusMapper`, `BoundaryRecorder`, `ExplorationNotes`, `PracticeTaskGenerator`, `Bootstrapper` |
+
+Rules that hold across the loop:
+
+- Children never write live `K`; only the parent's merged, validated revision is applied (OCC on the round snapshot).
+- A recursive round's result is measured on live `K` after the apply, not taken from the children.
+- A skill learned for a task carries `task:<id>` in `scope.tasks` and is always loaded for that task.
+- Reflections (`scope: 'learning'`) carry the split hint `prefer-split:<name>` that steers the next `auto` split.
+
 ## Verification
 
 Two tools measure this repository. The two tools use different scopes.
@@ -1552,5 +1572,5 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 
 | Claim | Value | Source |
 |---|---|---|
-| totalSourceFiles | 917 | repo-tools map |
+| totalSourceFiles | 961 | repo-tools map |
 | totalModules | 6 | repo-tools map |
