@@ -45,6 +45,7 @@ import { AgentCognitionFacade, type ProceduralGraphConfig } from './context/Agen
 export type { ProceduralGraphConfig } from './context/AgentCognitionFacade.js';
 import { AgentBookkeepingFacade } from './context/AgentBookkeepingFacade.js';
 import { KnowledgeGovernanceFacade } from './context/KnowledgeGovernanceFacade.js';
+import { LearningFacade, type LearningLoop, type LearningLoopDeps } from './context/LearningFacade.js';
 import { readEnvNumber, type EnvNumberBounds } from '../utils/envConfig.js';
 import { HierarchyManager } from './HierarchyManager.js';
 import { GraphTraversal } from './GraphTraversal.js';
@@ -159,6 +160,8 @@ export class ManagerContext {
   private readonly bookkeepingFacade: AgentBookkeepingFacade;
   /** Knowledge, RBAC, transition ledger, and governance managers. */
   private readonly knowledgeFacade: KnowledgeGovernanceFacade;
+  /** Recursa learning-loop factory (constructs nothing until `learningLoop` is called). */
+  private readonly learningFacade: LearningFacade;
 
   // ==================== LAZY-INITIALIZED CORE MANAGERS ====================
   private _entityManager?: EntityManager;
@@ -249,6 +252,13 @@ export class ManagerContext {
       getGraphTraversal: () => this.graphTraversal, getRankedSearch: () => this.rankedSearch,
       getSemanticSearch: () => this.semanticSearch, getMemoryValidator: () => this.memoryValidator,
       prospectivePredicateEvaluator: opts.prospectivePredicateEvaluator,
+    });
+    this.learningFacade = new LearningFacade({
+      storage: this.storage,
+      getEntityManager: () => this.entityManager, getRelationManager: () => this.relationManager,
+      getKnowledgeRepository: () => this.knowledgeRepository, getSkillManager: () => this.skillManager,
+      getSkillPublisher: () => this.skillPublisher, getFailureManager: () => this.failureManager,
+      getReflectionManager: () => this.reflectionManager,
     });
     this.memoryFacade = new AgentMemoryFacade({
       storage: this.storage,
@@ -607,6 +617,14 @@ export class ManagerContext {
   get activeRetrieval(): ActiveRetrievalController { return this.cognitionFacade.activeRetrieval; }
   /** See {@link AgentCognitionFacade.reconstructiveMemory}. */
   reconstructiveMemory(config?: ReconstructiveMemoryConfig): ReconstructiveMemory { return this.cognitionFacade.reconstructiveMemory(config); }
+  /**
+   * Leaf-only learning loop (Recursa RS-18). Each call builds a leaf learner over this context's
+   * knowledge repository, skills, failures and reflections, so nothing is constructed before the
+   * first call. `learn` runs to completion; `start` / `next` / `submit` / `status` drive it one step
+   * at a time. The recursive operations (`plan`, `submitChild`, `merge`, `reflect`) are Phase 5 and throw.
+   * @see LearningFacade.learningLoop
+   */
+  learningLoop(deps: LearningLoopDeps): LearningLoop { return this.learningFacade.learningLoop(deps); }
   /** See {@link KnowledgeGovernanceFacade.transitionLedger}. */
   get transitionLedger(): TransitionLedger | null { return this.knowledgeFacade.transitionLedger; }
   /** See {@link KnowledgeGovernanceFacade.skillManager}. */

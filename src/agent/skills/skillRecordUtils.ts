@@ -9,6 +9,7 @@
 
 import { createHash, randomUUID } from 'crypto';
 import type { SkillId, SkillKind, SkillRecord } from '../../types/skills.js';
+import { ENGLISH_STOPWORDS_SMALL, jaccard, tokenSetWithoutStopwords } from '../../utils/textSimilarity.js';
 
 /** Accepted `SkillRecord.kind` values. */
 export const SKILL_KIND_VALUES: readonly SkillKind[] = ['navigation', 'procedure', 'judgment', 'convention', 'tool'];
@@ -52,4 +53,79 @@ export function skillObservations(record: SkillRecord): string[] {
     `[scope]: ${scope.join('; ')}`,
     `[description]: ${record.description}`,
   ];
+}
+
+/** One lexical skill match: the skill, its Jaccard score and the shared tokens. */
+export interface LexicalSkillMatch {
+  /** Matched skill. */
+  skill: SkillRecord;
+  /** Jaccard score in [0, 1]. */
+  score: number;
+  /** Tokens shared by the hint and the skill's searchable text, sorted. */
+  matched: string[];
+}
+
+/**
+ * Stopword-free token set used by skill matching.
+ *
+ * @param text - Text to tokenize.
+ * @returns Distinct tokens.
+ */
+export function skillTokenSet(text: string): Set<string> {
+  return tokenSetWithoutStopwords(text, ENGLISH_STOPWORDS_SMALL, 2);
+}
+
+/**
+ * Searchable text of a skill: description, scope domains and scope tasks.
+ *
+ * @param skill - Skill record.
+ * @returns Text the matcher scores against.
+ */
+export function skillSearchableText(skill: SkillRecord): string {
+  return [skill.description, ...skill.scope.domains, ...(skill.scope.tasks ?? [])].join(' ');
+}
+
+/**
+ * Order matches by score (descending), then `helped - hurt` (descending), then id.
+ *
+ * @param a - First match.
+ * @param b - Second match.
+ * @returns Negative, zero or positive.
+ */
+export function compareSkillMatches(a: LexicalSkillMatch, b: LexicalSkillMatch): number {
+  if (b.score !== a.score) return b.score - a.score;
+  const netA = a.skill.stats.helped - a.skill.stats.hurt;
+  const netB = b.skill.stats.helped - b.skill.stats.hurt;
+  if (netB !== netA) return netB - netA;
+  return a.skill.id < b.skill.id ? -1 : a.skill.id > b.skill.id ? 1 : 0;
+}
+
+/**
+ * Pure lexical ranking shared by `SkillManager.match` (without its semantic blend) and the
+ * validation scratch copy of `K`: Jaccard of stopword-free tokens over
+ * {@link skillSearchableText}, retired skills skipped, scores below `minScore` dropped.
+ *
+ * @param taskHint - Task hint text.
+ * @param skills - Candidate skills.
+ * @param options - `limit` (default 5) and `minScore` (default 0.1).
+ * @returns Matches, best first.
+ */
+export function rankSkillsLexically(
+  taskHint: string,
+  skills: readonly SkillRecord[],
+  options: { limit?: number; minScore?: number } = {},
+): LexicalSkillMatch[] {
+  const limit = Math.max(0, Math.floor(options.limit ?? 5));
+  const minScore = options.minScore ?? 0.1;
+  const hintTokens = skillTokenSet(taskHint);
+  if (hintTokens.size === 0) return [];
+  const scored: LexicalSkillMatch[] = [];
+  for (const skill of skills) {
+    if (skill.retired !== undefined) continue;
+    const skillTokens = skillTokenSet(skillSearchableText(skill));
+    const score = jaccard(hintTokens, skillTokens);
+    if (score < minScore) continue;
+    scored.push({ skill, score, matched: [...hintTokens].filter((t) => skillTokens.has(t)).sort() });
+  }
+  return scored.sort(compareSkillMatches).slice(0, limit);
 }

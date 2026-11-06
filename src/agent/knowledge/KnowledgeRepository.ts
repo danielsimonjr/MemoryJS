@@ -5,16 +5,11 @@
  * reflections referenced by id. Snapshots persist the full payload and carry
  * a SHA-256 digest of its canonical JSON. Revisions are applied all-or-nothing.
  *
- * **Write path (why `BatchTransaction`).** `applyRevision` and `rollbackTo`
- * first apply their ops to an in-memory clone. Only when every op succeeds do
- * they issue one `BatchTransaction` (`storage.graphMutex`, one load, one save,
- * `stopOnError: true`). A single save is atomic across many entities, and a
- * failed batch persists nothing. The storage delta primitives
- * (`appendEntities` / `updateEntities`) were rejected because they are
- * separate storage calls, so a failure between them would leave a partial
- * revision. Writes are whole-entity replacements (no `expectedVersion` check;
- * each bumps `version`). Conflicts are detected by digest against `expectedSnapshotId`.
- * (`EntityManager` has no all-or-nothing multi-entity write; `snapshot` uses `createEntities`.)
+ * **Write path (why `BatchTransaction`).** `applyRevision` and `rollbackTo` apply their ops to an
+ * in-memory clone first, then issue one `BatchTransaction` (one load, one save under `graphMutex`,
+ * `stopOnError: true`), so a failed batch persists nothing. Separate delta primitives could leave
+ * a partial revision. Writes are whole-entity replacements (each bumps `version`); conflicts are
+ * detected by digest against `expectedSnapshotId`.
  *
  * Mutations (`applyRevision`, `rollbackTo`, `snapshot`) are serialised per
  * repository instance through an internal queue, so two revisions with the
@@ -51,8 +46,6 @@ import { readEnvNumber } from '../../utils/envConfig.js';
 import { estimateTokensFromText } from '../../utils/tokenEstimate.js';
 import {
   instructionItemsFor,
-  renderInstructionItems,
-  type InstructionItem,
   type InstructionSetManager,
 } from './InstructionSetManager.js';
 import {
@@ -65,6 +58,8 @@ import {
   type KnowledgeDiff,
 } from './knowledgeDigest.js';
 import { safeApplyOp, planWrites, workFrom, type PlannedWrite } from './knowledgeRevision.js';
+import { ScratchKnowledge, renderLoadedKnowledge, type LoadItem } from './ScratchKnowledge.js';
+import { rankSkillsLexically } from '../skills/skillRecordUtils.js';
 
 export type { KnowledgeDiff, IdDelta } from './knowledgeDigest.js';
 
@@ -78,11 +73,7 @@ export interface SkillMatchLike {
   matched: string[];
 }
 
-/**
- * Structural view of the RS-2 `SkillManager` API. The real class satisfies it;
- * this module calls only `match`, and the other members are declared so the
- * contract is explicit.
- */
+/** Structural view of the RS-2 `SkillManager` API (only `match` is called; the rest is declared for an explicit contract). */
 export interface SkillManagerLike {
   /** Add a skill; returns its id (content-hash dedup). */
   add(input: Omit<SkillRecord, 'id' | 'createdAt' | 'lastUpdatedAt' | 'stats' | 'retired'>): Promise<SkillId>;
@@ -175,14 +166,10 @@ export interface LoadedKnowledge {
   tokens: number;
 }
 
-/** Items rendered by `loadForContext`, in priority order. */
-type LoadItem =
-  | { kind: 'instruction'; item: InstructionItem }
-  | { kind: 'skill'; match: SkillMatchLike }
-  | { kind: 'failure'; failure: FailureRecord };
-
 const DEFAULT_BUDGET_TOKENS = 4000;
 const LOOKUP_LIMIT = 5;
+/** Label prefix of the snapshot `applyRevision` takes. */
+const REVISION_LABEL_PREFIX = 'revision:';
 
 /**
  * The Recursa knowledge repository `K`: snapshots, diffs, validated revisions,
@@ -263,7 +250,8 @@ export class KnowledgeRepository {
    * 2. Every op is applied to an in-memory clone. The first failing op yields
    *    `rejected` with its index and nothing is written.
    * 3. The diff between clone and live state is written in one batch, then a
-   *    new snapshot is taken.
+   *    new snapshot labelled `revision:<revision.id>` is taken (see
+   *    {@link KnowledgeRepository.snapshotForRevision}).
    *
    * @param revision - Revision to apply (`ops` in order).
    * @param options - `expectedSnapshotId` is the base the caller reviewed.
@@ -288,7 +276,7 @@ export class KnowledgeRepository {
       }
       const failure = await this.writePlan(planWrites(graph.entities, work, now));
       if (failure) return { status: 'rejected', ...failure };
-      const snapshot = await this.takeSnapshot();
+      const snapshot = await this.takeSnapshot(`${REVISION_LABEL_PREFIX}${revision.id}`);
       return { status: 'applied', snapshotId: snapshot.id };
     });
   }
@@ -329,6 +317,41 @@ export class KnowledgeRepository {
   }
 
   /**
+   * Scratch copy of `K` for validating a revision; its ops never touch storage. Skills rank with
+   * the lexical scorer of `SkillManager.match` (no semantic blend in scratch).
+   * @returns An in-memory {@link ScratchKnowledge}.
+   */
+  async cloneForValidation(): Promise<ScratchKnowledge> {
+    return this.serial(async () => {
+      const graph = await this.storage.loadGraph();
+      return new ScratchKnowledge(payloadOf(graph.entities), this.failures, {
+        matcher: (query, skills, limit) => rankSkillsLexically(query, skills, { limit }).map((m) => m.skill),
+      });
+    });
+  }
+
+  /**
+   * Snapshot taken when a revision was applied (label `revision:<id>`), for crash-safe re-apply checks.
+   * @param revisionId - Revision id.
+   * @returns The snapshot, or `undefined` when the revision was never applied here.
+   */
+  async snapshotForRevision(revisionId: string): Promise<KnowledgeSnapshotRecord | undefined> {
+    const graph = await this.storage.loadGraph();
+    const label = `${REVISION_LABEL_PREFIX}${revisionId}`;
+    const entity = graph.entities.find((e) => isKnowledgeSnapshotEntity(e) && e.knowledgeSnapshotRecord.label === label);
+    return entity && isKnowledgeSnapshotEntity(entity) ? entity.knowledgeSnapshotRecord : undefined;
+  }
+
+  /**
+   * Digest of live `K`, without writing a snapshot.
+   * @returns The digest, comparable with `KnowledgeSnapshotRecord.digest`.
+   */
+  async liveDigest(): Promise<string> {
+    const graph = await this.storage.loadGraph();
+    return digestOf(payloadOf(graph.entities));
+  }
+
+  /**
    * Assemble the context for a task: instructions for `role`, then matched
    * skills, then failure lessons. Sections are included in that order and
    * the first item that would exceed the budget stops the list.
@@ -349,7 +372,7 @@ export class KnowledgeRepository {
       ...matches.map((match): LoadItem => ({ kind: 'skill', match })),
       ...failures.map((failure): LoadItem => ({ kind: 'failure', failure })),
     ];
-    const render = (items: readonly LoadItem[]): string => renderLoaded(options.role, items);
+    const render = (items: readonly LoadItem[]): string => renderLoadedKnowledge(options.role, items);
     const kept = fitInOrder(candidates, render, budget, multiplier);
     const markdown = render(kept);
     return {
@@ -471,27 +494,4 @@ function memoryRefsOf(entities: readonly Entity[]): KnowledgeSnapshotRecord['mem
     failureIds: ids(isFailureMemory, (e) => (e as unknown as { failureRecord: { id: string } }).failureRecord.id),
     reflectionIds: ids(isReflectionMemory, (e) => (e as unknown as { reflectionRecord: { id: string } }).reflectionRecord.id),
   };
-}
-
-/** Markdown for `loadForContext`: groups in fixed order, items in priority order. */
-function renderLoaded(role: InstructionSetRole, items: readonly LoadItem[]): string {
-  const groups: string[] = [];
-  const instructions = items.flatMap((x) => (x.kind === 'instruction' ? [x.item] : []));
-  if (instructions.length > 0) groups.push(`## Instructions (${role})\n\n${renderInstructionItems(instructions)}`);
-  const skills = items.flatMap((x) => (x.kind === 'skill' ? [x.match.skill] : []));
-  if (skills.length > 0) {
-    const blocks = skills.map((skill) => {
-      const refs = skill.sources.map((source) => source.ref).join(', ') || 'none';
-      return `### ${skill.name} (uncertainty ${skill.uncertainty}, sources: ${refs})\n\n${skill.body}`;
-    });
-    groups.push(`## Skills\n\n${blocks.join('\n\n')}`);
-  }
-  const failures = items.flatMap((x) => (x.kind === 'failure' ? [x.failure] : []));
-  if (failures.length > 0) {
-    const lines = failures.map(
-      (f) => `- ${f.failure_mode} → ${f.alternative_taken ?? f.root_cause} (applies when: ${f.applicability_hint})`,
-    );
-    groups.push(`## Failure lessons\n\n${lines.join('\n')}`);
-  }
-  return groups.join('\n\n');
 }

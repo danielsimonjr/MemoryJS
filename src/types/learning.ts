@@ -121,6 +121,38 @@ export interface LearnResult {
   after: EvalMetrics;
   /** Why the run stopped. */
   stoppedBecause: LearnStopReason;
+  /** Learning waste, signal, cost and time of the run (spec RS-23). Optional and additive. */
+  report?: LearningReport;
+}
+
+/** Input and output token totals. */
+export interface TokenTotals {
+  /** Input tokens. */
+  input: number;
+  /** Output tokens. */
+  output: number;
+}
+
+/** Snapshot of learning waste, signal, cost and time (spec RS-23). */
+export interface LearningReport {
+  /** Sum of queued milliseconds reported by the concurrency limiter. */
+  stalls: number;
+  /** Repeated solves with an unchanged digest plus repeated diagnoses. */
+  rework: number;
+  /** Feedback and trace excerpts consumed by the solver side. */
+  solverSignals: number;
+  /** Validation verdicts, source checks and child traces consumed by the learner side. */
+  learnerSignals: number;
+  /** Tokens per phase. */
+  tokensByPhase: Record<LeafPhase, TokenTotals>;
+  /** Closed wall-clock milliseconds per phase. */
+  wallClockByPhase: Record<LeafPhase, number>;
+  /** Rounds recorded. */
+  rounds: number;
+  /** Input plus output tokens across all phases. */
+  totalTokens: number;
+  /** Milliseconds since the accounting started. */
+  elapsedMs: number;
 }
 
 /** One rubric criterion of a task. */

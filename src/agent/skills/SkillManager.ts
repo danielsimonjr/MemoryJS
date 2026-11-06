@@ -18,17 +18,21 @@
  * @experimental Spec RS-2. Matching weights and budget trimming may change.
  */
 
-import {
-  ENGLISH_STOPWORDS_SMALL,
-  jaccard,
-  tokenSetWithoutStopwords,
-} from '../../utils/textSimilarity.js';
+import { jaccard } from '../../utils/textSimilarity.js';
 import { estimateTokensFromText } from '../../utils/tokenEstimate.js';
 import { readEnvNumber } from '../../utils/envConfig.js';
 import { ValidationError, VersionConflictError } from '../../utils/errors.js';
 import { EntityManager } from '../../core/EntityManager.js';
 import type { GraphStorage } from '../../core/GraphStorage.js';
-import { mintSkillId, skillDedupHash as contentHash, skillObservations as observationsFor } from './skillRecordUtils.js';
+import {
+  compareSkillMatches,
+  mintSkillId,
+  rankSkillsLexically,
+  skillDedupHash as contentHash,
+  skillObservations as observationsFor,
+  skillSearchableText,
+  skillTokenSet,
+} from './skillRecordUtils.js';
 import { fitSkillSectionToBudget, renderSkillSection } from './SkillFormat.js';
 import type { Entity, IGraphStorage, SkillEvent } from '../../types/types.js';
 import { isSkillEntity, toIsoDateTime } from '../../types/agent-memory.js';
@@ -266,35 +270,25 @@ export class SkillManager {
     if (Number.isNaN(limit) || !Number.isFinite(minScore)) {
       throw new RangeError('match: limit must be a number and minScore a finite number');
     }
-    const hintTokens = tokenSet(taskHint);
-    if (hintTokens.size === 0) return [];
-
     const candidates = (await this.list()).filter((s) => s.retired === undefined);
+    if (!this.semantic) return rankSkillsLexically(taskHint, candidates, { limit, minScore });
+    const hintTokens = skillTokenSet(taskHint);
+    if (hintTokens.size === 0) return [];
     const scored: SkillMatch[] = [];
     for (const skill of candidates) {
-      const skillTokens = tokenSet(searchableText(skill));
+      const skillTokens = skillTokenSet(skillSearchableText(skill));
       const lexical = jaccard(hintTokens, skillTokens);
-      let score = lexical;
-      if (this.semantic) {
-        // A failing provider degrades to the lexical score for this skill.
-        const provider = this.semantic;
-        const cosine = await Promise.resolve()
-          .then(() => provider.calculateSimilarity(taskHint, searchableText(skill)))
-          .catch(() => undefined);
-        if (cosine !== undefined) score = 0.5 * lexical + 0.5 * clamp01(cosine);
-      }
+      // A failing provider degrades to the lexical score for this skill.
+      const provider = this.semantic;
+      const cosine = await Promise.resolve()
+        .then(() => provider.calculateSimilarity(taskHint, skillSearchableText(skill)))
+        .catch(() => undefined);
+      const score = cosine !== undefined ? 0.5 * lexical + 0.5 * clamp01(cosine) : lexical;
       if (score < minScore) continue;
       const matched = [...hintTokens].filter((t) => skillTokens.has(t)).sort();
       scored.push({ skill, score, matched });
     }
-    scored.sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
-      const netA = a.skill.stats.helped - a.skill.stats.hurt;
-      const netB = b.skill.stats.helped - b.skill.stats.hurt;
-      if (netB !== netA) return netB - netA;
-      return a.skill.id < b.skill.id ? -1 : a.skill.id > b.skill.id ? 1 : 0;
-    });
-    return scored.slice(0, limit);
+    return scored.sort(compareSkillMatches).slice(0, limit);
   }
 
   /**
@@ -426,15 +420,6 @@ export class SkillManager {
 }
 
 // ==================== Helpers ====================
-
-function tokenSet(text: string): Set<string> {
-  return tokenSetWithoutStopwords(text, ENGLISH_STOPWORDS_SMALL, 2);
-}
-
-function searchableText(skill: SkillRecord): string {
-  const parts = [skill.description, ...skill.scope.domains, ...(skill.scope.tasks ?? [])];
-  return parts.join(' ');
-}
 
 function normalizeScope(scope: SkillRecord['scope']): SkillRecord['scope'] {
   const out: SkillRecord['scope'] = { domains: scope.domains.map((d) => d.trim()).filter((d) => d !== '') };
