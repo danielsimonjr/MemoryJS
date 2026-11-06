@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Recursa Phase 1B/1C (`docs/development/RECURSA_SPEC_2026-11-06.md`): `SkillManager`, the SKILL.md format and publisher (`SkillFormat`, `SkillPublisher`, `skillTreeFs`), `InstructionSetManager` and `KnowledgeRepository` with digest and revision helpers, plus the storage and schema support they need. Skill lineage gains `producedBy`, and a skill record gains `publishedHash`.
+- Recursa Phase 1D: `src/agent/skills` and `src/agent/knowledge` are exported from the `src/agent` barrel, and `ManagerContext` gains lazy `skillManager`, `instructionSets`, `knowledgeRepository` and `skillPublisher` getters. `skillManager` reuses an already-initialised `semanticSearch` and never constructs it; `SkillManager.match` falls back to lexical scoring when the embedding provider rejects or throws. `bun run typecheck` now also type-checks the export-barrel probes via `tsconfig.probes.json`.
 
 ### Fixed
 

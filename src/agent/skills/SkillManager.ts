@@ -277,7 +277,10 @@ export class SkillManager {
       let score = lexical;
       if (this.semantic) {
         // A failing provider degrades to the lexical score for this skill.
-        const cosine = await this.semantic.calculateSimilarity(taskHint, searchableText(skill)).catch(() => undefined);
+        const provider = this.semantic;
+        const cosine = await Promise.resolve()
+          .then(() => provider.calculateSimilarity(taskHint, searchableText(skill)))
+          .catch(() => undefined);
         if (cosine !== undefined) score = 0.5 * lexical + 0.5 * clamp01(cosine);
       }
       if (score < minScore) continue;

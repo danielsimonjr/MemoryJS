@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "noEmit": true, "rootDir": ".", "noUnusedLocals": false },
+  "include": ["src/**/*", "tests/unit/exports-barrels.test.ts"],
+  "exclude": ["node_modules", "dist", "src/**/*conflicted copy*", "src/**/*EMLLC*"]
+}

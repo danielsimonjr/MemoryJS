@@ -89,6 +89,12 @@ The `local` provider runs the `Xenova/all-MiniLM-L6-v2` model (384 dimensions, 8
 bun add @huggingface/transformers
 ```
 
+The optional peer dependency `yaml` (>= 2.0.0) gives Recursa `SKILL.md` files full YAML front matter. Without it, a built-in subset parser is used:
+
+```bash
+bun add yaml
+```
+
 ### Example .env File
 
 ```bash

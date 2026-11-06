@@ -249,7 +249,9 @@ The paper's `K`. Constructed by `ManagerContext` from `ctx.instructionSets`, `ct
   `rollback:<id>`.
 - `loadForContext({ role, taskHint, budgetTokens }) → LoadedKnowledge` (`{ markdown, skillIds,
   instructionSetIds, failureIds, tokens }`): instructions (`render`) first, then `SkillManager.match`
-  bodies, then `FailureManager.lookupForTask(taskHint)` lessons, trimmed in that order to the budget.
+  bodies, then `FailureManager.lookupForTask(taskHint)` lessons, trimmed in that order to the budget. Phase 1 composes skills + instruction sets + failures
+  only; heuristics, reflections and project context enter `K` as snapshot `memoryRefs`. Heuristic
+  lessons in `loadForContext` are added with RS-27 context integration.
 
 **RS-6 `KnowledgeRevision`** (`src/types/skills.ts`)
 ```ts

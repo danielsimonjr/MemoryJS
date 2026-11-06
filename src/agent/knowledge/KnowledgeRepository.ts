@@ -12,10 +12,9 @@
  * failed batch persists nothing. The storage delta primitives
  * (`appendEntities` / `updateEntities`) were rejected because they are
  * separate storage calls, so a failure between them would leave a partial
- * revision. Writes are whole-entity replacements: the batch does not check
- * `expectedVersion`. Each write bumps `version` by one. Conflict detection
- * is the digest comparison against `expectedSnapshotId`. (`EntityManager` has no
- * all-or-nothing multi-entity write; `snapshot` uses `createEntities`.)
+ * revision. Writes are whole-entity replacements (no `expectedVersion` check;
+ * each bumps `version`). Conflicts are detected by digest against `expectedSnapshotId`.
+ * (`EntityManager` has no all-or-nothing multi-entity write; `snapshot` uses `createEntities`.)
  *
  * Mutations (`applyRevision`, `rollbackTo`, `snapshot`) are serialised per
  * repository instance through an internal queue, so two revisions with the
@@ -103,8 +102,8 @@ export interface SkillManagerLike {
   match(taskHint: string, options?: { limit?: number; minScore?: number }): Promise<SkillMatchLike[]>;
   /** Record an application outcome. */
   recordOutcome(id: SkillId | string, outcome: 'applied' | 'helped' | 'hurt'): Promise<unknown>;
-  /** Render skills to Markdown within a budget. */
-  loadForContext(ids: readonly (SkillId | string)[], options?: { budgetTokens?: number; multiplier?: number }): Promise<string>;
+  /** Render skills to Markdown within a budget (sync in `SkillManager`; unused by the repository). */
+  loadForContext(ids: readonly (SkillId | string)[], options?: { budgetTokens?: number; multiplier?: number }): string | Promise<string>;
 }
 
 /**
@@ -185,8 +184,9 @@ const LOOKUP_LIMIT = 5;
 
 /**
  * The Recursa knowledge repository `K`: snapshots, diffs, validated revisions,
- * rollback and budgeted context loading.
- *
+ * rollback and budgeted context loading. Composes skills + instruction sets + failures;
+ * heuristics/reflections/project context enter `K` only as snapshot `memoryRefs`;
+ * `loadForContext` orders instructions → skills → failure lessons.
  * @example
  * ```typescript
  * const repo = new KnowledgeRepository({ storage, instructionSets, skills, failures });

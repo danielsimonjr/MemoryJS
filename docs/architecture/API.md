@@ -96,6 +96,10 @@ const ctx = new ManagerContext('./memory.db');
 | `freshnessManager` | `FreshnessManager` | TTL/confidence freshness reports (v1.6.0) |
 | `governanceManager` | `GovernanceManager` | Policy + audit transactions (v1.6.0) |
 | `refIndex` | `RefIndex` | Named-reference O(1) lookup (v1.6.0) |
+| `skillManager` | `SkillManager` | Recursa skill registry over the context storage (RS-2); semantic blending is used when `ctx.semanticSearch` has been initialised before the first `skillManager` access; `MEMORY_EMBEDDING_PROVIDER=none` disables it |
+| `instructionSets` | `InstructionSetManager` | Recursa role-scoped instruction sets (RS-5); `history()` uses `transitionLedger` when enabled |
+| `knowledgeRepository` | `KnowledgeRepository` | Recursa snapshots, revisions and budgeted `loadForContext` (RS-5), composed from `skillManager`, `instructionSets` and `failureManager` |
+| `skillPublisher` | `SkillPublisher` | Recursa atomic SKILL.md publish and import over `skillManager` (RS-3) |
 | `semanticForget` | `SemanticForget` | Two-tier deletion with audit (v1.8.0) |
 | `temporalSearch` | `TemporalSearch` | NL time-range search (v1.9.0) |
 | `procedureManager` | `ProcedureManager` | Procedural memory (3B.4) |
@@ -2398,8 +2402,8 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 
 | Claim | Value | Source |
 |---|---|---|
-| totalExports | 3286 | repo-tools map |
-| totalSourceFiles | 839 | repo-tools map |
+| totalExports | 3362 | repo-tools map |
+| totalSourceFiles | 842 | repo-tools map |
 
 The figures below come from `bun run tools:deps` and `bun run tools:deps:full`. These generators read `src/` only. The gate does not check these figures. Read them in `dependency-summary.compact.json` and `TEST_COVERAGE.md`.
 

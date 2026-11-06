@@ -12,6 +12,34 @@ import * as core from '../../src/core/index.js';
 import * as search from '../../src/search/index.js';
 import * as utils from '../../src/utils/index.js';
 import * as root from '../../src/index.js';
+import * as agent from '../../src/agent/index.js';
+import type {
+  SkillContextOptions,
+  ImportReport,
+  ImportConflict,
+  PublishResult,
+  PublishOptions,
+  AddSkillInput,
+  SkillMatch,
+  SkillPatch,
+  SkillOutcome,
+  ParsedSkillDocument,
+  SkillParseResult,
+  SkillPublishMarker,
+  ConfinedRead,
+  KnowledgeDiff,
+  IdDelta,
+  ApplyResult,
+  RollbackResult,
+  LoadForContextOptions,
+  LoadedKnowledge,
+  KnowledgeRepositoryOptions,
+  InstructionSetManagerOptions,
+  InstructionItem,
+  InstructionPatchResult,
+  PlannedWrite,
+  WorkState,
+} from '../../src/agent/index.js';
 import {
   ObservationStore,
   EntityStateMachine,
@@ -179,5 +207,87 @@ describe('DES-1 storage capability barrel exports', () => {
     expect(typeof core.withStorageWriteLock).toBe('function');
     expect(root.hasDeltaPrimitives).toBe(core.hasDeltaPrimitives);
     expect(root.withStorageWriteLock).toBe(core.withStorageWriteLock);
+  });
+});
+
+// Compile-time proof that the Recursa Phase 1 type-only names resolve from the agent barrel.
+type RecursaTypeProbes = [
+  SkillContextOptions,
+  ImportReport,
+  ImportConflict,
+  PublishResult,
+  PublishOptions,
+  AddSkillInput,
+  SkillMatch,
+  SkillPatch,
+  SkillOutcome,
+  ParsedSkillDocument,
+  SkillParseResult,
+  SkillPublishMarker,
+  ConfinedRead,
+  KnowledgeDiff,
+  IdDelta,
+  ApplyResult,
+  RollbackResult,
+  LoadForContextOptions,
+  LoadedKnowledge,
+  KnowledgeRepositoryOptions,
+  InstructionSetManagerOptions,
+  InstructionItem,
+  InstructionPatchResult,
+  PlannedWrite,
+  WorkState,
+];
+const recursaTypeProbes: RecursaTypeProbes | undefined = undefined;
+
+describe('Recursa Phase 1D agent and root barrel exports', () => {
+  const runtimeNames = [
+    'SkillManager',
+    'SkillPublisher',
+    'SKILL_MARKER_FILE',
+    'SKILL_FRONT_MATTER_KEYS',
+    'SKILL_KIND_VALUES',
+    'loadOptionalYaml',
+    'serializeSkillMarkdown',
+    'parseSkillMarkdown',
+    'skillContentHash',
+    'renderSkillSection',
+    'fitSkillSectionToBudget',
+    'skillDedupHash',
+    'mintSkillId',
+    'skillObservations',
+    'recoverPublishedTree',
+    'removeBestEffort',
+    'pathExists',
+    'readConfinedSkillFile',
+    'InstructionSetManager',
+    'instructionItemsFor',
+    'renderInstructionItems',
+    'buildInstructionSetEntity',
+    'KnowledgeRepository',
+    'compareIds',
+    'canonicalKnowledgeJson',
+    'clone',
+    'digestOf',
+    'slugify',
+    'shortId',
+    'fitInOrder',
+    'assertBudgetTokens',
+    'idDelta',
+    'diffSnapshots',
+    'workFrom',
+    'safeApplyOp',
+    'applyOp',
+    'planWrites',
+  ] as const;
+
+  it('every Recursa Phase 1 symbol is reachable from src/agent/index.ts and the package root', () => {
+    for (const name of runtimeNames) {
+      expect(agent as Record<string, unknown>, `agent barrel: ${name}`).toHaveProperty(name);
+      expect(root as Record<string, unknown>, `root barrel: ${name}`).toHaveProperty(name);
+    }
+    expect(root.SkillManager).toBe(agent.SkillManager);
+    expect(root.KnowledgeRepository).toBe(agent.KnowledgeRepository);
+    expect(recursaTypeProbes).toBeUndefined();
   });
 });

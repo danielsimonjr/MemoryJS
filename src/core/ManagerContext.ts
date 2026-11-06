@@ -127,6 +127,11 @@ import {
 import type { BloomPreScreener } from '../search/BloomPreScreener.js';
 import { GovernanceManager } from '../features/GovernanceManager.js';
 import { AuditLog } from '../features/AuditLog.js';
+// Recursa Phase 1 — skills, instruction sets, knowledge repository (lazy getters below).
+import { SkillManager } from '../agent/skills/SkillManager.js';
+import { SkillPublisher } from '../agent/skills/SkillPublisher.js';
+import { InstructionSetManager } from '../agent/knowledge/InstructionSetManager.js';
+import { KnowledgeRepository } from '../agent/knowledge/KnowledgeRepository.js';
 
 /**
  * Options for constructing a ManagerContext.
@@ -251,6 +256,10 @@ export class ManagerContext {
   private _llmSearchExecutor?: LLMSearchExecutor;
   private _semanticForget?: SemanticForget;
   private _governanceManager?: GovernanceManager;
+  private _skillManager?: SkillManager;
+  private _instructionSets?: InstructionSetManager;
+  private _knowledgeRepository?: KnowledgeRepository;
+  private _skillPublisher?: SkillPublisher;
   /** Shared hooks passed to every context-wired mutation manager. */
   private _governanceHooks?: GovernanceHooks;
 
@@ -1329,6 +1338,52 @@ export class ManagerContext {
       }
     }
     return this._transitionLedger;
+  }
+
+  /**
+   * SkillManager (Recursa RS-2), lazy. Semantic blending is used when
+   * `ctx.semanticSearch` has been initialised before the first `skillManager`
+   * access (this getter never constructs it); `MEMORY_EMBEDDING_PROVIDER=none`
+   * disables it.
+   */
+  get skillManager(): SkillManager {
+    if (!this._skillManager) {
+      const manager = new SkillManager(this.storage, this.entityManager);
+      const semantic = this._semanticSearch;
+      if (semantic) manager.setSemanticSearch(semantic);
+      this._skillManager = manager;
+    }
+    return this._skillManager;
+  }
+
+  /** InstructionSetManager (Recursa RS-5), lazy; `history()` uses `transitionLedger`. */
+  get instructionSets(): InstructionSetManager {
+    if (!this._instructionSets) {
+      this._instructionSets = new InstructionSetManager(this.storage, {
+        ledger: this.transitionLedger,
+        entityManager: this.entityManager,
+      });
+    }
+    return this._instructionSets;
+  }
+
+  /** KnowledgeRepository (Recursa RS-5), lazy: snapshots, revisions, `loadForContext`. */
+  get knowledgeRepository(): KnowledgeRepository {
+    if (!this._knowledgeRepository) {
+      this._knowledgeRepository = new KnowledgeRepository({
+        storage: this.storage,
+        instructionSets: this.instructionSets,
+        skills: this.skillManager,
+        failures: this.failureManager,
+        entityManager: this.entityManager,
+      });
+    }
+    return this._knowledgeRepository;
+  }
+
+  /** SkillPublisher (Recursa RS-3), lazy: atomic SKILL.md publish and import. */
+  get skillPublisher(): SkillPublisher {
+    return (this._skillPublisher ??= new SkillPublisher(this.storage, this.skillManager));
   }
 
   /** RefIndex - Named reference index for O(1) stable entity lookups */

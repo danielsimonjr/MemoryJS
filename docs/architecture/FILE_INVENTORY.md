@@ -10,22 +10,22 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 828
+**Total files**: 831
 
 ## Disposition counts
 
 | Disposition | Count | Meaning |
 | --- | --: | --- |
-| `reachable` | 322 | A `src/` file in the module graph, reachable from a root. |
+| `reachable` | 328 | A `src/` file in the module graph, reachable from a root. |
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
-| `test-only` | 4 | A `src/` file not reachable from src roots but imported by a test. |
+| `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 482 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 483 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 4 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 0 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **828** | |
+| **Total** | **831** | |
 
 ## Per-area counts
 
@@ -33,8 +33,8 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | --- | --: |
 | `benchmarks` | 4 |
 | `config` | 2 |
-| `src` | 330 |
-| `tests` | 482 |
+| `src` | 332 |
+| `tests` | 483 |
 | `tools` | 10 |
 
 ## All files
@@ -85,13 +85,14 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/GuardedComponentEdit.ts` | src | reachable | 711 |
 | `src/agent/HeuristicManager.ts` | src | reachable | 342 |
 | `src/agent/ImportanceScorer.ts` | src | reachable | 91 |
-| `src/agent/index.ts` | src | reachable | 621 |
+| `src/agent/index.ts` | src | reachable | 626 |
 | `src/agent/InMemoryBackend.ts` | src | reachable | 115 |
 | `src/agent/keyValueLine.ts` | src | reachable | 63 |
-| `src/agent/knowledge/InstructionSetManager.ts` | src | test-only | 309 |
-| `src/agent/knowledge/knowledgeDigest.ts` | src | test-only | 254 |
-| `src/agent/knowledge/KnowledgeRepository.ts` | src | test-only | 500 |
-| `src/agent/knowledge/knowledgeRevision.ts` | src | test-only | 342 |
+| `src/agent/knowledge/index.ts` | src | reachable | 49 |
+| `src/agent/knowledge/InstructionSetManager.ts` | src | reachable | 309 |
+| `src/agent/knowledge/knowledgeDigest.ts` | src | reachable | 254 |
+| `src/agent/knowledge/KnowledgeRepository.ts` | src | reachable | 500 |
+| `src/agent/knowledge/knowledgeRevision.ts` | src | reachable | 342 |
 | `src/agent/MemoryBackend.ts` | src | reachable | 156 |
 | `src/agent/MemoryEngine.ts` | src | reachable | 596 |
 | `src/agent/MemoryFormatter.ts` | src | reachable | 518 |
@@ -154,8 +155,9 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/SessionCheckpoint.ts` | src | reachable | 692 |
 | `src/agent/SessionManager.ts` | src | reachable | 685 |
 | `src/agent/SessionQueryBuilder.ts` | src | reachable | 541 |
+| `src/agent/skills/index.ts` | src | reachable | 56 |
 | `src/agent/skills/SkillFormat.ts` | src | reachable | 423 |
-| `src/agent/skills/SkillManager.ts` | src | reachable | 463 |
+| `src/agent/skills/SkillManager.ts` | src | reachable | 466 |
 | `src/agent/skills/SkillPublisher.ts` | src | reachable | 299 |
 | `src/agent/skills/skillRecordUtils.ts` | src | reachable | 56 |
 | `src/agent/skills/skillTreeFs.ts` | src | reachable | 83 |
@@ -213,7 +215,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/core/GraphTraversal.ts` | src | reachable | 1406 |
 | `src/core/HierarchyManager.ts` | src | reachable | 314 |
 | `src/core/index.ts` | src | reachable | 60 |
-| `src/core/ManagerContext.ts` | src | reachable | 1710 |
+| `src/core/ManagerContext.ts` | src | reachable | 1765 |
 | `src/core/mmap/FsReadMmapBackend.ts` | src | reachable | 239 |
 | `src/core/mmap/IMmapBackend.ts` | src | reachable | 169 |
 | `src/core/nodeSqliteAdapter.ts` | src | reachable | 181 |
@@ -623,6 +625,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/ManagerContext-hybridContext.test.ts` | tests | test | 127 |
 | `tests/unit/core/ManagerContext-proceduralGraph.test.ts` | tests | test | 76 |
 | `tests/unit/core/ManagerContext-vectorStore.test.ts` | tests | test | 55 |
+| `tests/unit/core/ManagerContext.recursa-wiring.test.ts` | tests | test | 199 |
 | `tests/unit/core/ManagerContext.test.ts` | tests | test | 1359 |
 | `tests/unit/core/mmap/FsReadMmapBackend.test.ts` | tests | test | 275 |
 | `tests/unit/core/mmap/GraphStorage-mmap-wiring.test.ts` | tests | test | 723 |
@@ -668,7 +671,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/TransactionManager.test.ts` | tests | test | 769 |
 | `tests/unit/core/TransitionLedger.test.ts` | tests | test | 521 |
 | `tests/unit/core/write-path-delta.test.ts` | tests | test | 745 |
-| `tests/unit/exports-barrels.test.ts` | tests | test | 184 |
+| `tests/unit/exports-barrels.test.ts` | tests | test | 294 |
 | `tests/unit/features/AnalyticsManager.test.ts` | tests | test | 400 |
 | `tests/unit/features/ArchiveManager.test.ts` | tests | test | 774 |
 | `tests/unit/features/AuditLog.test.ts` | tests | test | 477 |
