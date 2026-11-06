@@ -3147,7 +3147,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 143
+      "loc": 146
     },
     {
       "file": "tests/unit/agent/harness/InteractionLog.test.ts",

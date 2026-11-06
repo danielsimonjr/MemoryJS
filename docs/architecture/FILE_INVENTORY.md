@@ -487,7 +487,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/GuardedComponentEdit.test.ts` | tests | test | 598 |
 | `tests/unit/agent/harness/ConcurrencyLimiter.test.ts` | tests | test | 247 |
 | `tests/unit/agent/harness/EvictionIndex.test.ts` | tests | test | 130 |
-| `tests/unit/agent/harness/InteractionLog.hardening.test.ts` | tests | test | 143 |
+| `tests/unit/agent/harness/InteractionLog.hardening.test.ts` | tests | test | 146 |
 | `tests/unit/agent/harness/InteractionLog.test.ts` | tests | test | 271 |
 | `tests/unit/agent/HeuristicExtractionStage.test.ts` | tests | test | 326 |
 | `tests/unit/agent/HeuristicManager.test.ts` | tests | test | 206 |
