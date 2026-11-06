@@ -399,7 +399,7 @@ function configReferencedEntries(rootDir: string): string[] {
   const out = new Set<string>();
   let names: string[];
   try {
-    names = readdirSync(rootDir);
+    names = readdirSync(rootDir).sort();
   } catch {
     return [];
   }
@@ -494,7 +494,7 @@ function detectWorkspaces(rootDir: string): Map<string, WorkspacePackage> {
         const parentDir = pattern.slice(0, -2);
         const fullParent = join(rootDir, parentDir);
         if (!existsSync(fullParent)) continue;
-        for (const entry of readdirSync(fullParent)) {
+        for (const entry of readdirSync(fullParent).sort()) {
           register(join(parentDir, entry));
         }
       } else {
@@ -511,7 +511,7 @@ function detectWorkspaces(rootDir: string): Map<string, WorkspacePackage> {
 /** Recursively collect non-test, non-declaration `.ts` source files under `dir`. */
 function getAllSourceTsFiles(dir: string, files: string[] = []): string[] {
   if (!existsSync(dir)) return files;
-  for (const entry of readdirSync(dir)) {
+  for (const entry of readdirSync(dir).sort()) {
     if (entry === 'node_modules') continue;
     const fullPath = join(dir, entry);
     if (statSync(fullPath).isDirectory()) {
@@ -534,7 +534,7 @@ function getAllTestFiles(dir: string, files: string[] = []): string[] {
     return files;
   }
 
-  for (const entry of readdirSync(dir)) {
+  for (const entry of readdirSync(dir).sort()) {
     if (entry === 'node_modules') {
       continue;
     }
@@ -3132,7 +3132,7 @@ interface FileInventory {
 function walkRepoTsFiles(rootDir: string): string[] {
   const out: string[] = [];
   const walk = (dir: string): void => {
-    for (const e of readdirSync(dir, { withFileTypes: true })) {
+    for (const e of readdirSync(dir, { withFileTypes: true }).sort((x, y) => (x.name < y.name ? -1 : x.name > y.name ? 1 : 0))) {
       if (e.name === 'node_modules' || e.name === 'dist' || e.name.startsWith('.')) continue;
       const p = join(dir, e.name);
       if (e.isDirectory()) walk(p);
@@ -3153,7 +3153,7 @@ function collectCensusFiles(rootDir: string): string[] {
   const set = new Set<string>();
   const walk = (dir: string): void => {
     if (!existsSync(dir)) return;
-    for (const e of readdirSync(dir, { withFileTypes: true })) {
+    for (const e of readdirSync(dir, { withFileTypes: true }).sort((x, y) => (x.name < y.name ? -1 : x.name > y.name ? 1 : 0))) {
       if (e.name === 'node_modules' || e.name === 'dist' || e.name.startsWith('.')) continue;
       const p = join(dir, e.name);
       if (e.isDirectory()) walk(p);
@@ -3168,7 +3168,7 @@ function collectCensusFiles(rootDir: string): string[] {
   }
   for (const d of dirs) walk(join(rootDir, d));
   // Root-level `.ts` files (tsup.config.ts, vitest.config.ts, …).
-  for (const e of readdirSync(rootDir, { withFileTypes: true })) {
+  for (const e of readdirSync(rootDir, { withFileTypes: true }).sort((x, y) => (x.name < y.name ? -1 : x.name > y.name ? 1 : 0))) {
     if (e.isFile() && e.name.endsWith('.ts') && !e.name.endsWith('.d.ts')) {
       set.add(e.name);
     }
