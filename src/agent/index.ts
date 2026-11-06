@@ -618,3 +618,8 @@ export {
   PARTICIPANT_IN_RELATION,
   type EventManagerConfig,
 } from './events/index.js';
+
+// ==================== Recursa — Phase 1 (skills, instruction sets, knowledge repository) ====================
+
+export * from './skills/index.js';
+export * from './knowledge/index.js';

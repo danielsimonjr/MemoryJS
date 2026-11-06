@@ -124,7 +124,7 @@
     "build": "tsup && node scripts/emit-dts.mjs && node scripts/check-exports.mjs",
     "build:watch": "tsup --watch",
     "build:tsc": "tsc",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.probes.json",
     "lint": "oxlint --type-aware src && node scripts/check-lint-rules.mjs",
     "lint:fix": "eslint src --fix",
     "test": "vitest run",

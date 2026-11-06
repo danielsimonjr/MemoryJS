@@ -3,9 +3,9 @@
     "name": "@danielsimonjr/memoryjs",
     "version": "4.5.0",
     "lastUpdated": "2026-11-06",
-    "totalFiles": 330,
+    "totalFiles": 332,
     "totalModules": 12,
-    "totalExports": 2314
+    "totalExports": 2390
   },
   "entryPoints": [
     {
@@ -4316,6 +4316,20 @@
         "nodeDependencies": [],
         "internalDependencies": [
           {
+            "file": "./skills/index.js",
+            "imports": [
+              "*"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./knowledge/index.js",
+            "imports": [
+              "*"
+            ],
+            "reExport": true
+          },
+          {
             "file": "./AccessTracker.js",
             "imports": [
               "AccessTracker",
@@ -5522,6 +5536,8 @@
           "PGSerializerStyle"
         ],
         "reExported": [
+          "* from ./skills/index.js",
+          "* from ./knowledge/index.js",
           "AccessTracker",
           "AccessStats",
           "AccessTrackerConfig",
@@ -6163,6 +6179,146 @@
           "KnowledgeRepositoryOptions",
           "LoadForContextOptions",
           "LoadedKnowledge"
+        ]
+      },
+      "src/agent/knowledge/index.ts": {
+        "description": "Recursa knowledge layer (RS-5): `InstructionSetManager`, the",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./InstructionSetManager.js",
+            "imports": [
+              "InstructionSetManager",
+              "instructionItemsFor",
+              "renderInstructionItems",
+              "buildInstructionSetEntity",
+              "InstructionPatchResult",
+              "InstructionHistorySource",
+              "InstructionSetManagerOptions",
+              "InstructionItem"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./KnowledgeRepository.js",
+            "imports": [
+              "KnowledgeRepository",
+              "SkillMatchLike",
+              "SkillManagerLike",
+              "FailureLookupLike",
+              "KnowledgeRepositoryOptions",
+              "ApplyResult",
+              "RollbackResult",
+              "LoadForContextOptions",
+              "LoadedKnowledge"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./knowledgeDigest.js",
+            "imports": [
+              "compareIds",
+              "canonicalKnowledgeJson",
+              "clone",
+              "digestOf",
+              "slugify",
+              "shortId",
+              "fitInOrder",
+              "assertBudgetTokens",
+              "idDelta",
+              "diffSnapshots",
+              "IdDelta",
+              "KnowledgeDiff"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./knowledgeRevision.js",
+            "imports": [
+              "workFrom",
+              "safeApplyOp",
+              "applyOp",
+              "planWrites",
+              "PlannedWrite",
+              "WorkState"
+            ],
+            "reExport": true
+          }
+        ],
+        "exports": [
+          "InstructionSetManager",
+          "instructionItemsFor",
+          "renderInstructionItems",
+          "buildInstructionSetEntity",
+          "InstructionPatchResult",
+          "InstructionHistorySource",
+          "InstructionSetManagerOptions",
+          "InstructionItem",
+          "KnowledgeRepository",
+          "SkillMatchLike",
+          "SkillManagerLike",
+          "FailureLookupLike",
+          "KnowledgeRepositoryOptions",
+          "ApplyResult",
+          "RollbackResult",
+          "LoadForContextOptions",
+          "LoadedKnowledge",
+          "compareIds",
+          "canonicalKnowledgeJson",
+          "clone",
+          "digestOf",
+          "slugify",
+          "shortId",
+          "fitInOrder",
+          "assertBudgetTokens",
+          "idDelta",
+          "diffSnapshots",
+          "IdDelta",
+          "KnowledgeDiff",
+          "workFrom",
+          "safeApplyOp",
+          "applyOp",
+          "planWrites",
+          "PlannedWrite",
+          "WorkState"
+        ],
+        "reExported": [
+          "InstructionSetManager",
+          "instructionItemsFor",
+          "renderInstructionItems",
+          "buildInstructionSetEntity",
+          "InstructionPatchResult",
+          "InstructionHistorySource",
+          "InstructionSetManagerOptions",
+          "InstructionItem",
+          "KnowledgeRepository",
+          "SkillMatchLike",
+          "SkillManagerLike",
+          "FailureLookupLike",
+          "KnowledgeRepositoryOptions",
+          "ApplyResult",
+          "RollbackResult",
+          "LoadForContextOptions",
+          "LoadedKnowledge",
+          "compareIds",
+          "canonicalKnowledgeJson",
+          "clone",
+          "digestOf",
+          "slugify",
+          "shortId",
+          "fitInOrder",
+          "assertBudgetTokens",
+          "idDelta",
+          "diffSnapshots",
+          "IdDelta",
+          "KnowledgeDiff",
+          "workFrom",
+          "safeApplyOp",
+          "applyOp",
+          "planWrites",
+          "PlannedWrite",
+          "WorkState"
         ]
       },
       "src/agent/knowledge/knowledgeDigest.ts": {
@@ -9086,6 +9242,170 @@
           "SKILL_MARKER_FILE"
         ]
       },
+      "src/agent/skills/index.ts": {
+        "description": "Recursa skill registry (RS-2/RS-3): `SkillManager`, the SKILL.md format,",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./SkillManager.js",
+            "imports": [
+              "SkillManager",
+              "AddSkillInput",
+              "SkillPatch",
+              "SkillListOptions",
+              "SkillMatch",
+              "SkillOutcome",
+              "SkillUpdateResult",
+              "SkillRetireResult",
+              "SkillOutcomeResult",
+              "SkillMatchOptions",
+              "SkillContextOptions",
+              "SkillSimilarityProvider"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./SkillFormat.js",
+            "imports": [
+              "SKILL_FRONT_MATTER_KEYS",
+              "loadOptionalYaml",
+              "serializeSkillMarkdown",
+              "parseSkillMarkdown",
+              "skillContentHash",
+              "renderSkillSection",
+              "fitSkillSectionToBudget",
+              "ParsedSkillDocument",
+              "SkillParseFailure",
+              "SkillParseResult",
+              "YamlModuleLike",
+              "ParseSkillOptions"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./SkillPublisher.js",
+            "imports": [
+              "SkillPublisher",
+              "SKILL_MARKER_FILE",
+              "PublishResult",
+              "ImportConflict",
+              "ImportParseError",
+              "ImportReport",
+              "PublishOptions",
+              "SkillPublishMarker"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./skillRecordUtils.js",
+            "imports": [
+              "SKILL_KIND_VALUES",
+              "skillDedupHash",
+              "mintSkillId",
+              "skillObservations"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./skillTreeFs.js",
+            "imports": [
+              "recoverPublishedTree",
+              "removeBestEffort",
+              "pathExists",
+              "readConfinedSkillFile",
+              "ConfinedRead"
+            ],
+            "reExport": true
+          }
+        ],
+        "exports": [
+          "SkillManager",
+          "AddSkillInput",
+          "SkillPatch",
+          "SkillListOptions",
+          "SkillMatch",
+          "SkillOutcome",
+          "SkillUpdateResult",
+          "SkillRetireResult",
+          "SkillOutcomeResult",
+          "SkillMatchOptions",
+          "SkillContextOptions",
+          "SkillSimilarityProvider",
+          "SKILL_FRONT_MATTER_KEYS",
+          "loadOptionalYaml",
+          "serializeSkillMarkdown",
+          "parseSkillMarkdown",
+          "skillContentHash",
+          "renderSkillSection",
+          "fitSkillSectionToBudget",
+          "ParsedSkillDocument",
+          "SkillParseFailure",
+          "SkillParseResult",
+          "YamlModuleLike",
+          "ParseSkillOptions",
+          "SkillPublisher",
+          "SKILL_MARKER_FILE",
+          "PublishResult",
+          "ImportConflict",
+          "ImportParseError",
+          "ImportReport",
+          "PublishOptions",
+          "SkillPublishMarker",
+          "SKILL_KIND_VALUES",
+          "skillDedupHash",
+          "mintSkillId",
+          "skillObservations",
+          "recoverPublishedTree",
+          "removeBestEffort",
+          "pathExists",
+          "readConfinedSkillFile",
+          "ConfinedRead"
+        ],
+        "reExported": [
+          "SkillManager",
+          "AddSkillInput",
+          "SkillPatch",
+          "SkillListOptions",
+          "SkillMatch",
+          "SkillOutcome",
+          "SkillUpdateResult",
+          "SkillRetireResult",
+          "SkillOutcomeResult",
+          "SkillMatchOptions",
+          "SkillContextOptions",
+          "SkillSimilarityProvider",
+          "SKILL_FRONT_MATTER_KEYS",
+          "loadOptionalYaml",
+          "serializeSkillMarkdown",
+          "parseSkillMarkdown",
+          "skillContentHash",
+          "renderSkillSection",
+          "fitSkillSectionToBudget",
+          "ParsedSkillDocument",
+          "SkillParseFailure",
+          "SkillParseResult",
+          "YamlModuleLike",
+          "ParseSkillOptions",
+          "SkillPublisher",
+          "SKILL_MARKER_FILE",
+          "PublishResult",
+          "ImportConflict",
+          "ImportParseError",
+          "ImportReport",
+          "PublishOptions",
+          "SkillPublishMarker",
+          "SKILL_KIND_VALUES",
+          "skillDedupHash",
+          "mintSkillId",
+          "skillObservations",
+          "recoverPublishedTree",
+          "removeBestEffort",
+          "pathExists",
+          "readConfinedSkillFile",
+          "ConfinedRead"
+        ]
+      },
       "src/agent/skills/skillRecordUtils.ts": {
         "description": "Skill-record helpers shared by `SkillManager` and the knowledge-revision",
         "externalDependencies": [],
@@ -11955,6 +12275,30 @@
             "file": "../features/AuditLog.js",
             "imports": [
               "AuditLog"
+            ]
+          },
+          {
+            "file": "../agent/skills/SkillManager.js",
+            "imports": [
+              "SkillManager"
+            ]
+          },
+          {
+            "file": "../agent/skills/SkillPublisher.js",
+            "imports": [
+              "SkillPublisher"
+            ]
+          },
+          {
+            "file": "../agent/knowledge/InstructionSetManager.js",
+            "imports": [
+              "InstructionSetManager"
+            ]
+          },
+          {
+            "file": "../agent/knowledge/KnowledgeRepository.js",
+            "imports": [
+              "KnowledgeRepository"
             ]
           },
           {
@@ -22636,6 +22980,7 @@
           "src/agent/keyValueLine.ts",
           "src/agent/knowledge/InstructionSetManager.ts",
           "src/agent/knowledge/KnowledgeRepository.ts",
+          "src/agent/knowledge/index.ts",
           "src/agent/knowledge/knowledgeDigest.ts",
           "src/agent/knowledge/knowledgeRevision.ts",
           "src/agent/procedural/ProcedureManager.ts",
@@ -22684,6 +23029,7 @@
           "src/agent/skills/SkillFormat.ts",
           "src/agent/skills/SkillManager.ts",
           "src/agent/skills/SkillPublisher.ts",
+          "src/agent/skills/index.ts",
           "src/agent/skills/skillRecordUtils.ts",
           "src/agent/skills/skillTreeFs.ts",
           "src/agent/versionedWriteFailure.ts",
@@ -22955,37 +23301,32 @@
       "src/sqlite.ts",
       "src/workers/levenshteinWorker.ts"
     ],
-    "reachableCount": 326,
-    "dormantCount": 4,
+    "reachableCount": 332,
+    "dormantCount": 0,
     "orphaned": [],
-    "testOnly": [
-      "src/agent/knowledge/InstructionSetManager.ts",
-      "src/agent/knowledge/KnowledgeRepository.ts",
-      "src/agent/knowledge/knowledgeDigest.ts",
-      "src/agent/knowledge/knowledgeRevision.ts"
-    ]
+    "testOnly": []
   },
   "statistics": {
-    "totalTypeScriptFiles": 330,
+    "totalTypeScriptFiles": 332,
     "totalModules": 12,
-    "totalLinesOfCode": 110757,
-    "totalExports": 2314,
+    "totalLinesOfCode": 110925,
+    "totalExports": 2390,
     "totalClasses": 242,
     "totalInterfaces": 697,
     "totalFunctions": 447,
     "totalTypeGuards": 39,
     "totalEnums": 4,
     "totalConstants": 130,
-    "totalReExports": 1479,
+    "totalReExports": 1557,
     "totalTypeOnlyImports": 538,
     "runtimeCircularDeps": 0,
     "typeOnlyCircularDeps": 10,
     "entryRoots": 4,
-    "reachableFiles": 326,
-    "dormantFiles": 4,
+    "reachableFiles": 332,
+    "dormantFiles": 0,
     "orphanedFiles": 0,
-    "testOnlyFiles": 4,
+    "testOnlyFiles": 0,
     "unusedFilesCount": 0,
-    "unusedExportsCount": 92
+    "unusedExportsCount": 62
   }
 }

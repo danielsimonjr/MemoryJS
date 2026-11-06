@@ -185,6 +185,7 @@ full-featured entry point.
 | Package | Install it to use |
 |---|---|
 | `@huggingface/transformers` ^4.3.1 | The `local` embedding provider, which is the default `MEMORY_EMBEDDING_PROVIDER`. It runs the `Xenova/all-MiniLM-L6-v2` model (8-bit weights) offline through Transformers.js. Without the package, the `local` provider is not ready and semantic search is not available. |
+| `yaml` >= 2.0.0 | Full YAML front matter when reading and publishing Recursa `SKILL.md` files. Without it, a built-in subset parser is used |
 | `pg` >= 8.0.0 | The PostgreSQL storage backend |
 
 ```bash

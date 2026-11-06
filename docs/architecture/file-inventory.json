@@ -1,12 +1,12 @@
 {
   "generated": "2026-11-06",
-  "totalFiles": 828,
+  "totalFiles": 831,
   "byDisposition": {
-    "reachable": 322,
+    "reachable": 328,
     "build-entry": 4,
-    "test-only": 4,
+    "test-only": 0,
     "orphan": 0,
-    "test": 482,
+    "test": 483,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -14,8 +14,8 @@
   },
   "byArea": {
     "benchmarks": 4,
-    "src": 330,
-    "tests": 482,
+    "src": 332,
+    "tests": 483,
     "tools": 10,
     "config": 2
   },
@@ -333,7 +333,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 621
+      "loc": 626
     },
     {
       "file": "src/agent/InMemoryBackend.ts",
@@ -350,31 +350,38 @@
       "loc": 63
     },
     {
+      "file": "src/agent/knowledge/index.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 49
+    },
+    {
       "file": "src/agent/knowledge/InstructionSetManager.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
-      "disposition": "test-only",
+      "disposition": "reachable",
       "loc": 309
     },
     {
       "file": "src/agent/knowledge/knowledgeDigest.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
-      "disposition": "test-only",
+      "disposition": "reachable",
       "loc": 254
     },
     {
       "file": "src/agent/knowledge/KnowledgeRepository.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
-      "disposition": "test-only",
+      "disposition": "reachable",
       "loc": 500
     },
     {
       "file": "src/agent/knowledge/knowledgeRevision.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
-      "disposition": "test-only",
+      "disposition": "reachable",
       "loc": 342
     },
     {
@@ -812,6 +819,13 @@
       "loc": 541
     },
     {
+      "file": "src/agent/skills/index.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 56
+    },
+    {
       "file": "src/agent/skills/SkillFormat.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
@@ -823,7 +837,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 463
+      "loc": 466
     },
     {
       "file": "src/agent/skills/SkillPublisher.ts",
@@ -1229,7 +1243,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1710
+      "loc": 1765
     },
     {
       "file": "src/core/mmap/FsReadMmapBackend.ts",
@@ -4095,6 +4109,13 @@
       "loc": 55
     },
     {
+      "file": "tests/unit/core/ManagerContext.recursa-wiring.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 199
+    },
+    {
       "file": "tests/unit/core/ManagerContext.test.ts",
       "package": "(root)",
       "area": "tests",
@@ -4414,7 +4435,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 184
+      "loc": 294
     },
     {
       "file": "tests/unit/features/AnalyticsManager.test.ts",

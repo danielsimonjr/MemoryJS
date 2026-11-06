@@ -101,6 +101,10 @@ ctx.worldModelManager   // 3B.7 World Model orchestrator (snapshots + diff)
 ctx.activeRetrieval     // 3B.5 Active Retrieval (iterative query rewriting)
 ctx.reconstructiveMemory() // MRAgent Cue–Tag–Content associative memory + active multi-step reconstruction
 ctx.eventManager        // R1 event reification: actions as event hub entities (actor_of/targeted/occurred_in), flow grouping, whoDidWhat()
+ctx.skillManager        // Recursa RS-2 skill registry (semantic blending is used when `ctx.semanticSearch` has been initialised before the first `skillManager` access; `MEMORY_EMBEDDING_PROVIDER=none` disables it)
+ctx.instructionSets     // Recursa RS-5 role-scoped instruction sets (history via transitionLedger when enabled)
+ctx.knowledgeRepository // Recursa RS-5 snapshots, revisions, loadForContext(); composes skillManager + instructionSets + failureManager; heuristics/reflections/project context enter K only as snapshot `memoryRefs`; loadForContext orders instructions → skills → failure lessons
+ctx.skillPublisher      // Recursa RS-3 atomic SKILL.md publish/import over skillManager
 ```
 
 **v1.9.0 Additions:**
