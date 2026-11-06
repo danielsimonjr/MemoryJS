@@ -1264,7 +1264,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 164
+      "loc": 165
     },
     {
       "file": "src/agent/SQLiteBackend.ts",

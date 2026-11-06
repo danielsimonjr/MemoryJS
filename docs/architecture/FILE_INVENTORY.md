@@ -218,7 +218,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/skills/SkillManager.ts` | src | reachable | 451 |
 | `src/agent/skills/SkillPublisher.ts` | src | reachable | 318 |
 | `src/agent/skills/skillRecordUtils.ts` | src | reachable | 132 |
-| `src/agent/skills/skillTreeFs.ts` | src | reachable | 164 |
+| `src/agent/skills/skillTreeFs.ts` | src | reachable | 165 |
 | `src/agent/SQLiteBackend.ts` | src | reachable | 175 |
 | `src/agent/SummarizationService.ts` | src | reachable | 341 |
 | `src/agent/ToolAffordanceManager.ts` | src | reachable | 279 |

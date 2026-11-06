@@ -35,7 +35,8 @@ function refuse(reason: TreeDirRefusal, dir: string): never {
  * @returns True for a special path.
  */
 function isSpecial(p: string): boolean {
-  return SPECIAL_ROOTS.some((r) => p === r || p.startsWith(r + '/'));
+  const n = p.replace(/\\/g, '/').replace(/^[A-Za-z]:/, ''); // Windows: drive prefix and backslashes
+  return SPECIAL_ROOTS.some((r) => n === r || n.startsWith(r + '/'));
 }
 
 /**
