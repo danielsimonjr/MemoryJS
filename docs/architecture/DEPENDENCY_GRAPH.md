@@ -41,7 +41,7 @@ The codebase is organized into the following modules:
 - **adapters**: 7 files
 - **agent**: 129 files
 - **cli**: 31 files
-- **core**: 28 files
+- **core**: 34 files
 - **features**: 18 files
 - **entry**: 1 file
 - **search**: 54 files
@@ -63,7 +63,7 @@ Seeded build/entry roots (package `exports`, `bin` targets, tsup entries, script
 - `src/sqlite.ts`
 - `src/workers/levenshteinWorker.ts`
 
-Reachable from a root: **339** of 339 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
+Reachable from a root: **345** of 345 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
 
 ---
 
@@ -3449,101 +3449,97 @@ Reachable from a root: **339** of 339 files. Dormant: **0** (0 orphaned, 0 test-
 | `../utils/IndexHealthMonitor.js` | `IndexHealthMonitor, IndexHealthReport` | Import |
 | `../utils/Diagnostics.js` | `buildDiagnosticsReport, DiagnosticsOptions, DiagnosticsReport` | Import |
 | `./TransactionManager.js` | `BatchTransaction` | Import |
+| `../features/ContradictionDetector.js` | `ContradictionDetector` | Import |
+| `../utils/index.js` | `validateFilePath, sidecarPath` | Import |
 | `../types/index.js` | `BatchResult, BatchOptions, Entity` | Import (type-only) |
 | `../utils/CachePressureCoordinator.js` | `CachePressureCoordinator` | Import |
-| `../search/MaterializedViews.js` | `MaterializedViewsManager` | Import |
-| `../search/SpellChecker.js` | `SpellChecker` | Import |
+| `../search/MaterializedViews.js` | `MaterializedViewsManager` | Import (type-only) |
+| `../search/SpellChecker.js` | `SpellChecker` | Import (type-only) |
 | `./ObservationStore.js` | `ObservationStore` | Import |
 | `./GraphStorage.js` | `GraphStorage` | Import |
 | `./StorageFactory.js` | `createStorage, createStorageFromPath` | Import |
-| `./EntityManager.js` | `EntityManager, GovernanceHooks` | Import |
+| `./EntityManager.js` | `EntityManager` | Import |
 | `./RelationManager.js` | `RelationManager` | Import |
 | `./ObservationManager.js` | `ObservationManager` | Import |
 | `../search/tiered/TieredIndex.js` | `TieredIndex` | Import (type-only) |
 | `../utils/compression/CompressedMap.js` | `CompressedMap` | Import (type-only) |
 | `./columns/IColumnStore.js` | `IColumnStore, ObservationColumn` | Import (type-only) |
 | `./context/StorageInfraFacade.js` | `StorageInfraFacade` | Import |
-| `../utils/envConfig.js` | `readEnvNumber, readEnvNumberOrUndefined, readEnvLooseFlag, readEnvStrictFlag, EnvNumberBounds` | Import |
+| `./context/SearchFacade.js` | `SearchFacade` | Import |
+| `./context/AgentMemoryFacade.js` | `AgentMemoryFacade` | Import |
+| `./context/AgentCognitionFacade.js` | `AgentCognitionFacade, ProceduralGraphConfig` | Import |
+| `./context/AgentBookkeepingFacade.js` | `AgentBookkeepingFacade` | Import |
+| `./context/KnowledgeGovernanceFacade.js` | `KnowledgeGovernanceFacade` | Import |
+| `../utils/envConfig.js` | `readEnvNumber, EnvNumberBounds` | Import |
 | `./HierarchyManager.js` | `HierarchyManager` | Import |
 | `./GraphTraversal.js` | `GraphTraversal` | Import |
-| `../search/SearchManager.js` | `SearchManager` | Import |
-| `../search/RankedSearch.js` | `RankedSearch` | Import |
-| `../search/GraphRankPrior.js` | `GraphRankPrior` | Import |
-| `../search/HybridSearchManager.js` | `HybridSearchManager` | Import |
-| `../search/LLMQueryPlanner.js` | `LLMQueryPlanner` | Import |
-| `../search/LLMSearchExecutor.js` | `LLMSearchExecutor` | Import |
-| `../search/LLMQueryPlanner.js` | `LLMQueryPlannerConfig` | Import (type-only) |
-| `../search/SemanticSearch.js` | `SemanticSearch` | Import |
-| `../search/EmbeddingService.js` | `createEmbeddingService` | Import |
-| `../search/EmbeddingCache.js` | `EmbeddingCache` | Import |
-| `../search/VectorStore.js` | `createVectorStore, isEmbeddingStorage` | Import |
+| `../search/SearchManager.js` | `SearchManager` | Import (type-only) |
+| `../search/RankedSearch.js` | `RankedSearch` | Import (type-only) |
+| `../search/GraphRankPrior.js` | `GraphRankPrior` | Import (type-only) |
+| `../search/HybridSearchManager.js` | `HybridSearchManager` | Import (type-only) |
+| `../search/LLMQueryPlanner.js` | `LLMQueryPlanner, LLMQueryPlannerConfig` | Import (type-only) |
+| `../search/SemanticSearch.js` | `SemanticSearch` | Import (type-only) |
+| `../search/BloomPreScreener.js` | `BloomPreScreener` | Import (type-only) |
 | `../features/IOManager.js` | `IOManager` | Import |
 | `../features/TagManager.js` | `TagManager` | Import |
 | `../features/AnalyticsManager.js` | `AnalyticsManager` | Import |
 | `../features/CompressionManager.js` | `CompressionManager` | Import |
 | `../features/ArchiveManager.js` | `ArchiveManager` | Import |
-| `../features/AutoLinker.js` | `AutoLinker` | Import |
-| `../features/FactExtractor.js` | `FactExtractor` | Import |
-| `./TransitionLedger.js` | `TransitionLedger` | Import |
-| `../agent/AccessTracker.js` | `AccessTracker` | Import |
-| `../agent/DecayEngine.js` | `DecayEngine` | Import |
-| `../agent/DecayScheduler.js` | `DecayScheduler` | Import |
-| `../agent/ConsolidationScheduler.js` | `ConsolidationScheduler` | Import |
-| `../agent/SalienceEngine.js` | `SalienceEngine` | Import |
-| `../agent/ContextWindowManager.js` | `ContextWindowManager` | Import |
-| `../agent/MemoryFormatter.js` | `MemoryFormatter` | Import |
-| `../agent/AgentMemoryManager.js` | `AgentMemoryManager` | Import |
-| `../agent/ArtifactManager.js` | `ArtifactManager` | Import |
-| `../agent/DreamEngine.js` | `DreamEngine, DreamEngineConfig` | Import |
-| `./RefIndex.js` | `RefIndex` | Import |
-| `../agent/ObserverPipeline.js` | `ObserverPipeline` | Import |
-| `../agent/ObserverPipeline.js` | `ObserverPipelineOptions` | Import (type-only) |
+| `../features/AutoLinker.js` | `AutoLinker` | Import (type-only) |
+| `../features/FactExtractor.js` | `FactExtractor` | Import (type-only) |
+| `../features/GovernanceManager.js` | `GovernanceManager` | Import (type-only) |
+| `../agent/AccessTracker.js` | `AccessTracker` | Import (type-only) |
+| `../agent/DecayEngine.js` | `DecayEngine` | Import (type-only) |
+| `../agent/DecayScheduler.js` | `DecayScheduler` | Import (type-only) |
+| `../agent/ConsolidationScheduler.js` | `ConsolidationScheduler` | Import (type-only) |
+| `../agent/SalienceEngine.js` | `SalienceEngine` | Import (type-only) |
+| `../agent/ContextWindowManager.js` | `ContextWindowManager` | Import (type-only) |
+| `../agent/MemoryFormatter.js` | `MemoryFormatter` | Import (type-only) |
+| `../agent/AgentMemoryManager.js` | `AgentMemoryManager` | Import (type-only) |
 | `../agent/AgentMemoryConfig.js` | `AgentMemoryConfig` | Import (type-only) |
-| `../utils/constants.js` | `getEmbeddingConfig` | Import |
-| `../utils/index.js` | `validateFilePath, sidecarPath` | Import |
-| `../features/ContradictionDetector.js` | `ContradictionDetector` | Import |
-| `../features/SemanticForget.js` | `SemanticForget` | Import |
-| `../agent/MemoryEngine.js` | `MemoryEngine` | Import |
-| `../agent/ImportanceScorer.js` | `ImportanceScorer` | Import |
+| `../agent/ArtifactManager.js` | `ArtifactManager` | Import (type-only) |
+| `../agent/DreamEngine.js` | `DreamEngine, DreamEngineConfig` | Import (type-only) |
+| `./RefIndex.js` | `RefIndex` | Import |
+| `../agent/ObserverPipeline.js` | `ObserverPipeline` | Import (type-only) |
+| `../agent/MemoryEngine.js` | `MemoryEngine` | Import (type-only) |
 | `../agent/MemoryBackend.js` | `IMemoryBackend` | Import (type-only) |
-| `../agent/InMemoryBackend.js` | `InMemoryBackend` | Import |
-| `../agent/SQLiteBackend.js` | `SQLiteBackend` | Import |
-| `../agent/MemoryValidator.js` | `MemoryValidator` | Import |
-| `../agent/TrajectoryCompressor.js` | `TrajectoryCompressor` | Import |
-| `../agent/ExperienceExtractor.js` | `ExperienceExtractor` | Import |
-| `../agent/HeuristicManager.js` | `HeuristicManager` | Import |
-| `../agent/ObservationDedupManager.js` | `ObservationDedupManager` | Import |
-| `../agent/ExclusionManager.js` | `ExclusionManager` | Import |
-| `../agent/DecisionManager.js` | `DecisionManager` | Import |
-| `../agent/ProjectContextManager.js` | `ProjectContextManager` | Import |
-| `../agent/ToolAffordanceManager.js` | `ToolAffordanceManager` | Import |
-| `../agent/ToolCallObserver.js` | `ToolCallObserver` | Import |
-| `../agent/PatternDetector.js` | `PatternDetector` | Import |
-| `../agent/procedural/ProcedureManager.js` | `ProcedureManager` | Import |
-| `../agent/procedural/graph/index.js` | `ProceduralGraphManager, createProceduralGraphBacking, IProceduralGraphBacking, PGPolicy, PGCompletionProvider` | Import |
-| `../agent/events/EventManager.js` | `EventManager` | Import |
-| `../agent/ProspectiveMemoryManager.js` | `ProspectiveMemoryManager, PredicateEvaluator, ProcedureInvoker` | Import |
-| `../agent/FailureManager.js` | `FailureManager` | Import |
-| `../agent/PlanManager.js` | `PlanManager` | Import |
-| `../agent/AgentReflectionManager.js` | `AgentReflectionManager` | Import |
-| `../agent/causal/CausalReasoner.js` | `CausalReasoner` | Import |
-| `../agent/rbac/RbacMiddleware.js` | `RbacMiddleware` | Import |
-| `../agent/rbac/RoleAssignmentStore.js` | `RoleAssignmentStore` | Import |
-| `../agent/world/WorldModelManager.js` | `WorldModelManager` | Import |
-| `../agent/retrieval/ActiveRetrievalController.js` | `ActiveRetrievalController` | Import |
-| `../agent/reconstruction/index.js` | `ReconstructiveMemory, ReconstructiveMemoryConfig, ReconstructiveBacking` | Import |
-| `../search/BloomPreScreener.js` | `BloomPreScreener` | Import (type-only) |
-| `../features/GovernanceManager.js` | `GovernanceManager` | Import |
-| `../features/AuditLog.js` | `AuditLog` | Import |
-| `../agent/skills/SkillManager.js` | `SkillManager` | Import |
-| `../agent/skills/SkillPublisher.js` | `SkillPublisher` | Import |
-| `../agent/knowledge/InstructionSetManager.js` | `InstructionSetManager` | Import |
-| `../agent/knowledge/KnowledgeRepository.js` | `KnowledgeRepository` | Import |
+| `../agent/MemoryValidator.js` | `MemoryValidator` | Import (type-only) |
+| `../agent/TrajectoryCompressor.js` | `TrajectoryCompressor` | Import (type-only) |
+| `../agent/ExperienceExtractor.js` | `ExperienceExtractor` | Import (type-only) |
+| `../agent/HeuristicManager.js` | `HeuristicManager` | Import (type-only) |
+| `../agent/ObservationDedupManager.js` | `ObservationDedupManager` | Import (type-only) |
+| `../agent/ExclusionManager.js` | `ExclusionManager` | Import (type-only) |
+| `../agent/DecisionManager.js` | `DecisionManager` | Import (type-only) |
+| `../agent/ProjectContextManager.js` | `ProjectContextManager` | Import (type-only) |
+| `../agent/ToolAffordanceManager.js` | `ToolAffordanceManager` | Import (type-only) |
+| `../agent/ToolCallObserver.js` | `ToolCallObserver` | Import (type-only) |
+| `../agent/PatternDetector.js` | `PatternDetector` | Import (type-only) |
+| `../agent/procedural/ProcedureManager.js` | `ProcedureManager` | Import (type-only) |
+| `../agent/procedural/graph/index.js` | `ProceduralGraphManager` | Import (type-only) |
+| `../agent/events/EventManager.js` | `EventManager` | Import (type-only) |
+| `../agent/ProspectiveMemoryManager.js` | `ProspectiveMemoryManager, PredicateEvaluator` | Import (type-only) |
+| `../agent/FailureManager.js` | `FailureManager` | Import (type-only) |
+| `../agent/PlanManager.js` | `PlanManager` | Import (type-only) |
+| `../agent/AgentReflectionManager.js` | `AgentReflectionManager` | Import (type-only) |
+| `../agent/causal/CausalReasoner.js` | `CausalReasoner` | Import (type-only) |
+| `../agent/rbac/RbacMiddleware.js` | `RbacMiddleware` | Import (type-only) |
+| `../agent/rbac/RoleAssignmentStore.js` | `RoleAssignmentStore` | Import (type-only) |
+| `../agent/world/WorldModelManager.js` | `WorldModelManager` | Import (type-only) |
+| `../agent/retrieval/ActiveRetrievalController.js` | `ActiveRetrievalController` | Import (type-only) |
+| `../agent/reconstruction/index.js` | `ReconstructiveMemory, ReconstructiveMemoryConfig` | Import (type-only) |
+| `../features/SemanticForget.js` | `SemanticForget` | Import (type-only) |
+| `./TransitionLedger.js` | `TransitionLedger` | Import (type-only) |
+| `../agent/skills/SkillManager.js` | `SkillManager` | Import (type-only) |
+| `../agent/skills/SkillPublisher.js` | `SkillPublisher` | Import (type-only) |
+| `../agent/knowledge/InstructionSetManager.js` | `InstructionSetManager` | Import (type-only) |
+| `../agent/knowledge/KnowledgeRepository.js` | `KnowledgeRepository` | Import (type-only) |
 | `./sqlite-register.js` | `` | Import |
+| `./context/AgentCognitionFacade.js` | `ProceduralGraphConfig` | Re-export (type-only) |
 
 **Exports:**
 - Classes: `ManagerContext`
 - Interfaces: `ManagerContextOptions`
+- Re-exports: `ProceduralGraphConfig`
 
 ---
 
@@ -3770,6 +3766,174 @@ Reachable from a root: **339** of 339 files. Dormant: **0** (0 orphaned, 0 test-
 
 ---
 
+### `src/core/context/AgentBookkeepingFacade.ts` - AgentBookkeepingFacade
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../GraphStorage.js` | `GraphStorage` | Import (type-only) |
+| `../EntityManager.js` | `EntityManager` | Import (type-only) |
+| `../ObservationManager.js` | `ObservationManager` | Import (type-only) |
+| `../../search/SemanticSearch.js` | `SemanticSearch` | Import (type-only) |
+| `../../features/ContradictionDetector.js` | `ContradictionDetector` | Import |
+| `../../features/SemanticForget.js` | `SemanticForget` | Import |
+| `../../agent/MemoryValidator.js` | `MemoryValidator` | Import |
+| `../../agent/HeuristicManager.js` | `HeuristicManager` | Import |
+| `../../agent/ObservationDedupManager.js` | `ObservationDedupManager` | Import |
+| `../../agent/ExclusionManager.js` | `ExclusionManager` | Import |
+| `../../agent/DecisionManager.js` | `DecisionManager` | Import |
+| `../../agent/ProjectContextManager.js` | `ProjectContextManager` | Import |
+| `../../agent/ToolAffordanceManager.js` | `ToolAffordanceManager` | Import |
+| `../../agent/ToolCallObserver.js` | `ToolCallObserver` | Import |
+| `../../search/SpellChecker.js` | `SpellChecker` | Import |
+
+**Exports:**
+- Classes: `AgentBookkeepingFacade`
+- Interfaces: `AgentBookkeepingFacadeDeps`
+
+---
+
+### `src/core/context/AgentCognitionFacade.ts` - AgentCognitionFacade
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../utils/logger.js` | `logger` | Import |
+| `../GraphStorage.js` | `GraphStorage` | Import (type-only) |
+| `../EntityManager.js` | `EntityManager` | Import (type-only) |
+| `../RelationManager.js` | `RelationManager` | Import (type-only) |
+| `../GraphTraversal.js` | `GraphTraversal` | Import (type-only) |
+| `../../search/RankedSearch.js` | `RankedSearch` | Import (type-only) |
+| `../../search/SemanticSearch.js` | `SemanticSearch` | Import (type-only) |
+| `../../utils/sidecarPath.js` | `sidecarPath` | Import |
+| `../../agent/MemoryValidator.js` | `MemoryValidator` | Import (type-only) |
+| `../../agent/procedural/ProcedureManager.js` | `ProcedureManager` | Import |
+| `../../agent/procedural/graph/index.js` | `ProceduralGraphManager, createProceduralGraphBacking, IProceduralGraphBacking, PGPolicy, PGCompletionProvider` | Import |
+| `../../agent/events/EventManager.js` | `EventManager` | Import |
+| `../../agent/ProspectiveMemoryManager.js` | `ProspectiveMemoryManager, PredicateEvaluator, ProcedureInvoker` | Import |
+| `../../agent/FailureManager.js` | `FailureManager` | Import |
+| `../../agent/PlanManager.js` | `PlanManager` | Import |
+| `../../agent/AgentReflectionManager.js` | `AgentReflectionManager` | Import |
+| `../../agent/causal/CausalReasoner.js` | `CausalReasoner` | Import |
+| `../../agent/world/WorldModelManager.js` | `WorldModelManager` | Import |
+| `../../agent/retrieval/ActiveRetrievalController.js` | `ActiveRetrievalController` | Import |
+| `../../agent/reconstruction/index.js` | `ReconstructiveMemory, ReconstructiveMemoryConfig, ReconstructiveBacking` | Import |
+| `../../utils/envConfig.js` | `readEnvNumber` | Import |
+
+**Exports:**
+- Classes: `AgentCognitionFacade`
+- Interfaces: `AgentCognitionFacadeDeps`, `ProceduralGraphConfig`
+
+---
+
+### `src/core/context/AgentMemoryFacade.ts` - AgentMemoryFacade
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../GraphStorage.js` | `GraphStorage` | Import (type-only) |
+| `../EntityManager.js` | `EntityManager` | Import (type-only) |
+| `../GraphTraversal.js` | `GraphTraversal` | Import (type-only) |
+| `../RefIndex.js` | `RefIndex` | Import (type-only) |
+| `../../search/SearchManager.js` | `SearchManager` | Import (type-only) |
+| `../../search/SemanticSearch.js` | `SemanticSearch` | Import (type-only) |
+| `../../search/HybridSearchManager.js` | `HybridSearchManager` | Import (type-only) |
+| `../../features/CompressionManager.js` | `CompressionManager` | Import (type-only) |
+| `../../agent/ExclusionManager.js` | `ExclusionManager` | Import (type-only) |
+| `../../agent/AccessTracker.js` | `AccessTracker` | Import |
+| `../../agent/DecayEngine.js` | `DecayEngine` | Import |
+| `../../agent/DecayScheduler.js` | `DecayScheduler` | Import |
+| `../../agent/ConsolidationScheduler.js` | `ConsolidationScheduler` | Import |
+| `../../agent/DreamEngine.js` | `DreamEngine, DreamEngineConfig` | Import |
+| `../../agent/SalienceEngine.js` | `SalienceEngine` | Import |
+| `../../agent/ContextWindowManager.js` | `ContextWindowManager` | Import |
+| `../../agent/MemoryFormatter.js` | `MemoryFormatter` | Import |
+| `../../agent/AgentMemoryManager.js` | `AgentMemoryManager` | Import |
+| `../../agent/AgentMemoryConfig.js` | `AgentMemoryConfig` | Import (type-only) |
+| `../../agent/ArtifactManager.js` | `ArtifactManager` | Import |
+| `../../agent/ObserverPipeline.js` | `ObserverPipeline` | Import |
+| `../../agent/ObserverPipeline.js` | `ObserverPipelineOptions` | Import (type-only) |
+| `../../agent/MemoryEngine.js` | `MemoryEngine` | Import |
+| `../../agent/ImportanceScorer.js` | `ImportanceScorer` | Import |
+| `../../agent/MemoryBackend.js` | `IMemoryBackend` | Import (type-only) |
+| `../../agent/InMemoryBackend.js` | `InMemoryBackend` | Import |
+| `../../agent/SQLiteBackend.js` | `SQLiteBackend` | Import |
+| `../../agent/TrajectoryCompressor.js` | `TrajectoryCompressor` | Import |
+| `../../agent/ExperienceExtractor.js` | `ExperienceExtractor` | Import |
+| `../../agent/PatternDetector.js` | `PatternDetector` | Import |
+| `../../utils/envConfig.js` | `readEnvNumber, readEnvLooseFlag, readEnvNumberOrUndefined` | Import |
+| `./envBounds.js` | `PROBABILITY` | Import |
+
+**Exports:**
+- Classes: `AgentMemoryFacade`
+- Interfaces: `AgentMemoryFacadeDeps`
+
+---
+
+### `src/core/context/KnowledgeGovernanceFacade.ts` - KnowledgeGovernanceFacade
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../features/GovernanceManager.js` | `GovernanceManager` | Import |
+| `../../features/AuditLog.js` | `AuditLog` | Import |
+| `../TransitionLedger.js` | `TransitionLedger` | Import |
+| `../../agent/skills/SkillManager.js` | `SkillManager` | Import |
+| `../../agent/skills/SkillPublisher.js` | `SkillPublisher` | Import |
+| `../../agent/knowledge/InstructionSetManager.js` | `InstructionSetManager` | Import |
+| `../../agent/knowledge/KnowledgeRepository.js` | `KnowledgeRepository` | Import |
+| `../../agent/rbac/RbacMiddleware.js` | `RbacMiddleware` | Import |
+| `../../agent/rbac/RoleAssignmentStore.js` | `RoleAssignmentStore` | Import |
+| `../../search/SemanticSearch.js` | `SemanticSearch` | Import (type-only) |
+| `../EntityManager.js` | `EntityManager, GovernanceHooks` | Import (type-only) |
+| `../../agent/FailureManager.js` | `FailureManager` | Import (type-only) |
+| `../GraphStorage.js` | `GraphStorage` | Import (type-only) |
+| `../../utils/envConfig.js` | `readEnvLooseFlag` | Import |
+| `../../utils/sidecarPath.js` | `sidecarPath` | Import |
+
+**Exports:**
+- Classes: `KnowledgeGovernanceFacade`
+- Interfaces: `KnowledgeGovernanceFacadeDeps`
+
+---
+
+### `src/core/context/SearchFacade.ts` - SearchFacade
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../search/SearchManager.js` | `SearchManager` | Import |
+| `../../search/RankedSearch.js` | `RankedSearch` | Import |
+| `../../search/GraphRankPrior.js` | `GraphRankPrior` | Import |
+| `../../search/HybridSearchManager.js` | `HybridSearchManager` | Import |
+| `../../search/LLMQueryPlanner.js` | `LLMQueryPlanner` | Import |
+| `../../search/LLMQueryPlanner.js` | `LLMQueryPlannerConfig` | Import (type-only) |
+| `../../search/LLMSearchExecutor.js` | `LLMSearchExecutor` | Import |
+| `../../search/SemanticSearch.js` | `SemanticSearch` | Import |
+| `../../search/EmbeddingService.js` | `createEmbeddingService` | Import |
+| `../../search/EmbeddingCache.js` | `EmbeddingCache` | Import |
+| `../../search/VectorStore.js` | `createVectorStore, isEmbeddingStorage` | Import |
+| `../../search/MaterializedViews.js` | `MaterializedViewsManager` | Import |
+| `../../search/BloomPreScreener.js` | `BloomPreScreener` | Import (type-only) |
+| `../../features/AutoLinker.js` | `AutoLinker` | Import |
+| `../../features/FactExtractor.js` | `FactExtractor` | Import |
+| `../GraphStorage.js` | `GraphStorage` | Import (type-only) |
+| `../EntityManager.js` | `EntityManager` | Import (type-only) |
+| `../RelationManager.js` | `RelationManager` | Import (type-only) |
+| `../ObservationManager.js` | `ObservationManager` | Import (type-only) |
+| `../GraphTraversal.js` | `GraphTraversal` | Import (type-only) |
+| `../../utils/CachePressureCoordinator.js` | `CachePressureCoordinator` | Import (type-only) |
+| `../../types/index.js` | `Entity` | Import (type-only) |
+| `../../utils/envConfig.js` | `readEnvNumber, readEnvStrictFlag` | Import |
+| `../../utils/constants.js` | `getEmbeddingConfig` | Import |
+| `./envBounds.js` | `PROBABILITY` | Import |
+
+**Exports:**
+- Classes: `SearchFacade`
+- Interfaces: `SearchFacadeDeps`
+
+---
+
 ### `src/core/context/StorageInfraFacade.ts` - StorageInfraFacade
 
 **Internal Dependencies:**
@@ -3796,6 +3960,18 @@ Reachable from a root: **339** of 339 files. Dormant: **0** (0 orphaned, 0 test-
 
 ---
 
+### `src/core/context/envBounds.ts` - Shared env-number bounds for the ManagerContext facades.
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../utils/envConfig.js` | `EnvNumberBounds` | Import (type-only) |
+
+**Exports:**
+- Constants: `PROBABILITY`
+
+---
+
 ### `src/core/index.ts` - Core Module Barrel Export
 
 **Internal Dependencies:**
@@ -3819,11 +3995,11 @@ Reachable from a root: **339** of 339 files. Dormant: **0** (0 orphaned, 0 test-
 | `./ObservationStore.js` | `ObservationStore, ObservationStoreStats` | Re-export |
 | `./EntityStateMachine.js` | `EntityStateMachine, IllegalStatusTransitionError, DEFAULT_ENTITY_STATUS, canTransition, effectiveStatus` | Re-export |
 | `./EntityManager.js` | `EntityManagerOptions` | Re-export (type-only) |
-| `./ManagerContext.js` | `ManagerContextOptions` | Re-export (type-only) |
+| `./ManagerContext.js` | `ManagerContextOptions, ProceduralGraphConfig` | Re-export (type-only) |
 | `./TransitionLedger.js` | `TransitionEvent, TransitionFilter` | Re-export (type-only) |
 
 **Exports:**
-- Re-exports: `GraphStorage`, `SQLiteStorage`, `EntityManager`, `RelationManager`, `ObservationManager`, `HierarchyManager`, `ManagerContext`, `GraphTraversal`, `TransactionManager`, `OperationType`, `BatchTransaction`, `TransactionOperation`, `TransactionResult`, `createStorage`, `createStorageFromPath`, `preloadSQLiteStorage`, `registerSQLiteStorage`, `hasDeltaPrimitives`, `hasWriteLock`, `withStorageWriteLock`, `DeltaCapableStorage`, `WriteLockableStorage`, `GraphEventEmitter`, `RefIndex`, `RefEntry`, `RefIndexStats`, `TransitionLedger`, `ObservationStore`, `ObservationStoreStats`, `EntityStateMachine`, `IllegalStatusTransitionError`, `DEFAULT_ENTITY_STATUS`, `canTransition`, `effectiveStatus`, `EntityManagerOptions`, `ManagerContextOptions`, `TransitionEvent`, `TransitionFilter`
+- Re-exports: `GraphStorage`, `SQLiteStorage`, `EntityManager`, `RelationManager`, `ObservationManager`, `HierarchyManager`, `ManagerContext`, `GraphTraversal`, `TransactionManager`, `OperationType`, `BatchTransaction`, `TransactionOperation`, `TransactionResult`, `createStorage`, `createStorageFromPath`, `preloadSQLiteStorage`, `registerSQLiteStorage`, `hasDeltaPrimitives`, `hasWriteLock`, `withStorageWriteLock`, `DeltaCapableStorage`, `WriteLockableStorage`, `GraphEventEmitter`, `RefIndex`, `RefEntry`, `RefIndexStats`, `TransitionLedger`, `ObservationStore`, `ObservationStoreStats`, `EntityStateMachine`, `IllegalStatusTransitionError`, `DEFAULT_ENTITY_STATUS`, `canTransition`, `effectiveStatus`, `EntityManagerOptions`, `ManagerContextOptions`, `ProceduralGraphConfig`, `TransitionEvent`, `TransitionFilter`
 
 ---
 
@@ -6191,46 +6367,46 @@ Reachable from a root: **339** of 339 files. Dormant: **0** (0 orphaned, 0 test-
 
 | File | Imports From | Exports To |
 |------|--------------|------------|
-| `src/core/ManagerContext` | 93 files | 9 files |
-| `src/types/index` | 12 files | 68 files |
+| `src/core/ManagerContext` | 89 files | 9 files |
+| `src/types/index` | 12 files | 69 files |
 | `src/types/types` | 1 file | 73 files |
 | `src/agent/index` | 66 files | 1 file |
 | `src/utils/index` | 38 files | 27 files |
 | `src/types/agent-memory` | 3 files | 55 files |
-| `src/core/GraphStorage` | 16 files | 35 files |
+| `src/core/GraphStorage` | 16 files | 40 files |
+| `src/core/EntityManager` | 12 files | 39 files |
 | `src/search/index` | 50 files | 1 file |
-| `src/core/EntityManager` | 12 files | 34 files |
 | `src/utils/errors` | 0 files | 35 files |
-| `src/agent/AgentMemoryManager` | 29 files | 2 files |
-| `src/utils/logger` | 0 files | 30 files |
+| `src/agent/AgentMemoryManager` | 29 files | 3 files |
+| `src/core/context/AgentMemoryFacade` | 31 files | 1 file |
+| `src/utils/logger` | 0 files | 31 files |
 | `src/cli/commands/helpers` | 4 files | 23 files |
 | `src/agent/ConsolidationPipeline` | 19 files | 7 files |
 | `src/cli/commands/index` | 24 files | 1 file |
+| `src/core/context/SearchFacade` | 24 files | 1 file |
 | `src/utils/textSimilarity` | 0 files | 24 files |
-| `src/agent/ContextWindowManager` | 17 files | 5 files |
+| `src/agent/ContextWindowManager` | 17 files | 6 files |
 | `src/cli/formatters` | 2 files | 20 files |
+| `src/core/context/AgentCognitionFacade` | 21 files | 1 file |
+| `src/search/SearchManager` | 17 files | 5 files |
+| `src/core/ObservationManager` | 12 files | 8 files |
 | `src/features/IOManager` | 16 files | 4 files |
-| `src/search/SearchManager` | 17 files | 3 files |
+| `src/search/RankedSearch` | 11 files | 9 files |
 | `src/types/proceduralGraph` | 0 files | 20 files |
 | `src/utils/constants` | 0 files | 20 files |
 | `src/utils/entityUtils` | 3 files | 17 files |
-| `src/agent/AgentMemoryConfig` | 15 files | 3 files |
-| `src/agent/DecayEngine` | 8 files | 10 files |
-| `src/agent/procedural/graph/index` | 16 files | 2 files |
-| `src/core/ObservationManager` | 12 files | 6 files |
-| `src/search/RankedSearch` | 11 files | 7 files |
-| `src/core/RelationManager` | 6 files | 11 files |
+| `src/utils/envConfig` | 1 file | 19 files |
+| `src/agent/AgentMemoryConfig` | 15 files | 4 files |
+| `src/agent/DecayEngine` | 8 files | 11 files |
+| `src/agent/procedural/graph/index` | 16 files | 3 files |
+| `src/core/RelationManager` | 6 files | 13 files |
 | `src/core/index` | 16 files | 1 file |
 | `src/features/index` | 16 files | 1 file |
-| `src/agent/SalienceEngine` | 8 files | 7 files |
-| `src/agent/WorkingMemoryManager` | 8 files | 7 files |
-| `src/agent/skills/SkillManager` | 11 files | 4 files |
-| `src/core/SQLiteStorage` | 12 files | 3 files |
-| `src/core/context/StorageInfraFacade` | 14 files | 1 file |
-| `src/search/HybridSearchManager` | 10 files | 5 files |
-| `src/utils/durableWriteFile` | 0 files | 15 files |
-| `src/utils/envConfig` | 1 file | 14 files |
-| `src/agent/MemoryEngine` | 10 files | 4 files |
+| `src/search/HybridSearchManager` | 10 files | 7 files |
+| `src/search/SemanticSearch` | 5 files | 12 files |
+| `src/agent/SalienceEngine` | 8 files | 8 files |
+| `src/agent/skills/SkillManager` | 11 files | 5 files |
+| `src/core/context/AgentBookkeepingFacade` | 15 files | 1 file |
 
 ---
 
@@ -6313,7 +6489,7 @@ graph TD
         N36[ObservationManager]
         N37[ObservationStore]
         N38[PostgreSQLStorage]
-        N39[...18 more]
+        N39[...24 more]
     end
 
     subgraph Features
@@ -6462,11 +6638,11 @@ graph TD
     N34 --> N32
     N35 --> N86
     N35 --> N83
+    N35 --> N46
     N35 --> N72
     N35 --> N82
     N35 --> N37
     N35 --> N32
-    N35 --> N29
 ```
 
 ---
@@ -6476,21 +6652,21 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 339 |
+| Total TypeScript Files | 345 |
 | Total Modules | 12 |
-| Total Lines of Code | 112611 |
-| Total Exports | 2436 |
-| Total Re-exports | 1573 |
-| Total Classes | 247 |
-| Total Interfaces | 715 |
+| Total Lines of Code | 113217 |
+| Total Exports | 2444 |
+| Total Re-exports | 1575 |
+| Total Classes | 252 |
+| Total Interfaces | 721 |
 | Total Functions | 469 |
 | Total Type Guards | 40 |
 | Total Enums | 4 |
-| Type-only Imports | 541 |
+| Type-only Imports | 630 |
 | Runtime Circular Deps | 0 |
 | Type-only Circular Deps | 10 |
 | Entry/Build Roots | 4 |
-| Reachable Files | 339 |
+| Reachable Files | 345 |
 | Dormant Files (orphaned / test-only) | 0 (0 / 0) |
 
 ---

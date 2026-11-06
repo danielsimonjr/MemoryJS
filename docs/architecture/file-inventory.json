@@ -1,12 +1,12 @@
 {
   "generated": "2026-11-06",
-  "totalFiles": 844,
+  "totalFiles": 856,
   "byDisposition": {
-    "reachable": 335,
+    "reachable": 341,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 489,
+    "test": 495,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -14,8 +14,8 @@
   },
   "byArea": {
     "benchmarks": 4,
-    "src": 339,
-    "tests": 489,
+    "src": 345,
+    "tests": 495,
     "tools": 10,
     "config": 2
   },
@@ -1232,6 +1232,48 @@
       "loc": 227
     },
     {
+      "file": "src/core/context/AgentBookkeepingFacade.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 204
+    },
+    {
+      "file": "src/core/context/AgentCognitionFacade.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 380
+    },
+    {
+      "file": "src/core/context/AgentMemoryFacade.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 488
+    },
+    {
+      "file": "src/core/context/envBounds.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 12
+    },
+    {
+      "file": "src/core/context/KnowledgeGovernanceFacade.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 258
+    },
+    {
+      "file": "src/core/context/SearchFacade.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 310
+    },
+    {
       "file": "src/core/context/StorageInfraFacade.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
@@ -1292,7 +1334,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1765
+      "loc": 719
     },
     {
       "file": "src/core/mmap/FsReadMmapBackend.ts",
@@ -4032,6 +4074,48 @@
       "loc": 459
     },
     {
+      "file": "tests/unit/core/context/AgentBookkeepingFacade.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 69
+    },
+    {
+      "file": "tests/unit/core/context/AgentCognitionFacade.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 94
+    },
+    {
+      "file": "tests/unit/core/context/AgentMemoryFacade.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 116
+    },
+    {
+      "file": "tests/unit/core/context/KnowledgeGovernanceFacade.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 99
+    },
+    {
+      "file": "tests/unit/core/context/ManagerContext.close.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 45
+    },
+    {
+      "file": "tests/unit/core/context/SearchFacade.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 118
+    },
+    {
       "file": "tests/unit/core/context/StorageInfraFacade.test.ts",
       "package": "(root)",
       "area": "tests",
@@ -4526,7 +4610,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 294
+      "loc": 297
     },
     {
       "file": "tests/unit/features/AnalyticsManager.test.ts",

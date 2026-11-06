@@ -14,7 +14,7 @@ export { RelationManager } from './RelationManager.js';
 export { ObservationManager } from './ObservationManager.js';
 export { HierarchyManager } from './HierarchyManager.js';
 export { ManagerContext } from './ManagerContext.js';
-export type { ManagerContextOptions } from './ManagerContext.js';
+export type { ManagerContextOptions, ProceduralGraphConfig } from './ManagerContext.js';
 // Phase 4 Sprint 6-8: Graph traversal algorithms
 export { GraphTraversal } from './GraphTraversal.js';
 // Backward compatibility alias

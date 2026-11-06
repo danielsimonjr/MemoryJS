@@ -215,6 +215,7 @@ ctx.skillPublisher      // Recursa RS-3 atomic SKILL.md publish/import over skil
 - Governance: `GovernanceManager` wraps mutations with policy checks and rollback; `AuditLog` appends every operation immutably
 - Distillation: `IDistillationPolicy` applied post-retrieval in `ContextWindowManager` before formatting for LLM prompts
 - Role-aware salience: `AgentMemoryManager.createRoleAwareSalienceEngine(agentId)` uses the agent's stored role profile (falls back to the `default` profile) for `SalienceEngine` weights
+- Context facades: `ManagerContext` delegates lazy getters to `src/core/context/*Facade.ts` (StorageInfra, Search, AgentMemory, AgentCognition, AgentBookkeeping, KnowledgeGovernance); each facade resolves members at most once and `peek*` never constructs
 - Storage capability guards: `hasDeltaPrimitives` / `hasWriteLock` / `withStorageWriteLock` (`src/core/storageCapabilities.ts`) narrow an `IGraphStorage` before managers use batch delta primitives or `graphMutex`
 - Shared env parsing: `src/utils/envConfig.ts` (`readEnvStrictFlag`, `readEnvLooseFlag`, `readEnvNumber`, `readEnvStrictInt`, ...) is the one implementation of the env idioms below
 - Observation events: `ObservationManager` emits `observation:added` / `observation:deleted` (only the strings actually added or removed)

@@ -1,9 +1,14 @@
 /**
  * Manager Context
  *
- * Central context holding all manager instances.
- * Core managers are eagerly initialized; agent memory managers
- * use lazy initialization due to conditional creation and dependency chains.
+ * Central context holding all manager instances. Core managers (entity,
+ * relation, observation, hierarchy, graph traversal, IO, tags, analytics,
+ * compression, archive, reference index) are eagerly constructed or
+ * constructed on first access. The search, agent-memory, agent-cognition,
+ * agent-bookkeeping, and knowledge/governance groups are owned by facades under
+ * `src/core/context/`; the getters here delegate to them. Facade members keep
+ * the lazy, once-only resolution and the env-read timing of the original
+ * inline getters.
  *
  * @module core/ManagerContext
  */
@@ -12,10 +17,12 @@ import { logger } from '../utils/logger.js';
 import { IndexHealthMonitor, type IndexHealthReport } from '../utils/IndexHealthMonitor.js';
 import { buildDiagnosticsReport, type DiagnosticsOptions, type DiagnosticsReport } from '../utils/Diagnostics.js';
 import { BatchTransaction } from './TransactionManager.js';
+import { ContradictionDetector } from '../features/ContradictionDetector.js';
+import { validateFilePath, sidecarPath } from '../utils/index.js';
 import type { BatchResult, BatchOptions, Entity } from '../types/index.js';
 import { CachePressureCoordinator } from '../utils/CachePressureCoordinator.js';
-import { MaterializedViewsManager } from '../search/MaterializedViews.js';
-import { SpellChecker } from '../search/SpellChecker.js';
+import type { MaterializedViewsManager } from '../search/MaterializedViews.js';
+import type { SpellChecker } from '../search/SpellChecker.js';
 import { ObservationStore } from './ObservationStore.js';
 import { GraphStorage } from './GraphStorage.js';
 import { createStorage, createStorageFromPath } from './StorageFactory.js';
@@ -25,113 +32,82 @@ import { createStorage, createStorageFromPath } from './StorageFactory.js';
 // consumers. Tree-shaking bundlers (sideEffects: false) may drop this;
 // such consumers use preloadSQLiteStorage() instead.
 import './sqlite-register.js';
-import { EntityManager, type GovernanceHooks } from './EntityManager.js';
+import { EntityManager } from './EntityManager.js';
 import { RelationManager } from './RelationManager.js';
 import { ObservationManager } from './ObservationManager.js';
 import type { TieredIndex } from '../search/tiered/TieredIndex.js';
 import type { CompressedMap } from '../utils/compression/CompressedMap.js';
 import type { IColumnStore, ObservationColumn } from './columns/IColumnStore.js';
 import { StorageInfraFacade } from './context/StorageInfraFacade.js';
-import {
-  readEnvNumber,
-  readEnvNumberOrUndefined,
-  readEnvLooseFlag,
-  readEnvStrictFlag,
-  type EnvNumberBounds,
-} from '../utils/envConfig.js';
+import { SearchFacade } from './context/SearchFacade.js';
+import { AgentMemoryFacade } from './context/AgentMemoryFacade.js';
+import { AgentCognitionFacade, type ProceduralGraphConfig } from './context/AgentCognitionFacade.js';
+export type { ProceduralGraphConfig } from './context/AgentCognitionFacade.js';
+import { AgentBookkeepingFacade } from './context/AgentBookkeepingFacade.js';
+import { KnowledgeGovernanceFacade } from './context/KnowledgeGovernanceFacade.js';
+import { readEnvNumber, type EnvNumberBounds } from '../utils/envConfig.js';
 import { HierarchyManager } from './HierarchyManager.js';
 import { GraphTraversal } from './GraphTraversal.js';
-import { SearchManager } from '../search/SearchManager.js';
-import { RankedSearch } from '../search/RankedSearch.js';
-import { GraphRankPrior } from '../search/GraphRankPrior.js';
-import { HybridSearchManager } from '../search/HybridSearchManager.js';
-import { LLMQueryPlanner } from '../search/LLMQueryPlanner.js';
-import { LLMSearchExecutor } from '../search/LLMSearchExecutor.js';
-import type { LLMQueryPlannerConfig } from '../search/LLMQueryPlanner.js';
-// S10: concrete-file imports instead of the search barrel — the barrel pulls
-// ~70 modules (incl. workerpool-backed FuzzySearch) onto the default path.
-import { SemanticSearch } from '../search/SemanticSearch.js';
-import { createEmbeddingService } from '../search/EmbeddingService.js';
-import { EmbeddingCache } from '../search/EmbeddingCache.js';
-import { createVectorStore, isEmbeddingStorage } from '../search/VectorStore.js';
+import type { SearchManager } from '../search/SearchManager.js';
+import type { RankedSearch } from '../search/RankedSearch.js';
+import type { GraphRankPrior } from '../search/GraphRankPrior.js';
+import type { HybridSearchManager } from '../search/HybridSearchManager.js';
+import type { LLMQueryPlanner, LLMQueryPlannerConfig } from '../search/LLMQueryPlanner.js';
+import type { SemanticSearch } from '../search/SemanticSearch.js';
+import type { BloomPreScreener } from '../search/BloomPreScreener.js';
 import { IOManager } from '../features/IOManager.js';
 import { TagManager } from '../features/TagManager.js';
 import { AnalyticsManager } from '../features/AnalyticsManager.js';
 import { CompressionManager } from '../features/CompressionManager.js';
 import { ArchiveManager } from '../features/ArchiveManager.js';
-import { AutoLinker } from '../features/AutoLinker.js';
-import { FactExtractor } from '../features/FactExtractor.js';
-import { TransitionLedger } from './TransitionLedger.js';
-import { AccessTracker } from '../agent/AccessTracker.js';
-import { DecayEngine } from '../agent/DecayEngine.js';
-import { DecayScheduler } from '../agent/DecayScheduler.js';
-import { ConsolidationScheduler } from '../agent/ConsolidationScheduler.js';
-import { SalienceEngine } from '../agent/SalienceEngine.js';
-import { ContextWindowManager } from '../agent/ContextWindowManager.js';
-import { MemoryFormatter } from '../agent/MemoryFormatter.js';
-import { AgentMemoryManager } from '../agent/AgentMemoryManager.js';
-import { ArtifactManager } from '../agent/ArtifactManager.js';
-import { DreamEngine, type DreamEngineConfig } from '../agent/DreamEngine.js';
-import { RefIndex } from './RefIndex.js';
-import { ObserverPipeline } from '../agent/ObserverPipeline.js';
-import type { ObserverPipelineOptions } from '../agent/ObserverPipeline.js';
+import type { AutoLinker } from '../features/AutoLinker.js';
+import type { FactExtractor } from '../features/FactExtractor.js';
+import type { GovernanceManager } from '../features/GovernanceManager.js';
+import type { AccessTracker } from '../agent/AccessTracker.js';
+import type { DecayEngine } from '../agent/DecayEngine.js';
+import type { DecayScheduler } from '../agent/DecayScheduler.js';
+import type { ConsolidationScheduler } from '../agent/ConsolidationScheduler.js';
+import type { SalienceEngine } from '../agent/SalienceEngine.js';
+import type { ContextWindowManager } from '../agent/ContextWindowManager.js';
+import type { MemoryFormatter } from '../agent/MemoryFormatter.js';
+import type { AgentMemoryManager } from '../agent/AgentMemoryManager.js';
 import type { AgentMemoryConfig } from '../agent/AgentMemoryConfig.js';
-import { getEmbeddingConfig } from '../utils/constants.js';
-import { validateFilePath, sidecarPath } from '../utils/index.js';
-import { ContradictionDetector } from '../features/ContradictionDetector.js';
-import { SemanticForget } from '../features/SemanticForget.js';
-import { MemoryEngine } from '../agent/MemoryEngine.js';
-import { ImportanceScorer } from '../agent/ImportanceScorer.js';
+import type { ArtifactManager } from '../agent/ArtifactManager.js';
+import type { DreamEngine, DreamEngineConfig } from '../agent/DreamEngine.js';
+import { RefIndex } from './RefIndex.js';
+import type { ObserverPipeline } from '../agent/ObserverPipeline.js';
+import type { MemoryEngine } from '../agent/MemoryEngine.js';
 import type { IMemoryBackend } from '../agent/MemoryBackend.js';
-import { InMemoryBackend } from '../agent/InMemoryBackend.js';
-import { SQLiteBackend } from '../agent/SQLiteBackend.js';
-import { MemoryValidator } from '../agent/MemoryValidator.js';
-import { TrajectoryCompressor } from '../agent/TrajectoryCompressor.js';
-import { ExperienceExtractor } from '../agent/ExperienceExtractor.js';
-import { HeuristicManager } from '../agent/HeuristicManager.js';
-import { ObservationDedupManager } from '../agent/ObservationDedupManager.js';
-import { ExclusionManager } from '../agent/ExclusionManager.js';
-import { DecisionManager } from '../agent/DecisionManager.js';
-import { ProjectContextManager } from '../agent/ProjectContextManager.js';
-import { ToolAffordanceManager } from '../agent/ToolAffordanceManager.js';
-import { ToolCallObserver } from '../agent/ToolCallObserver.js';
-import { PatternDetector } from '../agent/PatternDetector.js';
-import { ProcedureManager } from '../agent/procedural/ProcedureManager.js';
-import {
-  ProceduralGraphManager,
-  createProceduralGraphBacking,
-  type IProceduralGraphBacking,
-  type PGPolicy,
-  type PGCompletionProvider,
-} from '../agent/procedural/graph/index.js';
-import { EventManager } from '../agent/events/EventManager.js';
-import {
-  ProspectiveMemoryManager,
-  type PredicateEvaluator,
-  type ProcedureInvoker,
-} from '../agent/ProspectiveMemoryManager.js';
-import { FailureManager } from '../agent/FailureManager.js';
-import { PlanManager } from '../agent/PlanManager.js';
-import { AgentReflectionManager } from '../agent/AgentReflectionManager.js';
-import { CausalReasoner } from '../agent/causal/CausalReasoner.js';
-import { RbacMiddleware } from '../agent/rbac/RbacMiddleware.js';
-import { RoleAssignmentStore } from '../agent/rbac/RoleAssignmentStore.js';
-import { WorldModelManager } from '../agent/world/WorldModelManager.js';
-import { ActiveRetrievalController } from '../agent/retrieval/ActiveRetrievalController.js';
-import {
-  ReconstructiveMemory,
-  type ReconstructiveMemoryConfig,
-  type ReconstructiveBacking,
-} from '../agent/reconstruction/index.js';
-// Sec1 — governance enforcement chokepoint (kept as separate import lines).
-import type { BloomPreScreener } from '../search/BloomPreScreener.js';
-import { GovernanceManager } from '../features/GovernanceManager.js';
-import { AuditLog } from '../features/AuditLog.js';
-// Recursa Phase 1 — skills, instruction sets, knowledge repository (lazy getters below).
-import { SkillManager } from '../agent/skills/SkillManager.js';
-import { SkillPublisher } from '../agent/skills/SkillPublisher.js';
-import { InstructionSetManager } from '../agent/knowledge/InstructionSetManager.js';
-import { KnowledgeRepository } from '../agent/knowledge/KnowledgeRepository.js';
+import type { MemoryValidator } from '../agent/MemoryValidator.js';
+import type { TrajectoryCompressor } from '../agent/TrajectoryCompressor.js';
+import type { ExperienceExtractor } from '../agent/ExperienceExtractor.js';
+import type { HeuristicManager } from '../agent/HeuristicManager.js';
+import type { ObservationDedupManager } from '../agent/ObservationDedupManager.js';
+import type { ExclusionManager } from '../agent/ExclusionManager.js';
+import type { DecisionManager } from '../agent/DecisionManager.js';
+import type { ProjectContextManager } from '../agent/ProjectContextManager.js';
+import type { ToolAffordanceManager } from '../agent/ToolAffordanceManager.js';
+import type { ToolCallObserver } from '../agent/ToolCallObserver.js';
+import type { PatternDetector } from '../agent/PatternDetector.js';
+import type { ProcedureManager } from '../agent/procedural/ProcedureManager.js';
+import type { ProceduralGraphManager } from '../agent/procedural/graph/index.js';
+import type { EventManager } from '../agent/events/EventManager.js';
+import type { ProspectiveMemoryManager, PredicateEvaluator } from '../agent/ProspectiveMemoryManager.js';
+import type { FailureManager } from '../agent/FailureManager.js';
+import type { PlanManager } from '../agent/PlanManager.js';
+import type { AgentReflectionManager } from '../agent/AgentReflectionManager.js';
+import type { CausalReasoner } from '../agent/causal/CausalReasoner.js';
+import type { RbacMiddleware } from '../agent/rbac/RbacMiddleware.js';
+import type { RoleAssignmentStore } from '../agent/rbac/RoleAssignmentStore.js';
+import type { WorldModelManager } from '../agent/world/WorldModelManager.js';
+import type { ActiveRetrievalController } from '../agent/retrieval/ActiveRetrievalController.js';
+import type { ReconstructiveMemory, ReconstructiveMemoryConfig } from '../agent/reconstruction/index.js';
+import type { SemanticForget } from '../features/SemanticForget.js';
+import type { TransitionLedger } from './TransitionLedger.js';
+import type { SkillManager } from '../agent/skills/SkillManager.js';
+import type { SkillPublisher } from '../agent/skills/SkillPublisher.js';
+import type { InstructionSetManager } from '../agent/knowledge/InstructionSetManager.js';
+import type { KnowledgeRepository } from '../agent/knowledge/KnowledgeRepository.js';
 
 /**
  * Options for constructing a ManagerContext.
@@ -158,9 +134,6 @@ export interface ManagerContextOptions {
   contradictionThreshold?: number;
 }
 
-/** Inclusive `[0, 1]` range shared by every probability and weight knob. */
-const PROBABILITY: EnvNumberBounds = { min: 0, max: 1 };
-
 /**
  * Central context holding all manager instances.
  * Core managers are eagerly initialized in the constructor.
@@ -171,13 +144,21 @@ export class ManagerContext {
   // which implements the same interface via duck typing
   readonly storage: GraphStorage;
   public readonly defaultProjectId?: string;
-  private readonly prospectivePredicateEvaluator: PredicateEvaluator | undefined;
   private readonly savedSearchesFilePath: string;
   private readonly tagAliasesFilePath: string;
   private readonly refIndexFilePath: string;
   /** Env-gated optional storage infrastructure (DES-4). */
   private readonly infra: StorageInfraFacade;
-  private _observerPipeline?: ObserverPipeline;
+  /** Search-layer managers (DES search facade). */
+  private readonly searchFacade: SearchFacade;
+  /** Agent memory lifecycle and retrieval managers. */
+  private readonly memoryFacade: AgentMemoryFacade;
+  /** Agent reasoning and procedural managers. */
+  private readonly cognitionFacade: AgentCognitionFacade;
+  /** Agent record-keeping managers (heuristics, exclusions, validation, ...). */
+  private readonly bookkeepingFacade: AgentBookkeepingFacade;
+  /** Knowledge, RBAC, transition ledger, and governance managers. */
+  private readonly knowledgeFacade: KnowledgeGovernanceFacade;
 
   // ==================== LAZY-INITIALIZED CORE MANAGERS ====================
   private _entityManager?: EntityManager;
@@ -185,15 +166,12 @@ export class ManagerContext {
   private _observationManager?: ObservationManager;
   private _hierarchyManager?: HierarchyManager;
   private _graphTraversal?: GraphTraversal;
-  private _searchManager?: SearchManager;
-  private _rankedSearch?: RankedSearch;
-  private _graphRankPrior?: GraphRankPrior;
-  private _hybridSearchManager?: HybridSearchManager;
   private _ioManager?: IOManager;
   private _tagManager?: TagManager;
   private _analyticsManager?: AnalyticsManager;
   private _compressionManager?: CompressionManager;
   private _archiveManager?: ArchiveManager;
+  private _refIndex?: RefIndex;
   /**
    * Coordinated cache pressure across registered subsystem caches.
    * Enabled when `MEMORY_CACHE_BUDGET_ENTRIES` is set; otherwise this
@@ -204,64 +182,8 @@ export class ManagerContext {
    */
   readonly cachePressure: CachePressureCoordinator = new CachePressureCoordinator();
 
-  /** Lazy-initialised. See `materializedViews` getter. */
-  private _materializedViews?: MaterializedViewsManager;
-
   /** Lazy-initialised. See `observationStore` getter. */
   private _observationStore?: ObservationStore;
-
-  private _autoLinker?: AutoLinker;
-  private _factExtractor?: FactExtractor;
-  private _transitionLedger?: TransitionLedger | null;
-  private _semanticSearch?: SemanticSearch | null;
-  private _memoryEngine?: MemoryEngine;
-  private _memoryBackend?: IMemoryBackend;
-  private _memoryValidator?: MemoryValidator;
-  private _trajectoryCompressor?: TrajectoryCompressor;
-  private _experienceExtractor?: ExperienceExtractor;
-  private _heuristicManager?: HeuristicManager;
-  private _observationDedupManager?: ObservationDedupManager;
-  private _exclusionManager?: ExclusionManager;
-  private _decisionManager?: DecisionManager;
-  private _projectContextManager?: ProjectContextManager;
-  private _spellChecker?: SpellChecker;
-  private _toolAffordanceManager?: ToolAffordanceManager;
-  private _toolCallObserver?: ToolCallObserver;
-  private _patternDetector?: PatternDetector;
-  private _procedureManager?: ProcedureManager;
-  private _proceduralGraphManagers: ProceduralGraphManager[] = [];
-  private _eventManager?: EventManager;
-  private _prospectiveMemory?: ProspectiveMemoryManager;
-  private _failureManager?: FailureManager;
-  private _plan?: PlanManager;
-  private _reflectionManager?: AgentReflectionManager;
-  private _causalReasoner?: CausalReasoner;
-  private _rbacMiddleware?: RbacMiddleware;
-  private _roleAssignmentStore?: RoleAssignmentStore;
-  private _worldModelManager?: WorldModelManager;
-  private _activeRetrieval?: ActiveRetrievalController;
-  private _reconstructiveMemory?: ReconstructiveMemory;
-  private _accessTracker?: AccessTracker;
-  private _decayEngine?: DecayEngine;
-  private _decayScheduler?: DecayScheduler;
-  private _salienceEngine?: SalienceEngine;
-  private _contextWindowManager?: ContextWindowManager;
-  private _memoryFormatter?: MemoryFormatter;
-  private _agentMemory?: AgentMemoryManager;
-  private _refIndex?: RefIndex;
-  private _artifactManager?: ArtifactManager;
-  private _consolidationScheduler?: ConsolidationScheduler;
-  private _dreamEngine?: DreamEngine;
-  private _llmQueryPlanner?: LLMQueryPlanner;
-  private _llmSearchExecutor?: LLMSearchExecutor;
-  private _semanticForget?: SemanticForget;
-  private _governanceManager?: GovernanceManager;
-  private _skillManager?: SkillManager;
-  private _instructionSets?: InstructionSetManager;
-  private _knowledgeRepository?: KnowledgeRepository;
-  private _skillPublisher?: SkillPublisher;
-  /** Shared hooks passed to every context-wired mutation manager. */
-  private _governanceHooks?: GovernanceHooks;
 
   constructor(pathOrOptions: string | ManagerContextOptions) {
     const opts: ManagerContextOptions =
@@ -269,7 +191,6 @@ export class ManagerContext {
         ? { storagePath: pathOrOptions }
         : pathOrOptions;
     this.defaultProjectId = opts.defaultProjectId;
-    this.prospectivePredicateEvaluator = opts.prospectivePredicateEvaluator;
 
     // Security: Validate path to prevent path traversal attacks.
     // confineToBase=false because storagePath is application-controlled
@@ -297,8 +218,44 @@ export class ManagerContext {
       // Phase 8 sidecar, only used when MEMORY_OBSERVATIONS_COLUMNAR=true.
       columnStorePath: sidecarPath(validatedPath, '-observations'),
       onBloomScreenerReady: (screener) => {
-        if (this._searchManager) this._searchManager.fuzzySearcher.setBloomPreScreener(screener);
+        this.searchFacade.peekSearchManager()?.fuzzySearcher.setBloomPreScreener(screener);
       },
+    });
+
+    // Facades are constructed here but resolve nothing: every member is lazy.
+    this.searchFacade = new SearchFacade({
+      storage: this.storage,
+      cachePressure: this.cachePressure,
+      savedSearchesFilePath: this.savedSearchesFilePath,
+      getEntityManager: () => this.entityManager, getRelationManager: () => this.relationManager,
+      getObservationManager: () => this.observationManager, getGraphTraversal: () => this.graphTraversal,
+      getBloomPreScreener: () => this.bloomPreScreener,
+    });
+    this.knowledgeFacade = new KnowledgeGovernanceFacade({
+      storage: this.storage,
+      getEntityManager: () => this.entityManager,
+      getFailureManager: () => this.failureManager,
+      peekSemanticSearch: () => this.searchFacade.peekSemanticSearch(),
+    });
+    this.bookkeepingFacade = new AgentBookkeepingFacade({
+      storage: this.storage,
+      getEntityManager: () => this.entityManager,
+      getObservationManager: () => this.observationManager,
+      getSemanticSearch: () => this.semanticSearch,
+    });
+    this.cognitionFacade = new AgentCognitionFacade({
+      storage: this.storage,
+      getEntityManager: () => this.entityManager, getRelationManager: () => this.relationManager,
+      getGraphTraversal: () => this.graphTraversal, getRankedSearch: () => this.rankedSearch,
+      getSemanticSearch: () => this.semanticSearch, getMemoryValidator: () => this.memoryValidator,
+      prospectivePredicateEvaluator: opts.prospectivePredicateEvaluator,
+    });
+    this.memoryFacade = new AgentMemoryFacade({
+      storage: this.storage,
+      getEntityManager: () => this.entityManager, getSearchManager: () => this.searchManager,
+      getGraphTraversal: () => this.graphTraversal, getSemanticSearch: () => this.semanticSearch,
+      getHybridSearchManager: () => this.hybridSearchManager, getCompressionManager: () => this.compressionManager,
+      getExclusionManager: () => this.exclusionManager, getRefIndex: () => this.refIndex,
     });
 
     // Wire contradiction detection if enabled (gracefully degrades without embedding provider)
@@ -339,9 +296,9 @@ export class ManagerContext {
     }
   }
 
-  // ==================== LAZY ACCESSORS (agent memory + semantic) ====================
+  // ==================== LAZY ACCESSORS (core) ====================
 
-  /** EntityManager - Entity CRUD and tag operations */
+  /** EntityManager - Entity CRUD and tag operations. Governance hooks are wired at first access; see {@link KnowledgeGovernanceFacade.getGovernanceHooks}. */
   get entityManager(): EntityManager {
     if (!this._entityManager) {
       this._entityManager = new EntityManager(
@@ -352,257 +309,102 @@ export class ManagerContext {
       // (EntityManager.renameEntity remaps them) and are purged on
       // deletes. RefIndex is lazy — no disk I/O until first use.
       this._entityManager.setRefIndex(this.refIndex);
-
-      // Sec1 — governance enforcement chokepoint. Strict literal match
-      // ('true' only), matching the repo's env-gate convention. When
-      // enabled, every EntityManager mutation consults the live
-      // GovernanceManager policy (read at call time, so setPolicy()
-      // after construction takes effect) and appends a committed audit
-      // entry through appendAudit (which honors snapshot redaction).
-      // When the flag is unset there is NO hook object — zero checks,
-      // zero audit calls, zero overhead (pre-Sec1 behavior).
-      this._entityManager.setGovernanceHooks(this.getGovernanceHooks());
+      this._entityManager.setGovernanceHooks(this.knowledgeFacade.getGovernanceHooks());
     }
     return this._entityManager;
   }
 
-  /**
-   * GovernanceManager — policy enforcement, audit logging, and rollback
-   * (v1.6.0 Dynamic Memory Governance).
-   *
-   * The getter always exists for manual use (`withTransaction`,
-   * `rollback`, `setPolicy`). **Enforcement wiring is separate**: when
-   * `MEMORY_GOVERNANCE_ENABLED=true` (strict literal), `ManagerContext`
-   * additionally injects shared governance hooks into the entity, relation,
-   * observation, import/restore, archive, and compression mutation paths.
-   * Policy denial throws `GovernanceError`; allowed entity changes are
-   * audited. With the flag unset, this getter still works but ordinary
-   * manager mutations bypass governance (manual opt-in).
-   *
-   * The audit log lives at `MEMORY_AUDIT_LOG_FILE` when set, otherwise
-   * at the `<basename>-audit.jsonl` sidecar next to the storage file
-   * (same convention as `-saved-searches` / `-ref-index`).
-   */
-  get governanceManager(): GovernanceManager {
-    if (!this._governanceManager) {
-      let auditPath = process.env.MEMORY_AUDIT_LOG_FILE;
-      if (!auditPath) {
-        auditPath = sidecarPath(this.storage.getFilePath(), '-audit');
-      }
-      this._governanceManager = new GovernanceManager(this.storage, new AuditLog(auditPath));
-    }
-    return this._governanceManager;
-  }
+  /** See {@link KnowledgeGovernanceFacade.governanceManager}. */
+  get governanceManager(): GovernanceManager { return this.knowledgeFacade.governanceManager; }
 
-  /**
-   * Return the one live-policy hook object shared by every context-wired
-   * mutation manager. The env gate remains strict and is evaluated when each
-   * manager is first constructed, matching the existing lazy wiring model.
-   */
-  private getGovernanceHooks(): GovernanceHooks | undefined {
-    if (process.env.MEMORY_GOVERNANCE_ENABLED !== 'true') return undefined;
-    if (!this._governanceHooks) {
-      const gov = this.governanceManager;
-      this._governanceHooks = {
-        canCreate: entity => gov.getPolicy().canCreate?.(entity) ?? true,
-        canUpdate: (entity, updates) => gov.getPolicy().canUpdate?.(entity, updates) ?? true,
-        canDelete: entity => gov.getPolicy().canDelete?.(entity) ?? true,
-        audit: event =>
-          gov.appendAudit({
-            operation: event.operation,
-            entityName: event.entityName,
-            before: event.before,
-            after: event.after,
-            status: 'committed',
-          }),
-      };
-    }
-    return this._governanceHooks;
-  }
-
-  /** RelationManager - Relation CRUD */
+  /** RelationManager - Relation CRUD. */
   get relationManager(): RelationManager {
     return (this._relationManager ??= new RelationManager(
       this.storage,
-      this.getGovernanceHooks(),
+      this.knowledgeFacade.getGovernanceHooks(),
     ));
   }
 
-  /** ObservationManager - Observation CRUD */
+  /** ObservationManager - Observation CRUD. Wires the column store (env-gated) at first access. */
   get observationManager(): ObservationManager {
     if (!this._observationManager) {
       this._observationManager = new ObservationManager(
         this.storage,
-        this.getGovernanceHooks(),
+        this.knowledgeFacade.getGovernanceHooks(),
       );
       // Phase 8 tasks 66 + 67: wire the column store (env-gated). The
       // store is null when `MEMORY_OBSERVATIONS_COLUMNAR` is unset/false,
-      // matching pre-Phase-8 behavior. When enabled, every
-      // addObservations/deleteObservations write shadow-mirrors to the
-      // sidecar and `getObservationsFor(name)` reads from the column
-      // store first, falling back to inline.
+      // matching pre-Phase-8 behavior.
       this._observationManager.setColumnStore(this.observationColumnStore);
     }
     return this._observationManager;
   }
 
-  /**
-   * Shadow observation column store (`MEMORY_OBSERVATIONS_COLUMNAR='true'`).
-   * Null when disabled. Read once. Delegates to `StorageInfraFacade`.
-   * @experimental Phase 8.
-   */
-  get observationColumnStore(): IColumnStore<ObservationColumn> | null {
-    return this.infra.observationColumnStore;
-  }
+  /** See {@link StorageInfraFacade.observationColumnStore}. */
+  get observationColumnStore(): IColumnStore<ObservationColumn> | null { return this.infra.observationColumnStore; }
+  /** See {@link StorageInfraFacade.tieredPostingsIndex}. */
+  get tieredPostingsIndex(): TieredIndex<unknown> | null { return this.infra.tieredPostingsIndex; }
+  /** See {@link StorageInfraFacade.compressedEntityCache}. */
+  get compressedEntityCache(): CompressedMap<string, Entity> | null { return this.infra.compressedEntityCache; }
 
-  /**
-   * Tiered posting-list cache (`MEMORY_TIERED_INDEX='true'`), or null.
-   * Read once. Delegates to `StorageInfraFacade`; stats roll up into `diagnostics()`.
-   * @internal Phase 9. See `StorageInfraFacade` for the tier layout.
-   */
-  get tieredPostingsIndex(): TieredIndex<unknown> | null {
-    return this.infra.tieredPostingsIndex;
-  }
-
-  /**
-   * Compressed entity cache (`MEMORY_CACHE_COMPRESS='true'`), or null.
-   * Read once. Delegates to `StorageInfraFacade`.
-   * @internal Phase 10. See `StorageInfraFacade` for the cache policy.
-   */
-  get compressedEntityCache(): CompressedMap<string, Entity> | null {
-    return this.infra.compressedEntityCache;
-  }
-
-  /** HierarchyManager - Entity hierarchy operations */
+  /** HierarchyManager - Entity hierarchy operations. */
   get hierarchyManager(): HierarchyManager {
     return (this._hierarchyManager ??= new HierarchyManager(this.storage));
   }
 
-  /** GraphTraversal - Phase 4 Sprint 6-8: Graph traversal algorithms */
+  /** GraphTraversal - Phase 4 Sprint 6-8: Graph traversal algorithms. */
   get graphTraversal(): GraphTraversal {
     return (this._graphTraversal ??= new GraphTraversal(this.storage));
   }
 
-  /** SearchManager - All search operations */
-  get searchManager(): SearchManager {
-    if (!this._searchManager) {
-      this._searchManager = new SearchManager(
-        this.storage,
-        this.savedSearchesFilePath,
-        this.cachePressure.enabled ? this.cachePressure : undefined,
-      );
-      if (readEnvStrictFlag('MEMORY_FUZZY_BLOOM_PRESCREEN')) {
-        const screener = this.bloomPreScreener;
-        if (screener) this._searchManager.fuzzySearcher.setBloomPreScreener(screener);
-      }
-    }
-    return this._searchManager;
-  }
+  // ==================== SEARCH (delegates to SearchFacade) ====================
 
-  /**
-   * Opt-in Bloom pre-screener for fuzzy search (`MEMORY_FUZZY_BLOOM_PRESCREEN='true'`),
-   * or null. Read once. Delegates to `StorageInfraFacade`; attached to
-   * `searchManager.fuzzySearcher` when it exists.
-   * @experimental
-   */
-  get bloomPreScreener(): BloomPreScreener | null {
-    return this.infra.bloomPreScreener;
-  }
-
-  /** RankedSearch - TF-IDF/BM25 ranked search */
-  get rankedSearch(): RankedSearch {
-    if (!this._rankedSearch) {
-      this._rankedSearch = new RankedSearch(
-        this.storage,
-        undefined,
-        this.cachePressure.enabled ? this.cachePressure : undefined,
-        'context-ranked-tokens',
-      );
-      // Optional graph-connectivity boost. When MEMORY_RANKED_GRAPH_BOOST is
-      // 0/unset (the default), the prior is not even constructed — zero overhead.
-      const graphBoost = this.getEnvNumber('MEMORY_RANKED_GRAPH_BOOST', 0, { min: 0 });
-      if (graphBoost > 0) {
-        this._rankedSearch.setGraphPrior(this.graphRankPrior, graphBoost);
-      }
-    }
-    return this._rankedSearch;
-  }
-
-  /**
-   * GraphRankPrior — cached graph-connectivity ranking signal (normalized
-   * PageRank with degree fallback). Built over the existing GraphTraversal
-   * and auto-invalidated via the storage GraphEventEmitter.
-   * @experimental
-   */
-  get graphRankPrior(): GraphRankPrior {
-    return (this._graphRankPrior ??= new GraphRankPrior(this.graphTraversal, {
-      events: this.storage.events,
-    }));
-  }
-
-  /**
-   * HybridSearchManager — semantic + lexical + symbolic (+ optional graph)
-   * layered search. Reads MEMORY_HYBRID_GRAPH_WEIGHT at first access; when
-   * 0/unset (the default), the GraphRankPrior is not attached — zero overhead.
-   */
-  get hybridSearchManager(): HybridSearchManager {
-    if (!this._hybridSearchManager) {
-      const graphWeight = this.getEnvNumber('MEMORY_HYBRID_GRAPH_WEIGHT', 0, PROBABILITY);
-      this._hybridSearchManager =
-        graphWeight > 0
-          ? new HybridSearchManager(this.semanticSearch, this.rankedSearch, this.graphRankPrior, {
-              graphWeight,
-            })
-          : new HybridSearchManager(this.semanticSearch, this.rankedSearch);
-    }
-    return this._hybridSearchManager;
-  }
-
-  /**
-   * Materialised search views — pre-computed result sets for repeated
-   * filter-based queries. Lazy: only constructed on first access (which
-   * also wires the GraphEventEmitter listener for auto-invalidation).
-   */
-  get materializedViews(): MaterializedViewsManager {
-    return (this._materializedViews ??= new MaterializedViewsManager(
-      this.storage as GraphStorage,
-      this.storage.events,
-    ));
-  }
+  /** See {@link SearchFacade.searchManager}. */
+  get searchManager(): SearchManager { return this.searchFacade.searchManager; }
+  /** See {@link StorageInfraFacade.bloomPreScreener}. */
+  get bloomPreScreener(): BloomPreScreener | null { return this.infra.bloomPreScreener; }
+  /** See {@link SearchFacade.rankedSearch}. */
+  get rankedSearch(): RankedSearch { return this.searchFacade.rankedSearch; }
+  /** See {@link SearchFacade.graphRankPrior}. */
+  get graphRankPrior(): GraphRankPrior { return this.searchFacade.graphRankPrior; }
+  /** See {@link SearchFacade.hybridSearchManager}. */
+  get hybridSearchManager(): HybridSearchManager { return this.searchFacade.hybridSearchManager; }
+  /** See {@link SearchFacade.materializedViews}. */
+  get materializedViews(): MaterializedViewsManager { return this.searchFacade.materializedViews; }
 
   /**
    * Content-addressable observation store — opt-in helper for callers
    * who want to detect duplicate observation strings across entities
    * (memory-saving analysis, dedup audits). Lazy: only constructed
-   * on first access. The Entity shape on disk is unchanged; this is
-   * a side-channel store the caller drives manually via
-   * `internEntityObservations(entity)` / `releaseEntityObservations(hashes)`.
-   *
-   * **Scope:** the store is per-`ManagerContext` instance and lives
-   * only in process memory. There is no on-disk persistence and no
-   * seed from existing graph entities — a fresh `ctx` starts empty
-   * and the store accumulates only the observations the caller
-   * explicitly interns. Restart the process and the table is gone.
+   * on first access. Per-`ManagerContext`, in-process only; no
+   * persistence and no seed from existing graph entities.
    */
   get observationStore(): ObservationStore {
     return (this._observationStore ??= new ObservationStore());
   }
 
+  /** See {@link SearchFacade.semanticSearch}. */
+  get semanticSearch(): SemanticSearch | null { return this.searchFacade.semanticSearch; }
+  /** See {@link SearchFacade.autoLinker}. */
+  get autoLinker(): AutoLinker { return this.searchFacade.autoLinker; }
+  /** See {@link SearchFacade.factExtractor}. */
+  get factExtractor(): FactExtractor { return this.searchFacade.factExtractor; }
+  /** See {@link SearchFacade.llmQueryPlanner}. */
+  llmQueryPlanner(config?: LLMQueryPlannerConfig): LLMQueryPlanner { return this.searchFacade.llmQueryPlanner(config); }
+  /** See {@link SearchFacade.queryNaturalLanguage}. */
+  queryNaturalLanguage(text: string): Promise<Entity[]> { return this.searchFacade.queryNaturalLanguage(text); }
+
   /**
    * Aggregate index health snapshot.
    *
    * Returns a uniform report covering every search index this context is
-   * aware of. The future `ctx.diagnostics()` will compose over this shape
-   * rather than redefine it.
-   *
-   * Side-effect-free: reads the private lazy-init fields directly so calling
-   * `indexHealth()` does not force construction of `RankedSearch` or
+   * aware of. Side-effect-free: reads the cached search instances directly so
+   * calling `indexHealth()` does not force construction of `RankedSearch` or
    * `SemanticSearch` (which would load the local embedding model).
-   * Uninitialised subsystems report `initialized: false` with a warning.
    */
   indexHealth(): IndexHealthReport {
     return new IndexHealthMonitor({
-      rankedSearch: this._rankedSearch,
+      rankedSearch: this.searchFacade.peekRankedSearch(),
       embeddingHealth: () => this.embeddingHealthSnapshot(),
     }).report();
   }
@@ -617,7 +419,6 @@ export class ManagerContext {
    *
    * **Exception semantics:** if `fn` throws, the queued operations are
    * discarded and the exception propagates — `execute()` is not called.
-   * This is the conventional "abort on builder error" contract.
    *
    * @example
    * ```typescript
@@ -689,8 +490,10 @@ export class ManagerContext {
     );
   }
 
+  /** Embedding health panel for {@link ManagerContext.indexHealth}. Reads the cached search only. */
   private embeddingHealthSnapshot() {
-    if (this._semanticSearch === undefined) {
+    const semantic = this.searchFacade.peekSemanticSearch();
+    if (semantic === undefined) {
       return {
         name: 'embedding',
         initialized: false,
@@ -700,999 +503,142 @@ export class ManagerContext {
     }
     return {
       name: 'embedding',
-      initialized: this._semanticSearch !== null,
+      initialized: semantic !== null,
       documentCount: -1,
-      warnings: this._semanticSearch === null ? ['no embedding provider configured'] : [],
+      warnings: semantic === null ? ['no embedding provider configured'] : [],
     };
   }
 
-  /** IOManager - Import/export/backup/restore */
+  /** IOManager - Import/export/backup/restore. */
   get ioManager(): IOManager {
     return (this._ioManager ??= new IOManager(this.storage, {
       entityManager: this.entityManager,
       relationManager: this.relationManager,
-      governanceHooks: this.getGovernanceHooks(),
+      governanceHooks: this.knowledgeFacade.getGovernanceHooks(),
     }));
   }
 
-  /** TagManager - Tag alias management */
+  /** TagManager - Tag alias management. */
   get tagManager(): TagManager {
     return (this._tagManager ??= new TagManager(this.tagAliasesFilePath));
   }
 
-  /** AnalyticsManager - Graph statistics and validation */
+  /** AnalyticsManager - Graph statistics and validation. */
   get analyticsManager(): AnalyticsManager {
     return (this._analyticsManager ??= new AnalyticsManager(this.storage));
   }
 
-  /** CompressionManager - Duplicate detection and entity merging */
+  /** CompressionManager - Duplicate detection and entity merging. */
   get compressionManager(): CompressionManager {
     return (this._compressionManager ??= new CompressionManager(
       this.storage,
-      this.getGovernanceHooks(),
+      this.knowledgeFacade.getGovernanceHooks(),
     ));
   }
 
-  /** ArchiveManager - Entity archival to compressed storage */
+  /** ArchiveManager - Entity archival to compressed storage. */
   get archiveManager(): ArchiveManager {
     return (this._archiveManager ??= new ArchiveManager(
       this.storage,
-      this.getGovernanceHooks(),
+      this.knowledgeFacade.getGovernanceHooks(),
     ));
   }
 
-  /**
-   * AutoLinker - Automatic entity mention detection in observations.
-   * Automatically wired to ObservationManager for auto-link support.
-   */
-  get autoLinker(): AutoLinker {
-    if (!this._autoLinker) {
-      this._autoLinker = new AutoLinker(
-        this.storage,
-        this.relationManager
-      );
-      this.observationManager.setAutoLinker(this._autoLinker);
-    }
-    return this._autoLinker;
-  }
-
-  /**
-   * FactExtractor - Rule-based fact extraction from observation text.
-   */
-  get factExtractor(): FactExtractor {
-    if (!this._factExtractor) {
-      this._factExtractor = new FactExtractor(this.entityManager, this.relationManager);
-    }
-    return this._factExtractor;
-  }
-
-  /**
-   * SemanticSearch - Semantic similarity search.
-   * Returns null if no embedding provider is configured.
-   */
-  get semanticSearch(): SemanticSearch | null {
-    if (this._semanticSearch === undefined) {
-      const config = getEmbeddingConfig();
-      const embeddingService = createEmbeddingService(config);
-
-      if (embeddingService) {
-        const vectorStore = isEmbeddingStorage(this.storage)
-          ? createVectorStore('sqlite', this.storage, embeddingService.model)
-          : createVectorStore('jsonl');
-        const pressure = this.cachePressure.enabled ? this.cachePressure : undefined;
-        const embeddingCache = pressure
-          ? new EmbeddingCache({ dimensions: embeddingService.dimensions })
-          : undefined;
-        if (embeddingCache) pressure?.register(embeddingCache);
-        this._semanticSearch = new SemanticSearch(embeddingService, vectorStore, {
-          embeddingCache,
-          onCacheInsert: () => pressure?.evictIfOverBudget(),
-        });
-      } else {
-        this._semanticSearch = null;
-      }
-    }
-    return this._semanticSearch;
-  }
-
-  /**
-   * MemoryEngine — turn-aware conversation memory facade composing over
-   * EpisodicMemoryManager + WorkingMemoryManager + ImportanceScorer.
-   * Lazy: instantiated on first access. Reads MEMORY_ENGINE_* env vars
-   * for dedup thresholds, scan window, and scorer weights.
-   */
-  get memoryEngine(): MemoryEngine {
-    if (!this._memoryEngine) {
-      const agent = this.agentMemory();
-      const importanceScorer = new ImportanceScorer({
-        lengthWeight: this.getEnvNumber('MEMORY_ENGINE_LENGTH_WEIGHT', 0.3, PROBABILITY),
-        keywordWeight: this.getEnvNumber('MEMORY_ENGINE_KEYWORD_WEIGHT', 0.4, PROBABILITY),
-        overlapWeight: this.getEnvNumber('MEMORY_ENGINE_OVERLAP_WEIGHT', 0.3, PROBABILITY),
-      });
-      const semanticSearch = this.semanticSearch ?? null;
-      // Use the public accessor so a future rename of the private field
-      // would surface as a typecheck error rather than a silent null.
-      const embeddingService = semanticSearch?.getEmbeddingService() ?? null;
-
-      this._memoryEngine = new MemoryEngine(
-        this.storage,
-        this.entityManager,
-        agent.episodicMemory,
-        agent.workingMemory,
-        importanceScorer,
-        semanticSearch,
-        embeddingService,
-        {
-          jaccardThreshold: this.getEnvNumber('MEMORY_ENGINE_JACCARD_THRESHOLD', 0.72, PROBABILITY),
-          prefixOverlapThreshold: this.getEnvNumber('MEMORY_ENGINE_PREFIX_OVERLAP', 0.5, PROBABILITY),
-          dedupScanWindow: Math.trunc(
-            this.getEnvNumber('MEMORY_ENGINE_DEDUP_SCAN_WINDOW', 200, { integer: true, min: 1 }),
-          ),
-          maxTurnsPerSession: Math.trunc(
-            this.getEnvNumber('MEMORY_ENGINE_MAX_TURNS_PER_SESSION', 1000, { integer: true, min: 1 }),
-          ),
-          semanticDedupEnabled: this.getEnvBool('MEMORY_ENGINE_SEMANTIC_DEDUP', false),
-          semanticThreshold: this.getEnvNumber('MEMORY_ENGINE_SEMANTIC_THRESHOLD', 0.92, PROBABILITY),
-          recentTurnsForImportance: Math.trunc(
-            this.getEnvNumber('MEMORY_ENGINE_RECENT_TURNS', 10, { integer: true, min: 1 }),
-          ),
-          // Phase 3 do_not_remember: auto-wire so addTurn consults
-          // active exclusion rules. Direct-construct MemoryEngine
-          // (bypassing this getter) to opt out.
-          exclusionManager: this.exclusionManager,
-        },
-      );
-    }
-    return this._memoryEngine;
-  }
-
-  /**
-   * IMemoryBackend (PRD MEM-04) — agent-memory-flavored backend.
-   *
-   * Selection by `MEMORY_BACKEND` env var:
-   *   - `sqlite` (default when storage is SQLite OR var unset on JSONL)
-   *   - `in-memory` (ephemeral; no persistence)
-   *   - future: `postgres`, `vector` (Phase γ)
-   *
-   * Both adapters wrap `ctx.memoryEngine` + `ctx.decayEngine` so they
-   * inherit the four-tier dedup chain and PRD effective-importance
-   * scoring respectively. Lazy-initialized; cached.
-   */
-  get memoryBackend(): IMemoryBackend {
-    if (!this._memoryBackend) {
-      const choice = (process.env.MEMORY_BACKEND ?? 'sqlite').toLowerCase();
-      switch (choice) {
-        case 'in-memory':
-        case 'inmemory':
-        case 'memory':
-          this._memoryBackend = new InMemoryBackend(this.decayEngine);
-          break;
-        case 'sqlite':
-        default:
-          // SQLiteBackend wraps MemoryEngine which works against either
-          // JSONL or SQLite storage transparently — naming reflects PRD
-          // intent (durable backend) more than the disk format.
-          this._memoryBackend = new SQLiteBackend(this.memoryEngine, this.decayEngine, {
-            renameEntity: (oldName, newName) => this.entityManager.renameEntity(oldName, newName),
-          });
-          break;
-      }
-    }
-    return this._memoryBackend;
-  }
-
-  /**
-   * MemoryValidator (ROADMAP §3B.1, Phase δ.1) — reflection-stage
-   * service that prevents hallucinations and logical errors from
-   * contaminating memory through self-critique before storage.
-   * Wraps `ContradictionDetector`. Lazy-initialized.
-   *
-   * Construction needs `ContradictionDetector(SemanticSearch, threshold)`.
-   * If no semantic-search backend is configured, a no-op detector is
-   * synthesized so MemoryValidator's other methods still work — the
-   * detection method just returns no contradictions.
-   */
-  get memoryValidator(): MemoryValidator {
-    if (!this._memoryValidator) {
-      const ss = this.semanticSearch;
-      const detector = ss
-        ? new ContradictionDetector(ss, 0.85)
-        : new ContradictionDetector(
-            { calculateSimilarity: async () => 0 } as never,
-            0.85,
-          );
-      this._memoryValidator = new MemoryValidator(detector);
-    }
-    return this._memoryValidator;
-  }
-
-  /**
-   * TrajectoryCompressor (ROADMAP §3B.2, Phase δ.2) — reflection-stage
-   * service that distills verbose interaction histories into compact,
-   * reusable representations. Wraps `compressForContext`. Lazy.
-   */
-  get trajectoryCompressor(): TrajectoryCompressor {
-    if (!this._trajectoryCompressor) {
-      this._trajectoryCompressor = new TrajectoryCompressor(this.contextWindowManager);
-    }
-    return this._trajectoryCompressor;
-  }
-
-  /**
-   * ExperienceExtractor (ROADMAP §3B.3, Phase δ.3) — experience-stage
-   * service that abstracts universal patterns from trajectory clusters
-   * for zero-shot transfer. Wraps `PatternDetector`. Lazy.
-   */
-  get experienceExtractor(): ExperienceExtractor {
-    if (!this._experienceExtractor) {
-      this._experienceExtractor = new ExperienceExtractor(this.patternDetector);
-    }
-    return this._experienceExtractor;
-  }
-
-  /**
-   * `HeuristicManager` (Phase 3B.8a, v2.0.x) — storage-backed registry of
-   * `condition → action` heuristic guidelines. `@experimental` match
-   * algorithm. Lazy. The companion `HeuristicExtractionStage` (3B.8b,
-   * pending) will crystallise resolved failures + qualifying reflections
-   * into heuristic entities; for now the manager is the explicit
-   * `add` / `match` / `reinforce` surface.
-   */
-  get heuristicManager(): HeuristicManager {
-    if (!this._heuristicManager) {
-      this._heuristicManager = new HeuristicManager(this.storage, this.entityManager);
-    }
-    return this._heuristicManager;
-  }
-
-  /**
-   * `ObservationDedupManager` — read-only cross-entity duplicate-observation
-   * finder. Complementary to `MemoryEngine` (turn-level) and
-   * `CompressionManager.findDuplicates` (entity-level); this manager
-   * surfaces observation strings that appear verbatim or
-   * near-verbatim across distinct entities. Lazy.
-   */
-  get observationDedupManager(): ObservationDedupManager {
-    if (!this._observationDedupManager) {
-      this._observationDedupManager = new ObservationDedupManager(this.storage);
-    }
-    return this._observationDedupManager;
-  }
-
-  /**
-   * `ExclusionManager` (Phase 3, v2.0.x) — user-supplied content-pattern
-   * exclusion rules (`do_not_remember`). Hard-deletes existing matches
-   * on `add` and (in Phase Excl B) write-blocks future matches at the
-   * `MemoryEngine.addTurn` / `WorkingMemoryManager.add` hot paths. v1
-   * ships `substring` matching only; `regex` is deferred. Lazy.
-   */
-  get exclusionManager(): ExclusionManager {
-    if (!this._exclusionManager) {
-      this._exclusionManager = new ExclusionManager(this.storage, this.entityManager);
-    }
-    return this._exclusionManager;
-  }
-
-  /**
-   * `DecisionManager` (Phase 3 Decision Rationale) — runtime-queryable
-   * architecture-decision-record (ADR) memory. Lifecycle:
-   * proposed → accepted | rejected; accepted → superseded. OCC-protected
-   * via `EntityManager.updateEntity({expectedVersion})`. Lazy.
-   */
-  get decisionManager(): DecisionManager {
-    if (!this._decisionManager) {
-      this._decisionManager = new DecisionManager(this.storage, this.entityManager);
-    }
-    return this._decisionManager;
-  }
-
-  /**
-   * `ProjectContextManager` (Phase 3 Project Context) — structured
-   * project knowledge (facts / conventions / commands / glossary), one
-   * record per `projectId`. Companion to unstructured CLAUDE.md
-   * content; runtime-queryable. `forContext(projectId)` formats the
-   * record as a prose summary fit for the Phase PC B
-   * `ContextWindowManager.wakeUp` L0 layer. Lazy.
-   */
-  get projectContextManager(): ProjectContextManager {
-    if (!this._projectContextManager) {
-      this._projectContextManager = new ProjectContextManager(
-        this.storage,
-        this.entityManager,
-      );
-    }
-    return this._projectContextManager;
-  }
-
-  /**
-   * `SpellChecker` — spell-correction layer over the existing
-   * `NGramIndex`. Vocabulary auto-builds from entity names + tag values
-   * (configurable). `suggest(query, opts?)` returns ranked corrections
-   * filtered by score and Levenshtein distance. Lazy.
-   */
-  get spellChecker(): SpellChecker {
-    if (!this._spellChecker) {
-      this._spellChecker = new SpellChecker(this.storage);
-    }
-    return this._spellChecker;
-  }
-
-  /**
-   * `ToolAffordanceManager` (catalog Type 8, Phase Tool A) — per-tool
-   * rolling outcome statistics for adaptive tool selection. Producer
-   * side: `ToolCallObserver` (Phase Tool B, pending) is the canonical
-   * caller; direct `recordOutcome` use is supported for custom
-   * pipelines. Lazy.
-   */
-  get toolAffordanceManager(): ToolAffordanceManager {
-    if (!this._toolAffordanceManager) {
-      this._toolAffordanceManager = new ToolAffordanceManager(this.storage, this.entityManager);
-    }
-    return this._toolAffordanceManager;
-  }
-
-  /**
-   * `ToolCallObserver` (Phase Tool B) — canonical producer pipeline for
-   * `ToolAffordanceManager`. External systems (MCP server, agent
-   * wrapper, custom runtime) call `observeStart(toolName)` before
-   * running a tool and `observeComplete` / `observeError` /
-   * `observePartial` after. Emits events for telemetry subscribers.
-   * Lazy; auto-wires `toolAffordanceManager`.
-   */
-  get toolCallObserver(): ToolCallObserver {
-    if (!this._toolCallObserver) {
-      this._toolCallObserver = new ToolCallObserver(this.toolAffordanceManager);
-    }
-    return this._toolCallObserver;
-  }
-
-  /** Lazy `PatternDetector` instance — backs `experienceExtractor`
-   * but also exposed directly for callers that want pattern detection
-   * without the full Experience-stage wrapper. */
-  get patternDetector(): PatternDetector {
-    if (!this._patternDetector) {
-      this._patternDetector = new PatternDetector();
-    }
-    return this._patternDetector;
-  }
-
-  /**
-   * `ProcedureManager` (3B.4) — first-class executable procedures.
-   * Lazy. Composes `EntityManager` (persists procedures as
-   * `entityType: 'procedure'`).
-   */
-  get procedureManager(): ProcedureManager {
-    if (!this._procedureManager) {
-      this._procedureManager = new ProcedureManager(this.entityManager, this.relationManager);
-    }
-    return this._procedureManager;
-  }
-
-  /**
-   * Factory for a {@link ProceduralGraphManager}. A config `backing`
-   * object is constructed here (`ownsBacking: true`) and disposed by
-   * {@link close}. An injected backing instance is not owned.
-   */
-  async createProceduralGraph(config: {
-    backing: { type: 'jsonl' | 'sqlite' | 'memory'; path?: string } | IProceduralGraphBacking;
-    policy?: PGPolicy;
-    guidanceProvider?: PGCompletionProvider;
-    paperCompatible?: boolean;
-  }): Promise<ProceduralGraphManager> {
-    let backing: IProceduralGraphBacking;
-    let ownsBacking: boolean;
-    if (isProceduralGraphBacking(config.backing)) {
-      backing = config.backing;
-      ownsBacking = false;
-    } else {
-      const spec = config.backing;
-      backing = await createProceduralGraphBacking({
-        type: spec.type,
-        path: spec.path ?? this.defaultProceduralGraphPath(spec.type),
-      });
-      ownsBacking = true;
-    }
-    const manager = new ProceduralGraphManager({
-      backing,
-      ownsBacking,
-      policy: config.policy,
-      guidanceProvider: config.guidanceProvider,
-      paperCompatible: config.paperCompatible,
-    });
-    if (ownsBacking) {
-      this._proceduralGraphManagers.push(manager);
-    }
-    return manager;
-  }
-
-  private defaultProceduralGraphPath(type: 'jsonl' | 'sqlite' | 'memory'): string | undefined {
-    if (type === 'memory') {
-      return undefined;
-    }
-    return sidecarPath(
-      this.storage.getFilePath(),
-      '-procedural-graph',
-      type === 'sqlite' ? '.db' : '.jsonl',
-    );
-  }
-
-  /**
-   * `EventManager` (R1) — n-ary event reification: actions become
-   * first-class `entityType: 'event'` hub entities with role-typed
-   * relations (`actor_of` / `targeted` / `occurred_in` /
-   * `participant_in`) and optional `flow:<key>` grouping tags. Lazy.
-   * Composes `EntityManager` + `RelationManager`; missing endpoints
-   * auto-create as `'concept'` stubs by default.
-   */
-  get eventManager(): EventManager {
-    if (!this._eventManager) {
-      this._eventManager = new EventManager(this.entityManager, this.relationManager);
-    }
-    return this._eventManager;
-  }
-
-  /**
-   * `ProspectiveMemoryManager` — intention-to-act / future-tense memory.
-   * Lazy. Wires `procedureInvoker` to delegate to `procedureManager.invoke()`
-   * per D1 of `docs/roadmap/MEMORY_TYPES_EXPANSION.md` §6.
-   */
-  get prospectiveMemory(): ProspectiveMemoryManager {
-    if (!this._prospectiveMemory) {
-      const procedureInvoker: ProcedureInvoker = async (procedureId) => {
-        const result = await this.procedureManager.invoke(procedureId);
-        if (!result.found) {
-          throw new Error(`ProcedureInvoker: procedure '${procedureId}' not found`);
-        }
-      };
-      this._prospectiveMemory = new ProspectiveMemoryManager(this.storage, {
-        defaultExpiryHours: this.getEnvNumber('MEMORY_PROSPECTIVE_DEFAULT_EXPIRY_HOURS', 168, { min: 0 }),
-        maxPendingPerSession: this.getEnvNumber('MEMORY_PROSPECTIVE_MAX_PENDING_PER_SESSION', 100, { integer: true, min: 1 }),
-        procedureInvoker,
-        predicateEvaluator: this.prospectivePredicateEvaluator,
-      });
-    }
-    return this._prospectiveMemory;
-  }
-
-  /**
-   * `FailureManager` (Phase 2 Sprint 4) — structured failure-memory
-   * with `record()` / `lookupForTask()` / `markResolved()` /
-   * `getAll()`. Catalog Type 9. The catalog calls this "the single
-   * biggest concrete win available to most agentic systems" — the
-   * pre-task `lookupForTask` is the headline retrieval mode.
-   */
-  get failureManager(): FailureManager {
-    if (!this._failureManager) {
-      this._failureManager = new FailureManager(this.storage, this.entityManager, {
-        defaultLookupLimit: this.getEnvNumber('MEMORY_FAILURE_LOOKUP_LIMIT', 5, { integer: true, min: 1 }),
-        findPlanNodeOwners: (nodeId) => this.plan.findNodeOwners(nodeId),
-      });
-    }
-    return this._failureManager;
-  }
-
-  /**
-   * `PlanManager` (Phase 2 Sprint 5) — plan / goal-stack memory.
-   * Catalog Type 6: forward-looking goal tree with sub-tasks +
-   * acceptance criteria. Distinct from prospective memory (single
-   * intention-to-act) by mutability + decomposition.
-   */
-  get plan(): PlanManager {
-    if (!this._plan) {
-      this._plan = new PlanManager(this.storage);
-    }
-    return this._plan;
-  }
-
-  /**
-   * `AgentReflectionManager` (Phase 2 Sprint 8) — reflection-memory write
-   * path and read API. Catalog Type 10: derived memories produced by
-   * `ReflectionStage` (pattern + trajectory + experience) over a
-   * candidate set. **Additive** — reflections do NOT supersede their
-   * evidence entities. `ReflectionStage` itself is not auto-registered
-   * on the default pipeline; construct it explicitly (it requires a
-   * `TrajectoryCompressor` which needs a `ContextWindowManager`) and
-   * invoke `runOnSessionEnd(sessionId)` from session-end handlers, or
-   * register it on a `ConsolidationPipeline` instance.
-   */
-  get reflectionManager(): AgentReflectionManager {
-    if (!this._reflectionManager) {
-      this._reflectionManager = new AgentReflectionManager(this.storage, this.entityManager);
-    }
-    return this._reflectionManager;
-  }
-
-  /**
-   * `CausalReasoner` (3B.6) — symbolic forward / backward / counter-
-   * factual inference over the causal subgraph. Wraps `GraphTraversal`.
-   * Lazy.
-   */
-  get causalReasoner(): CausalReasoner {
-    if (!this._causalReasoner) {
-      this._causalReasoner = new CausalReasoner(this.graphTraversal);
-    }
-    return this._causalReasoner;
-  }
-
-  /**
-   * `RoleAssignmentStore` (η.6.1) — registry of role grants per agent.
-   * Lazy. In-memory only by default; configure persistence via the
-   * direct constructor if a JSONL sidecar is wanted.
-   */
-  get roleAssignmentStore(): RoleAssignmentStore {
-    if (!this._roleAssignmentStore) {
-      this._roleAssignmentStore = new RoleAssignmentStore();
-    }
-    return this._roleAssignmentStore;
-  }
-
-  /**
-   * `RbacMiddleware` (η.6.1) — `RbacPolicy` impl. Backed by the lazy
-   * `roleAssignmentStore`. Lazy.
-   */
-  get rbacMiddleware(): RbacMiddleware {
-    if (!this._rbacMiddleware) {
-      this._rbacMiddleware = new RbacMiddleware(this.roleAssignmentStore);
-    }
-    return this._rbacMiddleware;
-  }
-
-  /**
-   * `WorldModelManager` (3B.7) — orchestrator that composes
-   * `causalReasoner`, `memoryValidator`, and `entityManager` into a
-   * single facade for `getCurrentState` / `validateFact` /
-   * `predictOutcome` / `detectStateChange`. Lazy. Causal and validator
-   * dependencies are passed through; methods that need them gracefully
-   * return null/empty when they're not configured.
-   */
-  get worldModelManager(): WorldModelManager {
-    if (!this._worldModelManager) {
-      this._worldModelManager = new WorldModelManager(
-        this.entityManager,
-        this.causalReasoner,
-        this.memoryValidator,
-      );
-    }
-    return this._worldModelManager;
-  }
-
-  /**
-   * `ActiveRetrievalController` (3B.5) — adaptive query-rewriting loop
-   * over `RankedSearch`. Lazy. Pure symbolic expansion (no LLM); for
-   * LLM-driven decomposition use `ctx.llmQueryPlanner`.
-   */
-  get activeRetrieval(): ActiveRetrievalController {
-    if (!this._activeRetrieval) {
-      this._activeRetrieval = new ActiveRetrievalController(this.rankedSearch);
-    }
-    return this._activeRetrieval;
-  }
-
-  /**
-   * `ReconstructiveMemory` — MRAgent-style associative memory ("Memory is
-   * Reconstructed, Not Retrieved"). Builds a Cue–Tag–Content graph from
-   * dialogue (`ingest`) and answers queries via active, multi-step memory
-   * reconstruction (`reconstruct`). Lazy; works zero-config with heuristic
-   * distillation/reconstruction, or pass an `LLMProvider` for the paper's
-   * LLM-driven distillation and answer synthesis.
-   *
-   * @param config Optional LLM provider / restored graph snapshot. Passing a
-   *   config re-instantiates the facade (invalidates the cached instance).
-   */
-  reconstructiveMemory(config?: ReconstructiveMemoryConfig): ReconstructiveMemory {
-    if (config) {
-      // Default the live-store backing to this context's managers unless the
-      // caller opts out by passing their own (or `backing: undefined` explicitly).
-      const backing = 'backing' in config ? config.backing : this.buildReconstructiveBacking();
-      this._reconstructiveMemory = new ReconstructiveMemory({ ...config, backing });
-    } else if (!this._reconstructiveMemory) {
-      this._reconstructiveMemory = new ReconstructiveMemory({
-        backing: this.buildReconstructiveBacking(),
-      });
-    }
-    return this._reconstructiveMemory;
-  }
-
-  /**
-   * Build a {@link ReconstructiveBacking} that bridges the Cue–Tag–Content
-   * layers to this context's live modules: episodic episodes onto the
-   * `EpisodicMemoryManager` timeline, semantic facts into the entity graph +
-   * `SemanticSearch`, and topic links as relations.
-   */
-  private buildReconstructiveBacking(): ReconstructiveBacking {
-    const semantic = this.semanticSearch;
-    return {
-      // Agent entities (memoryType/sessionId/…) bypass the plain-Entity schema by
-      // appending directly to storage — the same path EpisodicMemoryManager uses.
-      // Names already present are skipped so repeated ingests don't duplicate
-      // anchor (person/topic) entities.
-      createEntities: async entities => {
-        const graph = await this.storage.loadGraph();
-        const existing = new Set(graph.entities.map(e => e.name));
-        for (const entity of entities) {
-          if (existing.has(entity.name)) continue;
-          existing.add(entity.name);
-          await this.storage.appendEntity(entity);
-        }
-      },
-      createRelations: relations => this.relationManager.createRelations(relations),
-      similarity: semantic
-        ? (a, b) => semantic.calculateSimilarity(a, b)
-        : undefined,
-      indexEntity: semantic ? entity => semantic.indexEntity(entity) : undefined,
-    };
-  }
-
-  /**
-   * TransitionLedger - Append-only audit trail for state changes.
-   * Returns null if not enabled via MEMORY_TRANSITION_LEDGER env var.
-   * Auto-attaches to storage event emitter when created.
-   */
-  get transitionLedger(): TransitionLedger | null {
-    if (this._transitionLedger === undefined) {
-      if (this.getEnvBool('MEMORY_TRANSITION_LEDGER', false)) {
-        this._transitionLedger = new TransitionLedger(this.storage.getFilePath());
-        this._transitionLedger.attachToEmitter(this.storage.events);
-      } else {
-        this._transitionLedger = null;
-      }
-    }
-    return this._transitionLedger;
-  }
-
-  /**
-   * SkillManager (Recursa RS-2), lazy. Semantic blending is used when
-   * `ctx.semanticSearch` has been initialised before the first `skillManager`
-   * access (this getter never constructs it); `MEMORY_EMBEDDING_PROVIDER=none`
-   * disables it.
-   */
-  get skillManager(): SkillManager {
-    if (!this._skillManager) {
-      const manager = new SkillManager(this.storage, this.entityManager);
-      const semantic = this._semanticSearch;
-      if (semantic) manager.setSemanticSearch(semantic);
-      this._skillManager = manager;
-    }
-    return this._skillManager;
-  }
-
-  /** InstructionSetManager (Recursa RS-5), lazy; `history()` uses `transitionLedger`. */
-  get instructionSets(): InstructionSetManager {
-    if (!this._instructionSets) {
-      this._instructionSets = new InstructionSetManager(this.storage, {
-        ledger: this.transitionLedger,
-        entityManager: this.entityManager,
-      });
-    }
-    return this._instructionSets;
-  }
-
-  /** KnowledgeRepository (Recursa RS-5), lazy: snapshots, revisions, `loadForContext`. */
-  get knowledgeRepository(): KnowledgeRepository {
-    if (!this._knowledgeRepository) {
-      this._knowledgeRepository = new KnowledgeRepository({
-        storage: this.storage,
-        instructionSets: this.instructionSets,
-        skills: this.skillManager,
-        failures: this.failureManager,
-        entityManager: this.entityManager,
-      });
-    }
-    return this._knowledgeRepository;
-  }
-
-  /** SkillPublisher (Recursa RS-3), lazy: atomic SKILL.md publish and import. */
-  get skillPublisher(): SkillPublisher {
-    return (this._skillPublisher ??= new SkillPublisher(this.storage, this.skillManager));
-  }
-
-  /** RefIndex - Named reference index for O(1) stable entity lookups */
+  /** RefIndex - Named reference index for O(1) stable entity lookups. */
   get refIndex(): RefIndex {
     return (this._refIndex ??= new RefIndex(this.refIndexFilePath));
   }
 
-  /** SemanticForget - Feature 3 (v1.8.0): Two-tier deletion with semantic fallback */
-  get semanticForget(): SemanticForget {
-    return (this._semanticForget ??= new SemanticForget(
-      this.storage,
-      this.observationManager,
-      this.entityManager,
-      this.semanticSearch ?? undefined,
-      undefined // auditLog not yet exposed by GovernanceManager
-    ));
-  }
+  // ==================== AGENT MEMORY (delegates to AgentMemoryFacade) ====================
 
-  /**
-   * ArtifactManager - v1.7.0: Stable artifact entities with auto-generated names and ref registration.
-   */
-  get artifactManager(): ArtifactManager {
-    if (!this._artifactManager) {
-      this._artifactManager = new ArtifactManager(this.storage, this.entityManager, this.refIndex);
-    }
-    return this._artifactManager;
-  }
-
-  /**
-   * AccessTracker - Access pattern tracking.
-   * Automatically wired to EntityManager, SearchManager, and GraphTraversal.
-   */
-  get accessTracker(): AccessTracker {
-    if (!this._accessTracker) {
-      this._accessTracker = new AccessTracker(this.storage);
-      this.entityManager.setAccessTracker(this._accessTracker);
-      this.searchManager.setAccessTracker(this._accessTracker);
-      this.graphTraversal.setAccessTracker(this._accessTracker);
-    }
-    return this._accessTracker;
-  }
-
-  /**
-   * DecayEngine - Memory importance decay calculations.
-   */
-  get decayEngine(): DecayEngine {
-    if (!this._decayEngine) {
-      this._decayEngine = new DecayEngine(this.storage, this.accessTracker, {
-        halfLifeHours: this.getEnvNumber('MEMORY_DECAY_HALF_LIFE_HOURS', 168, { min: 0 }),
-        minImportance: this.getEnvNumber('MEMORY_DECAY_MIN_IMPORTANCE', 0.1, { min: 0 }),
-        importanceModulation: this.getEnvBool('MEMORY_DECAY_IMPORTANCE_MOD', true),
-        accessModulation: this.getEnvBool('MEMORY_DECAY_ACCESS_MOD', true),
-        connectivityProtection: this.getEnvNumber('MEMORY_DECAY_CONNECTIVITY_PROTECTION', 0, PROBABILITY),
-        // PRD MEM-01 (v1.12.0). decayRate is auto-derived from halfLifeHours
-        // when env-var unset (NaN check avoids overriding the auto-derive).
-        decayRate: this.envNumberOrUndefined('MEMORY_PRD_DECAY_RATE'),
-        freshnessCoefficient: this.getEnvNumber('MEMORY_PRD_FRESHNESS_COEFFICIENT', 0.01, { min: 0 }),
-        relevanceWeight: this.getEnvNumber('MEMORY_PRD_RELEVANCE_WEIGHT', 0.35, PROBABILITY),
-        minImportanceThreshold: this.getEnvNumber('MEMORY_PRD_MIN_IMPORTANCE_THRESHOLD', 0.1, { min: 0 }),
-      });
-    }
-    return this._decayEngine;
-  }
-
-  /** Returns env-var as number, or undefined when unset (lets the
-   *  default-derive logic in DecayEngine kick in for `decayRate`). */
-  private envNumberOrUndefined(name: string): number | undefined {
-    return readEnvNumberOrUndefined(name);
-  }
-
-  /**
-   * DecayScheduler - Scheduled decay and forget operations.
-   * Returns undefined if auto-decay is not enabled (MEMORY_AUTO_DECAY).
-   */
-  get decayScheduler(): DecayScheduler | undefined {
-    if (this._decayScheduler) return this._decayScheduler;
-
-    if (this.getEnvBool('MEMORY_AUTO_DECAY', false)) {
-      this._decayScheduler = new DecayScheduler(this.decayEngine, {
-        decayIntervalMs: this.getEnvNumber('MEMORY_DECAY_INTERVAL_MS', 3600000, { integer: true, min: 1 }),
-        autoForget: this.getEnvBool('MEMORY_AUTO_FORGET', false),
-        forgetOptions: {
-          effectiveImportanceThreshold: this.getEnvNumber('MEMORY_FORGET_THRESHOLD', 0.05, { min: 0 }),
-        },
-      });
-    }
-
-    return this._decayScheduler;
-  }
-
-  /**
-   * ConsolidationScheduler - SHOULD-HAVE: Scheduled memory consolidation.
-   *
-   * Returns undefined when MEMORY_AUTO_CONSOLIDATION is not set to 'true'.
-   *
-   * Configurable via environment variables:
-   * - MEMORY_AUTO_CONSOLIDATION (default: false) - Enable to create scheduler
-   * - MEMORY_CONSOLIDATION_INTERVAL_MS (default: 3600000 = 1 hour)
-   * - MEMORY_CONSOLIDATION_MERGE_DUPLICATES (default: false)
-   * - MEMORY_CONSOLIDATION_DUPLICATE_THRESHOLD (default: 0.9)
-   */
-  get consolidationScheduler(): ConsolidationScheduler | undefined {
-    if (this._consolidationScheduler) return this._consolidationScheduler;
-
-    if (this.getEnvBool('MEMORY_AUTO_CONSOLIDATION', false)) {
-      this._consolidationScheduler = new ConsolidationScheduler(
-        this.agentMemory().consolidationPipeline,
-        this.compressionManager,
-        {
-          consolidationIntervalMs: this.getEnvNumber(
-            'MEMORY_CONSOLIDATION_INTERVAL_MS',
-            3600000, { integer: true, min: 1 }
-          ),
-          autoMergeDuplicates: this.getEnvBool(
-            'MEMORY_CONSOLIDATION_MERGE_DUPLICATES',
-            false
-          ),
-          duplicateThreshold: this.getEnvNumber(
-            'MEMORY_CONSOLIDATION_DUPLICATE_THRESHOLD',
-            0.9
-          ),
-        }
-      );
-    }
-
-    return this._consolidationScheduler;
-  }
-
-  /**
-   * DreamEngine — Background memory maintenance.
-   *
-   * Returns a DreamEngine instance.  The timer is NOT auto-started.
-   * Call `.start()` to activate periodic cycles, or use `agentMemory()` helper
-   * methods `startDreaming()` / `stopDreaming()`.
-   *
-   * Configurable via environment variables:
-   * - MEMORY_DREAM_INTERVAL_MS (default: 14400000 = 4 hours)
-   */
-  dreamEngine(config: DreamEngineConfig = {}): DreamEngine {
-    if (!this._dreamEngine || Object.keys(config).length > 0) {
-      this._dreamEngine = new DreamEngine(
-        this.storage,
-        this.agentMemory().consolidationPipeline,
-        {
-          intervalMs: this.getEnvNumber('MEMORY_DREAM_INTERVAL_MS', 4 * 60 * 60 * 1000, { integer: true, min: 1 }),
-          ...config,
-        }
-      );
-    }
-    return this._dreamEngine;
-  }
-
-  /**
-   * SalienceEngine - Phase 4 Agent Memory: Context-aware relevance scoring.
-   *
-   * Configurable via environment variables:
-   * - MEMORY_SALIENCE_IMPORTANCE_WEIGHT (default: 0.25)
-   * - MEMORY_SALIENCE_RECENCY_WEIGHT (default: 0.25)
-   * - MEMORY_SALIENCE_FREQUENCY_WEIGHT (default: 0.2)
-   * - MEMORY_SALIENCE_CONTEXT_WEIGHT (default: 0.2)
-   * - MEMORY_SALIENCE_NOVELTY_WEIGHT (default: 0.1)
-   * - MEMORY_SALIENCE_CONNECTIVITY_WEIGHT (default: 0 = disabled)
-   */
-  get salienceEngine(): SalienceEngine {
-    if (!this._salienceEngine) {
-      this._salienceEngine = new SalienceEngine(
-        this.storage,
-        this.accessTracker,
-        this.decayEngine,
-        {
-          importanceWeight: this.getEnvNumber('MEMORY_SALIENCE_IMPORTANCE_WEIGHT', 0.25, PROBABILITY),
-          recencyWeight: this.getEnvNumber('MEMORY_SALIENCE_RECENCY_WEIGHT', 0.25, PROBABILITY),
-          frequencyWeight: this.getEnvNumber('MEMORY_SALIENCE_FREQUENCY_WEIGHT', 0.2, PROBABILITY),
-          contextWeight: this.getEnvNumber('MEMORY_SALIENCE_CONTEXT_WEIGHT', 0.2, PROBABILITY),
-          noveltyWeight: this.getEnvNumber('MEMORY_SALIENCE_NOVELTY_WEIGHT', 0.1, PROBABILITY),
-          connectivityWeight: this.getEnvNumber('MEMORY_SALIENCE_CONNECTIVITY_WEIGHT', 0, PROBABILITY),
-        }
-      );
-    }
-    return this._salienceEngine;
-  }
-
-  /**
-   * ContextWindowManager - Token-budgeted memory retrieval.
-   *
-   * When `MEMORY_CONTEXT_HYBRID_RANKING` is `'true'` (default off), the
-   * manager ranks candidates through {@link hybridSearchManager} once at
-   * construction. The hybrid manager is not built while the switch is off.
-   *
-   * This getter covers only this context's instance. `AgentMemoryManager`
-   * builds its own ContextWindowManager and does not use this switch.
-   */
-  get contextWindowManager(): ContextWindowManager {
-    if (!this._contextWindowManager) {
-      const manager = new ContextWindowManager(
-        this.storage,
-        this.salienceEngine,
-        {
-          defaultMaxTokens: this.getEnvNumber('MEMORY_CONTEXT_MAX_TOKENS', 4000),
-          tokenMultiplier: this.getEnvNumber('MEMORY_CONTEXT_TOKEN_MULTIPLIER', 1.3),
-          reserveBuffer: this.getEnvNumber('MEMORY_CONTEXT_RESERVE_BUFFER', 100),
-          diversityThreshold: this.getEnvNumber('MEMORY_CONTEXT_DIVERSITY_THRESHOLD', 0.8),
-          enforceDiversity: this.getEnvBool('MEMORY_CONTEXT_ENFORCE_DIVERSITY', true),
-        }
-      );
-      if (this.getEnvBool('MEMORY_CONTEXT_HYBRID_RANKING', false)) {
-        manager.setHybridSearch(this.hybridSearchManager);
-      }
-      this._contextWindowManager = manager;
-    }
-    return this._contextWindowManager;
-  }
-
-  /**
-   * MemoryFormatter - Format memories for LLM consumption.
-   */
-  get memoryFormatter(): MemoryFormatter {
-    if (!this._memoryFormatter) {
-      this._memoryFormatter = new MemoryFormatter({
-        includeTimestamps: this.getEnvBool('MEMORY_FORMAT_TIMESTAMPS', true),
-        includeMemoryType: this.getEnvBool('MEMORY_FORMAT_MEMORY_TYPE', true),
-      });
-    }
-    return this._memoryFormatter;
-  }
-
-  /**
-   * ObserverPipeline - Event-driven observation scoring and categorization.
-   * Returns undefined if not enabled (MEMORY_OBSERVER_PIPELINE env var).
-   */
-  get observerPipeline(): ObserverPipeline | undefined {
-    if (this._observerPipeline) return this._observerPipeline;
-
-    if (this.getEnvBool('MEMORY_OBSERVER_PIPELINE', false)) {
-      const options: ObserverPipelineOptions = {
-        minImportanceThreshold: this.getEnvNumber('MEMORY_OBSERVER_MIN_THRESHOLD', 0.3),
-        autoTag: this.getEnvBool('MEMORY_OBSERVER_AUTO_TAG', true),
-        autoRoute: this.getEnvBool('MEMORY_OBSERVER_AUTO_ROUTE', false),
-      };
-      this._observerPipeline = new ObserverPipeline(
-        this.entityManager,
-        options
-      );
-    }
-
-    return this._observerPipeline;
-  }
-
-  /**
-   * AgentMemoryManager - Unified facade for all agent memory operations.
-   *
-   * @param config - Optional configuration override (default: loaded from env vars)
-   */
-  agentMemory(config?: AgentMemoryConfig): AgentMemoryManager {
-    if (!this._agentMemory || config) {
-      this._agentMemory = new AgentMemoryManager(this.storage, config);
-      // Invalidate every derived cache that captured references into the
-      // old AgentMemoryManager. The full set:
-      //   - MemoryEngine (wires episodicMemory/workingMemory at ctor)
-      //   - MemoryBackend (wraps MemoryEngine)
-      //   - ConsolidationScheduler (captures agentMemory().consolidationPipeline)
-      //   - DreamEngine (also captures consolidationPipeline)
-      this._memoryEngine = undefined;
-      this._memoryBackend = undefined;
-      this._consolidationScheduler = undefined;
-      this._dreamEngine = undefined;
-    }
-    return this._agentMemory;
-  }
-
-  // ==================== LLM Query Planner ====================
-
-  /**
-   * LLMQueryPlanner - Feature 7: Natural language query decomposition.
-   *
-   * Decomposes free-text queries into structured search plans.
-   * Optionally configured with an LLM provider; falls back to keyword
-   * extraction when no provider is supplied.
-   *
-   * @param config - Optional LLM provider and default limit
-   */
-  llmQueryPlanner(config?: LLMQueryPlannerConfig): LLMQueryPlanner {
-    if (!this._llmQueryPlanner || config) {
-      this._llmQueryPlanner = new LLMQueryPlanner(config);
-      // Reset the executor so it is recreated with the new planner's config
-      this._llmSearchExecutor = undefined;
-    }
-    return this._llmQueryPlanner;
-  }
-
-  /**
-   * Convenience method: decompose a natural language string into Entity results.
-   *
-   * Uses the default (no-LLM) query planner unless a custom planner has
-   * already been initialised via {@link llmQueryPlanner}.
-   *
-   * @param text - Natural language query
-   * @returns Matching entities
-   */
-  async queryNaturalLanguage(text: string): Promise<Entity[]> {
-    const planner = this._llmQueryPlanner ?? this.llmQueryPlanner();
-
-    if (!this._llmSearchExecutor) {
-      this._llmSearchExecutor = new LLMSearchExecutor(this.searchManager);
-    }
-
-    const structured = await planner.planQuery(text);
-    return this._llmSearchExecutor.execute(structured);
-  }
+  /** See {@link AgentMemoryFacade.agentMemory}. */
+  agentMemory(config?: AgentMemoryConfig): AgentMemoryManager { return this.memoryFacade.agentMemory(config); }
+  /** See {@link AgentMemoryFacade.memoryEngine}. */
+  get memoryEngine(): MemoryEngine { return this.memoryFacade.memoryEngine; }
+  /** See {@link AgentMemoryFacade.memoryBackend}. */
+  get memoryBackend(): IMemoryBackend { return this.memoryFacade.memoryBackend; }
+  /** See {@link AgentCognitionFacade.procedureManager}. */
+  get procedureManager(): ProcedureManager { return this.cognitionFacade.procedureManager; }
+  /** See {@link AgentCognitionFacade.createProceduralGraph}. */
+  createProceduralGraph(config: ProceduralGraphConfig): Promise<ProceduralGraphManager> { return this.cognitionFacade.createProceduralGraph(config); }
+  /** See {@link AgentMemoryFacade.trajectoryCompressor}. */
+  get trajectoryCompressor(): TrajectoryCompressor { return this.memoryFacade.trajectoryCompressor; }
+  /** See {@link AgentMemoryFacade.experienceExtractor}. */
+  get experienceExtractor(): ExperienceExtractor { return this.memoryFacade.experienceExtractor; }
+  /** See {@link AgentMemoryFacade.patternDetector}. */
+  get patternDetector(): PatternDetector { return this.memoryFacade.patternDetector; }
+  /** See {@link AgentBookkeepingFacade.memoryValidator}. */
+  get memoryValidator(): MemoryValidator { return this.bookkeepingFacade.memoryValidator; }
+  /** See {@link AgentBookkeepingFacade.heuristicManager}. */
+  get heuristicManager(): HeuristicManager { return this.bookkeepingFacade.heuristicManager; }
+  /** See {@link AgentBookkeepingFacade.observationDedupManager}. */
+  get observationDedupManager(): ObservationDedupManager { return this.bookkeepingFacade.observationDedupManager; }
+  /** See {@link AgentBookkeepingFacade.exclusionManager}. */
+  get exclusionManager(): ExclusionManager { return this.bookkeepingFacade.exclusionManager; }
+  /** See {@link AgentBookkeepingFacade.decisionManager}. */
+  get decisionManager(): DecisionManager { return this.bookkeepingFacade.decisionManager; }
+  /** See {@link AgentBookkeepingFacade.projectContextManager}. */
+  get projectContextManager(): ProjectContextManager { return this.bookkeepingFacade.projectContextManager; }
+  /** See {@link AgentBookkeepingFacade.spellChecker}. */
+  get spellChecker(): SpellChecker { return this.bookkeepingFacade.spellChecker; }
+  /** See {@link AgentBookkeepingFacade.toolAffordanceManager}. */
+  get toolAffordanceManager(): ToolAffordanceManager { return this.bookkeepingFacade.toolAffordanceManager; }
+  /** See {@link AgentBookkeepingFacade.toolCallObserver}. */
+  get toolCallObserver(): ToolCallObserver { return this.bookkeepingFacade.toolCallObserver; }
+  /** See {@link AgentCognitionFacade.eventManager}. */
+  get eventManager(): EventManager { return this.cognitionFacade.eventManager; }
+  /** See {@link AgentCognitionFacade.prospectiveMemory}. */
+  get prospectiveMemory(): ProspectiveMemoryManager { return this.cognitionFacade.prospectiveMemory; }
+  /** See {@link AgentCognitionFacade.failureManager}. */
+  get failureManager(): FailureManager { return this.cognitionFacade.failureManager; }
+  /** See {@link AgentCognitionFacade.plan}. */
+  get plan(): PlanManager { return this.cognitionFacade.plan; }
+  /** See {@link AgentCognitionFacade.reflectionManager}. */
+  get reflectionManager(): AgentReflectionManager { return this.cognitionFacade.reflectionManager; }
+  /** See {@link AgentCognitionFacade.causalReasoner}. */
+  get causalReasoner(): CausalReasoner { return this.cognitionFacade.causalReasoner; }
+  /** See {@link KnowledgeGovernanceFacade.roleAssignmentStore}. */
+  get roleAssignmentStore(): RoleAssignmentStore { return this.knowledgeFacade.roleAssignmentStore; }
+  /** See {@link KnowledgeGovernanceFacade.rbacMiddleware}. */
+  get rbacMiddleware(): RbacMiddleware { return this.knowledgeFacade.rbacMiddleware; }
+  /** See {@link AgentCognitionFacade.worldModelManager}. */
+  get worldModelManager(): WorldModelManager { return this.cognitionFacade.worldModelManager; }
+  /** See {@link AgentCognitionFacade.activeRetrieval}. */
+  get activeRetrieval(): ActiveRetrievalController { return this.cognitionFacade.activeRetrieval; }
+  /** See {@link AgentCognitionFacade.reconstructiveMemory}. */
+  reconstructiveMemory(config?: ReconstructiveMemoryConfig): ReconstructiveMemory { return this.cognitionFacade.reconstructiveMemory(config); }
+  /** See {@link KnowledgeGovernanceFacade.transitionLedger}. */
+  get transitionLedger(): TransitionLedger | null { return this.knowledgeFacade.transitionLedger; }
+  /** See {@link KnowledgeGovernanceFacade.skillManager}. */
+  get skillManager(): SkillManager { return this.knowledgeFacade.skillManager; }
+  /** See {@link KnowledgeGovernanceFacade.instructionSets}. */
+  get instructionSets(): InstructionSetManager { return this.knowledgeFacade.instructionSets; }
+  /** See {@link KnowledgeGovernanceFacade.knowledgeRepository}. */
+  get knowledgeRepository(): KnowledgeRepository { return this.knowledgeFacade.knowledgeRepository; }
+  /** See {@link KnowledgeGovernanceFacade.skillPublisher}. */
+  get skillPublisher(): SkillPublisher { return this.knowledgeFacade.skillPublisher; }
+  /** See {@link AgentBookkeepingFacade.semanticForget}. */
+  get semanticForget(): SemanticForget { return this.bookkeepingFacade.semanticForget; }
+  /** See {@link AgentMemoryFacade.artifactManager}. */
+  get artifactManager(): ArtifactManager { return this.memoryFacade.artifactManager; }
+  /** See {@link AgentMemoryFacade.accessTracker}. */
+  get accessTracker(): AccessTracker { return this.memoryFacade.accessTracker; }
+  /** See {@link AgentMemoryFacade.decayEngine}. */
+  get decayEngine(): DecayEngine { return this.memoryFacade.decayEngine; }
+  /** See {@link AgentMemoryFacade.decayScheduler}. */
+  get decayScheduler(): DecayScheduler | undefined { return this.memoryFacade.decayScheduler; }
+  /** See {@link AgentMemoryFacade.consolidationScheduler}. */
+  get consolidationScheduler(): ConsolidationScheduler | undefined { return this.memoryFacade.consolidationScheduler; }
+  /** See {@link AgentMemoryFacade.dreamEngine}. */
+  dreamEngine(config: DreamEngineConfig = {}): DreamEngine { return this.memoryFacade.dreamEngine(config); }
+  /** See {@link AgentMemoryFacade.salienceEngine}. */
+  get salienceEngine(): SalienceEngine { return this.memoryFacade.salienceEngine; }
+  /** See {@link AgentMemoryFacade.contextWindowManager}. */
+  get contextWindowManager(): ContextWindowManager { return this.memoryFacade.contextWindowManager; }
+  /** See {@link AgentMemoryFacade.memoryFormatter}. */
+  get memoryFormatter(): MemoryFormatter { return this.memoryFacade.memoryFormatter; }
+  /** See {@link AgentMemoryFacade.observerPipeline}. */
+  get observerPipeline(): ObserverPipeline | undefined { return this.memoryFacade.observerPipeline; }
 
   // ==================== Lifecycle ====================
 
@@ -1707,8 +653,10 @@ export class ManagerContext {
    * `SQLiteStorage` exposed `close()`), which also leaked a handle per context
    * in long-running processes.
    *
-   * Backends are duck-typed: the JSONL `GraphStorage` holds no persistent
-   * handle and exposes no `close()`, so this is a safe no-op there.
+   * Disposes procedural-graph managers created with owned backings, detaches the
+   * Bloom pre-screener (when one was attached), and closes storage. Backends are
+   * duck-typed: the JSONL `GraphStorage` holds no persistent handle and exposes
+   * no `close()`, so that step is a safe no-op there.
    *
    * Idempotent — calling it twice is harmless.
    *
@@ -1717,20 +665,11 @@ export class ManagerContext {
    * try { ... } finally { ctx.close(); }
    */
   close(): void {
-    // `close()` is synchronous; backing disposal is async. Detach it but never
-    // let a failing dispose surface as an unhandled rejection at shutdown.
-    for (const manager of this._proceduralGraphManagers) {
-      manager.dispose().catch((error: unknown) => {
-        logger.warn('ProceduralGraphManager.dispose() failed during ManagerContext.close()', {
-          error: error instanceof Error ? error.message : String(error),
-        });
-      });
-    }
-    this._proceduralGraphManagers = [];
+    this.cognitionFacade.close();
     const hadBloomScreener = this.infra.peekBloomPreScreener() !== null;
     this.infra.close();
     if (hadBloomScreener) {
-      this._searchManager?.fuzzySearcher.setBloomPreScreener(null);
+      this.searchFacade.close();
     }
     const storage = this.storage as unknown as { close?: () => void };
     if (typeof storage?.close === 'function') {
@@ -1738,27 +677,42 @@ export class ManagerContext {
     }
   }
 
+  // ==================== LAZINESS PROBES (tests only) ====================
+
+  /** Cached skill manager, if already built. @internal test probe; never constructs. */
+  protected get _skillManager(): SkillManager | undefined {
+    return this.knowledgeFacade.peekSkillManager();
+  }
+
+  /** Cached instruction sets, if already built. @internal test probe; never constructs. */
+  protected get _instructionSets(): InstructionSetManager | undefined {
+    return this.knowledgeFacade.peekInstructionSets();
+  }
+
+  /** Cached knowledge repository, if already built. @internal test probe; never constructs. */
+  protected get _knowledgeRepository(): KnowledgeRepository | undefined {
+    return this.knowledgeFacade.peekKnowledgeRepository();
+  }
+
+  /** Cached skill publisher, if already built. @internal test probe; never constructs. */
+  protected get _skillPublisher(): SkillPublisher | undefined {
+    return this.knowledgeFacade.peekSkillPublisher();
+  }
+
+  /** Cached prospective memory, if already built. @internal test probe; never constructs. */
+  protected get _prospectiveMemory(): ProspectiveMemoryManager | undefined {
+    return this.cognitionFacade.peekProspectiveMemory();
+  }
+
   // ==================== Environment Variable Helpers ====================
 
   /**
    * Get a number from environment variable with default.
+   * Retained for the env-validation contract tests; facades read env through
+   * `readEnvNumber` directly.
    * @internal
    */
-  private getEnvNumber(key: string, defaultValue: number, bounds?: EnvNumberBounds): number {
+  protected getEnvNumber(key: string, defaultValue: number, bounds?: EnvNumberBounds): number {
     return readEnvNumber(key, defaultValue, bounds);
   }
-
-  /**
-   * Get a boolean from environment variable with default.
-   * @internal
-   */
-  private getEnvBool(key: string, defaultValue: boolean): boolean {
-    return readEnvLooseFlag(key, defaultValue);
-  }
-}
-
-function isProceduralGraphBacking(
-  value: { type: 'jsonl' | 'sqlite' | 'memory'; path?: string } | IProceduralGraphBacking,
-): value is IProceduralGraphBacking {
-  return typeof (value as IProceduralGraphBacking).createGraph === 'function';
 }

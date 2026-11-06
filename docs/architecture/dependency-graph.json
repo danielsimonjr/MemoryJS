@@ -3,9 +3,9 @@
     "name": "@danielsimonjr/memoryjs",
     "version": "4.5.0",
     "lastUpdated": "2026-11-06",
-    "totalFiles": 339,
+    "totalFiles": 345,
     "totalModules": 12,
-    "totalExports": 2436
+    "totalExports": 2444
   },
   "entryPoints": [
     {
@@ -12185,6 +12185,19 @@
             ]
           },
           {
+            "file": "../features/ContradictionDetector.js",
+            "imports": [
+              "ContradictionDetector"
+            ]
+          },
+          {
+            "file": "../utils/index.js",
+            "imports": [
+              "validateFilePath",
+              "sidecarPath"
+            ]
+          },
+          {
             "file": "../types/index.js",
             "imports": [
               "BatchResult",
@@ -12203,13 +12216,15 @@
             "file": "../search/MaterializedViews.js",
             "imports": [
               "MaterializedViewsManager"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../search/SpellChecker.js",
             "imports": [
               "SpellChecker"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "./ObservationStore.js",
@@ -12233,8 +12248,7 @@
           {
             "file": "./EntityManager.js",
             "imports": [
-              "EntityManager",
-              "GovernanceHooks"
+              "EntityManager"
             ]
           },
           {
@@ -12278,12 +12292,40 @@
             ]
           },
           {
+            "file": "./context/SearchFacade.js",
+            "imports": [
+              "SearchFacade"
+            ]
+          },
+          {
+            "file": "./context/AgentMemoryFacade.js",
+            "imports": [
+              "AgentMemoryFacade"
+            ]
+          },
+          {
+            "file": "./context/AgentCognitionFacade.js",
+            "imports": [
+              "AgentCognitionFacade",
+              "ProceduralGraphConfig"
+            ]
+          },
+          {
+            "file": "./context/AgentBookkeepingFacade.js",
+            "imports": [
+              "AgentBookkeepingFacade"
+            ]
+          },
+          {
+            "file": "./context/KnowledgeGovernanceFacade.js",
+            "imports": [
+              "KnowledgeGovernanceFacade"
+            ]
+          },
+          {
             "file": "../utils/envConfig.js",
             "imports": [
               "readEnvNumber",
-              "readEnvNumberOrUndefined",
-              "readEnvLooseFlag",
-              "readEnvStrictFlag",
               "EnvNumberBounds"
             ]
           },
@@ -12303,41 +12345,34 @@
             "file": "../search/SearchManager.js",
             "imports": [
               "SearchManager"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../search/RankedSearch.js",
             "imports": [
               "RankedSearch"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../search/GraphRankPrior.js",
             "imports": [
               "GraphRankPrior"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../search/HybridSearchManager.js",
             "imports": [
               "HybridSearchManager"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../search/LLMQueryPlanner.js",
             "imports": [
-              "LLMQueryPlanner"
-            ]
-          },
-          {
-            "file": "../search/LLMSearchExecutor.js",
-            "imports": [
-              "LLMSearchExecutor"
-            ]
-          },
-          {
-            "file": "../search/LLMQueryPlanner.js",
-            "imports": [
+              "LLMQueryPlanner",
               "LLMQueryPlannerConfig"
             ],
             "typeOnly": true
@@ -12346,26 +12381,15 @@
             "file": "../search/SemanticSearch.js",
             "imports": [
               "SemanticSearch"
-            ]
+            ],
+            "typeOnly": true
           },
           {
-            "file": "../search/EmbeddingService.js",
+            "file": "../search/BloomPreScreener.js",
             "imports": [
-              "createEmbeddingService"
-            ]
-          },
-          {
-            "file": "../search/EmbeddingCache.js",
-            "imports": [
-              "EmbeddingCache"
-            ]
-          },
-          {
-            "file": "../search/VectorStore.js",
-            "imports": [
-              "createVectorStore",
-              "isEmbeddingStorage"
-            ]
+              "BloomPreScreener"
+            ],
+            "typeOnly": true
           },
           {
             "file": "../features/IOManager.js",
@@ -12401,97 +12425,76 @@
             "file": "../features/AutoLinker.js",
             "imports": [
               "AutoLinker"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../features/FactExtractor.js",
             "imports": [
               "FactExtractor"
-            ]
+            ],
+            "typeOnly": true
           },
           {
-            "file": "./TransitionLedger.js",
+            "file": "../features/GovernanceManager.js",
             "imports": [
-              "TransitionLedger"
-            ]
+              "GovernanceManager"
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/AccessTracker.js",
             "imports": [
               "AccessTracker"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/DecayEngine.js",
             "imports": [
               "DecayEngine"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/DecayScheduler.js",
             "imports": [
               "DecayScheduler"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/ConsolidationScheduler.js",
             "imports": [
               "ConsolidationScheduler"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/SalienceEngine.js",
             "imports": [
               "SalienceEngine"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/ContextWindowManager.js",
             "imports": [
               "ContextWindowManager"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/MemoryFormatter.js",
             "imports": [
               "MemoryFormatter"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/AgentMemoryManager.js",
             "imports": [
               "AgentMemoryManager"
-            ]
-          },
-          {
-            "file": "../agent/ArtifactManager.js",
-            "imports": [
-              "ArtifactManager"
-            ]
-          },
-          {
-            "file": "../agent/DreamEngine.js",
-            "imports": [
-              "DreamEngine",
-              "DreamEngineConfig"
-            ]
-          },
-          {
-            "file": "./RefIndex.js",
-            "imports": [
-              "RefIndex"
-            ]
-          },
-          {
-            "file": "../agent/ObserverPipeline.js",
-            "imports": [
-              "ObserverPipeline"
-            ]
-          },
-          {
-            "file": "../agent/ObserverPipeline.js",
-            "imports": [
-              "ObserverPipelineOptions"
             ],
             "typeOnly": true
           },
@@ -12503,41 +12506,39 @@
             "typeOnly": true
           },
           {
-            "file": "../utils/constants.js",
+            "file": "../agent/ArtifactManager.js",
             "imports": [
-              "getEmbeddingConfig"
+              "ArtifactManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../agent/DreamEngine.js",
+            "imports": [
+              "DreamEngine",
+              "DreamEngineConfig"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./RefIndex.js",
+            "imports": [
+              "RefIndex"
             ]
           },
           {
-            "file": "../utils/index.js",
+            "file": "../agent/ObserverPipeline.js",
             "imports": [
-              "validateFilePath",
-              "sidecarPath"
-            ]
-          },
-          {
-            "file": "../features/ContradictionDetector.js",
-            "imports": [
-              "ContradictionDetector"
-            ]
-          },
-          {
-            "file": "../features/SemanticForget.js",
-            "imports": [
-              "SemanticForget"
-            ]
+              "ObserverPipeline"
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/MemoryEngine.js",
             "imports": [
               "MemoryEngine"
-            ]
-          },
-          {
-            "file": "../agent/ImportanceScorer.js",
-            "imports": [
-              "ImportanceScorer"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/MemoryBackend.js",
@@ -12547,219 +12548,236 @@
             "typeOnly": true
           },
           {
-            "file": "../agent/InMemoryBackend.js",
-            "imports": [
-              "InMemoryBackend"
-            ]
-          },
-          {
-            "file": "../agent/SQLiteBackend.js",
-            "imports": [
-              "SQLiteBackend"
-            ]
-          },
-          {
             "file": "../agent/MemoryValidator.js",
             "imports": [
               "MemoryValidator"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/TrajectoryCompressor.js",
             "imports": [
               "TrajectoryCompressor"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/ExperienceExtractor.js",
             "imports": [
               "ExperienceExtractor"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/HeuristicManager.js",
             "imports": [
               "HeuristicManager"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/ObservationDedupManager.js",
             "imports": [
               "ObservationDedupManager"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/ExclusionManager.js",
             "imports": [
               "ExclusionManager"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/DecisionManager.js",
             "imports": [
               "DecisionManager"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/ProjectContextManager.js",
             "imports": [
               "ProjectContextManager"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/ToolAffordanceManager.js",
             "imports": [
               "ToolAffordanceManager"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/ToolCallObserver.js",
             "imports": [
               "ToolCallObserver"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/PatternDetector.js",
             "imports": [
               "PatternDetector"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/procedural/ProcedureManager.js",
             "imports": [
               "ProcedureManager"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/procedural/graph/index.js",
             "imports": [
-              "ProceduralGraphManager",
-              "createProceduralGraphBacking",
-              "IProceduralGraphBacking",
-              "PGPolicy",
-              "PGCompletionProvider"
-            ]
+              "ProceduralGraphManager"
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/events/EventManager.js",
             "imports": [
               "EventManager"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/ProspectiveMemoryManager.js",
             "imports": [
               "ProspectiveMemoryManager",
-              "PredicateEvaluator",
-              "ProcedureInvoker"
-            ]
+              "PredicateEvaluator"
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/FailureManager.js",
             "imports": [
               "FailureManager"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/PlanManager.js",
             "imports": [
               "PlanManager"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/AgentReflectionManager.js",
             "imports": [
               "AgentReflectionManager"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/causal/CausalReasoner.js",
             "imports": [
               "CausalReasoner"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/rbac/RbacMiddleware.js",
             "imports": [
               "RbacMiddleware"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/rbac/RoleAssignmentStore.js",
             "imports": [
               "RoleAssignmentStore"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/world/WorldModelManager.js",
             "imports": [
               "WorldModelManager"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/retrieval/ActiveRetrievalController.js",
             "imports": [
               "ActiveRetrievalController"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/reconstruction/index.js",
             "imports": [
               "ReconstructiveMemory",
-              "ReconstructiveMemoryConfig",
-              "ReconstructiveBacking"
-            ]
-          },
-          {
-            "file": "../search/BloomPreScreener.js",
-            "imports": [
-              "BloomPreScreener"
+              "ReconstructiveMemoryConfig"
             ],
             "typeOnly": true
           },
           {
-            "file": "../features/GovernanceManager.js",
+            "file": "../features/SemanticForget.js",
             "imports": [
-              "GovernanceManager"
-            ]
+              "SemanticForget"
+            ],
+            "typeOnly": true
           },
           {
-            "file": "../features/AuditLog.js",
+            "file": "./TransitionLedger.js",
             "imports": [
-              "AuditLog"
-            ]
+              "TransitionLedger"
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/skills/SkillManager.js",
             "imports": [
               "SkillManager"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/skills/SkillPublisher.js",
             "imports": [
               "SkillPublisher"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/knowledge/InstructionSetManager.js",
             "imports": [
               "InstructionSetManager"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "../agent/knowledge/KnowledgeRepository.js",
             "imports": [
               "KnowledgeRepository"
-            ]
+            ],
+            "typeOnly": true
           },
           {
             "file": "./sqlite-register.js",
             "imports": []
+          },
+          {
+            "file": "./context/AgentCognitionFacade.js",
+            "imports": [
+              "ProceduralGraphConfig"
+            ],
+            "reExport": true,
+            "typeOnly": true
           }
         ],
         "exports": [
-          "ManagerContext"
+          "ManagerContext",
+          "ProceduralGraphConfig"
+        ],
+        "reExported": [
+          "ProceduralGraphConfig"
         ],
         "classes": [
           "ManagerContext"
@@ -13456,6 +13474,785 @@
           "JsonlColumnStore"
         ]
       },
+      "src/core/context/AgentBookkeepingFacade.ts": {
+        "description": "AgentBookkeepingFacade",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../EntityManager.js",
+            "imports": [
+              "EntityManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../ObservationManager.js",
+            "imports": [
+              "ObservationManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../search/SemanticSearch.js",
+            "imports": [
+              "SemanticSearch"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../features/ContradictionDetector.js",
+            "imports": [
+              "ContradictionDetector"
+            ]
+          },
+          {
+            "file": "../../features/SemanticForget.js",
+            "imports": [
+              "SemanticForget"
+            ]
+          },
+          {
+            "file": "../../agent/MemoryValidator.js",
+            "imports": [
+              "MemoryValidator"
+            ]
+          },
+          {
+            "file": "../../agent/HeuristicManager.js",
+            "imports": [
+              "HeuristicManager"
+            ]
+          },
+          {
+            "file": "../../agent/ObservationDedupManager.js",
+            "imports": [
+              "ObservationDedupManager"
+            ]
+          },
+          {
+            "file": "../../agent/ExclusionManager.js",
+            "imports": [
+              "ExclusionManager"
+            ]
+          },
+          {
+            "file": "../../agent/DecisionManager.js",
+            "imports": [
+              "DecisionManager"
+            ]
+          },
+          {
+            "file": "../../agent/ProjectContextManager.js",
+            "imports": [
+              "ProjectContextManager"
+            ]
+          },
+          {
+            "file": "../../agent/ToolAffordanceManager.js",
+            "imports": [
+              "ToolAffordanceManager"
+            ]
+          },
+          {
+            "file": "../../agent/ToolCallObserver.js",
+            "imports": [
+              "ToolCallObserver"
+            ]
+          },
+          {
+            "file": "../../search/SpellChecker.js",
+            "imports": [
+              "SpellChecker"
+            ]
+          }
+        ],
+        "exports": [
+          "AgentBookkeepingFacade"
+        ],
+        "classes": [
+          "AgentBookkeepingFacade"
+        ],
+        "interfaces": [
+          "AgentBookkeepingFacadeDeps"
+        ]
+      },
+      "src/core/context/AgentCognitionFacade.ts": {
+        "description": "AgentCognitionFacade",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../utils/logger.js",
+            "imports": [
+              "logger"
+            ]
+          },
+          {
+            "file": "../GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../EntityManager.js",
+            "imports": [
+              "EntityManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../RelationManager.js",
+            "imports": [
+              "RelationManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../GraphTraversal.js",
+            "imports": [
+              "GraphTraversal"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../search/RankedSearch.js",
+            "imports": [
+              "RankedSearch"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../search/SemanticSearch.js",
+            "imports": [
+              "SemanticSearch"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../utils/sidecarPath.js",
+            "imports": [
+              "sidecarPath"
+            ]
+          },
+          {
+            "file": "../../agent/MemoryValidator.js",
+            "imports": [
+              "MemoryValidator"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../agent/procedural/ProcedureManager.js",
+            "imports": [
+              "ProcedureManager"
+            ]
+          },
+          {
+            "file": "../../agent/procedural/graph/index.js",
+            "imports": [
+              "ProceduralGraphManager",
+              "createProceduralGraphBacking",
+              "IProceduralGraphBacking",
+              "PGPolicy",
+              "PGCompletionProvider"
+            ]
+          },
+          {
+            "file": "../../agent/events/EventManager.js",
+            "imports": [
+              "EventManager"
+            ]
+          },
+          {
+            "file": "../../agent/ProspectiveMemoryManager.js",
+            "imports": [
+              "ProspectiveMemoryManager",
+              "PredicateEvaluator",
+              "ProcedureInvoker"
+            ]
+          },
+          {
+            "file": "../../agent/FailureManager.js",
+            "imports": [
+              "FailureManager"
+            ]
+          },
+          {
+            "file": "../../agent/PlanManager.js",
+            "imports": [
+              "PlanManager"
+            ]
+          },
+          {
+            "file": "../../agent/AgentReflectionManager.js",
+            "imports": [
+              "AgentReflectionManager"
+            ]
+          },
+          {
+            "file": "../../agent/causal/CausalReasoner.js",
+            "imports": [
+              "CausalReasoner"
+            ]
+          },
+          {
+            "file": "../../agent/world/WorldModelManager.js",
+            "imports": [
+              "WorldModelManager"
+            ]
+          },
+          {
+            "file": "../../agent/retrieval/ActiveRetrievalController.js",
+            "imports": [
+              "ActiveRetrievalController"
+            ]
+          },
+          {
+            "file": "../../agent/reconstruction/index.js",
+            "imports": [
+              "ReconstructiveMemory",
+              "ReconstructiveMemoryConfig",
+              "ReconstructiveBacking"
+            ]
+          },
+          {
+            "file": "../../utils/envConfig.js",
+            "imports": [
+              "readEnvNumber"
+            ]
+          }
+        ],
+        "exports": [
+          "AgentCognitionFacade"
+        ],
+        "classes": [
+          "AgentCognitionFacade"
+        ],
+        "interfaces": [
+          "AgentCognitionFacadeDeps",
+          "ProceduralGraphConfig"
+        ]
+      },
+      "src/core/context/AgentMemoryFacade.ts": {
+        "description": "AgentMemoryFacade",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../EntityManager.js",
+            "imports": [
+              "EntityManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../GraphTraversal.js",
+            "imports": [
+              "GraphTraversal"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../RefIndex.js",
+            "imports": [
+              "RefIndex"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../search/SearchManager.js",
+            "imports": [
+              "SearchManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../search/SemanticSearch.js",
+            "imports": [
+              "SemanticSearch"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../search/HybridSearchManager.js",
+            "imports": [
+              "HybridSearchManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../features/CompressionManager.js",
+            "imports": [
+              "CompressionManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../agent/ExclusionManager.js",
+            "imports": [
+              "ExclusionManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../agent/AccessTracker.js",
+            "imports": [
+              "AccessTracker"
+            ]
+          },
+          {
+            "file": "../../agent/DecayEngine.js",
+            "imports": [
+              "DecayEngine"
+            ]
+          },
+          {
+            "file": "../../agent/DecayScheduler.js",
+            "imports": [
+              "DecayScheduler"
+            ]
+          },
+          {
+            "file": "../../agent/ConsolidationScheduler.js",
+            "imports": [
+              "ConsolidationScheduler"
+            ]
+          },
+          {
+            "file": "../../agent/DreamEngine.js",
+            "imports": [
+              "DreamEngine",
+              "DreamEngineConfig"
+            ]
+          },
+          {
+            "file": "../../agent/SalienceEngine.js",
+            "imports": [
+              "SalienceEngine"
+            ]
+          },
+          {
+            "file": "../../agent/ContextWindowManager.js",
+            "imports": [
+              "ContextWindowManager"
+            ]
+          },
+          {
+            "file": "../../agent/MemoryFormatter.js",
+            "imports": [
+              "MemoryFormatter"
+            ]
+          },
+          {
+            "file": "../../agent/AgentMemoryManager.js",
+            "imports": [
+              "AgentMemoryManager"
+            ]
+          },
+          {
+            "file": "../../agent/AgentMemoryConfig.js",
+            "imports": [
+              "AgentMemoryConfig"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../agent/ArtifactManager.js",
+            "imports": [
+              "ArtifactManager"
+            ]
+          },
+          {
+            "file": "../../agent/ObserverPipeline.js",
+            "imports": [
+              "ObserverPipeline"
+            ]
+          },
+          {
+            "file": "../../agent/ObserverPipeline.js",
+            "imports": [
+              "ObserverPipelineOptions"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../agent/MemoryEngine.js",
+            "imports": [
+              "MemoryEngine"
+            ]
+          },
+          {
+            "file": "../../agent/ImportanceScorer.js",
+            "imports": [
+              "ImportanceScorer"
+            ]
+          },
+          {
+            "file": "../../agent/MemoryBackend.js",
+            "imports": [
+              "IMemoryBackend"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../agent/InMemoryBackend.js",
+            "imports": [
+              "InMemoryBackend"
+            ]
+          },
+          {
+            "file": "../../agent/SQLiteBackend.js",
+            "imports": [
+              "SQLiteBackend"
+            ]
+          },
+          {
+            "file": "../../agent/TrajectoryCompressor.js",
+            "imports": [
+              "TrajectoryCompressor"
+            ]
+          },
+          {
+            "file": "../../agent/ExperienceExtractor.js",
+            "imports": [
+              "ExperienceExtractor"
+            ]
+          },
+          {
+            "file": "../../agent/PatternDetector.js",
+            "imports": [
+              "PatternDetector"
+            ]
+          },
+          {
+            "file": "../../utils/envConfig.js",
+            "imports": [
+              "readEnvNumber",
+              "readEnvLooseFlag",
+              "readEnvNumberOrUndefined"
+            ]
+          },
+          {
+            "file": "./envBounds.js",
+            "imports": [
+              "PROBABILITY"
+            ]
+          }
+        ],
+        "exports": [
+          "AgentMemoryFacade"
+        ],
+        "classes": [
+          "AgentMemoryFacade"
+        ],
+        "interfaces": [
+          "AgentMemoryFacadeDeps"
+        ]
+      },
+      "src/core/context/KnowledgeGovernanceFacade.ts": {
+        "description": "KnowledgeGovernanceFacade",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../features/GovernanceManager.js",
+            "imports": [
+              "GovernanceManager"
+            ]
+          },
+          {
+            "file": "../../features/AuditLog.js",
+            "imports": [
+              "AuditLog"
+            ]
+          },
+          {
+            "file": "../TransitionLedger.js",
+            "imports": [
+              "TransitionLedger"
+            ]
+          },
+          {
+            "file": "../../agent/skills/SkillManager.js",
+            "imports": [
+              "SkillManager"
+            ]
+          },
+          {
+            "file": "../../agent/skills/SkillPublisher.js",
+            "imports": [
+              "SkillPublisher"
+            ]
+          },
+          {
+            "file": "../../agent/knowledge/InstructionSetManager.js",
+            "imports": [
+              "InstructionSetManager"
+            ]
+          },
+          {
+            "file": "../../agent/knowledge/KnowledgeRepository.js",
+            "imports": [
+              "KnowledgeRepository"
+            ]
+          },
+          {
+            "file": "../../agent/rbac/RbacMiddleware.js",
+            "imports": [
+              "RbacMiddleware"
+            ]
+          },
+          {
+            "file": "../../agent/rbac/RoleAssignmentStore.js",
+            "imports": [
+              "RoleAssignmentStore"
+            ]
+          },
+          {
+            "file": "../../search/SemanticSearch.js",
+            "imports": [
+              "SemanticSearch"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../EntityManager.js",
+            "imports": [
+              "EntityManager",
+              "GovernanceHooks"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../agent/FailureManager.js",
+            "imports": [
+              "FailureManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../utils/envConfig.js",
+            "imports": [
+              "readEnvLooseFlag"
+            ]
+          },
+          {
+            "file": "../../utils/sidecarPath.js",
+            "imports": [
+              "sidecarPath"
+            ]
+          }
+        ],
+        "exports": [
+          "KnowledgeGovernanceFacade"
+        ],
+        "classes": [
+          "KnowledgeGovernanceFacade"
+        ],
+        "interfaces": [
+          "KnowledgeGovernanceFacadeDeps"
+        ]
+      },
+      "src/core/context/SearchFacade.ts": {
+        "description": "SearchFacade",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../search/SearchManager.js",
+            "imports": [
+              "SearchManager"
+            ]
+          },
+          {
+            "file": "../../search/RankedSearch.js",
+            "imports": [
+              "RankedSearch"
+            ]
+          },
+          {
+            "file": "../../search/GraphRankPrior.js",
+            "imports": [
+              "GraphRankPrior"
+            ]
+          },
+          {
+            "file": "../../search/HybridSearchManager.js",
+            "imports": [
+              "HybridSearchManager"
+            ]
+          },
+          {
+            "file": "../../search/LLMQueryPlanner.js",
+            "imports": [
+              "LLMQueryPlanner"
+            ]
+          },
+          {
+            "file": "../../search/LLMQueryPlanner.js",
+            "imports": [
+              "LLMQueryPlannerConfig"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../search/LLMSearchExecutor.js",
+            "imports": [
+              "LLMSearchExecutor"
+            ]
+          },
+          {
+            "file": "../../search/SemanticSearch.js",
+            "imports": [
+              "SemanticSearch"
+            ]
+          },
+          {
+            "file": "../../search/EmbeddingService.js",
+            "imports": [
+              "createEmbeddingService"
+            ]
+          },
+          {
+            "file": "../../search/EmbeddingCache.js",
+            "imports": [
+              "EmbeddingCache"
+            ]
+          },
+          {
+            "file": "../../search/VectorStore.js",
+            "imports": [
+              "createVectorStore",
+              "isEmbeddingStorage"
+            ]
+          },
+          {
+            "file": "../../search/MaterializedViews.js",
+            "imports": [
+              "MaterializedViewsManager"
+            ]
+          },
+          {
+            "file": "../../search/BloomPreScreener.js",
+            "imports": [
+              "BloomPreScreener"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../features/AutoLinker.js",
+            "imports": [
+              "AutoLinker"
+            ]
+          },
+          {
+            "file": "../../features/FactExtractor.js",
+            "imports": [
+              "FactExtractor"
+            ]
+          },
+          {
+            "file": "../GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../EntityManager.js",
+            "imports": [
+              "EntityManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../RelationManager.js",
+            "imports": [
+              "RelationManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../ObservationManager.js",
+            "imports": [
+              "ObservationManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../GraphTraversal.js",
+            "imports": [
+              "GraphTraversal"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../utils/CachePressureCoordinator.js",
+            "imports": [
+              "CachePressureCoordinator"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../types/index.js",
+            "imports": [
+              "Entity"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../utils/envConfig.js",
+            "imports": [
+              "readEnvNumber",
+              "readEnvStrictFlag"
+            ]
+          },
+          {
+            "file": "../../utils/constants.js",
+            "imports": [
+              "getEmbeddingConfig"
+            ]
+          },
+          {
+            "file": "./envBounds.js",
+            "imports": [
+              "PROBABILITY"
+            ]
+          }
+        ],
+        "exports": [
+          "SearchFacade"
+        ],
+        "classes": [
+          "SearchFacade"
+        ],
+        "interfaces": [
+          "SearchFacadeDeps"
+        ]
+      },
       "src/core/context/StorageInfraFacade.ts": {
         "description": "StorageInfraFacade",
         "externalDependencies": [],
@@ -13560,6 +14357,26 @@
         ],
         "interfaces": [
           "StorageInfraDeps"
+        ]
+      },
+      "src/core/context/envBounds.ts": {
+        "description": "Shared env-number bounds for the ManagerContext facades.",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../utils/envConfig.js",
+            "imports": [
+              "EnvNumberBounds"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "PROBABILITY"
+        ],
+        "constants": [
+          "PROBABILITY"
         ]
       },
       "src/core/index.ts": {
@@ -13715,7 +14532,8 @@
           {
             "file": "./ManagerContext.js",
             "imports": [
-              "ManagerContextOptions"
+              "ManagerContextOptions",
+              "ProceduralGraphConfig"
             ],
             "reExport": true,
             "typeOnly": true
@@ -13768,6 +14586,7 @@
           "effectiveStatus",
           "EntityManagerOptions",
           "ManagerContextOptions",
+          "ProceduralGraphConfig",
           "TransitionEvent",
           "TransitionFilter"
         ],
@@ -13808,6 +14627,7 @@
           "effectiveStatus",
           "EntityManagerOptions",
           "ManagerContextOptions",
+          "ProceduralGraphConfig",
           "TransitionEvent",
           "TransitionFilter"
         ]
@@ -23555,7 +24375,13 @@
           "src/core/TransitionLedger.ts",
           "src/core/columns/IColumnStore.ts",
           "src/core/columns/JsonlColumnStore.ts",
+          "src/core/context/AgentBookkeepingFacade.ts",
+          "src/core/context/AgentCognitionFacade.ts",
+          "src/core/context/AgentMemoryFacade.ts",
+          "src/core/context/KnowledgeGovernanceFacade.ts",
+          "src/core/context/SearchFacade.ts",
           "src/core/context/StorageInfraFacade.ts",
+          "src/core/context/envBounds.ts",
           "src/core/index.ts",
           "src/core/mmap/FsReadMmapBackend.ts",
           "src/core/mmap/IMmapBackend.ts",
@@ -23760,28 +24586,28 @@
       "src/sqlite.ts",
       "src/workers/levenshteinWorker.ts"
     ],
-    "reachableCount": 339,
+    "reachableCount": 345,
     "dormantCount": 0,
     "orphaned": [],
     "testOnly": []
   },
   "statistics": {
-    "totalTypeScriptFiles": 339,
+    "totalTypeScriptFiles": 345,
     "totalModules": 12,
-    "totalLinesOfCode": 112611,
-    "totalExports": 2436,
-    "totalClasses": 247,
-    "totalInterfaces": 715,
+    "totalLinesOfCode": 113217,
+    "totalExports": 2444,
+    "totalClasses": 252,
+    "totalInterfaces": 721,
     "totalFunctions": 469,
     "totalTypeGuards": 40,
     "totalEnums": 4,
-    "totalConstants": 137,
-    "totalReExports": 1573,
-    "totalTypeOnlyImports": 541,
+    "totalConstants": 138,
+    "totalReExports": 1575,
+    "totalTypeOnlyImports": 630,
     "runtimeCircularDeps": 0,
     "typeOnlyCircularDeps": 10,
     "entryRoots": 4,
-    "reachableFiles": 339,
+    "reachableFiles": 345,
     "dormantFiles": 0,
     "orphanedFiles": 0,
     "testOnlyFiles": 0,
