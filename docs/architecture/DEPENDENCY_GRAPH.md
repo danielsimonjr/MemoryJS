@@ -4,7 +4,7 @@
 
 # @danielsimonjr/memoryjs - Dependency Graph
 
-**Version**: 4.5.0 | **Last Updated**: 2026-11-06
+**Version**: 4.6.0 | **Last Updated**: 2026-11-06
 
 This document provides a comprehensive dependency graph of all files, components, imports, functions, and variables in the codebase.
 
@@ -7890,4 +7890,4 @@ graph TD
 ---
 
 *Last Updated*: 2026-11-06
-*Version*: 4.5.0
+*Version*: 4.6.0
