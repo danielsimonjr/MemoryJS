@@ -14,28 +14,25 @@ Names that are OWN-DEFINED (not merely re-exported) by >= 2 distinct files, then
 
 | Category | Count |
 | --- | --: |
-| **TRUE_DUPLICATE** (actionable) | 2 |
+| **TRUE_DUPLICATE** (actionable) | 0 |
 | ALIAS_DELEGATION | 0 |
 | ALLOWLISTED | 0 |
-| _Total flagged names_ | 2 |
+| _Total flagged names_ | 0 |
 
 ## Summary — types (interface/type/enum)
 
 | Category | Count |
 | --- | --: |
-| **TRUE_DUPLICATE** (actionable) | 1 |
+| **TRUE_DUPLICATE** (actionable) | 0 |
 | ALIAS_DELEGATION | 0 |
 | ALLOWLISTED | 0 |
-| _Total flagged names_ | 1 |
+| _Total flagged names_ | 0 |
 
 ## Runtime duplicates
 
 ### TRUE_DUPLICATE — actionable merge targets
 
-| Name | Category | Defining files (public?, sub-tag) | Canonical hint |
-| --- | --- | --- | --- |
-| `canonicalJson` | function | `src/agent/knowledge/knowledgeDigest.ts` (internal, PLAIN)<br>`src/agent/procedural/graph/canonical.ts` (internal, PLAIN) | `internal-only` |
-| `sha256Hex` | function | `src/agent/knowledge/knowledgeDigest.ts` (internal, PLAIN)<br>`src/agent/procedural/graph/canonical.ts` (internal, PLAIN) | `internal-only` |
+_None._
 
 ### ALIAS_DELEGATION — const-alias forwards (not independent bodies)
 
@@ -49,9 +46,7 @@ _None._
 
 ### TRUE_DUPLICATE
 
-| Name | Category | Defining files (public?, sub-tag) | Canonical hint |
-| --- | --- | --- | --- |
-| `LoadForContextOptions` | interface | `src/agent/knowledge/KnowledgeRepository.ts` (internal, PLAIN)<br>`src/agent/skills/SkillManager.ts` (internal, PLAIN) | `internal-only` |
+_None._
 
 ### ALIAS_DELEGATION
 

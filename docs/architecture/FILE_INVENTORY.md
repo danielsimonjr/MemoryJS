@@ -10,22 +10,22 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 823
+**Total files**: 807
 
 ## Disposition counts
 
 | Disposition | Count | Meaning |
 | --- | --: | --- |
-| `reachable` | 320 | A `src/` file in the module graph, reachable from a root. |
+| `reachable` | 317 | A `src/` file in the module graph, reachable from a root. |
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
-| `test-only` | 4 | A `src/` file not reachable from src roots but imported by a test. |
+| `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 479 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 470 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 4 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 0 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **823** | |
+| **Total** | **807** | |
 
 ## Per-area counts
 
@@ -33,8 +33,8 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | --- | --: |
 | `benchmarks` | 4 |
 | `config` | 2 |
-| `src` | 328 |
-| `tests` | 479 |
+| `src` | 321 |
+| `tests` | 470 |
 | `tools` | 10 |
 
 ## All files
@@ -88,10 +88,6 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/index.ts` | src | reachable | 621 |
 | `src/agent/InMemoryBackend.ts` | src | reachable | 115 |
 | `src/agent/keyValueLine.ts` | src | reachable | 63 |
-| `src/agent/knowledge/InstructionSetManager.ts` | src | test-only | 298 |
-| `src/agent/knowledge/knowledgeDigest.ts` | src | test-only | 240 |
-| `src/agent/knowledge/KnowledgeRepository.ts` | src | test-only | 493 |
-| `src/agent/knowledge/knowledgeRevision.ts` | src | test-only | 300 |
 | `src/agent/MemoryBackend.ts` | src | reachable | 156 |
 | `src/agent/MemoryEngine.ts` | src | reachable | 596 |
 | `src/agent/MemoryFormatter.ts` | src | reachable | 518 |
@@ -154,9 +150,6 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/SessionCheckpoint.ts` | src | reachable | 692 |
 | `src/agent/SessionManager.ts` | src | reachable | 685 |
 | `src/agent/SessionQueryBuilder.ts` | src | reachable | 541 |
-| `src/agent/skills/SkillFormat.ts` | src | reachable | 417 |
-| `src/agent/skills/SkillManager.ts` | src | reachable | 443 |
-| `src/agent/skills/SkillPublisher.ts` | src | reachable | 286 |
 | `src/agent/SQLiteBackend.ts` | src | reachable | 175 |
 | `src/agent/SummarizationService.ts` | src | reachable | 341 |
 | `src/agent/ToolAffordanceManager.ts` | src | reachable | 279 |
@@ -240,7 +233,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/features/FreshnessManager.ts` | src | reachable | 307 |
 | `src/features/GovernanceManager.ts` | src | reachable | 717 |
 | `src/features/index.ts` | src | reachable | 105 |
-| `src/features/IOManager.ts` | src | reachable | 2145 |
+| `src/features/IOManager.ts` | src | reachable | 2111 |
 | `src/features/KeywordExtractor.ts` | src | reachable | 150 |
 | `src/features/ObservableDataModelAdapter.ts` | src | reachable | 360 |
 | `src/features/ObservationNormalizer.ts` | src | reachable | 266 |
@@ -479,11 +472,6 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/ImportanceScorer.test.ts` | tests | test | 79 |
 | `tests/unit/agent/InMemoryBackend.test.ts` | tests | test | 137 |
 | `tests/unit/agent/keyValueLine.test.ts` | tests | test | 60 |
-| `tests/unit/agent/knowledge/InstructionSetManager.test.ts` | tests | test | 96 |
-| `tests/unit/agent/knowledge/knowledgeDigest.test.ts` | tests | test | 89 |
-| `tests/unit/agent/knowledge/knowledgeFixtures.ts` | tests | test | 152 |
-| `tests/unit/agent/knowledge/KnowledgeRepository.rollback.test.ts` | tests | test | 135 |
-| `tests/unit/agent/knowledge/KnowledgeRepository.test.ts` | tests | test | 223 |
 | `tests/unit/agent/memoryBackend-wiring.test.ts` | tests | test | 71 |
 | `tests/unit/agent/MemoryEngine.test.ts` | tests | test | 858 |
 | `tests/unit/agent/MemoryFormatter.test.ts` | tests | test | 313 |
@@ -544,10 +532,6 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/SessionManager.test.ts` | tests | test | 848 |
 | `tests/unit/agent/SessionQueryBuilder.createdWithin.test.ts` | tests | test | 72 |
 | `tests/unit/agent/SessionQueryBuilder.test.ts` | tests | test | 610 |
-| `tests/unit/agent/skills/SkillFormat.test.ts` | tests | test | 240 |
-| `tests/unit/agent/skills/SkillIOConfinement.test.ts` | tests | test | 64 |
-| `tests/unit/agent/skills/SkillManager.test.ts` | tests | test | 259 |
-| `tests/unit/agent/skills/SkillPublisher.test.ts` | tests | test | 216 |
 | `tests/unit/agent/SQLiteBackend.test.ts` | tests | test | 216 |
 | `tests/unit/agent/SummarizationService.test.ts` | tests | test | 531 |
 | `tests/unit/agent/ToolAffordanceManager.test.ts` | tests | test | 198 |

@@ -3,9 +3,9 @@
     "name": "@danielsimonjr/memoryjs",
     "version": "4.5.0",
     "lastUpdated": "2026-11-06",
-    "totalFiles": 328,
+    "totalFiles": 321,
     "totalModules": 12,
-    "totalExports": 2300
+    "totalExports": 2270
   },
   "entryPoints": [
     {
@@ -5937,329 +5937,6 @@
           "decodeKeyValueBody"
         ]
       },
-      "src/agent/knowledge/InstructionSetManager.ts": {
-        "description": "Instruction-set manager (Recursa RS-4).",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "../../types/types.js",
-            "imports": [
-              "Entity",
-              "IGraphStorage"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../../types/skills.js",
-            "imports": [
-              "InstructionSection",
-              "InstructionSetEntity",
-              "InstructionSetRecord",
-              "InstructionSetRole",
-              "SkillSource"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../../types/agent-memory.js",
-            "imports": [
-              "isInstructionSetEntity",
-              "toIsoDateTime"
-            ]
-          },
-          {
-            "file": "../../core/TransitionLedger.js",
-            "imports": [
-              "TransitionEvent"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../../core/storageCapabilities.js",
-            "imports": [
-              "withStorageWriteLock"
-            ]
-          },
-          {
-            "file": "./knowledgeDigest.js",
-            "imports": [
-              "fitInOrder",
-              "shortId"
-            ]
-          }
-        ],
-        "exports": [
-          "instructionItemsFor",
-          "renderInstructionItems",
-          "buildInstructionSetEntity",
-          "InstructionSetManager"
-        ],
-        "classes": [
-          "InstructionSetManager"
-        ],
-        "interfaces": [
-          "InstructionHistorySource",
-          "InstructionSetManagerOptions",
-          "InstructionItem"
-        ],
-        "functions": [
-          "instructionItemsFor",
-          "renderInstructionItems",
-          "buildInstructionSetEntity"
-        ]
-      },
-      "src/agent/knowledge/KnowledgeRepository.ts": {
-        "description": "Knowledge repository (Recursa RS-5): the paper's `K`.",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "../../types/types.js",
-            "imports": [
-              "Entity",
-              "IGraphStorage"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../../types/skills.js",
-            "imports": [
-              "InstructionSetRecord",
-              "InstructionSetRole",
-              "KnowledgeRevisionRecord",
-              "KnowledgeSnapshotEntity",
-              "KnowledgeSnapshotRecord",
-              "SkillId",
-              "SkillRecord"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../../types/agent-memory.js",
-            "imports": [
-              "isFailureMemory",
-              "isHeuristicMemory",
-              "isInstructionSetEntity",
-              "isKnowledgeSnapshotEntity",
-              "isReflectionMemory",
-              "isSkillEntity",
-              "toIsoDateTime"
-            ]
-          },
-          {
-            "file": "../../types/agent-memory.js",
-            "imports": [
-              "FailureRecord"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../../core/TransactionManager.js",
-            "imports": [
-              "BatchTransaction"
-            ]
-          },
-          {
-            "file": "../../utils/tokenEstimate.js",
-            "imports": [
-              "estimateTokensFromText"
-            ]
-          },
-          {
-            "file": "./InstructionSetManager.js",
-            "imports": [
-              "instructionItemsFor",
-              "renderInstructionItems",
-              "InstructionItem",
-              "InstructionSetManager"
-            ]
-          },
-          {
-            "file": "./knowledgeDigest.js",
-            "imports": [
-              "clone",
-              "compareIds",
-              "diffSnapshots",
-              "digestOf",
-              "fitInOrder",
-              "KnowledgeDiff"
-            ]
-          },
-          {
-            "file": "./knowledgeRevision.js",
-            "imports": [
-              "applyOp",
-              "planWrites",
-              "workFrom",
-              "PlannedWrite"
-            ]
-          },
-          {
-            "file": "./knowledgeDigest.js",
-            "imports": [
-              "KnowledgeDiff",
-              "IdDelta"
-            ],
-            "reExport": true,
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "KnowledgeRepository",
-          "KnowledgeDiff",
-          "IdDelta"
-        ],
-        "reExported": [
-          "KnowledgeDiff",
-          "IdDelta"
-        ],
-        "classes": [
-          "KnowledgeRepository"
-        ],
-        "interfaces": [
-          "SkillMatchLike",
-          "SkillManagerLike",
-          "FailureLookupLike",
-          "KnowledgeRepositoryOptions",
-          "LoadForContextOptions",
-          "LoadedKnowledge"
-        ]
-      },
-      "src/agent/knowledge/knowledgeDigest.ts": {
-        "description": "Canonical JSON, digest and budget helpers shared by the Recursa knowledge",
-        "externalDependencies": [],
-        "nodeDependencies": [
-          {
-            "module": "crypto",
-            "imports": [
-              "createHash",
-              "randomUUID"
-            ]
-          }
-        ],
-        "internalDependencies": [
-          {
-            "file": "../../utils/tokenEstimate.js",
-            "imports": [
-              "estimateTokensFromText"
-            ]
-          },
-          {
-            "file": "../../types/skills.js",
-            "imports": [
-              "InstructionSetRecord",
-              "KnowledgeSnapshotRecord",
-              "SkillId",
-              "SkillRecord"
-            ],
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "compareIds",
-          "canonicalJson",
-          "clone",
-          "sha256Hex",
-          "digestOf",
-          "slugify",
-          "shortId",
-          "fitInOrder",
-          "idDelta",
-          "diffSnapshots"
-        ],
-        "interfaces": [
-          "IdDelta",
-          "KnowledgeDiff"
-        ],
-        "functions": [
-          "compareIds",
-          "canonicalJson",
-          "clone",
-          "sha256Hex",
-          "digestOf",
-          "slugify",
-          "shortId",
-          "fitInOrder",
-          "idDelta",
-          "diffSnapshots"
-        ]
-      },
-      "src/agent/knowledge/knowledgeRevision.ts": {
-        "description": "Revision machinery for `KnowledgeRepository` (Recursa RS-5/RS-6): applies",
-        "externalDependencies": [],
-        "nodeDependencies": [
-          {
-            "module": "crypto",
-            "imports": [
-              "randomUUID"
-            ]
-          }
-        ],
-        "internalDependencies": [
-          {
-            "file": "../../types/types.js",
-            "imports": [
-              "Entity"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../../types/skills.js",
-            "imports": [
-              "InstructionSection",
-              "InstructionSetRecord",
-              "RevisionOp",
-              "SkillId",
-              "SkillRecord",
-              "SkillSource"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../../types/agent-memory.js",
-            "imports": [
-              "isInstructionSetEntity",
-              "isSkillEntity",
-              "toIsoDateTime",
-              "Heuristic",
-              "HeuristicId",
-              "ReflectionId",
-              "ReflectionRecord"
-            ]
-          },
-          {
-            "file": "./InstructionSetManager.js",
-            "imports": [
-              "buildInstructionSetEntity"
-            ]
-          },
-          {
-            "file": "./knowledgeDigest.js",
-            "imports": [
-              "canonicalJson",
-              "clone",
-              "compareIds",
-              "sha256Hex",
-              "shortId",
-              "slugify"
-            ]
-          }
-        ],
-        "exports": [
-          "workFrom",
-          "applyOp",
-          "planWrites"
-        ],
-        "interfaces": [
-          "WorkState"
-        ],
-        "functions": [
-          "workFrom",
-          "applyOp",
-          "planWrites"
-        ]
-      },
       "src/agent/procedural/ProcedureManager.ts": {
         "description": "Procedure Manager (3B.4)",
         "externalDependencies": [],
@@ -8769,248 +8446,6 @@
         ],
         "functions": [
           "selectWeightedTurns"
-        ]
-      },
-      "src/agent/skills/SkillFormat.ts": {
-        "description": "SKILL.md front-matter codec for Recursa skills (spec RS-3).",
-        "externalDependencies": [],
-        "nodeDependencies": [
-          {
-            "module": "crypto",
-            "imports": [
-              "createHash"
-            ]
-          }
-        ],
-        "internalDependencies": [
-          {
-            "file": "../../utils/tokenEstimate.js",
-            "imports": [
-              "estimateTokensFromText"
-            ]
-          },
-          {
-            "file": "../../types/skills.js",
-            "imports": [
-              "SkillKind",
-              "SkillRecord",
-              "SkillResource",
-              "SkillSource"
-            ],
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "SKILL_FRONT_MATTER_KEYS",
-          "loadOptionalYaml",
-          "serializeSkillMarkdown",
-          "parseSkillMarkdown",
-          "skillContentHash",
-          "renderSkillSection",
-          "fitSkillSectionToBudget"
-        ],
-        "interfaces": [
-          "ParsedSkillDocument",
-          "SkillParseFailure",
-          "YamlModuleLike",
-          "ParseSkillOptions"
-        ],
-        "functions": [
-          "loadOptionalYaml",
-          "serializeSkillMarkdown",
-          "parseSkillMarkdown",
-          "skillContentHash",
-          "renderSkillSection",
-          "fitSkillSectionToBudget"
-        ],
-        "constants": [
-          "SKILL_FRONT_MATTER_KEYS"
-        ]
-      },
-      "src/agent/skills/SkillManager.ts": {
-        "description": "Skill registry for Recursa (spec RS-2): storage-backed skills with lexical",
-        "externalDependencies": [],
-        "nodeDependencies": [
-          {
-            "module": "crypto",
-            "imports": [
-              "createHash",
-              "randomUUID"
-            ]
-          }
-        ],
-        "internalDependencies": [
-          {
-            "file": "../../utils/textSimilarity.js",
-            "imports": [
-              "ENGLISH_STOPWORDS_SMALL",
-              "jaccard",
-              "tokenSetWithoutStopwords"
-            ]
-          },
-          {
-            "file": "../../utils/tokenEstimate.js",
-            "imports": [
-              "estimateTokensFromText"
-            ]
-          },
-          {
-            "file": "../../utils/envConfig.js",
-            "imports": [
-              "readEnvNumber"
-            ]
-          },
-          {
-            "file": "../../utils/errors.js",
-            "imports": [
-              "ValidationError"
-            ]
-          },
-          {
-            "file": "../../core/storageCapabilities.js",
-            "imports": [
-              "withStorageWriteLock"
-            ]
-          },
-          {
-            "file": "./SkillFormat.js",
-            "imports": [
-              "fitSkillSectionToBudget",
-              "renderSkillSection"
-            ]
-          },
-          {
-            "file": "../../types/types.js",
-            "imports": [
-              "Entity",
-              "IGraphStorage"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../../types/agent-memory.js",
-            "imports": [
-              "isSkillEntity",
-              "toIsoDateTime"
-            ]
-          },
-          {
-            "file": "../../types/skills.js",
-            "imports": [
-              "SkillEntity",
-              "SkillId",
-              "SkillKind",
-              "SkillRecord",
-              "SkillResource",
-              "SkillSource"
-            ],
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "SkillManager"
-        ],
-        "classes": [
-          "SkillManager"
-        ],
-        "interfaces": [
-          "AddSkillInput",
-          "SkillListOptions",
-          "SkillMatch",
-          "SkillMatchOptions",
-          "LoadForContextOptions",
-          "SkillSimilarityProvider"
-        ]
-      },
-      "src/agent/skills/SkillPublisher.ts": {
-        "description": "Publishes skills as a SKILL.md tree and absorbs human edits back (spec RS-3).",
-        "externalDependencies": [],
-        "nodeDependencies": [
-          {
-            "module": "fs",
-            "imports": [
-              "promises"
-            ]
-          },
-          {
-            "module": "crypto",
-            "imports": [
-              "randomBytes"
-            ]
-          },
-          {
-            "module": "path",
-            "imports": [
-              "dirname",
-              "join",
-              "resolve"
-            ]
-          }
-        ],
-        "internalDependencies": [
-          {
-            "file": "../../types/types.js",
-            "imports": [
-              "IGraphStorage"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../../types/agent-memory.js",
-            "imports": [
-              "isSkillEntity",
-              "toIsoDateTime"
-            ]
-          },
-          {
-            "file": "../../types/skills.js",
-            "imports": [
-              "SkillId"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../../utils/durableWriteFile.js",
-            "imports": [
-              "durableWriteFile",
-              "renameOver"
-            ]
-          },
-          {
-            "file": "./SkillManager.js",
-            "imports": [
-              "SkillManager",
-              "SkillPatch"
-            ]
-          },
-          {
-            "file": "./SkillFormat.js",
-            "imports": [
-              "loadOptionalYaml",
-              "parseSkillMarkdown",
-              "serializeSkillMarkdown",
-              "skillContentHash",
-              "ParsedSkillDocument"
-            ]
-          }
-        ],
-        "exports": [
-          "SKILL_MARKER_FILE",
-          "SkillPublisher"
-        ],
-        "classes": [
-          "SkillPublisher"
-        ],
-        "interfaces": [
-          "SkillPublishMarker",
-          "PublishResult",
-          "ImportConflict",
-          "ImportParseError",
-          "ImportReport",
-          "PublishOptions"
-        ],
-        "constants": [
-          "SKILL_MARKER_FILE"
         ]
       },
       "src/agent/versionedWriteFailure.ts": {
@@ -13831,20 +13266,6 @@
             "file": "../utils/durableWriteFile.js",
             "imports": [
               "durableWriteFile"
-            ]
-          },
-          {
-            "file": "../agent/skills/SkillManager.js",
-            "imports": [
-              "SkillManager"
-            ]
-          },
-          {
-            "file": "../agent/skills/SkillPublisher.js",
-            "imports": [
-              "SkillPublisher",
-              "PublishResult",
-              "ImportReport"
             ]
           },
           {
@@ -22460,10 +21881,6 @@
           "src/agent/events/index.ts",
           "src/agent/index.ts",
           "src/agent/keyValueLine.ts",
-          "src/agent/knowledge/InstructionSetManager.ts",
-          "src/agent/knowledge/KnowledgeRepository.ts",
-          "src/agent/knowledge/knowledgeDigest.ts",
-          "src/agent/knowledge/knowledgeRevision.ts",
           "src/agent/procedural/ProcedureManager.ts",
           "src/agent/procedural/ProcedureStore.ts",
           "src/agent/procedural/StepSequencer.ts",
@@ -22507,9 +21924,6 @@
           "src/agent/retrieval/QueryRewriter.ts",
           "src/agent/retrieval/index.ts",
           "src/agent/selectWeightedTurns.ts",
-          "src/agent/skills/SkillFormat.ts",
-          "src/agent/skills/SkillManager.ts",
-          "src/agent/skills/SkillPublisher.ts",
           "src/agent/versionedWriteFailure.ts",
           "src/agent/workingMemoryGuard.ts",
           "src/agent/world/WorldModelManager.ts",
@@ -22779,37 +22193,32 @@
       "src/sqlite.ts",
       "src/workers/levenshteinWorker.ts"
     ],
-    "reachableCount": 324,
-    "dormantCount": 4,
+    "reachableCount": 321,
+    "dormantCount": 0,
     "orphaned": [],
-    "testOnly": [
-      "src/agent/knowledge/InstructionSetManager.ts",
-      "src/agent/knowledge/KnowledgeRepository.ts",
-      "src/agent/knowledge/knowledgeDigest.ts",
-      "src/agent/knowledge/knowledgeRevision.ts"
-    ]
+    "testOnly": []
   },
   "statistics": {
-    "totalTypeScriptFiles": 328,
+    "totalTypeScriptFiles": 321,
     "totalModules": 12,
-    "totalLinesOfCode": 110472,
-    "totalExports": 2300,
-    "totalClasses": 242,
-    "totalInterfaces": 696,
-    "totalFunctions": 439,
+    "totalLinesOfCode": 107961,
+    "totalExports": 2270,
+    "totalClasses": 238,
+    "totalInterfaces": 668,
+    "totalFunctions": 417,
     "totalTypeGuards": 39,
     "totalEnums": 4,
-    "totalConstants": 129,
-    "totalReExports": 1475,
-    "totalTypeOnlyImports": 533,
+    "totalConstants": 127,
+    "totalReExports": 1473,
+    "totalTypeOnlyImports": 518,
     "runtimeCircularDeps": 0,
     "typeOnlyCircularDeps": 10,
     "entryRoots": 4,
-    "reachableFiles": 324,
-    "dormantFiles": 4,
+    "reachableFiles": 321,
+    "dormantFiles": 0,
     "orphanedFiles": 0,
-    "testOnlyFiles": 4,
+    "testOnlyFiles": 0,
     "unusedFilesCount": 0,
-    "unusedExportsCount": 91
+    "unusedExportsCount": 62
   }
 }
