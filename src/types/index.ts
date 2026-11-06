@@ -162,6 +162,7 @@ export type {
   AgentObservation,
   SessionEntity,
   ProfileEntity,
+  ProspectiveEntity,
   // Context types
   AccessContext,
   SalienceContext,
@@ -383,3 +384,6 @@ export {
   isTaskEntity,
   isLearningTraceEntity,
 } from './agent-memory.js';
+
+// Procedural memory value types (returned by ctx.procedureManager)
+export type { ProcedureStep, Procedure, ProcedureMatch, ProcedureFeedback } from './procedure.js';

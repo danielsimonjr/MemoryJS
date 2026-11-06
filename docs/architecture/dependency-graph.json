@@ -3,9 +3,9 @@
     "name": "@danielsimonjr/memoryjs",
     "version": "4.5.0",
     "lastUpdated": "2026-11-06",
-    "totalFiles": 398,
+    "totalFiles": 399,
     "totalModules": 12,
-    "totalExports": 2799
+    "totalExports": 2815
   },
   "entryPoints": [
     {
@@ -735,6 +735,77 @@
           "AccessTrackerConfig"
         ]
       },
+      "src/agent/AgentEnvDefaults.ts": {
+        "description": "Environment-derived defaults for agent-memory components.",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../utils/envConfig.js",
+            "imports": [
+              "readEnvLooseFlag",
+              "readEnvNumber",
+              "EnvNumberBounds"
+            ]
+          },
+          {
+            "file": "../utils/logger.js",
+            "imports": [
+              "logger"
+            ]
+          },
+          {
+            "file": "./EntropyFilter.js",
+            "imports": [
+              "EntropyFilterConfig"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./WorkingMemoryManager.js",
+            "imports": [
+              "WorkingMemoryConfig"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./MultiAgentMemoryManager.js",
+            "imports": [
+              "MultiAgentConfig"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "MemoryVisibility"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "DEFAULT_ENTROPY_THRESHOLD_BITS",
+          "DEFAULT_COGNITIVE_LOAD_MAX",
+          "readEntropyFilterFromEnv",
+          "readDefaultVisibilityFromEnv",
+          "readCognitiveLoadMaxFromEnv",
+          "readConsolidationSchedulerEnabled",
+          "withEnvWorkingMemory",
+          "withEnvMultiAgent"
+        ],
+        "functions": [
+          "readEntropyFilterFromEnv",
+          "readDefaultVisibilityFromEnv",
+          "readCognitiveLoadMaxFromEnv",
+          "readConsolidationSchedulerEnabled",
+          "withEnvWorkingMemory",
+          "withEnvMultiAgent"
+        ],
+        "constants": [
+          "DEFAULT_ENTROPY_THRESHOLD_BITS",
+          "DEFAULT_COGNITIVE_LOAD_MAX"
+        ]
+      },
       "src/agent/AgentMemoryConfig.ts": {
         "description": "Agent Memory Configuration - env var and programmatic config for all agent memory components.",
         "externalDependencies": [],
@@ -872,6 +943,25 @@
           }
         ],
         "internalDependencies": [
+          {
+            "file": "./CollaborativeSynthesis.js",
+            "imports": [
+              "CollaborativeSynthesis"
+            ]
+          },
+          {
+            "file": "../core/GraphTraversal.js",
+            "imports": [
+              "GraphTraversal"
+            ]
+          },
+          {
+            "file": "./AgentEnvDefaults.js",
+            "imports": [
+              "withEnvWorkingMemory",
+              "withEnvMultiAgent"
+            ]
+          },
           {
             "file": "../utils/logger.js",
             "imports": [
@@ -1252,6 +1342,12 @@
         "externalDependencies": [],
         "nodeDependencies": [],
         "internalDependencies": [
+          {
+            "file": "./AgentEnvDefaults.js",
+            "imports": [
+              "readCognitiveLoadMaxFromEnv"
+            ]
+          },
           {
             "file": "../utils/textSimilarity.js",
             "imports": [
@@ -6755,6 +6851,7 @@
               "ProcedureStore",
               "StepSequencer",
               "decodeProcedure",
+              "migrateLegacyProcedures",
               "PROCEDURE_ENTITY_TYPE",
               "ProcedureManagerConfig"
             ],
@@ -7257,6 +7354,7 @@
           "ProcedureStore",
           "StepSequencer",
           "decodeProcedure",
+          "migrateLegacyProcedures",
           "PROCEDURE_ENTITY_TYPE",
           "ProcedureManagerConfig",
           "ProceduralGraph",
@@ -7670,6 +7768,7 @@
           "ProcedureStore",
           "StepSequencer",
           "decodeProcedure",
+          "migrateLegacyProcedures",
           "PROCEDURE_ENTITY_TYPE",
           "ProcedureManagerConfig",
           "ProceduralGraph",
@@ -8818,6 +8917,12 @@
               "LearningDeps"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../../utils/envConfig.js",
+            "imports": [
+              "readEnvStrictInt"
+            ]
           }
         ],
         "exports": [
@@ -16758,6 +16863,13 @@
             "typeOnly": true
           },
           {
+            "file": "../types/types.js",
+            "imports": [
+              "IGraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
             "file": "../agent/AccessTracker.js",
             "imports": [
               "AccessTracker"
@@ -16853,6 +16965,19 @@
         "nodeDependencies": [],
         "internalDependencies": [
           {
+            "file": "../features/StreamingExporter.js",
+            "imports": [
+              "StreamingExporter"
+            ]
+          },
+          {
+            "file": "../features/AuditLog.js",
+            "imports": [
+              "AuditLog"
+            ],
+            "typeOnly": true
+          },
+          {
             "file": "../utils/logger.js",
             "imports": [
               "logger"
@@ -16888,7 +17013,12 @@
           {
             "file": "../utils/index.js",
             "imports": [
-              "validateFilePath",
+              "validateFilePath"
+            ]
+          },
+          {
+            "file": "../utils/sidecarPath.js",
+            "imports": [
               "sidecarPath"
             ]
           },
@@ -17069,6 +17199,20 @@
             "file": "../search/RankedSearch.js",
             "imports": [
               "RankedSearch"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../search/TemporalSearch.js",
+            "imports": [
+              "TemporalSearch"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../features/FreshnessManager.js",
+            "imports": [
+              "FreshnessManager"
             ],
             "typeOnly": true
           },
@@ -18197,6 +18341,12 @@
         "nodeDependencies": [],
         "internalDependencies": [
           {
+            "file": "../../features/FreshnessManager.js",
+            "imports": [
+              "FreshnessManager"
+            ]
+          },
+          {
             "file": "../GraphStorage.js",
             "imports": [
               "GraphStorage"
@@ -18464,6 +18614,12 @@
         "externalDependencies": [],
         "nodeDependencies": [],
         "internalDependencies": [
+          {
+            "file": "../../agent/AgentEnvDefaults.js",
+            "imports": [
+              "readConsolidationSchedulerEnabled"
+            ]
+          },
           {
             "file": "../GraphStorage.js",
             "imports": [
@@ -19135,6 +19291,12 @@
             "file": "../../search/LLMSearchExecutor.js",
             "imports": [
               "LLMSearchExecutor"
+            ]
+          },
+          {
+            "file": "../../search/TemporalSearch.js",
+            "imports": [
+              "TemporalSearch"
             ]
           },
           {
@@ -20959,6 +21121,7 @@
               "IngestInput",
               "IngestOptions",
               "IngestResult",
+              "IngestProduced",
               "SplitOptions",
               "SplitResult",
               "VisualizeOptions",
@@ -21122,6 +21285,7 @@
           "IngestInput",
           "IngestOptions",
           "IngestResult",
+          "IngestProduced",
           "SplitOptions",
           "SplitResult",
           "VisualizeOptions",
@@ -21184,6 +21348,7 @@
           "IngestInput",
           "IngestOptions",
           "IngestResult",
+          "IngestProduced",
           "SplitOptions",
           "SplitResult",
           "VisualizeOptions",
@@ -25167,6 +25332,7 @@
               "AgentObservation",
               "SessionEntity",
               "ProfileEntity",
+              "ProspectiveEntity",
               "AccessContext",
               "SalienceContext",
               "SalienceWeights",
@@ -25364,6 +25530,17 @@
             ],
             "reExport": true,
             "typeOnly": true
+          },
+          {
+            "file": "./procedure.js",
+            "imports": [
+              "ProcedureStep",
+              "Procedure",
+              "ProcedureMatch",
+              "ProcedureFeedback"
+            ],
+            "reExport": true,
+            "typeOnly": true
           }
         ],
         "exports": [
@@ -25515,6 +25692,7 @@
           "AgentObservation",
           "SessionEntity",
           "ProfileEntity",
+          "ProspectiveEntity",
           "AccessContext",
           "SalienceContext",
           "SalienceWeights",
@@ -25644,7 +25822,11 @@
           "LeafState",
           "LearningTraceAction",
           "LearningTraceRecord",
-          "LearningTraceEntity"
+          "LearningTraceEntity",
+          "ProcedureStep",
+          "Procedure",
+          "ProcedureMatch",
+          "ProcedureFeedback"
         ],
         "reExported": [
           "QueryTraceBuilder",
@@ -25795,6 +25977,7 @@
           "AgentObservation",
           "SessionEntity",
           "ProfileEntity",
+          "ProspectiveEntity",
           "AccessContext",
           "SalienceContext",
           "SalienceWeights",
@@ -25924,7 +26107,11 @@
           "LeafState",
           "LearningTraceAction",
           "LearningTraceRecord",
-          "LearningTraceEntity"
+          "LearningTraceEntity",
+          "ProcedureStep",
+          "Procedure",
+          "ProcedureMatch",
+          "ProcedureFeedback"
         ]
       },
       "src/types/learning.ts": {
@@ -27211,6 +27398,8 @@
               "OperationCancelledError",
               "RefConflictError",
               "RefNotFoundError",
+              "AttributionRequiredError",
+              "VersionConflictError",
               "ErrorOptions"
             ],
             "reExport": true
@@ -27705,13 +27894,6 @@
             "reExport": true
           },
           {
-            "file": "./sidecarPath.js",
-            "imports": [
-              "sidecarPath"
-            ],
-            "reExport": true
-          },
-          {
             "file": "./Diagnostics.js",
             "imports": [
               "DiagnosticsOptions",
@@ -27747,6 +27929,8 @@
           "OperationCancelledError",
           "RefConflictError",
           "RefNotFoundError",
+          "AttributionRequiredError",
+          "VersionConflictError",
           "ErrorOptions",
           "generateSuggestions",
           "getQuickHint",
@@ -28033,7 +28217,6 @@
           "CompressedMapOptions",
           "ZlibCompressionAdapter",
           "ICompressionAdapter",
-          "sidecarPath",
           "cosineSimilarity",
           "DiagnosticsOptions",
           "DiagnosticsReport",
@@ -28057,6 +28240,8 @@
           "OperationCancelledError",
           "RefConflictError",
           "RefNotFoundError",
+          "AttributionRequiredError",
+          "VersionConflictError",
           "ErrorOptions",
           "generateSuggestions",
           "getQuickHint",
@@ -28342,7 +28527,6 @@
           "CompressedMapOptions",
           "ZlibCompressionAdapter",
           "ICompressionAdapter",
-          "sidecarPath",
           "DiagnosticsOptions",
           "DiagnosticsReport",
           "TieredIndexStatsSnapshot",
@@ -29148,10 +29332,10 @@
           "src/features/IOManager.ts"
         ],
         [
+          "src/agent/EntropyFilter.ts",
           "src/agent/ConsolidationPipeline.ts",
           "src/agent/WorkingMemoryManager.ts",
-          "src/agent/EntropyFilter.ts",
-          "src/agent/ConsolidationPipeline.ts"
+          "src/agent/EntropyFilter.ts"
         ],
         [
           "src/agent/knowledge/KnowledgeRepository.ts",
@@ -29233,6 +29417,7 @@
         "name": "Agent",
         "files": [
           "src/agent/AccessTracker.ts",
+          "src/agent/AgentEnvDefaults.ts",
           "src/agent/AgentMemoryConfig.ts",
           "src/agent/AgentMemoryManager.ts",
           "src/agent/AgentReflectionManager.ts",
@@ -29680,32 +29865,32 @@
       "src/sqlite.ts",
       "src/workers/levenshteinWorker.ts"
     ],
-    "reachableCount": 398,
+    "reachableCount": 399,
     "dormantCount": 0,
     "orphaned": [],
     "testOnly": []
   },
   "statistics": {
-    "totalTypeScriptFiles": 398,
+    "totalTypeScriptFiles": 399,
     "totalModules": 12,
-    "totalLinesOfCode": 125969,
-    "totalExports": 2799,
+    "totalLinesOfCode": 126159,
+    "totalExports": 2815,
     "totalClasses": 276,
     "totalInterfaces": 824,
-    "totalFunctions": 637,
+    "totalFunctions": 643,
     "totalTypeGuards": 43,
     "totalEnums": 4,
-    "totalConstants": 178,
-    "totalReExports": 1705,
-    "totalTypeOnlyImports": 855,
+    "totalConstants": 180,
+    "totalReExports": 1713,
+    "totalTypeOnlyImports": 864,
     "runtimeCircularDeps": 0,
     "typeOnlyCircularDeps": 15,
     "entryRoots": 4,
-    "reachableFiles": 398,
+    "reachableFiles": 399,
     "dormantFiles": 0,
     "orphanedFiles": 0,
     "testOnlyFiles": 0,
     "unusedFilesCount": 0,
-    "unusedExportsCount": 118
+    "unusedExportsCount": 119
   }
 }

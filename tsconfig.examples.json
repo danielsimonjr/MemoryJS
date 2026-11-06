@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": ".",
+    "noUnusedLocals": true,
+    "types": ["node"]
+  },
+  "include": ["examples/**/*.ts", "tests/examples/**/*.ts", "src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "src/**/*conflicted copy*", "src/**/*EMLLC*"]
+}

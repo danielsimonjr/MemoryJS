@@ -181,7 +181,7 @@ describe('ProspectiveMemoryManager', () => {
       await pmm.scheduleConditional('first', 'a');
       await pmm.scheduleConditional('second', 'b');
       // Warning emitted at most once across multiple calls (per-instance gate)
-      expect(warnSpy.mock.calls.filter((c) => String(c[0]).includes('not implemented')).length).toBe(1);
+      expect(warnSpy.mock.calls.filter((c) => String(c[0]).includes('no predicateEvaluator is configured')).length).toBe(1);
       warnSpy.mockRestore();
     });
   });

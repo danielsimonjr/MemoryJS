@@ -1,10 +1,11 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { IncomingMessage } from 'node:http';
 import { Socket } from 'node:net';
 import { RestRouter, type RestRequest } from '../../../src/adapters/RestRouter.js';
 import { ApiKeyAuthMiddleware } from '../../../src/adapters/ApiKeyAuthMiddleware.js';
 import { APIKeyStore } from '../../../src/security/APIKeyStore.js';
 import type { ManagerContext } from '../../../src/core/ManagerContext.js';
+import { logger } from '../../../src/utils/logger.js';
 
 const ctx = {} as ManagerContext;
 const request = (path: string): RestRequest => ({
@@ -29,6 +30,15 @@ async function serve(router: RestRouter, chunks: string[], headers: Record<strin
 }
 
 describe('REST input boundaries', () => {
+  // The router logs deliberate bad-input and handler failures; silence them for every test here.
+  // Tests that assert on a logged failure read `errorSpy.mock.calls` directly.
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+  beforeEach(() => {
+    errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    errorSpy.mockRestore();
+  });
   it('accepts the byte limit and rejects oversized UTF-8 and chunked JSON', async () => {
     const router = new RestRouter(ctx, { maxBodyBytes: 6 });
     const handler = vi.fn(req => ({ status: 200, body: req.body }));
@@ -66,6 +76,7 @@ describe('REST input boundaries', () => {
     const response = await router.dispatch(request('/fail'));
     expect(response.body).toEqual({ error: 'Internal Server Error' });
     expect(response.status).toBe(status === 503 ? 503 : 500);
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('[RestRouter] GET /fail threw'), expect.any(Error));
   });
 
   it('keeps the status of client errors but replaces their message', async () => {

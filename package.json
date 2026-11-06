@@ -6,7 +6,11 @@
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
-  "sideEffects": false,
+  "sideEffects": [
+    "./dist/**/sqlite-register*",
+    "./dist/chunk-*.js",
+    "./src/core/sqlite-register.ts"
+  ],
   "exports": {
     ".": {
       "import": {
@@ -116,7 +120,7 @@
   },
   "files": [
     "dist",
-    "scripts",
+    "scripts/rebuild-native.mjs",
     "README.md",
     "LICENSE"
   ],
@@ -130,7 +134,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:ci": "node -e \"process.env.IGNORE_UNHANDLED_REJECTIONS='true';require('child_process').execSync('vitest run --exclude=tests/performance/**',{stdio:'inherit',env:process.env})\"",
+    "test:ci": "node -e \"process.env.IGNORE_UNHANDLED_REJECTIONS='true';process.env.NODE_OPTIONS=[process.env.NODE_OPTIONS,'--disable-warning=ExperimentalWarning'].filter(Boolean).join(' ');require('child_process').execSync('vitest run --exclude=tests/performance/**',{stdio:'inherit',env:process.env})\"",
     "clean": "rimraf dist",
     "prepublishOnly": "bun run clean && bun run build && bun run test:ci",
     "tools:install": "cd tools/chunking-for-files && npm install && cd ../compress-for-context && npm install && cd ../create-dependency-graph && npm install && cd ../migrate-from-jsonl-to-sqlite && npm install",

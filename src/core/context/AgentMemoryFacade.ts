@@ -17,6 +17,7 @@
  * @internal
  */
 
+import { readConsolidationSchedulerEnabled } from '../../agent/AgentEnvDefaults.js';
 import type { GraphStorage } from '../GraphStorage.js';
 import type { EntityManager } from '../EntityManager.js';
 import type { GraphTraversal } from '../GraphTraversal.js';
@@ -85,6 +86,8 @@ export class AgentMemoryFacade {
   private _memoryEngine?: MemoryEngine;
   private _memoryBackend?: IMemoryBackend;
   private _consolidationScheduler?: ConsolidationScheduler;
+  /** Enabled flag read once at first `consolidationScheduler` access. */
+  private _consolidationEnabled?: boolean;
   private _dreamEngine?: DreamEngine;
   private _accessTracker?: AccessTracker;
   private _decayEngine?: DecayEngine;
@@ -314,11 +317,13 @@ export class AgentMemoryFacade {
   /**
    * ConsolidationScheduler - scheduled memory consolidation.
    *
-   * Returns `undefined` when `MEMORY_AUTO_CONSOLIDATION` is not `'true'`. The
-   * off state is not cached.
+   * Returns `undefined` unless `MEMORY_AUTO_CONSOLIDATION` or
+   * `MEMORY_CONSOLIDATION_SCHEDULER_ENABLED` is `'true'` (either one enables it).
+   * The decision is read once, at first access, and cached (on or off): restart
+   * the process to change it.
    *
    * Configurable via environment variables:
-   * - MEMORY_AUTO_CONSOLIDATION (default: false) - enable to create the scheduler
+   * - MEMORY_AUTO_CONSOLIDATION / MEMORY_CONSOLIDATION_SCHEDULER_ENABLED (default: false) - enable to create the scheduler
    * - MEMORY_CONSOLIDATION_INTERVAL_MS (default: 3600000 = 1 hour)
    * - MEMORY_CONSOLIDATION_MERGE_DUPLICATES (default: false)
    * - MEMORY_CONSOLIDATION_DUPLICATE_THRESHOLD (default: 0.9)
@@ -326,7 +331,8 @@ export class AgentMemoryFacade {
   get consolidationScheduler(): ConsolidationScheduler | undefined {
     if (this._consolidationScheduler) return this._consolidationScheduler;
 
-    if (readEnvLooseFlag('MEMORY_AUTO_CONSOLIDATION', false)) {
+    this._consolidationEnabled ??= readConsolidationSchedulerEnabled();
+    if (this._consolidationEnabled) {
       this._consolidationScheduler = new ConsolidationScheduler(
         this.agentMemory().consolidationPipeline,
         this.deps.getCompressionManager(),

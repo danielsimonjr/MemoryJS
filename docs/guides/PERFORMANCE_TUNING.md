@@ -1,7 +1,9 @@
 # MemoryJS Performance Tuning Guide
 
-**Version**: 2.9.0
-**Last Updated**: 2026-07-24
+> **Code samples.** Samples assume `const ctx = new ManagerContext('./memory.jsonl')` and the placeholders `graph: KnowledgeGraph` (from `await ctx.storage.loadGraph()`), `entities: Entity[]` and `storage: IGraphStorage`. Every other name in a sample is imported or declared in it.
+
+**Version**: 4.5.0 (Unreleased changes noted inline)
+**Last Updated**: 2026-11-06
 
 > **Performance-relevant additions since v1.1:**
 >
@@ -24,7 +26,7 @@
 >   over-budget queries before any search work happens.
 > - **World model snapshot cap** (3B.7) — `maxSnapshotSize` (default 1000)
 >   keeps state-diff cost bounded; over-cap prefers high-importance.
-> - **Graph-connectivity ranking signal** (`GraphRankPrior`, unreleased,
+> - **Graph-connectivity ranking signal** (`GraphRankPrior`, 2.9.0,
 >   `@experimental`) — cached normalized PageRank over `GraphTraversal`,
 >   with a degree-only O(V+E) fallback beyond `maxPageRankEntities`
 >   (default 50,000) so cost stays bounded on very large graphs;
@@ -35,8 +37,8 @@
 >   `MEMORY_SALIENCE_CONNECTIVITY_WEIGHT` (salience), and
 >   `MEMORY_DECAY_CONNECTIVITY_PROTECTION` (decay) all default to `0`.
 
-> **Optimization pass (Unreleased) — headline measurements:** see
-> [Delta Persistence & Write Path](#delta-persistence--write-path-unreleased)
+> **Optimization pass (4.5.0) — headline measurements:** see
+> [Delta Persistence & Write Path](#delta-persistence--write-path-300)
 > for detail. Ranked search ~3.3s → ~16ms at 4k entities (~170×); SQLite
 > sequential creates 23 → 1,972 ops/s (84×); JSONL sequential creates 6.1×
 > faster; warm root import ~220ms → ~150ms (chrono-node now fully lazy).
@@ -61,7 +63,7 @@ Comprehensive guide for optimizing MemoryJS performance at different scales.
 10. [Scale-Specific Tuning](#scale-specific-tuning)
 11. [Monitoring & Profiling](#monitoring--profiling)
 12. [Common Bottlenecks](#common-bottlenecks)
-13. [Delta Persistence & Write Path (Unreleased)](#delta-persistence--write-path-unreleased)
+13. [Delta Persistence & Write Path (3.0.0)](#delta-persistence--write-path-300)
 
 ---
 
@@ -73,13 +75,13 @@ Comprehensive guide for optimizing MemoryJS performance at different scales.
 |-----------|-------|--------|-------|
 | Load graph | O(n) | O(n) | Full scan (cached after first load) |
 | Save graph (import/restore) | O(n) | O(n) | Full write — only for genuinely full-graph writes |
-| Create/update/delete entities (batch) | O(k) | O(k) | k=changed, since delta persistence (Unreleased, S2) — was O(n) full-graph rewrite on both backends |
+| Create/update/delete entities (batch) | O(k) | O(k) | k=changed, since delta persistence (3.0.0, S2) — was O(n) full-graph rewrite on both backends |
 | Search basic | O(n) | O(log n) | FTS5 indexed |
-| Search ranked | O(n · terms) | O(log n) | TF-IDF; was O(n² · terms) before the IDF hoist (Unreleased, S1) |
+| Search ranked | O(n · terms) | O(log n) | TF-IDF; was O(n² · terms) before the IDF hoist (3.0.0, S1) |
 | Fuzzy search | O(n × m) | O(n × m) | Levenshtein |
 | Find duplicates | O(n²/k) | O(n²/k) | Bucketed |
 
-**Delta persistence (Unreleased, S2):** `createEntities`/`updateEntity`/
+**Delta persistence (3.0.0, S2):** `createEntities`/`updateEntity`/
 `batchUpdate`/`deleteEntities` and their relation equivalents now persist via
 targeted storage primitives (`appendEntity(ies)`, `updateEntity`, targeted
 deletes) instead of deep-copying and rewriting the entire graph. `saveGraph`
@@ -87,7 +89,7 @@ deletes) instead of deep-copying and rewriting the entire graph. `saveGraph`
 — import, restore, and JSONL segment-mode batch saves (a documented
 limitation: segment storage still does one full `saveAll` per batch, single-file
 JSONL is O(changed)). See
-[Delta Persistence & Write Path](#delta-persistence--write-path-unreleased)
+[Delta Persistence & Write Path](#delta-persistence--write-path-300)
 for measured throughput.
 
 ### Performance Targets
@@ -180,7 +182,7 @@ await benchmark('Create 100 entities', async () => {
 });
 
 await benchmark('Search 1000 entities', async () => {
-  await ctx.searchManager.search('test');
+  await ctx.searchManager.searchNodes('test');
 });
 ```
 
@@ -220,11 +222,14 @@ await benchmark('Search 1000 entities', async () => {
 ### Switching Storage
 
 ```typescript
-// Check current performance
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+
 const ctx = new ManagerContext('./memory.jsonl');
+
+// Check current performance
 const stats = await ctx.analyticsManager.getGraphStats();
 
-if (stats.entityCount > 2000) {
+if (stats.totalEntities > 2000) {
   console.log('Consider migrating to SQLite for better performance');
 }
 ```
@@ -262,6 +267,7 @@ await ctx.entityManager.createEntities(entities);  // 1 write
 ### Chunking Large Batches
 
 ```typescript
+import { Entity } from '@danielsimonjr/memoryjs';
 import { chunkArray } from '@danielsimonjr/memoryjs';
 
 async function createManyEntities(entities: Entity[], chunkSize: number = 1000) {
@@ -277,12 +283,14 @@ async function createManyEntities(entities: Entity[], chunkSize: number = 1000) 
 ### Progress Tracking
 
 ```typescript
-await ctx.entityManager.createEntities(entities, {
-  onProgress: (completed, total, phase) => {
-    const percent = (completed / total * 100).toFixed(1);
-    console.log(`${phase}: ${percent}% (${completed}/${total})`);
-  }
-});
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+
+const ctx = new ManagerContext('./memory.jsonl');
+
+declare const entities: Array<{ name: string; entityType: string; observations: string[] }>;
+
+// Batch creation: one write for the whole array
+await ctx.entityManager.createEntities(entities);
 ```
 
 ---
@@ -292,14 +300,16 @@ await ctx.entityManager.createEntities(entities, {
 ### Filter Early
 
 ```typescript
-// ❌ BAD: Search all, filter in code
-const all = await ctx.searchManager.search('query');
-const filtered = all.entities.filter(e => e.importance >= 5);
+import { ManagerContext } from '@danielsimonjr/memoryjs';
 
-// ✅ GOOD: Filter in query
-const filtered = await ctx.searchManager.search('query', {
-  minImportance: 5
-});
+const ctx = new ManagerContext('./memory.jsonl');
+
+// ❌ BAD: Search all, filter in code
+const all = await ctx.searchManager.searchNodes('query');
+const filtered = all.entities.filter(e => (e.importance ?? 0) >= 5);
+
+// ✅ GOOD: Filter in query (minImportance is the third positional argument)
+const narrowed = await ctx.searchManager.searchNodes('query', undefined, 5);
 ```
 
 ### Use Appropriate Search Type
@@ -315,21 +325,25 @@ const filtered = await ctx.searchManager.search('query', {
 ### Limit Results
 
 ```typescript
-// Always set reasonable limits
-const results = await ctx.searchManager.searchRanked('query', {
-  limit: 20,      // Don't retrieve more than needed
-  minScore: 0.3   // Filter low-relevance results
-});
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+
+const ctx = new ManagerContext('./memory.jsonl');
+
+// Ranked search: positional (query, tags?, minImportance?, maxImportance?, limit?)
+const results = await ctx.searchManager.searchNodesRanked('query', undefined, undefined, undefined, 20);
+const relevant = results.filter((r) => r.score >= 0.3);  // Filter low-relevance results
 ```
 
 ### Use Tags for Filtering
 
 ```typescript
-// Pre-filter with tags (very efficient)
-const results = await ctx.searchManager.search('query', {
-  tags: ['important', 'active'],
-  entityType: 'project'
-});
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+
+const ctx = new ManagerContext('./memory.jsonl');
+
+// Pre-filter with tags (very efficient). Entity type filtering is done on the result.
+const results = await ctx.searchManager.searchNodes('query', ['important', 'active']);
+const projects = results.entities.filter((e) => e.entityType === 'project');
 ```
 
 ### Boolean Search Optimization
@@ -355,17 +369,23 @@ const good = await ctx.searchManager.booleanSearch('a AND f', {
 The graph cache is automatically managed:
 
 ```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+
+const ctx = new ManagerContext('./memory.jsonl');
+
 // First call: loads from disk
-const results1 = await ctx.searchManager.search('query');  // ~100ms
+const results1 = await ctx.searchManager.searchNodes('query');  // ~100ms
 
 // Subsequent calls: uses cache
-const results2 = await ctx.searchManager.search('query2'); // ~10ms
+const results2 = await ctx.searchManager.searchNodes('query2'); // ~10ms
 
 // After write: cache invalidated
-await ctx.entityManager.createEntities([...]);             // Invalidates
+await ctx.entityManager.createEntities([
+  { name: 'Alice', entityType: 'person', observations: ['Likes tea'] },
+]); // Invalidates
 
 // Next read: reloads from disk
-const results3 = await ctx.searchManager.search('query3'); // ~100ms
+const results3 = await ctx.searchManager.searchNodes('query3'); // ~100ms
 ```
 
 ### Search Result Caching
@@ -375,7 +395,8 @@ import { searchCaches, getAllCacheStats } from '@danielsimonjr/memoryjs';
 
 // Get cache stats
 const stats = getAllCacheStats();
-console.log('Cache hit rate:', stats.hits / (stats.hits + stats.misses));
+const cacheStats = getAllCacheStats();
+console.log('Search cache stats:', cacheStats);
 
 // Clear caches if memory constrained
 import { clearAllSearchCaches } from '@danielsimonjr/memoryjs';
@@ -385,6 +406,8 @@ clearAllSearchCaches();
 ### Application-Level Caching
 
 ```typescript
+import { SearchOptions } from '@danielsimonjr/memoryjs';
+import { ManagerContext } from '@danielsimonjr/memoryjs';
 class CachedSearch {
   private cache = new Map<string, { result: any; timestamp: number }>();
   private ttlMs = 60000; // 1 minute
@@ -397,7 +420,7 @@ class CachedSearch {
       return cached.result;
     }
 
-    const result = await ctx.searchManager.search(query, options);
+    const result = await ctx.searchManager.searchNodes(query, options);
     this.cache.set(cacheKey, { result, timestamp: Date.now() });
 
     return result;
@@ -420,16 +443,15 @@ import { globalMemoryMonitor, MemoryMonitor } from '@danielsimonjr/memoryjs';
 
 // Get current usage
 const usage = globalMemoryMonitor.getUsage();
-console.log(`Heap used: ${usage.heapUsed / 1024 / 1024}MB`);
-console.log(`Heap total: ${usage.heapTotal / 1024 / 1024}MB`);
+console.log(`Total: ${usage.totalFormatted}`);
 
 // Set up alerts
 globalMemoryMonitor.setThresholds({
-  heapUsedPercent: 0.8,  // Alert at 80%
-  heapTotalMB: 1024      // Alert at 1GB
+  warning: 512 * 1024 * 1024,   // 512 MB
+  critical: 1024 * 1024 * 1024, // 1 GB
 });
 
-globalMemoryMonitor.onAlert((alert) => {
+globalMemoryMonitor.checkThresholds().forEach((alert) => {
   console.warn(`Memory alert: ${alert.message}`);
   // Take action: clear caches, reduce batch sizes, etc.
 });
@@ -438,9 +460,17 @@ globalMemoryMonitor.onAlert((alert) => {
 ### Memory-Efficient Patterns
 
 ```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+
+const ctx = new ManagerContext('./memory.jsonl');
+
+declare function processAll(entities: unknown[]): void;
+declare function processOne(entity: unknown): Promise<void>;
+declare function processPage(entities: unknown[]): Promise<void>;
+
 // ❌ BAD: Load all at once
-const all = await ctx.entityManager.getAllEntities();
-processAll(all);  // Holds all in memory
+const all = await ctx.storage.loadGraph();
+processAll([...all.entities]);  // Holds all in memory
 
 // ✅ GOOD: Stream processing
 const graph = await ctx.storage.loadGraph();
@@ -448,19 +478,13 @@ for (const entity of graph.entities) {
   await processOne(entity);  // Process one at a time
 }
 
-// ✅ GOOD: Paginated access
-let offset = 0;
+// ✅ GOOD: Paginated access (slice the results)
 const pageSize = 100;
-
-while (true) {
-  const results = await ctx.searchManager.search('', {
-    limit: pageSize,
-    offset
-  });
-
-  if (results.entities.length === 0) break;
-
-  await processPage(results.entities);
+let offset = 0;
+const ranked = await ctx.searchManager.searchNodes('');
+while (offset < ranked.entities.length) {
+  const page = ranked.entities.slice(offset, offset + pageSize);
+  await processPage(page);
   offset += pageSize;
 }
 ```
@@ -468,21 +492,22 @@ while (true) {
 ### Streaming for Large Exports
 
 ```typescript
-import { StreamingExporter } from '@danielsimonjr/memoryjs';
+import { ManagerContext, StreamingExporter } from '@danielsimonjr/memoryjs';
 
-const exporter = new StreamingExporter(ctx.storage);
+const ctx = new ManagerContext('./memory.jsonl');
+const graph = await ctx.storage.loadGraph();
 
-await exporter.exportToFile('./large-export.json', {
-  chunkSize: 500,
-  onProgress: (processed, total) => {
-    console.log(`Exported ${processed}/${total}`);
-  }
-});
+// Stream the export to a file (no progress callback is exposed by streamJSONL)
+const exporter = new StreamingExporter('./large-export.jsonl');
+await exporter.streamJSONL(graph);
 ```
 
 ### Garbage Collection Hints
 
 ```typescript
+declare const data: string[];
+declare function getChunks<T>(items: T[], size: number): T[][];
+declare function processChunk(chunk: string[]): Promise<void>;
 async function processLargeDataset() {
   // Process in chunks to allow GC
   const chunks = getChunks(data, 1000);
@@ -507,50 +532,53 @@ async function processLargeDataset() {
 ```typescript
 import { getWorkerPoolManager } from '@danielsimonjr/memoryjs';
 
-const pool = getWorkerPoolManager();
-
-// Configure for heavy parallel workloads
-pool.configure({
-  minWorkers: 2,
-  maxWorkers: Math.min(8, require('os').cpus().length),
-  workerType: 'thread'
+// Create a dedicated pool for heavy workloads
+const pools = getWorkerPoolManager();
+pools.createPool('heavy', {
+  maxWorkers: Math.min(8, 4),
+  workerType: 'thread',
 });
 
-// Monitor pool
-const stats = pool.getStats();
-console.log(`Active: ${stats.busyWorkers}, Pending: ${stats.pendingTasks}`);
+// Monitor the pool
+const stats = pools.getPoolStats('heavy');
+console.log(`Pool stats: ${JSON.stringify(stats)}`);
 ```
 
 ### Parallel Search Execution
 
 ```typescript
-import { parallelMap } from '@danielsimonjr/memoryjs';
+import { ManagerContext, parallelMap } from '@danielsimonjr/memoryjs';
 
-// Execute multiple searches in parallel
+const ctx = new ManagerContext('./memory.jsonl');
+
+// Execute multiple searches in parallel (third argument is the chunk size)
 const queries = ['query1', 'query2', 'query3', 'query4'];
 
 const results = await parallelMap(queries, async (query) => {
-  return ctx.searchManager.search(query);
-}, { concurrency: 4 });
+  return ctx.searchManager.searchNodes(query);
+}, 4);
 ```
 
 ### Parallel Entity Processing
 
 ```typescript
-import { parallelMap, parallelFilter } from '@danielsimonjr/memoryjs';
+import { ManagerContext, parallelMap, parallelFilter } from '@danielsimonjr/memoryjs';
 
-// Parallel processing with controlled concurrency
-const entities = await ctx.entityManager.getAllEntities();
+const ctx = new ManagerContext('./memory.jsonl');
+declare function enrichEntity(entity: import('@danielsimonjr/memoryjs').Entity): Promise<unknown>;
+
+// Parallel processing with controlled chunk size
+const entities = await ctx.entityManager.listEntities();
 
 // Process in parallel
 const processed = await parallelMap(entities, async (entity) => {
   return await enrichEntity(entity);
-}, { concurrency: 10 });
+}, 10);
 
 // Filter in parallel
-const important = await parallelFilter(entities, async (entity) => {
-  return entity.importance && entity.importance >= 7;
-}, { concurrency: 10 });
+const important = await parallelFilter(entities, (entity) => {
+  return (entity.importance ?? 0) >= 7;
+}, 10);
 ```
 
 ---
@@ -560,34 +588,32 @@ const important = await parallelFilter(entities, async (entity) => {
 ### TF-IDF Index Management
 
 ```typescript
-import { TFIDFIndexManager, TFIDFEventSync } from '@danielsimonjr/memoryjs';
+import { ManagerContext, TFIDFIndexManager } from '@danielsimonjr/memoryjs';
 
-// Index is auto-synced via events
-// For manual control:
-const indexManager = new TFIDFIndexManager(ctx.storage);
+const ctx = new ManagerContext('./memory.jsonl');
+
+// Index is auto-synced via events. For manual control, build from a graph:
+const indexManager = new TFIDFIndexManager('./data/index');
 
 // Force rebuild (useful after large imports)
-await indexManager.rebuildIndex();
-
-// Get index stats
-const stats = indexManager.getStats();
-console.log(`Terms indexed: ${stats.termCount}`);
-console.log(`Documents indexed: ${stats.documentCount}`);
+const graph = await ctx.storage.loadGraph();
+await indexManager.buildIndex(graph);
 ```
 
 ### Semantic Search Indexing
 
 ```typescript
-// Index all entities for semantic search
-await ctx.semanticSearch.indexAll({
-  onProgress: (indexed, total) => {
-    console.log(`Indexed ${indexed}/${total}`);
-  },
-  batchSize: 100  // Adjust based on memory/API limits
-});
+import { ManagerContext } from '@danielsimonjr/memoryjs';
 
-// Incremental indexing for new entities
-await ctx.semanticSearch.indexEntity(newEntity);
+const ctx = new ManagerContext('./memory.jsonl');
+const graph = await ctx.storage.loadGraph();
+
+// Index all entities for semantic search (returns when complete)
+await ctx.semanticSearch?.indexAll(graph);
+
+// Incremental indexing for a new entity
+declare const newEntity: import('@danielsimonjr/memoryjs').Entity;
+await ctx.semanticSearch?.indexEntity(newEntity);
 ```
 
 ### SQLite Index Optimization
@@ -605,12 +631,12 @@ CREATE INDEX idx_relations_to ON relations(to_entity);
 CREATE VIRTUAL TABLE entities_fts USING fts5(name, entity_type, observations);
 ```
 
-**Write-side pragmas (Unreleased, S3)** are also set automatically at
+**Write-side pragmas (3.0.0, S3)** are also set automatically at
 `SQLiteStorage` init — `journal_mode=WAL`, `synchronous=NORMAL` (override via
 `MEMORY_SQLITE_SYNCHRONOUS=FULL|OFF`), `busy_timeout=5000`,
 `cache_size=-64000` (64MB), `temp_store=MEMORY`. No configuration needed for
 the common case; see
-[Delta Persistence & Write Path](#delta-persistence--write-path-unreleased)
+[Delta Persistence & Write Path](#delta-persistence--write-path-300)
 for the measured throughput impact and [CONFIGURATION.md](./CONFIGURATION.md)
 for the durability tradeoff.
 
@@ -621,6 +647,7 @@ for the durability tradeoff.
 ### Small Scale (< 500 entities)
 
 ```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
 // Default configuration works well
 const ctx = new ManagerContext('./memory.jsonl');
 
@@ -630,32 +657,35 @@ const ctx = new ManagerContext('./memory.jsonl');
 ### Medium Scale (500-2,000 entities)
 
 ```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+
 // Consider SQLite for search-heavy workloads
 const ctx = new ManagerContext('./memory.db');
+
+declare const entities: Array<{ name: string; entityType: string; observations: string[] }>;
 
 // Use batch operations
 await ctx.entityManager.createEntities(entities);  // Not one-by-one
 
-// Add filters to searches
-const results = await ctx.searchManager.search('query', {
-  limit: 50,
-  tags: ['relevant']
-});
+// Add filters to searches (tags and minImportance are positional arguments)
+const results = await ctx.searchManager.searchNodes('query', ['relevant']);
+const top = results.entities.slice(0, 50);
 ```
 
 ### Large Scale (2,000-10,000 entities)
 
 ```typescript
+import { ManagerContext, chunkArray, globalMemoryMonitor } from '@danielsimonjr/memoryjs';
+declare function handleMemoryPressure(alert: unknown): void;
+
 // Use SQLite
 process.env.MEMORY_STORAGE_TYPE = 'sqlite';
 const ctx = new ManagerContext('./memory.db');
+declare const entities: Array<{ name: string; entityType: string; observations: string[] }>;
 
 // Aggressive filtering
-const results = await ctx.searchManager.search('query', {
-  limit: 20,
-  minImportance: 5,
-  tags: ['active']
-});
+const results = await ctx.searchManager.searchNodes('query', ['active'], 5);
+const top = results.entities.slice(0, 20);
 
 // Chunk large operations
 const chunks = chunkArray(entities, 500);
@@ -664,47 +694,32 @@ for (const chunk of chunks) {
 }
 
 // Monitor memory
-globalMemoryMonitor.onAlert(handleMemoryPressure);
+globalMemoryMonitor.checkThresholds().forEach(handleMemoryPressure);
 ```
 
 ### Very Large Scale (10,000+ entities)
 
 ```typescript
+import { ManagerContext, StreamingExporter, getWorkerPoolManager } from '@danielsimonjr/memoryjs';
+
 // SQLite required
 const ctx = new ManagerContext('./memory.db');
 
-// Configure worker pool
-getWorkerPoolManager().configure({
-  minWorkers: 4,
-  maxWorkers: 8
-});
+// Configure a dedicated worker pool
+getWorkerPoolManager().createPool('exports', { maxWorkers: 8 });
 
 // Very aggressive filtering
-const results = await ctx.searchManager.searchRanked('query', {
-  limit: 10,
-  minScore: 0.5,
-  minImportance: 7
-});
+const results = await ctx.searchManager.searchNodesRanked('query', undefined, 7, undefined, 10);
 
 // Use streaming for exports
-const exporter = new StreamingExporter(ctx.storage);
-await exporter.exportToFile('./export.json', { chunkSize: 500 });
-
-// Paginated access
-async function* paginatedEntities(pageSize: number = 100) {
-  let offset = 0;
-  while (true) {
-    const results = await ctx.searchManager.search('', { limit: pageSize, offset });
-    if (results.entities.length === 0) break;
-    yield* results.entities;
-    offset += pageSize;
-  }
-}
+const graph = await ctx.storage.loadGraph();
+const exporter = new StreamingExporter('./export.jsonl');
+await exporter.streamJSONL(graph);
 
 // Consider archiving old data
 await ctx.archiveManager.archiveEntities({
   olderThan: '2023-01-01',
-  maxImportance: 3
+  importanceLessThan: 3
 });
 ```
 
@@ -721,7 +736,7 @@ function collectMetrics() {
   return {
     memory: globalMemoryMonitor.getUsage(),
     cache: getAllCacheStats(),
-    workers: getWorkerPoolManager().getStats()
+    workers: getWorkerPoolManager().getPoolIds(),
   };
 }
 
@@ -766,7 +781,7 @@ class PerformanceTracker {
 const tracker = new PerformanceTracker();
 
 const end = tracker.start('search');
-await ctx.searchManager.search('query');
+await ctx.searchManager.searchNodes('query');
 end();
 
 console.log(tracker.getStats('search'));
@@ -799,7 +814,7 @@ node --inspect app.js
 **Solution**:
 ```typescript
 // Use batch operations
-await ctx.entityManager.createEntities(allEntities);  // Single write
+await ctx.entityManager.createEntities(entities);  // Single write
 
 // Not individual creates
 for (const e of entities) {
@@ -813,14 +828,14 @@ for (const e of entities) {
 
 **Solution**:
 ```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+
 // Switch to SQLite for large graphs
 const ctx = new ManagerContext('./memory.db');
 
-// Use pagination
-const results = await ctx.searchManager.search('query', {
-  limit: 100,
-  offset: 0
-});
+// Use pagination: slice the results from the search
+const results = await ctx.searchManager.searchNodes('query');
+const firstPage = results.entities.slice(0, 100);
 ```
 
 ### 3. Unfiltered Searches
@@ -829,12 +844,13 @@ const results = await ctx.searchManager.search('query', {
 
 **Solution**:
 ```typescript
-// Add filters
-const results = await ctx.searchManager.search('query', {
-  tags: ['relevant'],
-  minImportance: 5,
-  limit: 20
-});
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+
+const ctx = new ManagerContext('./memory.jsonl');
+
+// Add filters: tags and minImportance are positional arguments
+const results = await ctx.searchManager.searchNodes('query', ['relevant'], 5);
+const top = results.entities.slice(0, 20);
 ```
 
 ### 4. Memory Pressure
@@ -843,16 +859,23 @@ const results = await ctx.searchManager.search('query', {
 
 **Solution**:
 ```typescript
+import { ManagerContext, StreamingExporter, clearAllSearchCaches } from '@danielsimonjr/memoryjs';
+
+const ctx = new ManagerContext('./memory.jsonl');
+declare const chunks: unknown[][];
+declare function process(chunk: unknown[]): Promise<void>;
+
 // Clear caches
 clearAllSearchCaches();
 
 // Use streaming
-const exporter = new StreamingExporter(ctx.storage);
+const exporter = new StreamingExporter('./export.jsonl');
+const graph = await ctx.storage.loadGraph();
+await exporter.streamJSONL(graph);
 
 // Process in chunks
 for (const chunk of chunks) {
   await process(chunk);
-  if (global.gc) global.gc();
 }
 ```
 
@@ -862,12 +885,13 @@ for (const chunk of chunks) {
 
 **Solution**:
 ```typescript
-// Reduce dataset with pre-filtering
-const results = await ctx.searchManager.fuzzySearch('query', {
-  tags: ['searchable'],  // Pre-filter
-  threshold: 0.8,        // Higher threshold = fewer comparisons
-  limit: 10
-});
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+
+const ctx = new ManagerContext('./memory.jsonl');
+
+// Reduce dataset with pre-filtering (threshold is the second argument)
+const results = await ctx.searchManager.fuzzySearch('query', 0.8, ['searchable']);
+const top = results.entities.slice(0, 10);
 ```
 
 ### 6. TF-IDF Index Out of Sync
@@ -876,17 +900,22 @@ const results = await ctx.searchManager.fuzzySearch('query', {
 
 **Solution**:
 ```typescript
+import { ManagerContext, TFIDFIndexManager, TFIDFEventSync } from '@danielsimonjr/memoryjs';
+
+const ctx = new ManagerContext('./memory.jsonl');
+declare const eventEmitter: import('@danielsimonjr/memoryjs').GraphEventEmitter;
+
 // Rebuild index
-const indexManager = new TFIDFIndexManager(ctx.storage);
-await indexManager.rebuildIndex();
+const indexManager = new TFIDFIndexManager('./data/index');
+await indexManager.buildIndex(await ctx.storage.loadGraph());
 
 // Or ensure event sync is active
-const eventSync = new TFIDFEventSync(indexManager, ctx.storage, eventEmitter);
+const eventSync = new TFIDFEventSync(indexManager, eventEmitter, ctx.storage);
 ```
 
 ---
 
-## Delta Persistence & Write Path (Unreleased)
+## Delta Persistence & Write Path (3.0.0)
 
 Source: `docs/development/OPTIMIZATION_OPPORTUNITIES.md` (S1–S10 status
 block) — every number below was measured on this branch, same day.
@@ -977,4 +1006,32 @@ unchanged (asserted by regression tests comparing before/after output).
 ---
 
 **Document Version**: 1.0
-**Last Updated**: 2026-07-24
+**Last Updated**: 2026-11-06
+
+## Tuning Knobs Reference
+
+Each knob below is read once, when the component it controls is first built,
+unless noted. Restart the process to change a value. Defaults are the values in
+code. Full names and parsing rules are in [CONFIGURATION.md](./CONFIGURATION.md).
+
+| Knob | Default | Effect | When to change |
+|------|---------|--------|----------------|
+| `MEMORY_SQLITE_READ_POOL_SIZE` | `4` | Read connections for `SQLiteStorage` search. `0` or `1` uses the writer connection | Raise for many concurrent readers; set `1` to minimise open handles |
+| `MEMORY_SQLITE_SYNCHRONOUS` | `NORMAL` | WAL `synchronous` pragma. `NORMAL` is safe across app crashes but may lose the last commit on power loss | `FULL` when durability matters more than commit throughput |
+| `MEMORY_INDEX_COALESCE_MS` | `50` | Merges repeated writes to one entity within the window into one TF-IDF index update | `0` for immediate index updates; raise for bursty bulk writes |
+| `MEMORY_USE_MMAP` | off | Range-reads a large JSONL file instead of loading it whole (`GraphStorage.loadGraph`) | Multi-GB JSONL files where peak memory matters |
+| `MEMORY_MMAP_THRESHOLD_BYTES` | `104857600` (100 MB) | File size above which `MEMORY_USE_MMAP` applies | Lower to use range reads for smaller files |
+| `MEMORY_OBSERVATIONS_COLUMNAR` | off | Shadow column store for observations (`<basename>-observations.jsonl`) | Observation-heavy reads; inline observations stay the source of truth |
+| `MEMORY_CACHE_COMPRESS` | off | Compressed hot/cold entity cache (`ctx.compressedEntityCache`, `@internal`) | Memory-constrained hosts with large caches |
+| `MEMORY_CACHE_BUDGET_ENTRIES` | unset | Shared entry budget across caches registered with `CachePressureCoordinator` | Several large caches competing in one process |
+| `MEMORY_TIERED_INDEX` | off | Hot/warm/cold tiered index (`ctx.tieredPostingsIndex`, `@internal`) | Experimental; no production consumer wired yet |
+| `MEMORY_STORAGE_SEGMENT_COUNT` | unset (single file) | Splits JSONL into `N` hash-routed segments (2–1024) with a manifest for atomic multi-file commits | Large graphs where whole-file rewrites dominate |
+
+Notes:
+
+- `MEMORY_SQLITE_SYNCHRONOUS` and the write-side pragmas are set when the SQLite
+  connection opens.
+- `MEMORY_STORAGE_SEGMENT_COUNT >= 2` disables `MEMORY_USE_MMAP` (segments are
+  already chunked). Procedural-graph JSONL backing refuses to open in segment mode.
+- Measure before tuning. Use `ctx.diagnostics()` and `ctx.indexHealth()` to see
+  cache sizes and index state.

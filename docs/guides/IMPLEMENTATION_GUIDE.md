@@ -1,7 +1,9 @@
 # MemoryJS Developer Implementation Guide
 
-**Version**: 2.9.0
-**Last Updated**: 2026-07-24
+> **Code samples.** Samples assume `const ctx = new ManagerContext('./memory.jsonl')` and the placeholders `graph: KnowledgeGraph` (from `await ctx.storage.loadGraph()`), `entities: Entity[]` and `storage: IGraphStorage`. Every other name in a sample is imported or declared in it.
+
+**Version**: 4.5.0 (Unreleased changes noted inline)
+**Last Updated**: 2026-11-06
 **Based on**: Dependency Graph Analysis & Codebase Exploration
 
 > The dependency graph + module list have been refreshed for v1.14.0+.
@@ -180,11 +182,12 @@ console.log(results.relations); // Returns related relations
 ### Configuration Options
 
 ```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
 // JSONL storage (default)
 const ctx = new ManagerContext('./memory.jsonl');
 
 // SQLite storage (for larger graphs)
-const ctx = new ManagerContext('./memory.db');
+// const ctx = new ManagerContext('./memory.db');  // alternative to the line above
 
 // Environment variables
 // MEMORY_STORAGE_TYPE=jsonl|sqlite
@@ -206,7 +209,8 @@ The core module provides fundamental storage and CRUD operations.
 
 Central facade with lazy-initialized managers:
 
-```typescript
+```text
+import { EntityManager, SearchManager, createStorageFromPath } from '@danielsimonjr/memoryjs';
 export class ManagerContext {
   private _entityManager?: EntityManager;
   private _searchManager?: SearchManager;
@@ -254,11 +258,11 @@ await ctx.entityManager.createEntities([
 ]);
 
 // Get entity by name
-const entity = await ctx.entityManager.getEntityByName('Alice');
+const entity = await ctx.entityManager.getEntity('Alice');
 
 // Update entity
 await ctx.entityManager.updateEntity('Alice', {
-  observations: [...entity.observations, 'Works at Acme Corp']
+  observations: [...(entity?.observations ?? []), 'Works at Acme Corp']
 });
 
 // Add/remove tags
@@ -304,7 +308,9 @@ await ctx.relationManager.createRelations([
 ]);
 
 // Get relations for entity
-const { incoming, outgoing } = await ctx.relationManager.getRelationsForEntity('Alice');
+const relations = await ctx.relationManager.getRelations('Alice');
+  const incoming = relations.filter((r) => r.to === 'Alice');
+  const outgoing = relations.filter((r) => r.from === 'Alice');
 
 // Delete relations
 await ctx.relationManager.deleteRelations([
@@ -342,20 +348,20 @@ await ctx.hierarchyManager.setEntityParent('Senior Dev', 'Junior Dev'); // Error
 
 Graph algorithms:
 
-```typescript
+```text
 // Shortest path (BFS)
 const path = await ctx.graphTraversal.findShortestPath('Alice', 'Bob');
 // Returns: ['Alice', 'knows_Charlie', 'Charlie', 'knows_Bob', 'Bob']
 
 // All paths (with depth limit)
-const allPaths = await ctx.graphTraversal.findAllPaths('Alice', 'Bob', { maxDepth: 5 });
+const allPaths = await ctx.graphTraversal.findAllPaths('Alice', 'Bob', 5);
 
 // Centrality metrics
-const centrality = await ctx.graphTraversal.getCentrality({ algorithm: 'pagerank' });
+const centrality = await ctx.graphTraversal.calculatePageRank();
 // Algorithms: 'degree', 'betweenness', 'pagerank'
 
 // Connected components
-const components = await ctx.graphTraversal.getConnectedComponents();
+const components = await ctx.graphTraversal.findConnectedComponents();
 
 // BFS/DFS traversal with visitor
 await ctx.graphTraversal.bfs('Alice', (node, depth) => {
@@ -383,6 +389,7 @@ await ctx.graphTraversal.bfs('Alice', (node, depth) => {
   construction time — no manual migration needed
 
 ```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
 // Storage selection via file extension
 const jsonlCtx = new ManagerContext('./memory.jsonl');  // JSONL
 const sqliteCtx = new ManagerContext('./memory.db');    // SQLite
@@ -510,7 +517,8 @@ results.forEach(r => {
 
 Vector similarity search using embeddings:
 
-```typescript
+```text
+import { SemanticSearch } from '@danielsimonjr/memoryjs';
 import { createEmbeddingService, createVectorStore } from '@danielsimonjr/memoryjs';
 
 // Initialize embedding service
@@ -520,13 +528,13 @@ const embeddingService = await createEmbeddingService({
 });
 
 // Initialize vector store
-const vectorStore = createVectorStore('memory', storage);
+const vectorStore = createVectorStore('jsonl', storage);
 
 // Create semantic search
 const semanticSearch = new SemanticSearch(storage, embeddingService, vectorStore);
 
 // Index all entities
-await semanticSearch.indexAll();
+await semanticSearch.indexAll(await ctx.storage.loadGraph());
 
 // Search by meaning
 const results = await semanticSearch.search('functional programming paradigms');
@@ -540,15 +548,17 @@ const similar = await semanticSearch.findSimilar('TypeScript', { limit: 5 });
 TF-IDF index management with event-driven updates:
 
 ```typescript
+import { TFIDFIndexManager } from '@danielsimonjr/memoryjs';
 // Index is automatically synchronized via TFIDFEventSync
 // When entities change, the index updates reactively
 
 // Manual index operations
-const indexManager = new TFIDFIndexManager(storage);
-await indexManager.buildIndex();
+const indexManager = new TFIDFIndexManager('./memory-index');
+const graph = await ctx.storage.loadGraph();
+await indexManager.buildIndex(graph);
 
 // Get term frequencies
-const tfidf = indexManager.getTFIDF('typescript');
+// TF-IDF scores are read via the index manager's query methods
 ```
 
 #### QueryAnalyzer (`src/search/QueryAnalyzer.ts`)
@@ -556,6 +566,7 @@ const tfidf = indexManager.getTFIDF('typescript');
 Natural language query understanding:
 
 ```typescript
+import { QueryAnalyzer } from '@danielsimonjr/memoryjs';
 const analyzer = new QueryAnalyzer();
 const analysis = analyzer.analyze('What projects did Alice work on in 2024?');
 
@@ -580,25 +591,25 @@ console.log(analysis);
 Import, export, and backup functionality:
 
 ```typescript
+declare const jsonData: string;
+const graph = await ctx.storage.loadGraph();
 // Export to various formats
-const json = await ctx.ioManager.exportGraph('json');
-const csv = await ctx.ioManager.exportGraph('csv');
-const graphml = await ctx.ioManager.exportGraph('graphml');
-const mermaid = await ctx.ioManager.exportGraph('mermaid');
+const json = await ctx.ioManager.exportGraph(graph, 'json');
+const csv = await ctx.ioManager.exportGraph(graph, 'csv');
+const graphml = await ctx.ioManager.exportGraph(graph, 'graphml');
+const mermaid = await ctx.ioManager.exportGraph(graph, 'mermaid');
 
 // Export formats: json, csv, graphml, gexf, dot, markdown, mermaid
 
 // Export with filters and compression
-const filtered = await ctx.ioManager.exportGraph('json', {
-  filter: { tags: ['important'], minImportance: 7 },
+const filtered = await ctx.ioManager.exportGraphWithCompression(graph, 'json', {
+  filter: { tags: ['important'] },
   compress: true  // Brotli compression
 });
 
 // Import data
-const importResult = await ctx.ioManager.importGraph('json', jsonData, {
-  mergeStrategy: 'merge',  // 'merge' | 'replace' | 'skip' | 'fail'
-  dryRun: true  // Preview changes without applying
-});
+const importResult = await ctx.ioManager.importGraph('json', jsonData, 'merge', true);
+// Merge strategy is the third argument ('merge' | 'replace' | 'skip' | 'fail'); the fourth is dryRun
 
 console.log(importResult);
 // { entitiesCreated: 5, entitiesUpdated: 2, entitiesSkipped: 1, errors: [] }
@@ -606,8 +617,8 @@ console.log(importResult);
 // Backup management
 const backup = await ctx.ioManager.createBackup({ compress: true });
 const backups = await ctx.ioManager.listBackups();
-await ctx.ioManager.restoreBackup(backup.id);
-await ctx.ioManager.deleteBackup(backup.id);
+await ctx.ioManager.restoreFromBackup(backup.path);
+await ctx.ioManager.deleteBackup(backup.path);
 ```
 
 #### CompressionManager (`src/features/CompressionManager.ts`)
@@ -626,9 +637,7 @@ const merged = await ctx.compressionManager.mergeEntities(
 );
 
 // Auto-compress graph (find and merge all duplicates)
-const result = await ctx.compressionManager.compressGraph(0.8, {
-  dryRun: true  // Preview first
-});
+const result = await ctx.compressionManager.compressGraph(0.8, true);
 ```
 
 **Similarity Algorithm**:
@@ -644,7 +653,7 @@ Entity archival by criteria:
 ```typescript
 const archived = await ctx.archiveManager.archiveEntities({
   olderThan: '2024-01-01',
-  maxImportance: 2,
+  importanceLessThan: 2,
   tags: ['deprecated']
 }, { dryRun: false });
 ```
@@ -698,7 +707,7 @@ const mlAliases = await ctx.tagManager.getAliasesForTag('machine-learning');
 
 #### schemas.ts - Zod Validation
 
-```typescript
+```text
 import {
   EntitySchema,
   CreateEntitySchema,
@@ -720,7 +729,7 @@ if (!result.success) {
 
 #### searchAlgorithms.ts - Core Algorithms
 
-```typescript
+```text
 import {
   levenshteinDistance,
   calculateTF,
@@ -744,13 +753,15 @@ const tfidf = calculateTFIDF('typescript', document, corpus);
 
 ```typescript
 import { BatchProcessor, processBatch } from '@danielsimonjr/memoryjs';
+declare const items: string[];
+declare function processItem(item: string): Promise<number>;
 
 // Process items in batches with progress
 const results = await processBatch(items, async (item) => {
   return await processItem(item);
 }, {
   batchSize: 100,
-  onProgress: (completed, total) => {
+  onProgress: ({ completed, total }) => {
     console.log(`Progress: ${completed}/${total}`);
   }
 });
@@ -758,7 +769,7 @@ const results = await processBatch(items, async (item) => {
 
 #### WorkerPoolManager.ts - Parallel Execution
 
-```typescript
+```text
 import { getWorkerPoolManager } from '@danielsimonjr/memoryjs';
 
 // Get shared worker pool
@@ -782,7 +793,7 @@ const usage = globalMemoryMonitor.getUsage();
 // { heapUsed: 50MB, heapTotal: 100MB, external: 10MB }
 
 // Register callback for memory alerts
-globalMemoryMonitor.onAlert((alert) => {
+globalMemoryMonitor.checkThresholds().forEach((alert) => {
   console.warn(`Memory alert: ${alert.message}`);
 });
 ```
@@ -793,18 +804,29 @@ globalMemoryMonitor.onAlert((alert) => {
 
 **Location**: `src/workers/` (2 files)
 
-CPU-intensive operations are offloaded to worker threads:
+CPU-intensive work such as Levenshtein distance is offloaded to a worker pool
+internally. Application code never imports the workers directly. `./workers` is
+**not** an import path. The compiled worker entry is emitted to `dist/workers/`
+by `tsup`, and `FuzzySearch` loads it at runtime.
+
+Call the public search API and let it choose the pool:
 
 ```typescript
-// Levenshtein worker (used by FuzzySearch)
-import { levenshteinDistance, similarity, searchEntities } from './workers';
+import { ManagerContext } from '@danielsimonjr/memoryjs';
 
-// These run in a worker pool for parallel processing
-const distance = await levenshteinDistance('TypeScript', 'JavaScript');
-const sim = await similarity('TypeScript', 'Typescript');
+const ctx = new ManagerContext('./memory.jsonl');
 
-// Search entities in parallel
-const matches = await searchEntities(entities, 'Typscript', 0.7);
+// Fuzzy search runs Levenshtein comparisons through the internal worker pool
+const result = await ctx.searchManager.fuzzySearch('Typscript', 0.7);
+```
+
+For a single synchronous distance in your own code, use the utility, which runs
+in the calling thread:
+
+```typescript
+import { levenshteinDistance } from '@danielsimonjr/memoryjs';
+
+const distance = levenshteinDistance('TypeScript', 'JavaScript');
 ```
 
 ---
@@ -816,6 +838,7 @@ const matches = await searchEntities(entities, 'Typscript', 0.7);
 The `ManagerContext` provides centralized access to all managers:
 
 ```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
 // Single context for entire application
 const ctx = new ManagerContext('./memory.jsonl');
 
@@ -829,7 +852,8 @@ ctx.ioManager
 
 Managers are created only when first accessed:
 
-```typescript
+```text
+import { EntityManager } from '@danielsimonjr/memoryjs';
 class ManagerContext {
   private _entityManager?: EntityManager;
 
@@ -852,11 +876,13 @@ Storage is injected into all managers, enabling:
 - Loose coupling between components
 
 ```typescript
+import { EntityManager } from '@danielsimonjr/memoryjs';
+import { GraphStorage } from '@danielsimonjr/memoryjs';
 // Production
 const manager = new EntityManager(new GraphStorage('./data.jsonl'));
 
 // Testing
-const manager = new EntityManager(new MockStorage());
+// const manager = new EntityManager(new MockStorage());  // alternative to the line above
 ```
 
 ### 4. Event-Driven Architecture
@@ -864,13 +890,15 @@ const manager = new EntityManager(new MockStorage());
 `GraphEventEmitter` enables reactive updates:
 
 ```typescript
+declare const eventEmitter: import('@danielsimonjr/memoryjs').GraphEventEmitter;
+declare const tfidfManager: import('@danielsimonjr/memoryjs').TFIDFIndexManager;
 // TFIDFEventSync subscribes to entity changes
-eventEmitter.on('entity:created', async (entities) => {
-  await tfidfManager.addToIndex(entities);
+eventEmitter.on('entity:created', (event) => {
+  tfidfManager.addDocument(event.entity);
 });
 
-eventEmitter.on('entity:deleted', async (names) => {
-  await tfidfManager.removeFromIndex(names);
+eventEmitter.on('entity:deleted', (event) => {
+  tfidfManager.removeDocument(event.entityName);
 });
 ```
 
@@ -878,7 +906,8 @@ eventEmitter.on('entity:deleted', async (names) => {
 
 Multiple implementations for same interface:
 
-```typescript
+```text
+import { KnowledgeGraph } from '@danielsimonjr/memoryjs';
 // Storage strategies
 interface IGraphStorage {
   loadGraph(): Promise<KnowledgeGraph>;
@@ -903,22 +932,23 @@ class MockEmbeddingService implements EmbeddingService { }
 Factories create appropriate implementations:
 
 ```typescript
+import { createEmbeddingService, createStorageFromPath, createVectorStore } from '@danielsimonjr/memoryjs';
 // Storage factory
 const storage = createStorageFromPath('./memory.db'); // Returns SQLiteStorage
-const storage = createStorageFromPath('./memory.jsonl'); // Returns GraphStorage
+// const storage = createStorageFromPath('./memory.jsonl'); // Returns GraphStorage  // alternative to the line above
 
 // Embedding service factory
 const service = await createEmbeddingService({ provider: 'openai' });
 
 // Vector store factory
-const store = createVectorStore('memory', storage);
+const store = createVectorStore('jsonl');
 ```
 
 ### 7. Barrel Exports
 
 Each module exports through `index.ts`:
 
-```typescript
+```text
 // src/core/index.ts
 export { EntityManager } from './EntityManager.js';
 export { RelationManager } from './RelationManager.js';
@@ -975,6 +1005,7 @@ interface Relation {
 ### Knowledge Graph
 
 ```typescript
+import { Entity, Relation } from '@danielsimonjr/memoryjs';
 interface KnowledgeGraph {
   entities: Entity[];
   relations: Relation[];
@@ -1012,6 +1043,7 @@ interface KnowledgeGraph {
 
 **Configuration**:
 ```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
 const ctx = new ManagerContext('./memory.jsonl');
 ```
 
@@ -1056,6 +1088,7 @@ CREATE VIRTUAL TABLE entities_fts USING fts5(
 
 **Configuration**:
 ```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
 const ctx = new ManagerContext('./memory.db');
 // Or: MEMORY_STORAGE_TYPE=sqlite
 ```
@@ -1222,6 +1255,7 @@ await ctx.searchManager.searchNodes('query', {
 #### 4. Use SQLite for Large Graphs
 
 ```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
 // Switch to SQLite for better performance with large datasets
 const ctx = new ManagerContext('./memory.db');
 ```
@@ -1233,23 +1267,19 @@ Fuzzy search automatically uses worker pool for parallel Levenshtein calculation
 ### Memory Management
 
 ```typescript
+import { StreamingExporter } from '@danielsimonjr/memoryjs';
 import { globalMemoryMonitor } from '@danielsimonjr/memoryjs';
 
 // Monitor memory usage
-globalMemoryMonitor.onAlert((alert) => {
-  if (alert.severity === 'high') {
+globalMemoryMonitor.checkThresholds().forEach((alert) => {
+  if (alert.message.includes('critical')) {
     // Clear caches or reduce batch sizes
   }
 });
 
 // Use streaming for large exports
-const exporter = new StreamingExporter(storage);
-await exporter.exportToFile('./large-export.json', {
-  chunkSize: 1000,
-  onProgress: (processed, total) => {
-    console.log(`${processed}/${total}`);
-  }
-});
+const exporter = new StreamingExporter('./export.jsonl');
+await exporter.streamJSONL(await ctx.storage.loadGraph());
 ```
 
 ---
@@ -1340,7 +1370,7 @@ try {
   await ctx.entityManager.setImportance('NonExistent', 5);
 } catch (error) {
   if (error instanceof EntityNotFoundError) {
-    console.error(`Entity not found: ${error.entityName}`);
+    console.error(`Entity not found: ${error.message}`);
   } else if (error instanceof ValidationError) {
     console.error(`Validation failed: ${error.message}`);
   }
@@ -1386,6 +1416,7 @@ if (!result.success) {
 All inputs are validated using Zod schemas:
 
 ```typescript
+import { z } from 'zod';
 const EntitySchema = z.object({
   name: z.string().min(1).max(500).trim(),
   entityType: z.string().min(1).max(100).trim(),
@@ -1410,6 +1441,8 @@ validateFilePath('./data/memory.jsonl', './data');
 SQLite storage uses parameterized queries:
 
 ```typescript
+declare const db: import('better-sqlite3').Database;
+declare const name: string;
 // Safe - parameterized
 db.prepare('SELECT * FROM entities WHERE name = ?').get(name);
 
@@ -1423,7 +1456,7 @@ db.prepare('SELECT * FROM entities WHERE name = ?').get(name);
 
 ### Custom Storage Backend
 
-```typescript
+```text
 import { IGraphStorage, KnowledgeGraph } from '@danielsimonjr/memoryjs';
 
 class RedisStorage implements IGraphStorage {
@@ -1444,7 +1477,7 @@ const entityManager = new EntityManager(storage);
 
 ### Custom Embedding Provider
 
-```typescript
+```text
 import { EmbeddingService } from '@danielsimonjr/memoryjs';
 
 class HuggingFaceEmbeddingService implements EmbeddingService {
@@ -1497,6 +1530,7 @@ class RegexSearch {
 ### 1. Use Batch Operations
 
 ```typescript
+declare const relations: import('@danielsimonjr/memoryjs').Relation[];
 // GOOD
 await ctx.entityManager.createEntities(entities);
 await ctx.relationManager.createRelations(relations);
@@ -1509,7 +1543,8 @@ for (const e of entities) {
 
 ### 2. Handle Errors Properly
 
-```typescript
+```text
+import { EntityNotFoundError, InvalidImportanceError } from '@danielsimonjr/memoryjs';
 try {
   await ctx.entityManager.setImportance(name, importance);
 } catch (error) {
@@ -1537,43 +1572,47 @@ try {
 ### 4. Index for Semantic Search
 
 ```typescript
+declare const newEntity: import('@danielsimonjr/memoryjs').Entity;
 // Index entities before semantic search
-await ctx.semanticSearch.indexAll();
+await ctx.semanticSearch?.indexAll(await ctx.storage.loadGraph());
 
 // Or index incrementally
-await ctx.semanticSearch.indexEntity(newEntity);
+await ctx.semanticSearch?.indexEntity(newEntity);
 ```
 
 ### 5. Use Dry-Run for Destructive Operations
 
 ```typescript
 // Preview before executing
-const preview = await ctx.compressionManager.compressGraph(0.8, { dryRun: true });
-console.log(`Would merge: ${preview.mergedGroups.length} groups`);
+const preview = await ctx.compressionManager.compressGraph(0.8, true);
+console.log(`Would merge: ${preview.entitiesMerged} groups`);
 
 // Execute if satisfied
-await ctx.compressionManager.compressGraph(0.8, { dryRun: false });
+await ctx.compressionManager.compressGraph(0.8, false);
 ```
 
 ### 6. Choose Right Storage Backend
 
 ```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
 // Small graphs (<2,000 entities): JSONL
 const ctx = new ManagerContext('./memory.jsonl');
 
 // Large graphs (>2,000 entities): SQLite
-const ctx = new ManagerContext('./memory.db');
+// const ctx = new ManagerContext('./memory.db');  // alternative to the line above
 ```
 
 ### 7. Monitor Performance
 
 ```typescript
+import { globalMemoryMonitor } from '@danielsimonjr/memoryjs';
+declare const query: string;
 console.time('search');
 const results = await ctx.searchManager.searchNodes(query);
 console.timeEnd('search');
 
 // Use memory monitor for large operations
-globalMemoryMonitor.onAlert(alert => {
+globalMemoryMonitor.checkThresholds().forEach(alert => {
   console.warn(`Memory: ${alert.message}`);
 });
 ```
@@ -1592,7 +1631,7 @@ await ctx.entityManager.setImportance('NonExistent', 5);
 // Error: EntityNotFoundError
 
 // Solution - Check if entity exists first
-const entity = await ctx.entityManager.getEntityByName('NonExistent');
+const entity = await ctx.entityManager.getEntity('NonExistent');
 if (entity) {
   await ctx.entityManager.setImportance('NonExistent', 5);
 }
@@ -1616,31 +1655,31 @@ if (!ancestors.some(a => a.name === 'A')) {
 #### 3. Import Conflicts
 
 ```typescript
+declare const data: string;
 // Problem - Import fails due to existing entities
 await ctx.ioManager.importGraph('json', data);
 // Error: DuplicateEntityError
 
 // Solution - Use merge strategy
-await ctx.ioManager.importGraph('json', data, {
-  mergeStrategy: 'merge'  // or 'skip', 'replace'
-});
+await ctx.ioManager.importGraph('json', data, 'merge');
 ```
 
 #### 4. Memory Issues with Large Graphs
 
 ```typescript
+import { StreamingExporter } from '@danielsimonjr/memoryjs';
 // Problem - Out of memory with large exports
 
 // Solution - Use streaming export
-const exporter = new StreamingExporter(storage);
-await exporter.exportToFile('./export.json', {
-  chunkSize: 500  // Process in smaller chunks
-});
+const exporter = new StreamingExporter('./export.jsonl');
+await exporter.streamJSONL(await ctx.storage.loadGraph());
 ```
 
 #### 5. Slow Search Performance
 
 ```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+declare const query: string;
 // Problem - Search takes too long
 
 // Solutions:
@@ -1682,5 +1721,5 @@ await ctx.rankedSearch.searchNodesRanked(query, undefined, undefined, undefined,
 ---
 
 **Document Version**: 1.0
-**Last Updated**: 2026-07-24
+**Last Updated**: 2026-11-06
 **Generated From**: Dependency Graph Analysis & Codebase Exploration

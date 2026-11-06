@@ -8,6 +8,7 @@
  * @module agent/CognitiveLoadAnalyzer
  */
 
+import { readCognitiveLoadMaxFromEnv } from './AgentEnvDefaults.js';
 import { jaccard } from '../utils/textSimilarity.js';
 import type { AgentEntity, CognitiveLoadMetrics, AdaptiveReductionResult } from '../types/agent-memory.js';
 
@@ -80,7 +81,7 @@ export class CognitiveLoadAnalyzer {
 
   constructor(config: CognitiveLoadConfig = {}) {
     this.config = {
-      loadThreshold: config.loadThreshold ?? 0.7,
+      loadThreshold: config.loadThreshold ?? readCognitiveLoadMaxFromEnv(),
       tokenWeight: config.tokenWeight ?? 0.4,
       redundancyWeight: config.redundancyWeight ?? 0.35,
       diversityWeight: config.diversityWeight ?? 0.25,

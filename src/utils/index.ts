@@ -24,6 +24,8 @@ export {
   OperationCancelledError,
   RefConflictError,
   RefNotFoundError,
+  AttributionRequiredError,
+  VersionConflictError,
   type ErrorOptions,
 } from './errors.js';
 
@@ -450,6 +452,3 @@ export {
   ZlibCompressionAdapter,
   type ICompressionAdapter,
 } from './compression/ICompressionAdapter.js';
-
-// ==================== Sidecar paths (DES-5) ====================
-export { sidecarPath } from './sidecarPath.js';

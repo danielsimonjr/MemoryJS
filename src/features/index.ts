@@ -15,6 +15,7 @@ export {
   type IngestInput,
   type IngestOptions,
   type IngestResult,
+  type IngestProduced,
   type SplitOptions,
   type SplitResult,
   type VisualizeOptions,

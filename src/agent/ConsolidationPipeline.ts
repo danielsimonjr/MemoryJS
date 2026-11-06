@@ -1908,8 +1908,8 @@ export interface HeuristicExtractionStageConfig {
  *
  * Triggers:
  * - The default `ConsolidationPipeline.runAutoConsolidation()` cycle
- *   (env-gated by `MEMORY_HEURISTIC_AUTO_EXTRACT`; the stage itself
- *   does not read env vars — `ManagerContext` is the gate).
+ *   (no env gate: the stage is not wired into the default cycle by
+ *   `ManagerContext`; callers add it to the pipeline explicitly).
  * - `runOnResolution(failureId)` for an explicit single-failure pass,
  *   mirroring `ReflectionStage.runOnSessionEnd`.
  *

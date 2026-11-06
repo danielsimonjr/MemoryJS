@@ -5,7 +5,7 @@
 > **Audited repository baseline:** `danielsimonjr/MemoryJS`, `master` at `914324c` (`@danielsimonjr/memoryjs` 4.0.0).
 > **Code baseline note:** every commit after `549ce11018e5ab2188173ae225c877705d50e453` (`d07b205`, `b518ed8`, `914324c`) touches only `docs/` and `CHANGELOG.md`; `549ce11` therefore remains the source-code baseline for every `[C#]` fact below.
 > **Source:** Yuxing Lu, Yicheng Chen, Shanchan Wu, and Sercan O. Arik, *Procedural Graphs: Self-Evolving Execution Structures for LLM Agents*, supplied 36-page PDF, arXiv:2609.09153v1, 8 September 2026.
-> **Companion:** the subagent-executable build plan derived from this document is [`superpowers/plans/2026-09-10-procedural-graph-implementation.md`](./superpowers/plans/2026-09-10-procedural-graph-implementation.md).
+> **Companion:** the subagent-executable build plan derived from this document is [`superpowers/plans/2026-09-10-procedural-graph-implementation.md`](../superpowers/plans/2026-09-10-procedural-graph-implementation.md).
 
 ## 1. Feature objective and design boundary
 
@@ -901,15 +901,15 @@ All page references refer to the supplied PDF. The paper is the design source; i
 
 ### Audited repository sources
 
-- **C1:** [`src/types/procedure.ts`](../src/types/procedure.ts)
-- **C2:** [`src/agent/procedural/ProcedureManager.ts`](../src/agent/procedural/ProcedureManager.ts)
-- **C3:** [`src/agent/procedural/ProcedureStore.ts`](../src/agent/procedural/ProcedureStore.ts), [`src/agent/procedural/StepSequencer.ts`](../src/agent/procedural/StepSequencer.ts)
-- **C4:** [`src/types/types.ts`](../src/types/types.ts) (`Relation.metadata?: Record<string, unknown>`; `IGraphStorage` declared here), [`src/utils/schemas.ts`](../src/utils/schemas.ts), [`src/core/RelationManager.ts`](../src/core/RelationManager.ts), [`src/features/IOManager.ts`](../src/features/IOManager.ts)
-- **C5:** [`src/search/LLMQueryPlanner.ts`](../src/search/LLMQueryPlanner.ts), [`src/agent/reconstruction/MemoryDistiller.ts`](../src/agent/reconstruction/MemoryDistiller.ts)
-- **C6:** [`src/core/ManagerContext.ts`](../src/core/ManagerContext.ts)
-- **C7:** [`src/core/StorageFactory.ts`](../src/core/StorageFactory.ts), [`src/core/GraphStorage.ts`](../src/core/GraphStorage.ts), [`src/core/SQLiteStorage.ts`](../src/core/SQLiteStorage.ts), [`src/core/TransactionManager.ts`](../src/core/TransactionManager.ts)
-- **C8:** [`package.json`](../package.json), [`tsconfig.json`](../tsconfig.json), [`vitest.config.ts`](../vitest.config.ts), [`scripts/lint-rules.mjs`](../scripts/lint-rules.mjs), [`scripts/check-exports.mjs`](../scripts/check-exports.mjs), [`tools/plan-doc-audit/audit.ts`](../tools/plan-doc-audit/audit.ts), [`src/agent/procedural/index.ts`](../src/agent/procedural/index.ts), [`src/agent/index.ts`](../src/agent/index.ts), [`tests/unit/agent/ProcedureManager.test.ts`](../tests/unit/agent/ProcedureManager.test.ts), [`tests/unit/agent/ProcedureStore.test.ts`](../tests/unit/agent/ProcedureStore.test.ts).
-- **C7 (addendum):** [`src/core/nodeSqliteAdapter.ts`](../src/core/nodeSqliteAdapter.ts), [`src/utils/durableWriteFile.ts`](../src/utils/durableWriteFile.ts), [`src/utils/AsyncMutex.ts`](../src/utils/AsyncMutex.ts).
+- **C1:** [`src/types/procedure.ts`](../../src/types/procedure.ts)
+- **C2:** [`src/agent/procedural/ProcedureManager.ts`](../../src/agent/procedural/ProcedureManager.ts)
+- **C3:** [`src/agent/procedural/ProcedureStore.ts`](../../src/agent/procedural/ProcedureStore.ts), [`src/agent/procedural/StepSequencer.ts`](../../src/agent/procedural/StepSequencer.ts)
+- **C4:** [`src/types/types.ts`](../../src/types/types.ts) (`Relation.metadata?: Record<string, unknown>`; `IGraphStorage` declared here), [`src/utils/schemas.ts`](../../src/utils/schemas.ts), [`src/core/RelationManager.ts`](../../src/core/RelationManager.ts), [`src/features/IOManager.ts`](../../src/features/IOManager.ts)
+- **C5:** [`src/search/LLMQueryPlanner.ts`](../../src/search/LLMQueryPlanner.ts), [`src/agent/reconstruction/MemoryDistiller.ts`](../../src/agent/reconstruction/MemoryDistiller.ts)
+- **C6:** [`src/core/ManagerContext.ts`](../../src/core/ManagerContext.ts)
+- **C7:** [`src/core/StorageFactory.ts`](../../src/core/StorageFactory.ts), [`src/core/GraphStorage.ts`](../../src/core/GraphStorage.ts), [`src/core/SQLiteStorage.ts`](../../src/core/SQLiteStorage.ts), [`src/core/TransactionManager.ts`](../../src/core/TransactionManager.ts)
+- **C8:** [`package.json`](../../package.json), [`tsconfig.json`](../../tsconfig.json), [`vitest.config.ts`](../../vitest.config.ts), [`scripts/lint-rules.mjs`](../../scripts/lint-rules.mjs), [`scripts/check-exports.mjs`](../../scripts/check-exports.mjs), [`tools/plan-doc-audit/audit.ts`](../../tools/plan-doc-audit/audit.ts), [`src/agent/procedural/index.ts`](../../src/agent/procedural/index.ts), [`src/agent/index.ts`](../../src/agent/index.ts), [`tests/unit/agent/ProcedureManager.test.ts`](../../tests/unit/agent/ProcedureManager.test.ts), [`tests/unit/agent/ProcedureStore.test.ts`](../../tests/unit/agent/ProcedureStore.test.ts).
+- **C7 (addendum):** [`src/core/nodeSqliteAdapter.ts`](../../src/core/nodeSqliteAdapter.ts), [`src/utils/durableWriteFile.ts`](../../src/utils/durableWriteFile.ts), [`src/utils/AsyncMutex.ts`](../../src/utils/AsyncMutex.ts).
 
 Where documentation prose and active code differ, implementation decisions in this plan follow the audited source and `package.json`. Any future source change that materially alters the cited behavior should trigger a plan re-audit before implementation.
 

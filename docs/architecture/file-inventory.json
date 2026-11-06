@@ -1,21 +1,22 @@
 {
   "generated": "2026-11-06",
-  "totalFiles": 959,
+  "totalFiles": 984,
   "byDisposition": {
-    "reachable": 394,
+    "reachable": 395,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 545,
+    "test": 554,
     "tool": 10,
     "config": 2,
     "bench": 4,
-    "example": 0
+    "example": 15
   },
   "byArea": {
     "benchmarks": 4,
-    "src": 398,
-    "tests": 545,
+    "examples": 15,
+    "src": 399,
+    "tests": 554,
     "tools": 10,
     "config": 2
   },
@@ -47,6 +48,111 @@
       "area": "benchmarks",
       "disposition": "bench",
       "loc": 142
+    },
+    {
+      "file": "examples/01-quick-start.ts",
+      "package": "(root)",
+      "area": "examples",
+      "disposition": "example",
+      "loc": 78
+    },
+    {
+      "file": "examples/02-search.ts",
+      "package": "(root)",
+      "area": "examples",
+      "disposition": "example",
+      "loc": 82
+    },
+    {
+      "file": "examples/03-graph-algorithms.ts",
+      "package": "(root)",
+      "area": "examples",
+      "disposition": "example",
+      "loc": 70
+    },
+    {
+      "file": "examples/04-import-export.ts",
+      "package": "(root)",
+      "area": "examples",
+      "disposition": "example",
+      "loc": 98
+    },
+    {
+      "file": "examples/05-agent-memory.ts",
+      "package": "(root)",
+      "area": "examples",
+      "disposition": "example",
+      "loc": 104
+    },
+    {
+      "file": "examples/06-multi-agent.ts",
+      "package": "(root)",
+      "area": "examples",
+      "disposition": "example",
+      "loc": 91
+    },
+    {
+      "file": "examples/07-governance-rbac.ts",
+      "package": "(root)",
+      "area": "examples",
+      "disposition": "example",
+      "loc": 106
+    },
+    {
+      "file": "examples/08-versioning-causal.ts",
+      "package": "(root)",
+      "area": "examples",
+      "disposition": "example",
+      "loc": 89
+    },
+    {
+      "file": "examples/09-recursa-skills-knowledge.ts",
+      "package": "(root)",
+      "area": "examples",
+      "disposition": "example",
+      "loc": 88
+    },
+    {
+      "file": "examples/10-recursa-learning.ts",
+      "package": "(root)",
+      "area": "examples",
+      "disposition": "example",
+      "loc": 99
+    },
+    {
+      "file": "examples/11-recursa-bootstrap.ts",
+      "package": "(root)",
+      "area": "examples",
+      "disposition": "example",
+      "loc": 87
+    },
+    {
+      "file": "examples/12-harness-tools.ts",
+      "package": "(root)",
+      "area": "examples",
+      "disposition": "example",
+      "loc": 97
+    },
+    {
+      "file": "examples/13-reconstructive-memory.ts",
+      "package": "(root)",
+      "area": "examples",
+      "disposition": "example",
+      "loc": 64
+    },
+    {
+      "file": "examples/14-procedural-graph.ts",
+      "package": "(root)",
+      "area": "examples",
+      "disposition": "example",
+      "loc": 63
+    },
+    {
+      "file": "examples/15-sqlite.ts",
+      "package": "(root)",
+      "area": "examples",
+      "disposition": "example",
+      "loc": 61
     },
     {
       "file": "src/adapters/ApiKeyAuthMiddleware.ts",
@@ -95,7 +201,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 388
+      "loc": 375
     },
     {
       "file": "src/adapters/recursaToolBounds.ts",
@@ -133,6 +239,13 @@
       "loc": 479
     },
     {
+      "file": "src/agent/AgentEnvDefaults.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 112
+    },
+    {
       "file": "src/agent/AgentMemoryConfig.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
@@ -144,7 +257,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 718
+      "loc": 728
     },
     {
       "file": "src/agent/AgentReflectionManager.ts",
@@ -228,7 +341,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 331
+      "loc": 332
     },
     {
       "file": "src/agent/collaboration/CollaborationAuditEnforcer.ts",
@@ -494,7 +607,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 639
+      "loc": 640
     },
     {
       "file": "src/agent/InMemoryBackend.ts",
@@ -592,7 +705,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 66
+      "loc": 76
     },
     {
       "file": "src/agent/learning/KnowledgeEditor.ts",
@@ -823,7 +936,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1150
+      "loc": 1153
     },
     {
       "file": "src/agent/ObservationDedupManager.ts",
@@ -1558,7 +1671,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "build-entry",
-      "loc": 194
+      "loc": 204
     },
     {
       "file": "src/cli/interactive.ts",
@@ -1593,7 +1706,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 204
+      "loc": 217
     },
     {
       "file": "src/core/context/AgentCognitionFacade.ts",
@@ -1607,7 +1720,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 488
+      "loc": 494
     },
     {
       "file": "src/core/context/BootstrapFacade.ts",
@@ -1642,7 +1755,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 310
+      "loc": 323
     },
     {
       "file": "src/core/context/StorageInfraFacade.ts",
@@ -1684,7 +1797,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1406
+      "loc": 1407
     },
     {
       "file": "src/core/HierarchyManager.ts",
@@ -1705,7 +1818,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 758
+      "loc": 777
     },
     {
       "file": "src/core/mmap/FsReadMmapBackend.ts",
@@ -1901,7 +2014,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 105
+      "loc": 106
     },
     {
       "file": "src/features/IOManager.ts",
@@ -2405,7 +2518,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 386
+      "loc": 390
     },
     {
       "file": "src/types/learning.ts",
@@ -2636,7 +2749,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 456
+      "loc": 455
     },
     {
       "file": "src/utils/indexes.ts",
@@ -2840,6 +2953,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 496
+    },
+    {
+      "file": "tests/examples/examples.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 254
     },
     {
       "file": "tests/file-path.test.ts",
@@ -3259,14 +3379,14 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 210
+      "loc": 209
     },
     {
       "file": "tests/unit/adapters/rest-input-security.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 78
+      "loc": 89
     },
     {
       "file": "tests/unit/adapters/rest-tenancy.test.ts",
@@ -3318,11 +3438,25 @@
       "loc": 70
     },
     {
+      "file": "tests/unit/agent/AgentEnvDefaults.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 144
+    },
+    {
+      "file": "tests/unit/agent/AgentMemoryManager.collaborativeSynthesis.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 25
+    },
+    {
       "file": "tests/unit/agent/AgentMemoryManager.knowledge.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 65
+      "loc": 67
     },
     {
       "file": "tests/unit/agent/AgentMemoryManager.test.ts",
@@ -3504,14 +3638,14 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 231
+      "loc": 233
     },
     {
       "file": "tests/unit/agent/ContextWindowManager.knowledge.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 104
+      "loc": 106
     },
     {
       "file": "tests/unit/agent/ContextWindowManager.test.ts",
@@ -3822,6 +3956,13 @@
       "loc": 254
     },
     {
+      "file": "tests/unit/agent/learning/InProcessLearnHandler.concurrency.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 61
+    },
+    {
       "file": "tests/unit/agent/learning/KnowledgeEditor.test.ts",
       "package": "(root)",
       "area": "tests",
@@ -4002,6 +4143,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 203
+    },
+    {
+      "file": "tests/unit/agent/MultiAgentMemoryManager.fieldPreservation.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 43
     },
     {
       "file": "tests/unit/agent/MultiAgentMemoryManager.test.ts",
@@ -4253,7 +4401,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 313
+      "loc": 314
     },
     {
       "file": "tests/unit/agent/ProspectiveMemoryManager.test.ts",
@@ -4624,7 +4772,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 255
+      "loc": 270
     },
     {
       "file": "tests/unit/cli/inspect.test.ts",
@@ -4795,11 +4943,25 @@
       "loc": 99
     },
     {
+      "file": "tests/unit/core/context/LazyGetters.freshness-temporal.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 83
+    },
+    {
       "file": "tests/unit/core/context/ManagerContext.close.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
       "loc": 45
+    },
+    {
+      "file": "tests/unit/core/context/ManagerContext.newMembers.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 36
     },
     {
       "file": "tests/unit/core/context/SearchFacade.test.ts",
@@ -4975,6 +5137,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 55
+    },
+    {
+      "file": "tests/unit/core/ManagerContext.agentEnvDefaults.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 60
     },
     {
       "file": "tests/unit/core/ManagerContext.bootstrapper.test.ts",
@@ -5327,11 +5496,18 @@
       "loc": 745
     },
     {
+      "file": "tests/unit/exports-barrels.recursa.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 233
+    },
+    {
       "file": "tests/unit/exports-barrels.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 400
+      "loc": 198
     },
     {
       "file": "tests/unit/features/AnalyticsManager.test.ts",
@@ -6178,7 +6354,7 @@
       "package": "(root)",
       "area": "tools",
       "disposition": "tool",
-      "loc": 326
+      "loc": 373
     },
     {
       "file": "tests/unit/tools/segment-jsonl.test.ts",
@@ -6710,7 +6886,7 @@
       "package": "(root)",
       "area": "tools",
       "disposition": "tool",
-      "loc": 401
+      "loc": 419
     },
     {
       "file": "tools/segment-jsonl/segment-jsonl.ts",

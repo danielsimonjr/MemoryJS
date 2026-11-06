@@ -12,8 +12,6 @@ import {
   createRecursaTools,
   type RecursaToolResult,
   type RecursaToolDescriptor,
-  type ToolResult,
-  type ToolDescriptor,
 } from '../../../src/adapters/RecursaToolAdapter.js';
 import * as adapters from '../../../src/adapters/index.js';
 import type { TaskRecord } from '../../../src/types/learning.js';
@@ -59,7 +57,10 @@ describe('RecursaToolAdapter hardening', () => {
     cleanupTempDirs();
   });
 
-  /** @returns A fresh JSONL context. */
+  /**
+   * Open a fresh JSONL-backed ManagerContext for one test.
+   * @returns A fresh JSONL context, registered for cleanup.
+   */
   function open(): ManagerContext {
     process.env.MEMORY_EMBEDDING_PROVIDER = 'none';
     const ctx = new ManagerContext({ storagePath: makeTempJsonlPath(), storageType: 'jsonl', skillPublishRoot: tmpdir() });
@@ -197,13 +198,11 @@ describe('RecursaToolAdapter hardening', () => {
     expect(seen).toEqual([controller.signal]);
   });
 
-  it('N4: Recursa* type names are primary; the deprecated aliases stay assignable and off the barrel', () => {
+  it('N4: the Recursa* tool type names are the exported tool types', () => {
     const descriptor: RecursaToolDescriptor = { name: 'n', description: 'd', inputSchema: {} };
-    const legacyDescriptor: ToolDescriptor = descriptor;
     const result: RecursaToolResult = { ok: true, result: 1 };
-    const legacy: ToolResult = result;
-    expect(legacyDescriptor.name).toBe('n');
-    expect(legacy.ok).toBe(true);
+    expect(descriptor.name).toBe('n');
+    expect(result.ok).toBe(true);
     expect(typeof adapters.createRecursaTools).toBe('function');
   });
 });

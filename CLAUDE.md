@@ -42,6 +42,13 @@ node tools/chunking-for-files/chunking-for-files.ts merge <manifest.json>  # Mer
 
 # Skip performance benchmarks
 SKIP_BENCHMARKS=true bun run test
+
+# Gates (run before commit, alongside lint and typecheck)
+bun run tools:check-duplicates                 # Duplicate-module check
+bun run tools:check-census                     # Dependency census check
+bun run audit:plans                            # Plan-doc audit (dry-run, exits 0; add --strict to fail on pending flips)
+repo-tools check . --docs=docs/architecture    # Verification tables vs a fresh graph
+repo-tools docs check src                      # Doc-comment gate (exits 1 on a MUST issue)
 ```
 
 ## Architecture
@@ -50,11 +57,16 @@ SKIP_BENCHMARKS=true bun run test
 
 ```
 src/
-├── agent/     # Agent Memory System (sessions, working memory, episodic, decay, artifacts, distillation, role profiles, entropy, consolidation scheduler, collaborative synthesis, failure distillation, cognitive load, visibility, MemoryEngine + ImportanceScorer for turn-aware memory with four-tier dedup, reconstruction/ MRAgent Cue–Tag–Content associative memory + active reconstruction)
+├── adapters/  # REST router, API-key auth middleware, rate limiter, LangChain/MCP observers, Recursa tool surface (RecursaToolAdapter)
+├── agent/     # Agent Memory System (sessions, working memory, episodic, decay, artifacts, distillation, role profiles, entropy, consolidation scheduler, collaborative synthesis, failure distillation, cognitive load, visibility, MemoryEngine + ImportanceScorer)
+│   └──        # subfolders: bootstrap/ causal/ collaboration/ evaluation/ events/ harness/ knowledge/ learning/ procedural/ rbac/ reconstruction/ retrieval/ skills/ world/
 ├── cli/       # CLI commands (bin: `memory` / `memoryjs`)
-├── core/      # Storage backends, entity/relation/observation managers, transactions, RefIndex
+├── core/      # Storage backends, entity/relation/observation managers, transactions, RefIndex, ManagerContext
+│   └──        # context/: the lazy-getter facades ManagerContext delegates to (see Key Patterns)
 ├── search/    # Search algorithms (BM25, TF-IDF, fuzzy, semantic, hybrid, temporal, LLM-planned)
 ├── features/  # Import/export, compression, analytics, archiving, freshness, audit, governance
+├── security/  # API-key store, ABAC policy, PII redaction, row-level filters
+├── sqlite.ts  # `./sqlite` subpath entry (SQLiteStorage, preloadSQLiteStorage, registerSQLiteStorage)
 ├── utils/     # Caching, errors, indexing, batch processing
 ├── types/     # TypeScript interfaces (Entity, Relation, ArtifactEntity, etc.)
 └── workers/   # Worker pool for CPU-intensive tasks (Levenshtein)
@@ -85,11 +97,13 @@ ctx.archiveManager      // Entity archival to compressed storage
 ctx.semanticSearch      // Vector similarity (requires embedding provider)
 ctx.temporalSearch      // Natural language time-range search (chrono-node)
 ctx.freshnessManager    // TTL/confidence freshness reporting
+ctx.auditLog            // governanceManager.auditLog (the AuditLog instance governance writes to)
+ctx.streamingExporter(path) // StreamingExporter factory bound to one output file: new instance per call, not cached
 ctx.governanceManager   // Governance policies + audit transactions; lazy getter always available. When MEMORY_GOVERNANCE_ENABLED='true' (strict literal, read at first entityManager access), ManagerContext also wires governance hooks into EntityManager so createEntities/updateEntity/batchUpdate/deleteEntities/renameEntity are policy-checked (GovernanceError on denial) + audited (fire-and-forget append; audit failure never fails the write). Audit log path: MEMORY_AUDIT_LOG_FILE, else <basename>-audit.jsonl sidecar.
 ctx.refIndex            // Named reference index for O(1) entity lookup
 ctx.semanticForget      // Two-tier deletion (exact → semantic fallback)
 ctx.queryNaturalLanguage(text) // LLM-planned query decomposition; provider set first via ctx.llmQueryPlanner({ llmProvider }); no env var
-ctx.agentMemory()       // Agent Memory System facade
+ctx.agentMemory()       // Agent Memory System facade (incl. agentMemory().collaborativeSynthesis: CollaborativeSynthesis over the same storage + salience engine)
 ctx.procedureManager    // 3B.4 Procedural Memory (steps as procedure-step entities + has_step/precedes/has_fallback relations)
 ctx.createProceduralGraph(config) // Procedural Graph factory (sessions, guidance, offline evolve)
 ctx.graphRankPrior      // Cached normalized-PageRank ranking signal (event-invalidated, degree fallback)
@@ -222,7 +236,7 @@ ctx.bootstrapper(deps)  // Recursa RS-10..RS-13 bootstrapper factory: map corpus
 - Governance: `GovernanceManager` wraps mutations with policy checks and rollback; `AuditLog` appends every operation immutably
 - Distillation: `IDistillationPolicy` applied post-retrieval in `ContextWindowManager` before formatting for LLM prompts
 - Role-aware salience: `AgentMemoryManager.createRoleAwareSalienceEngine(agentId)` uses the agent's stored role profile (falls back to the `default` profile) for `SalienceEngine` weights
-- Context facades: `ManagerContext` delegates lazy getters to `src/core/context/*Facade.ts` (StorageInfra, Search, AgentMemory, AgentCognition, AgentBookkeeping, KnowledgeGovernance); each facade resolves members at most once and `peek*` never constructs
+- Context facades: `ManagerContext` delegates lazy getters to the eight `src/core/context/*Facade.ts` files (StorageInfra, Search, AgentMemory, AgentCognition, AgentBookkeeping, KnowledgeGovernance, Learning, Bootstrap); `src/core/context/envBounds.ts` holds the shared env-number bounds those facades use. Each facade resolves members at most once and `peek*` never constructs
 - Storage capability guards: `hasDeltaPrimitives` / `hasWriteLock` / `withStorageWriteLock` (`src/core/storageCapabilities.ts`) narrow an `IGraphStorage` before managers use batch delta primitives or `graphMutex`
 - Shared env parsing: `src/utils/envConfig.ts` (`readEnvStrictFlag`, `readEnvLooseFlag`, `readEnvNumber`, `readEnvStrictInt`, ...) is the one implementation of the env idioms below
 - Observation events: `ObservationManager` emits `observation:added` / `observation:deleted` (only the strings actually added or removed)
@@ -312,7 +326,7 @@ Query logging: `MEMORY_QUERY_LOGGING` (false), `MEMORY_QUERY_LOG_FILE`, `MEMORY_
 |----------|--------|---------|
 | `MEMORY_GOVERNANCE_ENABLED` | `'true'` (strict literal match) | unset = manual-only | When `'true'`, `ManagerContext` wires `ctx.governanceManager`'s policy + audit log into `EntityManager` mutations (Sec1 enforcement chokepoint): denied ops throw `GovernanceError`, allowed ops append committed audit entries. Unset = `ctx.governanceManager` still usable manually via `withTransaction`, but plain `EntityManager` writes bypass governance (zero overhead). Read once at first `entityManager` access. |
 | `MEMORY_AUDIT_LOG_FILE` | Path for audit JSONL | `<basename>-audit.jsonl` sidecar next to the storage file |
-| `MEMORY_FRESHNESS_TTL_DEFAULT_HOURS` | Number | `168` |
+| `MEMORY_FRESHNESS_TTL_DEFAULT_HOURS` | Number | `168`. Listed by `memory diag` only; **not read** by `FreshnessManager` (its half-life is the `FreshnessManagerConfig` constructor option, default 168) |
 
 ### Search & observation-write toggles
 | Variable | Values | Default | Description |
@@ -329,11 +343,15 @@ Query logging: `MEMORY_QUERY_LOGGING` (false), `MEMORY_QUERY_LOG_FILE`, `MEMORY_
 |----------|--------|---------|
 | `MEMORY_AGENT_ROLE` | `researcher`, `planner`, `executor`, `reviewer`, `coordinator` | - | **Reserved; not read by `src/`.** Catalogued only. Use `getRoleProfile(role)` in code. Wiring is an owner decision (DESIGN_PASS_2026-11-04 §5 Q3). |
 | `MEMORY_ENTROPY_FILTER_ENABLED` | `true`, `false` | `false` |
-| `MEMORY_ENTROPY_THRESHOLD` | Number (0–1) | `0.3` |
-| `MEMORY_CONSOLIDATION_SCHEDULER_ENABLED` | `true`, `false` | `false` |
+| `MEMORY_ENTROPY_THRESHOLD` | Number ≥ 0, in bits (Shannon entropy) | `1.5`. Used only when `MEMORY_ENTROPY_FILTER_ENABLED=true` (passed as `WorkingMemoryConfig.entropyFilter.minEntropy`) |
+| `MEMORY_CONSOLIDATION_SCHEDULER_ENABLED` | `true`, `false` | `false`. Alias of `MEMORY_AUTO_CONSOLIDATION`: either name set to `true` enables `ctx.consolidationScheduler`; a `false` on one never overrides a `true` on the other. Read once at first `ctx.consolidationScheduler` access (on or off is cached); restart to change |
 | `MEMORY_CONSOLIDATION_INTERVAL_MS` | Number | `3600000` |
-| `MEMORY_COGNITIVE_LOAD_MAX` | Number (0–1) | `0.8` |
-| `MEMORY_DEFAULT_VISIBILITY` | `private`, `team`, `org`, `shared`, `public` | `private` |
+| `MEMORY_COGNITIVE_LOAD_MAX` | Number (0–1) | `0.7`. Default `loadThreshold` of a standalone `CognitiveLoadAnalyzer` (code config wins); `ContextWindowManager` does not use the analyzer |
+| `MEMORY_DEFAULT_VISIBILITY` | `private`, `team`, `org`, `shared`, `public` | `private`. An invalid value logs one warning per process and uses `private` |
+| `MEMORY_AUTO_CONSOLIDATION` | `true`, `false` | `false`. Original name of `MEMORY_CONSOLIDATION_SCHEDULER_ENABLED` (same alias rule) |
+| `MEMORY_LEARNING_CONCURRENCY` | Strict integer ≥ 1 | `4`. Child leaf-run concurrency in `createInProcessLearnHandler`; invalid values fall back to `4` |
+
+Invalid numeric values for `MEMORY_ENTROPY_THRESHOLD` / `MEMORY_COGNITIVE_LOAD_MAX` log one warning per process (not one per component construction). `MEMORY_HEURISTIC_AUTO_EXTRACT` and `MEMORY_AUDIT_ATTRIBUTION_REQUIRED` are **not read**: heuristic extraction is the `HeuristicExtractionStage` constructor config and attribution is `CollaborationAuditEnforcer`'s `mode: 'strict' | 'lenient'` constructor option.
 
 ### Prospective Memory
 Read by `ctx.prospectiveMemory` lazy getter on first access.
@@ -382,7 +400,7 @@ Read by `ctx.memoryBackend` lazy getter. `sqlite` wraps `MemoryEngine` (which tr
 
 ## API Stability Tiers
 
-Modules added in Phase 0-4 carry a stability tag in their `@module` JSDoc. The contract:
+Stability tags sit in each source file's `@module` JSDoc header. The contract:
 
 | Tag | Meaning | SemVer behaviour |
 |-----|---------|------------------|
@@ -390,9 +408,13 @@ Modules added in Phase 0-4 carry a stability tag in their `@module` JSDoc. The c
 | `@experimental` | Functional but the contract may evolve based on real-world feedback | Minor changes possible in a minor-version bump; document each change in CHANGELOG |
 | `@internal` | Implementation detail — do not import from outside the project | May change at any time without notice |
 
-**Tagged modules** (Phase 0-4 additions): 13 entries — `src/adapters/*`, `src/agent/HeuristicManager`, `src/core/{EntityStateMachine, ObservationStore}`, `src/search/{BloomFilter, BloomPreScreener, MaterializedViews, PartialIndexAdvisor, QueryPlanFormatter}`, `src/utils/{CachePressureCoordinator, Diagnostics, IIndexHealth, IndexHealthMonitor}`.
+**Current policy** (grep of `@module` headers, 373 files; re-count with `grep -rl "@experimental\|@internal" src`):
+- **Untagged** (221 files, the pre-Phase-0 surface and the newer untagged modules): implicitly `@public` and follow the project's SemVer contract. A full per-symbol tiering of those is deliberately deferred to a v2.0.0 cut.
+- **`@experimental`** (119 files): the Recursa and agent-subsystem modules, for example every module under `src/agent/{bootstrap,evaluation,harness,knowledge,reconstruction,skills}/`, most of `src/agent/learning/`, `src/agent/procedural/graph/`, and the `src/adapters/Recursa*` tool surface. Functional but the contract may still change; document each change in CHANGELOG.
+- **`@internal`** (24 files): helpers not re-exported from any barrel, for example `src/agent/learning/{LeafRound,RevisionReconcile,RevisionGeneralize,observationChunks,revisionMergeShared}.ts`. Do not import them from outside the project. A module that a barrel re-exports should be `@experimental` or `@public`, not `@internal`. Barrel-exported modules outside `src/agent` that still carry `@internal` (for example `src/core/sqlite-register.ts`, re-exported by `src/core/index.ts` because the guides import `SQLiteStorage` from the root) are pending retagging and should be treated as `@experimental` until then.
+- Method-level `@internal` tags on private helpers are unrelated to module tiers and stay as they are.
 
-**Existing modules** (pre-Phase-0) are implicitly `@public` and follow the project's SemVer contract. A full audit + per-symbol tiering of those will require a v2.0.0 cut and is deliberately deferred.
+The Phase 0-4 tagged list (13 entries, the original tagged set) is historical; the counts above are the current source of truth.
 
 ## Documentation
 
@@ -423,7 +445,7 @@ Located in `tools/` directory:
 | `compress-for-context` | Compresses graph data for LLM context windows |
 | `observations-to-columns` | Migration: bulk-extracts observations into a column sidecar for `JsonlColumnStore` (run `node tools/observations-to-columns/observations-to-columns.ts`) |
 | `segment-jsonl` | Converts between a single-file JSONL graph and the N-segment layout used by `FileSegmentStorage` (run `node tools/segment-jsonl/segment-jsonl.ts`) |
-| `plan-doc-audit` | Static check that plan-doc task symbols exist in the codebase (run `bun run audit:plans`) |
+| `plan-doc-audit` | Static check that plan-doc task symbols exist in the codebase (run `bun run audit:plans`). Dry-run exits 0 and only reports; `--apply` ticks flip-eligible boxes; `--strict` exits 1 when flip-eligible items remain (`bunx tsx tools/plan-doc-audit/audit.ts --strict`) |
 
 Only the four tools with a `package.json` (`chunking-for-files`, `compress-for-context`, `create-dependency-graph`, `migrate-from-jsonl-to-sqlite`) take part in `bun run tools:install` / `tools:build`. The three newer tools have no package of their own and run directly.
 

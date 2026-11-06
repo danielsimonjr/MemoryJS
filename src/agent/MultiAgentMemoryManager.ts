@@ -252,6 +252,9 @@ export class MultiAgentMemoryManager extends EventEmitter {
     const name = entity.name ?? `memory_${effectiveAgentId}_${uniqueTimeSuffix()}`;
 
     const agentEntity: AgentEntity = {
+      // Caller fields first (tags, ttl, projectId, parentId, version chain,
+      // contentHash, ...), then the fields this manager owns.
+      ...entity,
       // Base entity fields
       name,
       entityType: entity.entityType ?? 'memory',

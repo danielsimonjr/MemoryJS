@@ -43,11 +43,11 @@ bunx tsx tools/plan-doc-audit/audit.ts --apply  # apply flips
 
 | Code | Meaning |
 |---|---|
-| `0` | No flip-eligible items found, or `--apply` succeeded |
-| `1` | Flip-eligible items found in `--dry-run` mode (signals work to do) |
+| `0` | Dry-run report completed (flip-eligible items are listed, not failures), or `--apply` succeeded |
+| `1` | With `--strict`: flip-eligible items found in `--dry-run` mode |
 | `2` | Execution error (filesystem, git, etc.) |
 
-A non-zero exit in dry-run mode is intentional — it lets CI / pre-commit hooks fail when plan-doc rot is introduced.
+Use `--strict` in CI or pre-commit hooks when the plan backlog must stay clean; without it, dry-run never fails.
 
 ## Programmatic API
 

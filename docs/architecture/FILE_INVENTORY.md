@@ -10,22 +10,22 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 959
+**Total files**: 984
 
 ## Disposition counts
 
 | Disposition | Count | Meaning |
 | --- | --: | --- |
-| `reachable` | 394 | A `src/` file in the module graph, reachable from a root. |
+| `reachable` | 395 | A `src/` file in the module graph, reachable from a root. |
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 545 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 554 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 4 | A `benchmarks/` source file (run directly via tsx, not imported). |
-| `example` | 0 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **959** | |
+| `example` | 15 | An `examples/` or `docs/` reference/illustration source. |
+| **Total** | **984** | |
 
 ## Per-area counts
 
@@ -33,8 +33,9 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | --- | --: |
 | `benchmarks` | 4 |
 | `config` | 2 |
-| `src` | 398 |
-| `tests` | 545 |
+| `examples` | 15 |
+| `src` | 399 |
+| `tests` | 554 |
 | `tools` | 10 |
 
 ## All files
@@ -45,20 +46,36 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `benchmarks/semantic-forget-benchmark.ts` | benchmarks | bench | 78 |
 | `benchmarks/summarization-bench.ts` | benchmarks | bench | 39 |
 | `benchmarks/synthetic-bench.ts` | benchmarks | bench | 142 |
+| `examples/01-quick-start.ts` | examples | example | 78 |
+| `examples/02-search.ts` | examples | example | 82 |
+| `examples/03-graph-algorithms.ts` | examples | example | 70 |
+| `examples/04-import-export.ts` | examples | example | 98 |
+| `examples/05-agent-memory.ts` | examples | example | 104 |
+| `examples/06-multi-agent.ts` | examples | example | 91 |
+| `examples/07-governance-rbac.ts` | examples | example | 106 |
+| `examples/08-versioning-causal.ts` | examples | example | 89 |
+| `examples/09-recursa-skills-knowledge.ts` | examples | example | 88 |
+| `examples/10-recursa-learning.ts` | examples | example | 99 |
+| `examples/11-recursa-bootstrap.ts` | examples | example | 87 |
+| `examples/12-harness-tools.ts` | examples | example | 97 |
+| `examples/13-reconstructive-memory.ts` | examples | example | 64 |
+| `examples/14-procedural-graph.ts` | examples | example | 63 |
+| `examples/15-sqlite.ts` | examples | example | 61 |
 | `src/adapters/ApiKeyAuthMiddleware.ts` | src | reachable | 193 |
 | `src/adapters/index.ts` | src | reachable | 60 |
 | `src/adapters/LangChainMemoryAdapter.ts` | src | reachable | 194 |
 | `src/adapters/MCPToolObserverAdapter.ts` | src | reachable | 78 |
 | `src/adapters/pagination.ts` | src | reachable | 92 |
 | `src/adapters/RateLimiter.ts` | src | reachable | 206 |
-| `src/adapters/RecursaToolAdapter.ts` | src | reachable | 388 |
+| `src/adapters/RecursaToolAdapter.ts` | src | reachable | 375 |
 | `src/adapters/recursaToolBounds.ts` | src | reachable | 109 |
 | `src/adapters/recursaToolSchemas.ts` | src | reachable | 143 |
 | `src/adapters/recursaToolSupport.ts` | src | reachable | 169 |
 | `src/adapters/RestRouter.ts` | src | reachable | 751 |
 | `src/agent/AccessTracker.ts` | src | reachable | 479 |
+| `src/agent/AgentEnvDefaults.ts` | src | reachable | 112 |
 | `src/agent/AgentMemoryConfig.ts` | src | reachable | 265 |
-| `src/agent/AgentMemoryManager.ts` | src | reachable | 718 |
+| `src/agent/AgentMemoryManager.ts` | src | reachable | 728 |
 | `src/agent/AgentReflectionManager.ts` | src | reachable | 306 |
 | `src/agent/ArtifactManager.ts` | src | reachable | 241 |
 | `src/agent/bootstrap/Bootstrapper.ts` | src | reachable | 246 |
@@ -70,7 +87,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/bootstrap/PracticeTaskGenerator.ts` | src | reachable | 351 |
 | `src/agent/causal/CausalReasoner.ts` | src | reachable | 254 |
 | `src/agent/causal/index.ts` | src | reachable | 15 |
-| `src/agent/CognitiveLoadAnalyzer.ts` | src | reachable | 331 |
+| `src/agent/CognitiveLoadAnalyzer.ts` | src | reachable | 332 |
 | `src/agent/collaboration/CollaborationAuditEnforcer.ts` | src | reachable | 145 |
 | `src/agent/CollaborativeSynthesis.ts` | src | reachable | 355 |
 | `src/agent/ConflictResolver.ts` | src | reachable | 464 |
@@ -108,7 +125,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/harness/InteractionLogRegex.ts` | src | reachable | 180 |
 | `src/agent/HeuristicManager.ts` | src | reachable | 342 |
 | `src/agent/ImportanceScorer.ts` | src | reachable | 91 |
-| `src/agent/index.ts` | src | reachable | 639 |
+| `src/agent/index.ts` | src | reachable | 640 |
 | `src/agent/InMemoryBackend.ts` | src | reachable | 115 |
 | `src/agent/keyValueLine.ts` | src | reachable | 63 |
 | `src/agent/knowledge/index.ts` | src | reachable | 49 |
@@ -122,7 +139,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/learning/ChildKnowledgeOverlay.ts` | src | reachable | 272 |
 | `src/agent/learning/Diagnoser.ts` | src | reachable | 443 |
 | `src/agent/learning/index.ts` | src | reachable | 63 |
-| `src/agent/learning/InProcessLearnHandler.ts` | src | reachable | 66 |
+| `src/agent/learning/InProcessLearnHandler.ts` | src | reachable | 76 |
 | `src/agent/learning/KnowledgeEditor.ts` | src | reachable | 375 |
 | `src/agent/learning/LeafApply.ts` | src | reachable | 93 |
 | `src/agent/learning/LeafLearner.ts` | src | reachable | 380 |
@@ -155,7 +172,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/MemoryEngine.ts` | src | reachable | 596 |
 | `src/agent/MemoryFormatter.ts` | src | reachable | 518 |
 | `src/agent/MemoryValidator.ts` | src | reachable | 332 |
-| `src/agent/MultiAgentMemoryManager.ts` | src | reachable | 1150 |
+| `src/agent/MultiAgentMemoryManager.ts` | src | reachable | 1153 |
 | `src/agent/ObservationDedupManager.ts` | src | reachable | 246 |
 | `src/agent/ObserverPipeline.ts` | src | reachable | 380 |
 | `src/agent/PatternDetector.ts` | src | reachable | 372 |
@@ -260,28 +277,28 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/cli/commands/toolAffordance.ts` | src | reachable | 114 |
 | `src/cli/config.ts` | src | reachable | 94 |
 | `src/cli/formatters.ts` | src | reachable | 362 |
-| `src/cli/index.ts` | src | build-entry | 194 |
+| `src/cli/index.ts` | src | build-entry | 204 |
 | `src/cli/interactive.ts` | src | reachable | 439 |
 | `src/cli/options.ts` | src | reachable | 58 |
 | `src/core/columns/IColumnStore.ts` | src | reachable | 177 |
 | `src/core/columns/JsonlColumnStore.ts` | src | reachable | 227 |
-| `src/core/context/AgentBookkeepingFacade.ts` | src | reachable | 204 |
+| `src/core/context/AgentBookkeepingFacade.ts` | src | reachable | 217 |
 | `src/core/context/AgentCognitionFacade.ts` | src | reachable | 380 |
-| `src/core/context/AgentMemoryFacade.ts` | src | reachable | 488 |
+| `src/core/context/AgentMemoryFacade.ts` | src | reachable | 494 |
 | `src/core/context/BootstrapFacade.ts` | src | reachable | 104 |
 | `src/core/context/envBounds.ts` | src | reachable | 12 |
 | `src/core/context/KnowledgeGovernanceFacade.ts` | src | reachable | 262 |
 | `src/core/context/LearningFacade.ts` | src | reachable | 252 |
-| `src/core/context/SearchFacade.ts` | src | reachable | 310 |
+| `src/core/context/SearchFacade.ts` | src | reachable | 323 |
 | `src/core/context/StorageInfraFacade.ts` | src | reachable | 277 |
 | `src/core/EntityManager.ts` | src | reachable | 1607 |
 | `src/core/EntityStateMachine.ts` | src | reachable | 104 |
 | `src/core/GraphEventEmitter.ts` | src | reachable | 471 |
 | `src/core/GraphStorage.ts` | src | reachable | 1863 |
-| `src/core/GraphTraversal.ts` | src | reachable | 1406 |
+| `src/core/GraphTraversal.ts` | src | reachable | 1407 |
 | `src/core/HierarchyManager.ts` | src | reachable | 314 |
 | `src/core/index.ts` | src | reachable | 60 |
-| `src/core/ManagerContext.ts` | src | reachable | 758 |
+| `src/core/ManagerContext.ts` | src | reachable | 777 |
 | `src/core/mmap/FsReadMmapBackend.ts` | src | reachable | 239 |
 | `src/core/mmap/IMmapBackend.ts` | src | reachable | 169 |
 | `src/core/nodeSqliteAdapter.ts` | src | reachable | 181 |
@@ -309,7 +326,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/features/FactExtractor.ts` | src | reachable | 353 |
 | `src/features/FreshnessManager.ts` | src | reachable | 307 |
 | `src/features/GovernanceManager.ts` | src | reachable | 717 |
-| `src/features/index.ts` | src | reachable | 105 |
+| `src/features/index.ts` | src | reachable | 106 |
 | `src/features/IOManager.ts` | src | reachable | 2146 |
 | `src/features/KeywordExtractor.ts` | src | reachable | 150 |
 | `src/features/ObservableDataModelAdapter.ts` | src | reachable | 360 |
@@ -381,7 +398,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/types/agent-memory.ts` | src | reachable | 2535 |
 | `src/types/artifact.ts` | src | reachable | 154 |
 | `src/types/event.ts` | src | reachable | 138 |
-| `src/types/index.ts` | src | reachable | 386 |
+| `src/types/index.ts` | src | reachable | 390 |
 | `src/types/learning.ts` | src | reachable | 278 |
 | `src/types/proceduralGraph.ts` | src | reachable | 254 |
 | `src/types/procedure.ts` | src | reachable | 72 |
@@ -414,7 +431,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/utils/halfLife.ts` | src | reachable | 40 |
 | `src/utils/ids.ts` | src | reachable | 23 |
 | `src/utils/IIndexHealth.ts` | src | reachable | 47 |
-| `src/utils/index.ts` | src | reachable | 456 |
+| `src/utils/index.ts` | src | reachable | 455 |
 | `src/utils/indexes.ts` | src | reachable | 453 |
 | `src/utils/IndexHealthMonitor.ts` | src | reachable | 78 |
 | `src/utils/jsonlMapFile.ts` | src | reachable | 127 |
@@ -444,6 +461,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/utils/WorkerTaskManager.ts` | src | reachable | 359 |
 | `src/workers/levenshteinWorker.ts` | src | build-entry | 132 |
 | `tests/edge-cases/edge-cases.test.ts` | tests | test | 496 |
+| `tests/examples/examples.test.ts` | tests | test | 254 |
 | `tests/file-path.test.ts` | tests | test | 235 |
 | `tests/helpers/__tests__/mockStorage.test.ts` | tests | test | 101 |
 | `tests/helpers/mockStorage.ts` | tests | test | 127 |
@@ -503,8 +521,8 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/adapters/RateLimiter.bounds.test.ts` | tests | test | 61 |
 | `tests/unit/adapters/RateLimiter.test.ts` | tests | test | 92 |
 | `tests/unit/adapters/RecursaToolAdapter.test.ts` | tests | test | 277 |
-| `tests/unit/adapters/RecursaToolAdapterSafety.test.ts` | tests | test | 210 |
-| `tests/unit/adapters/rest-input-security.test.ts` | tests | test | 78 |
+| `tests/unit/adapters/RecursaToolAdapterSafety.test.ts` | tests | test | 209 |
+| `tests/unit/adapters/rest-input-security.test.ts` | tests | test | 89 |
 | `tests/unit/adapters/rest-tenancy.test.ts` | tests | test | 347 |
 | `tests/unit/adapters/rest-unscoped-warning.test.ts` | tests | test | 46 |
 | `tests/unit/adapters/RestRouter.test.ts` | tests | test | 203 |
@@ -512,7 +530,9 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/AccessTracker.test.ts` | tests | test | 744 |
 | `tests/unit/agent/ActiveRetrieval.test.ts` | tests | test | 194 |
 | `tests/unit/agent/agent-memory-manager-diary.test.ts` | tests | test | 70 |
-| `tests/unit/agent/AgentMemoryManager.knowledge.test.ts` | tests | test | 65 |
+| `tests/unit/agent/AgentEnvDefaults.test.ts` | tests | test | 144 |
+| `tests/unit/agent/AgentMemoryManager.collaborativeSynthesis.test.ts` | tests | test | 25 |
+| `tests/unit/agent/AgentMemoryManager.knowledge.test.ts` | tests | test | 67 |
 | `tests/unit/agent/AgentMemoryManager.test.ts` | tests | test | 720 |
 | `tests/unit/agent/AgentReflectionManager.test.ts` | tests | test | 578 |
 | `tests/unit/agent/ArtifactManager.test.ts` | tests | test | 659 |
@@ -538,8 +558,8 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/context-window-manager-compress.test.ts` | tests | test | 166 |
 | `tests/unit/agent/context-window-manager-wakeup.test.ts` | tests | test | 226 |
 | `tests/unit/agent/ContextProfileManager.test.ts` | tests | test | 526 |
-| `tests/unit/agent/ContextWindowManager.eviction.test.ts` | tests | test | 231 |
-| `tests/unit/agent/ContextWindowManager.knowledge.test.ts` | tests | test | 104 |
+| `tests/unit/agent/ContextWindowManager.eviction.test.ts` | tests | test | 233 |
+| `tests/unit/agent/ContextWindowManager.knowledge.test.ts` | tests | test | 106 |
 | `tests/unit/agent/ContextWindowManager.test.ts` | tests | test | 1753 |
 | `tests/unit/agent/DecayEngine.reinforceBatch.test.ts` | tests | test | 150 |
 | `tests/unit/agent/DecayEngine.test.ts` | tests | test | 1318 |
@@ -584,6 +604,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/knowledge/KnowledgeRepository.test.ts` | tests | test | 220 |
 | `tests/unit/agent/knowledgeContext.sections.test.ts` | tests | test | 63 |
 | `tests/unit/agent/learning/Diagnoser.test.ts` | tests | test | 254 |
+| `tests/unit/agent/learning/InProcessLearnHandler.concurrency.test.ts` | tests | test | 61 |
 | `tests/unit/agent/learning/KnowledgeEditor.test.ts` | tests | test | 308 |
 | `tests/unit/agent/learning/LeafAbortDedup.test.ts` | tests | test | 125 |
 | `tests/unit/agent/learning/LeafApply.test.ts` | tests | test | 233 |
@@ -610,6 +631,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/MemoryFormatter.test.ts` | tests | test | 313 |
 | `tests/unit/agent/MemoryFormatterSalience.test.ts` | tests | test | 242 |
 | `tests/unit/agent/MemoryValidator.test.ts` | tests | test | 203 |
+| `tests/unit/agent/MultiAgentMemoryManager.fieldPreservation.test.ts` | tests | test | 43 |
 | `tests/unit/agent/MultiAgentMemoryManager.test.ts` | tests | test | 1108 |
 | `tests/unit/agent/ObservationDedupManager.test.ts` | tests | test | 237 |
 | `tests/unit/agent/ObservationDedupReportStage.test.ts` | tests | test | 111 |
@@ -645,7 +667,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/profile-manager-extraction.test.ts` | tests | test | 91 |
 | `tests/unit/agent/ProjectContextManager.dedupByKey.test.ts` | tests | test | 67 |
 | `tests/unit/agent/ProjectContextManager.test.ts` | tests | test | 255 |
-| `tests/unit/agent/ProspectiveMemoryManager.conditional.test.ts` | tests | test | 313 |
+| `tests/unit/agent/ProspectiveMemoryManager.conditional.test.ts` | tests | test | 314 |
 | `tests/unit/agent/ProspectiveMemoryManager.test.ts` | tests | test | 722 |
 | `tests/unit/agent/rbac.test.ts` | tests | test | 315 |
 | `tests/unit/agent/reconstruction/CueTagContentGraph.test.ts` | tests | test | 88 |
@@ -698,7 +720,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/cli/helpers/cliTestHarness.ts` | tests | test | 114 |
 | `tests/unit/cli/heuristic.test.ts` | tests | test | 70 |
 | `tests/unit/cli/hierarchy.test.ts` | tests | test | 65 |
-| `tests/unit/cli/index.test.ts` | tests | test | 255 |
+| `tests/unit/cli/index.test.ts` | tests | test | 270 |
 | `tests/unit/cli/inspect.test.ts` | tests | test | 212 |
 | `tests/unit/cli/interactive.test.ts` | tests | test | 925 |
 | `tests/unit/cli/maintenance-cli.test.ts` | tests | test | 78 |
@@ -723,7 +745,9 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/context/AgentCognitionFacade.test.ts` | tests | test | 94 |
 | `tests/unit/core/context/AgentMemoryFacade.test.ts` | tests | test | 116 |
 | `tests/unit/core/context/KnowledgeGovernanceFacade.test.ts` | tests | test | 99 |
+| `tests/unit/core/context/LazyGetters.freshness-temporal.test.ts` | tests | test | 83 |
 | `tests/unit/core/context/ManagerContext.close.test.ts` | tests | test | 45 |
+| `tests/unit/core/context/ManagerContext.newMembers.test.ts` | tests | test | 36 |
 | `tests/unit/core/context/SearchFacade.test.ts` | tests | test | 118 |
 | `tests/unit/core/context/StorageInfraFacade.test.ts` | tests | test | 184 |
 | `tests/unit/core/entity-id.test.ts` | tests | test | 197 |
@@ -749,6 +773,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/ManagerContext-hybridContext.test.ts` | tests | test | 127 |
 | `tests/unit/core/ManagerContext-proceduralGraph.test.ts` | tests | test | 76 |
 | `tests/unit/core/ManagerContext-vectorStore.test.ts` | tests | test | 55 |
+| `tests/unit/core/ManagerContext.agentEnvDefaults.test.ts` | tests | test | 60 |
 | `tests/unit/core/ManagerContext.bootstrapper.test.ts` | tests | test | 114 |
 | `tests/unit/core/ManagerContext.learningLoop.facade.test.ts` | tests | test | 73 |
 | `tests/unit/core/ManagerContext.learningLoop.recursive.test.ts` | tests | test | 192 |
@@ -799,7 +824,8 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/TransactionManager.test.ts` | tests | test | 769 |
 | `tests/unit/core/TransitionLedger.test.ts` | tests | test | 521 |
 | `tests/unit/core/write-path-delta.test.ts` | tests | test | 745 |
-| `tests/unit/exports-barrels.test.ts` | tests | test | 400 |
+| `tests/unit/exports-barrels.recursa.test.ts` | tests | test | 233 |
+| `tests/unit/exports-barrels.test.ts` | tests | test | 198 |
 | `tests/unit/features/AnalyticsManager.test.ts` | tests | test | 400 |
 | `tests/unit/features/ArchiveManager.test.ts` | tests | test | 774 |
 | `tests/unit/features/AuditLog.test.ts` | tests | test | 477 |
@@ -920,7 +946,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/security/RowLevelFilter.test.ts` | tests | test | 157 |
 | `tests/unit/tools-migrate-rebuild-native.test.ts` | tests | test | 52 |
 | `tests/unit/tools/observations-to-columns.test.ts` | tools | tool | 780 |
-| `tests/unit/tools/plan-doc-audit.test.ts` | tools | tool | 326 |
+| `tests/unit/tools/plan-doc-audit.test.ts` | tools | tool | 373 |
 | `tests/unit/tools/segment-jsonl.test.ts` | tools | tool | 411 |
 | `tests/unit/types/agent-memory.test.ts` | tests | test | 893 |
 | `tests/unit/types/entity-content-hash.test.ts` | tests | test | 53 |
@@ -996,7 +1022,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tools/create-dependency-graph/create-dependency-graph.ts` | tools | tool | 3854 |
 | `tools/migrate-from-jsonl-to-sqlite/migrate-from-jsonl-to-sqlite.ts` | tools | tool | 725 |
 | `tools/observations-to-columns/observations-to-columns.ts` | tools | tool | 560 |
-| `tools/plan-doc-audit/audit.ts` | tools | tool | 401 |
+| `tools/plan-doc-audit/audit.ts` | tools | tool | 419 |
 | `tools/segment-jsonl/segment-jsonl.ts` | tools | tool | 423 |
 | `tsup.config.ts` | config | config | 88 |
 | `vitest.config.ts` | config | config | 64 |
