@@ -522,7 +522,11 @@ category). Returns issues for human review; never rewrites a rubric. Fixtures ar
 `ContextWindowManager.wakeUp(options)` accepts `knowledge?: KnowledgeRepository` and `taskHint?`; when
 given, L0 includes `InstructionSetManager.render('shared', …)` and L1 includes matched skill bodies
 within the existing budgets (≤ 30 added lines). `AgentMemoryManager` gains
-`setKnowledgeRepository(repo)` (it has no access to the repository's managers itself).
+`setKnowledgeRepository(repo)` (it has no access to the repository's managers itself) and a
+`wakeUp(options)` wrapper that delegates to `ContextWindowManager.wakeUp`, passing the stored repository
+when `options.knowledge` is absent. `KnowledgeRepository.loadForContext` gains an additive
+`sections?: ('instructions' | 'skills' | 'failures')[]` option (default all) so L0 loads only
+instructions and L1 only skills, each with its own budget and one skill match per wake-up.
 
 ### 3.7 `ManagerContext` wiring and configuration
 

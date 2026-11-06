@@ -2,9 +2,9 @@ metadata:
   name: "@danielsimonjr/memoryjs"
   version: 4.5.0
   lastUpdated: "2026-11-06"
-  totalFiles: 345
+  totalFiles: 351
   totalModules: 12
-  totalExports: 2444
+  totalExports: 2456
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -428,6 +428,15 @@ modules:
           imports:
             - AccessTracker
             - AccessContext
+        - file: ./ContextWindowManager.js
+          imports:
+            - WakeUpOptions
+            - WakeUpResult
+          typeOnly: true
+        - file: ./knowledgeContext.js
+          imports:
+            - KnowledgeRepositoryLike
+          typeOnly: true
         - file: ./DecayEngine.js
           imports:
             - DecayEngine
@@ -934,6 +943,10 @@ modules:
           imports:
             - formatEvictionLine
             - EvictionIndex
+        - file: ./knowledgeContext.js
+          imports:
+            - knowledgeLayersForWakeUp
+            - KnowledgeRepositoryLike
         - file: ./ProjectContextManager.js
           imports:
             - ProjectContextManager
@@ -2667,6 +2680,144 @@ modules:
       functions:
         - computeDegreeMap
         - normalizedDegree
+    src/agent/evaluation/DeterministicJudge.ts:
+      description: Rule-based rubric judge and its pure text helpers.
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../../types/learning.js
+          imports:
+            - CriterionResult
+            - Criterion
+            - TaskRecord
+          typeOnly: true
+      exports:
+        - normalizeText
+        - extractFirstNumber
+        - extractSet
+        - judgeCriterion
+        - DeterministicJudge
+      classes:
+        - DeterministicJudge
+      interfaces:
+        - RubricJudge
+      functions:
+        - normalizeText
+        - extractFirstNumber
+        - extractSet
+        - judgeCriterion
+    src/agent/evaluation/Evaluator.ts:
+      description: Evaluation runner and deterministic stratified train/test split.
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../../types/learning.js
+          imports:
+            - CriterionResult
+            - EvalMetrics
+            - Feedback
+            - TaskRecord
+          typeOnly: true
+        - file: ../harness/ConcurrencyLimiter.js
+          imports:
+            - runAll
+        - file: ./DeterministicJudge.js
+          imports:
+            - RubricJudge
+          typeOnly: true
+      exports:
+        - stratifiedSplit
+        - Evaluator
+      classes:
+        - Evaluator
+      interfaces:
+        - EvaluateOptions
+        - EvaluateResult
+        - StratifiedSplitOptions
+        - StratifiedSplitResult
+      functions:
+        - stratifiedSplit
+    src/agent/evaluation/LLMRubricJudge.ts:
+      description: LLM-backed rubric judge with zod-validated JSON output and per-criterion deterministic fallback.
+      externalDependencies:
+        - package: zod
+          imports:
+            - z
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../../types/learning.js
+          imports:
+            - CriterionResult
+            - TaskRecord
+          typeOnly: true
+        - file: ../procedural/graph/CompletionProvider.js
+          imports:
+            - PGCompletionProvider
+          typeOnly: true
+        - file: ./DeterministicJudge.js
+          imports:
+            - DeterministicJudge
+            - RubricJudge
+      exports:
+        - buildJudgePrompt
+        - LLMRubricJudge
+      classes:
+        - LLMRubricJudge
+      interfaces:
+        - LLMRubricJudgeOptions
+      functions:
+        - buildJudgePrompt
+    src/agent/evaluation/RubricAudit.ts:
+      description: Deterministic rubric audit (Recursa spec RS-26).
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../../types/learning.js
+          imports:
+            - Criterion
+            - TaskRecord
+          typeOnly: true
+        - file: ../../utils/textSimilarity.js
+          imports:
+            - ENGLISH_STOPWORDS_SMALL
+            - tokenSetWithoutStopwords
+      exports:
+        - auditRubrics
+        - RubricAudit
+      classes:
+        - RubricAudit
+      interfaces:
+        - RubricIssue
+        - RubricAuditOptions
+      functions:
+        - auditRubrics
+    src/agent/evaluation/index.ts:
+      description: "Recursa evaluation layer (RS-25, RS-26): rubric judges, the task"
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ./DeterministicJudge.js
+          imports:
+            - "*"
+          reExport: true
+        - file: ./LLMRubricJudge.js
+          imports:
+            - "*"
+          reExport: true
+        - file: ./Evaluator.js
+          imports:
+            - "*"
+          reExport: true
+        - file: ./RubricAudit.js
+          imports:
+            - "*"
+          reExport: true
+      exports: []
+      reExported:
+        - "* from ./DeterministicJudge.js"
+        - "* from ./LLMRubricJudge.js"
+        - "* from ./Evaluator.js"
+        - "* from ./RubricAudit.js"
     src/agent/events/EventManager.ts:
       description: Event Manager (R1 — event reification)
       externalDependencies: []
@@ -3086,6 +3237,14 @@ modules:
             - "*"
           reExport: true
         - file: ./harness/index.js
+          imports:
+            - "*"
+          reExport: true
+        - file: ./evaluation/index.js
+          imports:
+            - "*"
+          reExport: true
+        - file: ./knowledgeContext.js
           imports:
             - "*"
           reExport: true
@@ -4099,6 +4258,8 @@ modules:
         - "* from ./skills/index.js"
         - "* from ./knowledge/index.js"
         - "* from ./harness/index.js"
+        - "* from ./evaluation/index.js"
+        - "* from ./knowledgeContext.js"
         - AccessTracker
         - AccessStats
         - AccessTrackerConfig
@@ -4888,6 +5049,28 @@ modules:
         - safeApplyOp
         - applyOp
         - planWrites
+    src/agent/knowledgeContext.ts:
+      description: Wake-up layers from the Recursa knowledge repository (spec RS-27).
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ./knowledge/KnowledgeRepository.js
+          imports:
+            - KnowledgeRepository
+          typeOnly: true
+        - file: ../utils/tokenEstimate.js
+          imports:
+            - estimateTokensFromText
+        - file: ../utils/logger.js
+          imports:
+            - logger
+      exports:
+        - knowledgeLayersForWakeUp
+      interfaces:
+        - KnowledgeLayerBudgets
+        - KnowledgeLayers
+      functions:
+        - knowledgeLayersForWakeUp
     src/agent/procedural/ProcedureManager.ts:
       description: Procedure Manager (3B.4)
       externalDependencies: []
@@ -17097,6 +17280,11 @@ dependencyGraph:
         - src/agent/causal/index.ts
         - src/agent/collaboration/CollaborationAuditEnforcer.ts
         - src/agent/connectivity.ts
+        - src/agent/evaluation/DeterministicJudge.ts
+        - src/agent/evaluation/Evaluator.ts
+        - src/agent/evaluation/LLMRubricJudge.ts
+        - src/agent/evaluation/RubricAudit.ts
+        - src/agent/evaluation/index.ts
         - src/agent/events/EventManager.ts
         - src/agent/events/index.ts
         - src/agent/harness/ConcurrencyLimiter.ts
@@ -17113,6 +17301,7 @@ dependencyGraph:
         - src/agent/knowledge/index.ts
         - src/agent/knowledge/knowledgeDigest.ts
         - src/agent/knowledge/knowledgeRevision.ts
+        - src/agent/knowledgeContext.ts
         - src/agent/procedural/ProcedureManager.ts
         - src/agent/procedural/ProcedureStore.ts
         - src/agent/procedural/StepSequencer.ts
@@ -17402,27 +17591,27 @@ reachability:
     - src/index.ts
     - src/sqlite.ts
     - src/workers/levenshteinWorker.ts
-  reachableCount: 345
+  reachableCount: 351
   dormantCount: 0
   orphaned: []
   testOnly: []
 statistics:
-  totalTypeScriptFiles: 345
+  totalTypeScriptFiles: 351
   totalModules: 12
-  totalLinesOfCode: 113217
-  totalExports: 2444
-  totalClasses: 252
-  totalInterfaces: 721
-  totalFunctions: 469
+  totalLinesOfCode: 114490
+  totalExports: 2456
+  totalClasses: 256
+  totalInterfaces: 731
+  totalFunctions: 477
   totalTypeGuards: 40
   totalEnums: 4
   totalConstants: 138
-  totalReExports: 1575
-  totalTypeOnlyImports: 630
+  totalReExports: 1581
+  totalTypeOnlyImports: 639
   runtimeCircularDeps: 0
   typeOnlyCircularDeps: 10
   entryRoots: 4
-  reachableFiles: 345
+  reachableFiles: 351
   dormantFiles: 0
   orphanedFiles: 0
   testOnlyFiles: 0

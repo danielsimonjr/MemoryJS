@@ -2393,6 +2393,26 @@ const router = RestRouter.withDefaults(ctx, { auth });
 
 ---
 
+## Evaluation (Recursa RS-25/26/27)
+
+`@experimental`. Exported from `src/agent` (`src/agent/evaluation/`).
+
+```typescript
+import { Evaluator, DeterministicJudge, LLMRubricJudge, stratifiedSplit, auditRubrics } from '@danielsimonjr/memoryjs';
+
+const { train, test } = stratifiedSplit(tasks, { testFraction: 0.3, by: 'difficulty', seed: 7 });
+const judge = new LLMRubricJudge({ provider }); // falls back per criterion to DeterministicJudge
+const { metrics, feedback } = await new Evaluator().evaluate(test, solver, judge, { concurrency: 4 });
+const issues = auditRubrics(tasks); // placeholder | files | contradicts (advisory) | omits | admits
+```
+
+- `DeterministicJudge`: `fact`/`document` match whole words over normalized text (diacritics folded, `U.S.A.` = `USA`); `number` takes the first number (a sign only after start, whitespace or `(`; invalid tolerance → 0 with a note); `free` never passes.
+- `LLMRubricJudge`: zod-validated JSON verdicts; malformed output, provider errors and aborts fall back per criterion. On abort it settles at once even if the provider ignores the signal.
+- `Evaluator.evaluate` / `stratifiedSplit` throw on duplicate task ids. A non-finite or negative weight becomes 1 with the note `invalid weight; using 1`; a zero weight counts toward `allPass` only.
+- `ContextWindowManager.wakeUp({ knowledge, taskHint })` (RS-27): shared instructions extend L0 and matched skill bodies extend L1, each within the budget left in its layer. `KnowledgeRepository.loadForContext({ sections })` loads only the listed sections (default all). `AgentMemoryManager.setKnowledgeRepository(repo)` + `wakeUp(options)` use the stored repository when `options.knowledge` is absent.
+
+---
+
 ## Verification
 
 Two tools measure this repository. The two tools use different scopes.
@@ -2402,8 +2422,8 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 
 | Claim | Value | Source |
 |---|---|---|
-| totalExports | 3443 | repo-tools map |
-| totalSourceFiles | 867 | repo-tools map |
+| totalExports | 3468 | repo-tools map |
+| totalSourceFiles | 884 | repo-tools map |
 
 The figures below come from `bun run tools:deps` and `bun run tools:deps:full`. These generators read `src/` only. The gate does not check these figures. Read them in `dependency-summary.compact.json` and `TEST_COVERAGE.md`.
 
