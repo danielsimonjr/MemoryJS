@@ -90,6 +90,14 @@ describe('MEMORY_TYPES', () => {
       'decision',
       'project_context',
       'tool_affordance',
+      'skill',
+      'instruction_set',
+      'knowledge_snapshot',
+      'knowledge_revision',
+      'navigation_node',
+      'coverage',
+      'task',
+      'learning_trace',
     ]);
   });
 });

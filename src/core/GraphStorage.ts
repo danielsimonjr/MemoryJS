@@ -126,6 +126,15 @@ const OPTIONAL_PERSISTED_ENTITY_FIELDS: ReadonlyArray<string> = [
   'failureRecord',              // FailureEntity
   'planRecord',                 // PlanEntity
   'reflectionRecord',           // ReflectionEntity
+  // Recursa record fields (types/skills.ts, types/learning.ts)
+  'skillRecord',
+  'instructionSetRecord',
+  'knowledgeSnapshotRecord',
+  'knowledgeRevisionRecord',
+  'navigationNodeRecord',
+  'coverageRecord',
+  'taskRecord',
+  'learningTraceRecord',
 ];
 
 function copyOptionalPersistedFields(

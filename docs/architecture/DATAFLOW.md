@@ -1840,11 +1840,11 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 
 | Claim | Value | Source |
 |---|---|---|
-| totalSourceFiles | 813 | repo-tools map |
-| reachableFiles | 319 | repo-tools map |
+| totalSourceFiles | 818 | repo-tools map |
+| reachableFiles | 321 | repo-tools map |
 | dormantFiles | 0 | repo-tools map |
 | runtimeCircularDeps | 0 | repo-tools map |
-| typeOnlyCircularDeps | 24 | repo-tools map |
+| typeOnlyCircularDeps | 27 | repo-tools map |
 
 The figures below come from `bun run tools:deps` and `bun run tools:deps:full`. These generators read `src/` only. The gate does not check these figures. Read them in `dependency-summary.compact.json` and `TEST_COVERAGE.md`.
 

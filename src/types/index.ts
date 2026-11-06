@@ -323,3 +323,62 @@ export type {
 } from './proceduralGraph.js';
 export { PG_BUILT_IN_RELATIONS } from './proceduralGraph.js';
 
+
+// Recursa knowledge repository types (skills, instruction sets, snapshots,
+// revisions, navigation nodes, coverage) — @experimental
+export type {
+  SkillId,
+  SkillKind,
+  SkillSource,
+  SkillResource,
+  SkillRecord,
+  SkillEntity,
+  InstructionSetRole,
+  InstructionSection,
+  InstructionSetRecord,
+  InstructionSetEntity,
+  RevisionOp,
+  KnowledgeRevisionRecord,
+  KnowledgeRevisionEntity,
+  KnowledgeSnapshotRecord,
+  KnowledgeSnapshotEntity,
+  NavigationNodeRecord,
+  NavigationNodeEntity,
+  CoverageRecord,
+  CoverageEntity,
+} from './skills.js';
+
+// Recursa learning-loop, task and evaluation types (data only) — @experimental
+export type {
+  SplitStrategyName,
+  LearningBudget,
+  SolveResult,
+  CriterionResult,
+  Feedback,
+  DiagnosisKind,
+  Diagnosis,
+  LearnOptions,
+  LearnStopReason,
+  LearnResult,
+  Criterion,
+  TaskRecord,
+  TaskEntity,
+  EvalMetrics,
+  LeafPhase,
+  LeafState,
+  LearningTraceAction,
+  LearningTraceRecord,
+  LearningTraceEntity,
+} from './learning.js';
+
+// Recursa type guards (declared next to the other agent-memory guards)
+export {
+  isSkillEntity,
+  isInstructionSetEntity,
+  isKnowledgeSnapshotEntity,
+  isKnowledgeRevisionEntity,
+  isNavigationNodeEntity,
+  isCoverageEntity,
+  isTaskEntity,
+  isLearningTraceEntity,
+} from './agent-memory.js';

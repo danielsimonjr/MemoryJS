@@ -797,6 +797,17 @@ export class SQLiteStorage implements IGraphStorage {
     // v2.1.x subclass-manager record fields (GraphStorage parity)
     'heuristicRecord',
     'planRecord',
+    'decisionRecord', 'exclusionRule', 'projectContextRecord', 'toolAffordanceRecord',
+    'prospectiveRecord', 'failureRecord', 'reflectionRecord',
+    // Recursa record fields (types/skills.ts, types/learning.ts)
+    'skillRecord',
+    'instructionSetRecord',
+    'knowledgeSnapshotRecord',
+    'knowledgeRevisionRecord',
+    'navigationNodeRecord',
+    'coverageRecord',
+    'taskRecord',
+    'learningTraceRecord',
   ];
 
   /** Build the JSON blob payload for the `agentMetadata` column. */

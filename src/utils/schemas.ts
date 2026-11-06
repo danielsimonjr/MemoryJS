@@ -144,6 +144,14 @@ export const CreateEntitySchema = z.object({
   lifecycleStatus: z.enum(['draft', 'published', 'archived']).optional(),
   heuristicRecord: z.unknown().optional(),
   planRecord: z.unknown().optional(),
+  skillRecord: z.unknown().optional(),
+  instructionSetRecord: z.unknown().optional(),
+  knowledgeSnapshotRecord: z.unknown().optional(),
+  knowledgeRevisionRecord: z.unknown().optional(),
+  navigationNodeRecord: z.unknown().optional(),
+  coverageRecord: z.unknown().optional(),
+  taskRecord: z.unknown().optional(),
+  learningTraceRecord: z.unknown().optional(),
   memoryType: z.string().optional(),
   agentId: z.string().optional(),
   visibility: z.string().optional(),
@@ -266,6 +274,15 @@ export const UpdateEntitySchema = z.object({
   failureRecord: z.unknown().optional(),
   planRecord: z.unknown().optional(),
   reflectionRecord: z.unknown().optional(),
+  // Recursa record fields (types/skills.ts, types/learning.ts)
+  skillRecord: z.unknown().optional(),
+  instructionSetRecord: z.unknown().optional(),
+  knowledgeSnapshotRecord: z.unknown().optional(),
+  knowledgeRevisionRecord: z.unknown().optional(),
+  navigationNodeRecord: z.unknown().optional(),
+  coverageRecord: z.unknown().optional(),
+  taskRecord: z.unknown().optional(),
+  learningTraceRecord: z.unknown().optional(),
 }).strip();
 
 // ==================== Relation Schemas ====================
