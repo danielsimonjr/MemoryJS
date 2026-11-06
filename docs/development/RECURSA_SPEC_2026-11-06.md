@@ -3,8 +3,10 @@
 **Source paper:** Zhu, Lin, Shi, Lin & Zhou, *Recursa: Toward Recursively Self-Improving Foundation
 Model Systems*, arXiv 2611.04035, November 2026.
 **Target:** MemoryJS 4.5.0, based on `master` `731a96d`. **Status:** proposal, nothing applied.
-**Revision:** v2 — after Challenger (22 findings) and Checker (claim verification) passes; all
-accepted corrections are integrated below.
+**Revision:** v3 — v2 integrated the Challenger (22 findings) and Checker (claim verification) passes;
+v3 resolves the §6 owner questions from the perspective of a harness integrator (MemoryJS used as an
+MCP server / plugin for Claude Code): skills publish atomically to disk, YAML is an optional peer,
+and the learner is a resumable state machine the harness drives one tool call at a time (§3.8).
 **Audience:** the Planner / Builder / Challenger / Checker / Fixer roles. Every item names its files,
 types, tests, risk and the invariants the Challenger attacks.
 
@@ -186,15 +188,33 @@ Observations carry `[skill-name]:`, `[kind]:`, `[scope]:` scalar lines so lexica
   `estimateTokensFromText(text, multiplier)` (multiplier from `MEMORY_CONTEXT_TOKEN_MULTIPLIER`, default 1.3).
 - Emits `skill:added | skill:updated | skill:retired` on the graph event emitter (additive event names).
 
-**RS-3 SKILL.md import / export** (`src/agent/skills/SkillFormat.ts`)
-No YAML library exists in `package.json` and none is added. The front matter is a fixed, hand-parsed
+**RS-3 SKILL.md import / export and publish** (`src/agent/skills/{SkillFormat,SkillPublisher}.ts`)
+Front matter parsing has two paths. When the `yaml` package is installed it is used for full YAML
+(comments, multi-line scalars, extra harness keys such as `allowed-tools` are preserved in
+`SkillRecord.extra`); it is declared as an **optional peer dependency** (the
+`@huggingface/transformers` pattern for local embeddings), never a hard dependency, and loaded
+lazily with a dynamic import. Without it, the front matter is a fixed, hand-parsed
 subset: lines `key: <JSON scalar>` and `key:` followed by `  - <JSON scalar>` list items, keys limited
 to `name, description, kind, scope.domains, scope.tasks, scope.tools, uncertainty, sources, resources,
 lineage`. Values are written with `JSON.stringify` and parsed with `JSON.parse`; anything else makes
-`parseSkillMarkdown` return `{ ok: false, line, reason }`. A body line equal to `---` is written as
-`\---` and unescaped on parse, so round-trip is byte-stable. `IOManager` gains `exportSkills(dir)` /
-`importSkills(dir)` (one `<skill-id>/SKILL.md` directory per skill, `resources/` listing) using the
-existing `validateFilePath` confinement (`IOManager.ts:33`); each adds ≤ 40 lines to `IOManager.ts`.
+`parseSkillMarkdown` return `{ ok: false, line, reason }` naming the first unsupported construct.
+Export always emits the subset so files round-trip on either path. A body line equal to `---` is
+written as `\---` and unescaped on parse, so round-trip is byte-stable.
+
+`SkillPublisher` is the harness interface (decision Q1): entities are the source of truth for learning
+state; the SKILL.md tree is the **published view** the harness loads.
+- `publish(dir)` writes every non-retired skill to a temp directory next to `dir` and renames it into
+  place (atomic; a harness never reads a half-written tree), then records `publishedHash` per skill on
+  the entity and writes `<dir>/.memoryjs-skills.json` (`{ publishedAt, snapshotId, skills: { id: hash } }`)
+  as the change marker a hook or MCP notification can watch.
+- `importSkills(dir)` compares each file hash with the entity's `publishedHash`: equal → no-op;
+  file changed and entity unchanged → entity updated from the file (human edit absorbed, lineage
+  `producedBy: 'manual'`); both changed → `ImportConflict { id, fileHash, entityHash }` returned, never a
+  silent overwrite.
+- `IOManager` gains thin `exportSkills(dir)` / `importSkills(dir)` wrappers using the existing
+  `validateFilePath` confinement (`IOManager.ts:33`); ≤ 40 added lines there.
+- The learner calls `publish` after every accepted revision (RS-18), so a harness that reloads skills
+  at session start sees the latest `K`.
 
 ### 3.2 Instructions and the knowledge repository (`src/agent/knowledge/`)
 
@@ -394,10 +414,23 @@ retain-on-improvement gate as `ProceduralGraphEvolution`; sharing code between t
 not part of this plan.
 
 **RS-18 `LeafLearner`** (`src/agent/learning/LeafLearner.ts`)
-Algorithm 1 lines 2–7: repeat { `LoadedKnowledge` per task → solve all tasks via `ConcurrencyLimiter`
-→ judge → if all pass stop (`all-pass`) → diagnose → edit → validate → apply or discard } until a round
-accepts no edit (`no-progress`) or `LearningAccountant.exceeded(budget)` returns a reason. Writes one
-trace node per round (RS-22). Returns `LearnResult`.
+Algorithm 1 lines 2–7 as a **resumable state machine** (decision Q3): the state lives in the
+`learning_trace` entity, so every step can be driven by an in-process loop *or* by a harness making
+one tool call at a time.
+```ts
+type LeafPhase = 'solve' | 'judge' | 'diagnose' | 'edit' | 'validate' | 'apply' | 'done';
+interface LeafState { traceId: string; round: number; phase: LeafPhase; pending: string[]; // task ids awaiting results
+  results: Record<string, SolveResult>; feedback: Record<string, Feedback>; revisionId?: string; stop?: LearnStopReason }
+```
+API: `start(opts) → LeafState` (persists round 0); `next(traceId) → StepRequest | LeafState` where
+`StepRequest = { kind: 'solve'; tasks: Array<{ task, knowledge: LoadedKnowledge }> } | { kind: 'judge';
+answers } | { kind: 'done'; result: LearnResult }`; `submit(traceId, kind, payload)` stores results and
+advances the phase; diagnose / edit / validate / apply run inside `next` because they need no external
+work (validate issues its own `solve` / `judge` `StepRequest`s for the affected tasks and the sample).
+`learn(opts, deps)` is the in-process convenience loop: it calls `next`, fulfils each `StepRequest`
+with `deps.solver` / `deps.judge` through `ConcurrencyLimiter`, and `submit`s, until `done`. After
+every accepted revision it calls `SkillPublisher.publish` when a publish directory is configured.
+Stops on `all-pass`, `no-progress` (a round that accepts no edit) or `LearningAccountant.exceeded`.
 
 **RS-19 `SplitStrategy`** (`src/agent/learning/SplitStrategies.ts`)
 `split(name, tasks, ctx) → TaskSubset[]` (`{ label, taskIds, rationale }`), a partition: every task
@@ -429,7 +462,15 @@ that did not improve, conflicting edits and `noisy-feedback` clusters, and write
 `ReflectionRecord` per round through `AgentReflectionManager.create` with `scope: 'learning'`,
 `evidence` = child trace entity names, `keyInsights` ≤ 5, `generalization_confidence` = share of
 children that improved. The reflection's `keyInsights` are passed to the next round's `auto` split.
-Exposed as `ctx.learningLoop(deps).learn(opts)`.
+
+Like the leaf learner, the recursive learner is a state machine (decision Q3): `plan(traceId) →
+{ subsets, childTraceIds }` creates one child trace per subset (each a `LeafState` or a nested
+recursive state); the harness runs each child by driving its `next` / `submit` (or the in-process loop
+does it through `ConcurrencyLimiter` / `SubagentRunner`); `submitChild(traceId, childTraceId)` marks a
+child complete; `merge(traceId)` runs `RevisionMerger` + validation once all children are complete;
+`reflect(traceId)` writes the reflection and decides `continue | done`. `SubagentRunner` is one
+adapter over this API. Exposed as `ctx.learningLoop(deps)` → `{ learn, start, plan, next, submit,
+submitChild, merge, reflect, status }`.
 
 **RS-22 `LearningTrace`** (`src/agent/learning/LearningTrace.ts`)
 `LearningTraceRecord { id; parentTraceId?; learnerKind: 'leaf' | 'recursive'; round; subsetLabel;
@@ -500,6 +541,32 @@ README and CONFIGURATION.md):
 | `MEMORY_LEARNING_LEAF_THRESHOLD` | 20 | subsets at or below this size get a leaf learner |
 | `MEMORY_LEARNING_MAX_DEPTH` | 2 | recursion depth of `RecursiveLearner` |
 
+### 3.8 Harness / MCP surface (decisions Q1–Q5 applied)
+
+MemoryJS used from Claude Code (as an MCP server or plugin) sees only stateless tool calls, reads
+skills from disk, and owns subagents and tool execution. The library therefore exposes the learner as
+steps, publishes skills to disk, and ingests the harness's own transcript. A reference MCP tool list
+(implemented by the downstream server, not by this library; listed here so the library API is shaped
+for it):
+
+| Tool | Library call | Notes |
+|---|---|---|
+| `recursa.knowledge.load` | `knowledgeRepository.loadForContext({ role, taskHint, budgetTokens })` | returns Markdown + ids; the harness pastes it into the solver prompt |
+| `recursa.skills.publish` | `skillPublisher.publish(dir)` | atomic; returns the change marker |
+| `recursa.skills.import` | `skillPublisher.importSkills(dir)` | returns `ImportConflict[]` |
+| `recursa.learn.start` / `.next` / `.submit` | RS-18 | one `StepRequest` per call; the harness runs solves with its own model and subagents |
+| `recursa.learn.plan` / `.submitChild` / `.merge` / `.reflect` / `.status` | RS-21 | the harness fans children out with its Agent tool |
+| `recursa.log.append` | `interactionLog.append(rec)` | fed from `PostToolUse` / turn hooks; `tokens` caller-reported (Q4) |
+| `recursa.log.select` | `interactionLog.select(addr, …)` | only the excerpt returns to the context |
+| `recursa.eval.run` | `evaluator.evaluate(…)` with harness-supplied answers | metrics for before/after |
+
+Decisions recorded: **Q1** entities authoritative, SKILL.md the published view with atomic publish and
+hash-based conflict detection; **Q2** `yaml` optional peer dependency, subset parser fallback;
+**Q3** step-wise resumable learners, `SubagentRunner` is an adapter; **Q4** caller-reported tokens win,
+provider `getLastUsage` is the fallback; **Q5** `InteractionLog` is separate from `TransitionLedger`
+and acts as an importer of harness transcript events; **Q6** `@experimental` through 4.x; **Q7**
+gate sharing deferred; **Q8** no visibility tiers for shards.
+
 ---
 
 ## 4. Subagent-driven implementation plan
@@ -516,7 +583,7 @@ lead after its batches land (§2.8).
 | Batch | Items | Files | Tests | Challenger attacks |
 |---|---|---|---|---|
 | 1A | §3.0, RS-1, RS-4, RS-6, RS-24 types | new `src/types/skills.ts`, `src/types/learning.ts`; `src/types/agent-memory.ts` (+8 `MEMORY_TYPES` entries, `'learning'` in `ReflectionScope`, guards; ≤ 120 added lines); lead adds `src/types/index.ts` exports | guard table test (true / near-miss objects); `MEMORY_TYPES` exhaustiveness; every `switch` on `ReflectionScope` compiles | guard false-positives; a `switch` over `MemoryType` elsewhere that is no longer exhaustive |
-| 1B | RS-2, RS-3 | `src/agent/skills/{SkillManager,SkillFormat}.ts`, `src/features/IOManager.ts` (+≤ 80 lines) | add/dedup/OCC/match/outcome on both backends; SKILL.md round-trip incl. `---` in body; import path-confinement | concurrent `update` with the same `expectedVersion`; `match` with empty hint; front matter with unknown key; import directory escaping the root |
+| 1B | RS-2, RS-3 | `src/agent/skills/{SkillManager,SkillFormat,SkillPublisher}.ts`, `src/features/IOManager.ts` (+≤ 40 lines), `package.json` (`peerDependenciesMeta.yaml.optional`) | add/dedup/OCC/match/outcome on both backends; SKILL.md round-trip incl. `---` in body (subset path; full-YAML path skipped when `yaml` is absent); atomic publish (temp dir + rename, marker file); import no-op / absorb / conflict matrix; path confinement | concurrent `update` with the same `expectedVersion`; `match` with empty hint; front matter with unknown key; import directory escaping the root |
 | 1C | RS-5 | `src/agent/knowledge/{InstructionSetManager,KnowledgeRepository}.ts` | digest stable across reload and key order; diff mirror property; `applyRevision` op 3 of 5 fails → zero writes, `failedOpIndex: 2`; rollback restores sections and retires later skills; `loadForContext` budget | `applyRevision` with an unknown skill id; two revisions racing on the same `expectedSnapshotId` (one must get `conflict`) |
 | 1D (lead) | barrels, `ManagerContext` getters for 1B/1C, docs rows | `src/types/index.ts`, `src/agent/index.ts`, `src/core/ManagerContext.ts` (≤ 60 lines), CLAUDE.md, API.md | getter identity + lazy-once; `close()` releases | getter touched before storage loaded |
 Order: 1A → (1B ∥ 1C) → 1D. Four batches, three Builders plus the lead.
@@ -542,7 +609,7 @@ Order: 3A ∥ 3B → 3C. Phases 2 and 3 may ship as one PR.
 |---|---|---|---|---|
 | 4A | RS-14 callback types, RS-22, RS-23 | `src/agent/learning/{types,LearningTrace,LearningAccountant}.ts` | trace tree persist / `load` / Mermaid; rework detection only when the digest is unchanged | rework counted after a digest change (must not); trace with 1,000 actions stays under `maxInlineBytes` per entity |
 | 4B | RS-15, RS-16 | `src/agent/learning/{Diagnoser,KnowledgeEditor}.ts` | fallback classification table; LLM path with malformed JSON (retry then fallback); exactly one `FailureManager.record` per task per round with all five fields | task input containing `---` / fenced blocks reaching a skill body unfenced; editor op referencing an unknown skill id |
-| 4C | RS-17, RS-18 | `src/agent/learning/{RevisionValidator,LeafLearner}.ts` (4C uses a stub editor until 4B lands, then an integration test) | accept only when `fixed > 0 && regressed = 0`; scratch never leaks into live `K` on reject; every stop reason; `all-pass` early exit; abort | nondeterministic solver with `validationRepeats = 2`; an edit that fixes A and breaks B exactly at the sample boundary |
+| 4C | RS-17, RS-18 | `src/agent/learning/{RevisionValidator,LeafLearner}.ts` (4C uses a stub editor until 4B lands, then an integration test) | accept only when `fixed > 0 && regressed = 0`; scratch never leaks into live `K` on reject; every stop reason; `all-pass` early exit; abort; step-wise parity: driving `start/next/submit` by hand yields the same `LearnResult` as `learn()`; state survives a reopen between steps | nondeterministic solver with `validationRepeats = 2`; an edit that fixes A and breaks B exactly at the sample boundary |
 | 4D (lead) | barrels, `ctx.learningLoop` stub for leaf-only use | `src/agent/learning/index.ts`, `src/agent/index.ts`, `src/core/ManagerContext.ts` (≤ 30 lines) | — | — |
 Order: 4A → (4B ∥ 4C) → 4D.
 
@@ -550,7 +617,7 @@ Order: 4A → (4B ∥ 4C) → 4D.
 | Batch | Items | Files | Tests | Challenger attacks |
 |---|---|---|---|---|
 | 5A | RS-19, RS-20 | `src/agent/learning/{SplitStrategies,RevisionMerger}.ts` | each strategy is a partition (no task lost or duplicated, no empty subset); `auto` deterministic; dedup at 0.85; reconcile; generalize unions evidence domains only; merged revision re-validated | subsets of size 1; children revising the same skill in opposite directions; generalization widening scope beyond evidence (must not) |
-| 5B | RS-21 | `src/agent/learning/{RecursiveLearner,LearningReflector}.ts` | depth and child budgets honoured; one reflection per round with trace evidence and `scope: 'learning'`; no-progress detection; end-to-end with a scripted solver that passes a task only when the expected skill exists | runaway recursion; child failure isolation; reflection citing trace ids that do not exist |
+| 5B | RS-21 | `src/agent/learning/{RecursiveLearner,LearningReflector}.ts` | depth and child budgets honoured; one reflection per round with trace evidence and `scope: 'learning'`; no-progress detection; end-to-end with a scripted solver that passes a task only when the expected skill exists; `plan/submitChild/merge/reflect` driven by hand equals the in-process loop | runaway recursion; child failure isolation; reflection citing trace ids that do not exist |
 | 5C | RS-10..RS-13 | `src/agent/bootstrap/{CorpusMapper,BoundaryRecorder,ExplorationNotes,PracticeTaskGenerator,Bootstrapper}.ts` | map of 50 synthetic docs → levels, `TOPIC_SUMMARIZES` / `located_at` relations, same-ref conflict rule; coverage lookup; notes from fixtures; practice tasks have rubric + sources; `K-0` snapshot labelled `bootstrap` | empty corpus; partitioner returning empty shards (rejected); practice task with an unsatisfiable rubric (flagged by `RubricAudit`) |
 | 5D (lead) | barrels, `ctx.bootstrapper`, full `ctx.learningLoop` | `src/agent/{learning,bootstrap}/index.ts`, `src/agent/index.ts`, `src/core/ManagerContext.ts` (≤ 40 lines) | — | — |
 Order: (5A ∥ 5C) → 5B → 5D.
@@ -599,18 +666,18 @@ Six PRs (five if phases 2 and 3 combine), 27 items.
 
 ---
 
-## 6. Deferred / owner questions
+## 6. Owner questions — decided (v3, harness-integrator lens)
 
-| # | Question | Default if unanswered |
+| # | Question | Decision |
 |---|---|---|
-| Q1 | Should skills live on disk as SKILL.md directories (source of truth) or as entities with export? | Entities are the source of truth; SKILL.md is import/export (RS-3). |
-| Q2 | Is a full YAML front matter (any key, nested maps) wanted? That needs a YAML dependency. | No: fixed-subset front matter, no dependency (RS-3). |
-| Q3 | Should `RecursiveLearner` run child learners through the caller's `SubagentRunner` (true isolation, paper §3.3) or in-process? | In-process by default; `SubagentRunner` optional. |
-| Q4 | Token accounting source: provider `getLastUsage` (as `PGCompletionProvider`) or caller-reported `SolveResult.tokens`? | Both, summed when both present. |
-| Q5 | Should `InteractionLog` replace `TransitionLedger` or `ToolCallObserver` for agent traces? | No: the ledger is graph-mutation audit; the observer feeds tool-affordance stats and may also write to the log. |
-| Q6 | Public API tier for `learning/` after one release? | Keep `@experimental` through 4.x. |
-| Q7 | Should the `RevisionValidator` gate be extracted and shared with `ProceduralGraphEvolution`? | Follow-up after Phase 5; not in this plan. |
-| Q8 | Should bootstrapping's parallel mappers use `MultiAgentMemoryManager` visibility (`team`) for shard results before merge? | Not initially; shards tag `navigation_node` entities with the shard id. |
+| Q1 | SKILL.md directories or entities as source of truth? | **Entities authoritative; SKILL.md is the published view.** Atomic publish after every accepted revision, hash-based conflict detection on import (RS-3 `SkillPublisher`). A harness reads skills from disk, so publishing is part of the loop, not an export afterthought. |
+| Q2 | Real YAML dependency? | **`yaml` as an optional peer dependency**; fixed-subset parser when absent. Human-written SKILL.md files are real YAML; a subset-only parser would reject them on import. |
+| Q3 | Child learners through an isolated `SubagentRunner` or in-process? | **Step-wise, resumable learners** (`start/next/submit`, `plan/submitChild/merge/reflect`) whose state lives in `learning_trace` entities, so a harness drives them one tool call at a time with its own subagents; `SubagentRunner` and `learn()` are in-process adapters over that API (RS-18, RS-21, §3.8). |
+| Q4 | Token accounting source? | **Caller-reported `SolveResult.tokens` wins**; provider `getLastUsage` is the fallback for direct `LLMProvider` calls. |
+| Q5 | `InteractionLog` vs `TransitionLedger` / `ToolCallObserver`? | **Separate.** The log is an importer of harness transcript events (hooks) addressed for `select`; the ledger stays graph-mutation audit; the observer may also write to the log. |
+| Q6 | API tier after one release? | `@experimental` through 4.x. |
+| Q7 | Share the validation gate with `ProceduralGraphEvolution`? | Deferred until `RevisionValidator` stabilizes (after Phase 5); the clone tooling will flag the duplication. |
+| Q8 | `MultiAgentMemoryManager` visibility for shard results? | Not initially; shards tag `navigation_node` entities with the shard id. |
 
 ---
 
