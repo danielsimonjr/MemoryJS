@@ -38,7 +38,7 @@ This document provides a comprehensive dependency graph of all files, components
 
 The codebase is organized into the following modules:
 
-- **adapters**: 7 files
+- **adapters**: 11 files
 - **agent**: 176 files
 - **cli**: 31 files
 - **core**: 36 files
@@ -63,7 +63,7 @@ Seeded build/entry roots (package `exports`, `bin` targets, tsup entries, script
 - `src/sqlite.ts`
 - `src/workers/levenshteinWorker.ts`
 
-Reachable from a root: **394** of 394 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
+Reachable from a root: **398** of 398 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
 
 ---
 
@@ -125,6 +125,44 @@ Reachable from a root: **394** of 394 files. Dormant: **0** (0 orphaned, 0 test-
 
 ---
 
+### `src/adapters/RecursaToolAdapter.ts` - RecursaToolAdapter: the reference implementation of the Recursa harness tool surface (spec
+
+**External Dependencies:**
+| Package | Import |
+|---------|--------|
+| `zod` | `z` |
+
+**Node.js Built-in Dependencies:**
+| Module | Import |
+|--------|--------|
+| `path` | `dirname` |
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../core/ManagerContext.js` | `ManagerContext` | Import (type-only) |
+| `../core/context/LearningFacade.js` | `LearningLoop, LearningLoopDeps` | Import (type-only) |
+| `../agent/harness/InteractionLog.js` | `InteractionLog` | Import (type-only) |
+| `../agent/evaluation/Evaluator.js` | `Evaluator, Solver` | Import |
+| `../agent/evaluation/DeterministicJudge.js` | `DeterministicJudge, RubricJudge` | Import |
+| `../agent/learning/types.js` | `LearningSolver` | Import (type-only) |
+| `../agent/learning/RecursiveLearner.js` | `RecursiveStartOptions` | Import (type-only) |
+| `../agent/procedural/graph/CompletionProvider.js` | `PGCompletionProvider` | Import (type-only) |
+| `../agent/knowledge/KnowledgeRepository.js` | `LoadForContextOptions` | Import (type-only) |
+| `../types/skills.js` | `SkillId` | Import (type-only) |
+| `../types/learning.js` | `CriterionResult, SolveResult, TaskRecord` | Import (type-only) |
+| `../agent/skills/SkillPublisher.js` | `SkillPublisher` | Import |
+| `./recursaToolBounds.js` | `boundResult` | Import |
+| `./recursaToolSupport.js` | `ToolFailure, definedOnly, fail, failureOf, issuesOf, jsonSchemaOf, publishTargetOf, reservedKeyPath, RecursaToolResult` | Import |
+| `./recursaToolSchemas.js` | `evalRunSchema, knowledgeLoadSchema, learnStartSchema, learnSubmitSchema, logAppendSchema, logSelectSchema, skillsImportSchema, skillsPublishSchema, submitChildSchema, traceIdSchema` | Import |
+
+**Exports:**
+- Interfaces: `RecursaToolDescriptor`, `RecursaToolSet`, `RecursaToolDeps`
+- Types: `ToolDescriptor`, `ToolResult`
+- Functions: `createRecursaTools`
+
+---
+
 ### `src/adapters/RestRouter.ts` - REST Router
 
 **Node.js Built-in Dependencies:**
@@ -161,10 +199,11 @@ Reachable from a root: **394** of 394 files. Dormant: **0** (0 orphaned, 0 test-
 | `./RateLimiter.js` | `RateLimiter, RateLimiterConfig, RateLimitVerdict` | Re-export |
 | `./pagination.js` | `paginate, parsePaginationParams, PaginationParams, ParsePaginationOptions, PaginatedResult` | Re-export |
 | `./MCPToolObserverAdapter.js` | `MCPToolObserverAdapter, extractToolName` | Re-export |
+| `./RecursaToolAdapter.js` | `createRecursaTools, RecursaToolSet, RecursaToolDeps, RecursaToolDescriptor, RecursaToolResult` | Re-export |
 | `./LangChainMemoryAdapter.js` | `LangChainMemoryAdapter` | Re-export |
 
 **Exports:**
-- Re-exports: `RestRouter`, `RestMethod`, `RestRequest`, `RestResponse`, `RestHandler`, `RouteDefinition`, `RestRouterOptions`, `ApiKeyAuthMiddleware`, `DEFAULT_WRITE_SCOPE`, `ApiKeyAuthOptions`, `AuthContext`, `AuthOutcome`, `RateLimiter`, `RateLimiterConfig`, `RateLimitVerdict`, `paginate`, `parsePaginationParams`, `PaginationParams`, `ParsePaginationOptions`, `PaginatedResult`, `MCPToolObserverAdapter`, `extractToolName`, `LangChainMemoryAdapter`
+- Re-exports: `RestRouter`, `RestMethod`, `RestRequest`, `RestResponse`, `RestHandler`, `RouteDefinition`, `RestRouterOptions`, `ApiKeyAuthMiddleware`, `DEFAULT_WRITE_SCOPE`, `ApiKeyAuthOptions`, `AuthContext`, `AuthOutcome`, `RateLimiter`, `RateLimiterConfig`, `RateLimitVerdict`, `paginate`, `parsePaginationParams`, `PaginationParams`, `ParsePaginationOptions`, `PaginatedResult`, `MCPToolObserverAdapter`, `extractToolName`, `createRecursaTools`, `RecursaToolSet`, `RecursaToolDeps`, `RecursaToolDescriptor`, `RecursaToolResult`, `LangChainMemoryAdapter`
 
 ---
 
@@ -173,6 +212,55 @@ Reachable from a root: **394** of 394 files. Dormant: **0** (0 orphaned, 0 test-
 **Exports:**
 - Interfaces: `PaginationParams`, `ParsePaginationOptions`, `PaginatedResult`
 - Functions: `parsePaginationParams`, `paginate`
+
+---
+
+### `src/adapters/recursaToolBounds.ts` - Byte-budget helpers of the Recursa tool adapter: every successful result passes through
+
+**Exports:**
+- Functions: `byteSize`, `boundResult`
+
+---
+
+### `src/adapters/recursaToolSchemas.ts` - Argument schemas of the Recursa tool adapter (spec section 3.8). Each schema validates the
+
+**External Dependencies:**
+| Package | Import |
+|---------|--------|
+| `zod` | `z` |
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../agent/harness/InteractionLogFormat.js` | `INTERACTION_KINDS` | Import |
+
+**Exports:**
+- Constants: `knowledgeLoadSchema`, `skillsPublishSchema`, `skillsImportSchema`, `learnStartSchema`, `traceIdSchema`, `learnSubmitSchema`, `submitChildSchema`, `logAppendSchema`, `logSelectSchema`, `evalRunSchema`
+
+---
+
+### `src/adapters/recursaToolSupport.ts` - Shared plumbing of the Recursa tool adapter: the stable failure codes, the mapping of thrown
+
+**External Dependencies:**
+| Package | Import |
+|---------|--------|
+| `zod` | `z` |
+
+**Node.js Built-in Dependencies:**
+| Module | Import |
+|--------|--------|
+| `path` | `isAbsolute, resolve` |
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../utils/errors.js` | `ValidationError, KnowledgeGraphError` | Import |
+| `../agent/skills/skillTreeFs.js` | `resolveConfinedTreeDir` | Import |
+
+**Exports:**
+- Classes: `ToolFailure`
+- Types: `RecursaToolResult`
+- Functions: `messageOf`, `fail`, `failureOf`, `issuesOf`, `jsonSchemaOf`, `reservedKeyPath`, `definedOnly`, `publishTargetOf`
 
 ---
 
@@ -2184,7 +2272,7 @@ Reachable from a root: **394** of 394 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `../../types/learning.js` | `CriterionResult, LearnResult, LeafState, SolveResult` | Import (type-only) |
+| `../../types/learning.js` | `CriterionResult, LearnResult, LeafState, SolveResult, TaskRecord` | Import (type-only) |
 | `../harness/ConcurrencyLimiter.js` | `runAllWithStats` | Import |
 | `./LeafLearnerStore.js` | `EMPTY_METRICS, taskRecordsJson` | Import |
 | `./LeafLearnerContext.js` | `Ctx, LeafEnv, beginRound, copyState, knowledgeFor, loadCtx, pendingTasks, resultOf, saveCtx, stopRun` | Import |
@@ -2412,7 +2500,7 @@ Reachable from a root: **394** of 394 files. Dormant: **0** (0 orphaned, 0 test-
 | `./llmJson.js` | `describeError` | Import |
 | `./LeafLearner.js` | `LeafLearner` | Import |
 | `./LearningTrace.js` | `LearningTrace` | Import (type-only) |
-| `./RecursiveLearnerState.js` | `SubsetRecord, ChildSummary, RecursiveState, RecursiveOptions` | Import (type-only) |
+| `./RecursiveLearnerState.js` | `SubsetRecord, ChildSummary, CriteriaMap, RecursiveState, RecursiveOptions` | Import (type-only) |
 | `./RecursiveLearnerState.js` | `childResultOf, pick` | Import |
 | `./RecursiveLearnerState.js` | `loadRecursive` | Import |
 | `./LeafLearnerStore.js` | `loadRun` | Import |
@@ -2432,7 +2520,7 @@ Reachable from a root: **394** of 394 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `../../types/learning.js` | `TaskRecord, TokenTotals` | Import (type-only) |
+| `../../types/learning.js` | `CriterionResult, TaskRecord, TokenTotals` | Import (type-only) |
 | `../evaluation/DeterministicJudge.js` | `RubricJudge` | Import (type-only) |
 | `../harness/ConcurrencyLimiter.js` | `runAll` | Import |
 | `../knowledge/KnowledgeRepository.js` | `KnowledgeRepository` | Import (type-only) |
@@ -2468,8 +2556,10 @@ Reachable from a root: **394** of 394 files. Dormant: **0** (0 orphaned, 0 test-
 | `./SplitStrategies.js` | `split` | Import |
 | `./RecursivePlan.js` | `absorbEvidence, childBudgetOf, planSubsets` | Import |
 | `./types.js` | `LearningDeps, LearningSolver` | Import (type-only) |
-| `./RecursiveLearnerState.js` | `MergeRecord, RecursiveState, SubsetRecord, childResultOf, copyRecursive, loadRecursive, metricsOf, saveRecursive` | Import |
-| `./RecursiveDrive.js` | `KeyedMutex, checkStartOptions, resetForNextRound, summarizeChild, assertChildDone, driveRun, failedSummary, initialRecursiveState, wallClockStop` | Import |
+| `./RecursiveLearnerState.js` | `MergeRecord, RecursiveState, SubsetRecord, absorbChildCriteria` | Import |
+| `./RecursiveLearnerState.js` | `childResultOf, copyRecursive, loadRecursive, metricsOf, saveRecursive` | Import |
+| `./RecursiveDrive.js` | `KeyedMutex, checkStartOptions, resetForNextRound, summarizeChild, assertChildDone` | Import |
+| `./RecursiveDrive.js` | `driveRun, failedSummary, initialRecursiveState, wallClockStop` | Import |
 | `./RecursiveMerge.js` | `buildChildOutcomes, mergeOutcomeOf, publishAccepted, reflectChildrenOf, settleRound, validateAndApplyMerge` | Import |
 | `./RecursiveEvaluate.js` | `evaluateLive` | Import |
 | `./RecursiveChildren.js` | `ChildFactoryContext, createChildRun, leafOver, recursiveOver` | Import |
@@ -2486,7 +2576,7 @@ Reachable from a root: **394** of 394 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `../../types/learning.js` | `Diagnosis, EvalMetrics, Feedback, LearnStopReason, LearningBudget, SplitStrategyName, TaskRecord, TokenTotals` | Import (type-only) |
+| `../../types/learning.js` | `CriterionResult, Diagnosis, EvalMetrics, Feedback, LearnStopReason, LearningBudget, SplitStrategyName, TaskRecord, TokenTotals` | Import (type-only) |
 | `../../types/skills.js` | `KnowledgeRevisionRecord` | Import (type-only) |
 | `../../types/agent-memory.js` | `IsoDateTime` | Import (type-only) |
 | `./LearningTrace.js` | `LearningTrace` | Import (type-only) |
@@ -2496,8 +2586,8 @@ Reachable from a root: **394** of 394 files. Dormant: **0** (0 orphaned, 0 test-
 
 **Exports:**
 - Interfaces: `SubsetRecord`, `SplitEvidence`, `ChildSummary`, `RecursiveOptions`, `MergeRecord`, `RecursiveState`, `LoadedRecursive`, `ChildResult`
-- Types: `RecursivePhase`
-- Functions: `loadRecursive`, `saveRecursive`, `metricsOf`, `pick`, `sumTokens`, `childResultOf`, `combineRevisions`, `copyRecursive`
+- Types: `CriteriaMap`, `RecursivePhase`
+- Functions: `loadRecursive`, `saveRecursive`, `metricsOf`, `feedbackOf`, `absorbChildCriteria`, `pick`, `sumTokens`, `childResultOf`, `combineRevisions`, `copyRecursive`
 - Constants: `DEFAULT_MAX_DEPTH`, `DEFAULT_LEAF_THRESHOLD`
 
 ---
@@ -2514,7 +2604,7 @@ Reachable from a root: **394** of 394 files. Dormant: **0** (0 orphaned, 0 test-
 | `./LearningReflector.js` | `ReflectChild` | Import (type-only) |
 | `./RevisionMerger.js` | `ChildOutcome` | Import (type-only) |
 | `../../types/agent-memory.js` | `toIsoDateTime` | Import |
-| `./RecursiveLearnerState.js` | `combineRevisions, metricsOf, RecursiveState` | Import |
+| `./RecursiveLearnerState.js` | `combineRevisions, feedbackOf, metricsOf, CriteriaMap, RecursiveState` | Import |
 | `./ChildKnowledgeOverlay.js` | `readChildRevisions` | Import |
 | `../knowledge/KnowledgeRepository.js` | `KnowledgeRepository` | Import (type-only) |
 | `./LearningTrace.js` | `LearningTrace` | Import (type-only) |
@@ -3527,7 +3617,7 @@ Reachable from a root: **394** of 394 files. Dormant: **0** (0 orphaned, 0 test-
 |--------|--------|
 | `fs` | `promises` |
 | `crypto` | `randomBytes` |
-| `path` | `dirname, join, resolve` |
+| `path` | `dirname, join` |
 
 **Internal Dependencies:**
 | File | Imports | Type |
@@ -3536,13 +3626,13 @@ Reachable from a root: **394** of 394 files. Dormant: **0** (0 orphaned, 0 test-
 | `../../types/agent-memory.js` | `isSkillEntity, toIsoDateTime` | Import |
 | `../../types/skills.js` | `SkillId` | Import (type-only) |
 | `../../utils/durableWriteFile.js` | `durableWriteFile, renameOver` | Import |
-| `./skillTreeFs.js` | `pathExists, readConfinedSkillFile, recoverPublishedTree, removeBestEffort` | Import |
+| `./skillTreeFs.js` | `pathExists, readConfinedSkillFile, recoverPublishedTree, removeBestEffort, resolveConfinedTreeDir` | Import |
 | `./SkillManager.js` | `SkillManager, SkillPatch` | Import |
 | `./SkillFormat.js` | `loadOptionalYaml, parseSkillMarkdown, serializeSkillMarkdown, skillContentHash, ParsedSkillDocument` | Import |
 
 **Exports:**
 - Classes: `SkillPublisher`
-- Interfaces: `SkillPublishMarker`, `PublishResult`, `ImportConflict`, `ImportParseError`, `ImportReport`, `PublishOptions`
+- Interfaces: `SkillPublishMarker`, `PublishResult`, `ImportConflict`, `ImportParseError`, `ImportReport`, `PublishOptions`, `SkillPublisherOptions`
 - Constants: `SKILL_MARKER_FILE`
 
 ---
@@ -3589,16 +3679,18 @@ Reachable from a root: **394** of 394 files. Dormant: **0** (0 orphaned, 0 test-
 | Module | Import |
 |--------|--------|
 | `fs` | `promises` |
-| `path` | `basename, dirname, join, sep` |
+| `path` | `basename, dirname, isAbsolute, join, relative, resolve, sep` |
 
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
 | `../../utils/durableWriteFile.js` | `renameOver` | Import |
+| `../../utils/errors.js` | `ValidationError` | Import |
+| `../../utils/entityUtils.js` | `validateFilePath` | Import |
 
 **Exports:**
-- Types: `ConfinedRead`
-- Functions: `recoverPublishedTree`, `removeBestEffort`, `pathExists`, `readConfinedSkillFile`
+- Types: `TreeDirRefusal`, `ConfinedRead`
+- Functions: `resolveConfinedTreeDir`, `recoverPublishedTree`, `removeBestEffort`, `pathExists`, `readConfinedSkillFile`
 
 ---
 
@@ -7457,7 +7549,7 @@ Reachable from a root: **394** of 394 files. Dormant: **0** (0 orphaned, 0 test-
 
 | File | Imports From | Exports To |
 |------|--------------|------------|
-| `src/core/ManagerContext` | 92 files | 9 files |
+| `src/core/ManagerContext` | 92 files | 10 files |
 | `src/types/types` | 1 file | 84 files |
 | `src/types/index` | 12 files | 69 files |
 | `src/types/agent-memory` | 3 files | 72 files |
@@ -7466,37 +7558,37 @@ Reachable from a root: **394** of 394 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/core/GraphStorage` | 16 files | 47 files |
 | `src/core/EntityManager` | 12 files | 48 files |
 | `src/search/index` | 50 files | 1 file |
-| `src/utils/errors` | 0 files | 40 files |
+| `src/utils/errors` | 0 files | 42 files |
 | `src/utils/logger` | 0 files | 37 files |
-| `src/types/learning` | 2 files | 33 files |
-| `src/types/skills` | 1 file | 33 files |
+| `src/types/learning` | 2 files | 34 files |
+| `src/types/skills` | 1 file | 34 files |
 | `src/agent/AgentMemoryManager` | 30 files | 3 files |
+| `src/agent/knowledge/KnowledgeRepository` | 14 files | 18 files |
 | `src/core/context/AgentMemoryFacade` | 31 files | 1 file |
-| `src/agent/knowledge/KnowledgeRepository` | 14 files | 17 files |
-| `src/agent/learning/RecursiveLearner` | 23 files | 6 files |
+| `src/agent/learning/RecursiveLearner` | 23 files | 7 files |
 | `src/utils/textSimilarity` | 0 files | 29 files |
 | `src/agent/bootstrap/Bootstrapper` | 25 files | 3 files |
 | `src/cli/commands/helpers` | 4 files | 23 files |
 | `src/agent/ConsolidationPipeline` | 19 files | 7 files |
-| `src/agent/learning/types` | 5 files | 20 files |
+| `src/agent/learning/types` | 5 files | 21 files |
 | `src/cli/commands/index` | 24 files | 1 file |
+| `src/core/context/LearningFacade` | 22 files | 3 files |
 | `src/core/context/SearchFacade` | 24 files | 1 file |
 | `src/agent/ContextWindowManager` | 18 files | 6 files |
 | `src/core/RelationManager` | 6 files | 18 files |
-| `src/core/context/LearningFacade` | 22 files | 2 files |
 | `src/cli/formatters` | 2 files | 20 files |
 | `src/core/context/AgentCognitionFacade` | 21 files | 1 file |
 | `src/search/SearchManager` | 17 files | 5 files |
 | `src/utils/envConfig` | 1 file | 21 files |
 | `src/agent/learning/LearningTrace` | 10 files | 11 files |
 | `src/agent/skills/SkillManager` | 11 files | 10 files |
+| `src/utils/entityUtils` | 3 files | 18 files |
 | `src/agent/learning/LeafLearner` | 10 files | 10 files |
 | `src/core/ObservationManager` | 12 files | 8 files |
 | `src/features/IOManager` | 16 files | 4 files |
 | `src/search/RankedSearch` | 11 files | 9 files |
 | `src/types/proceduralGraph` | 0 files | 20 files |
 | `src/utils/constants` | 0 files | 20 files |
-| `src/utils/entityUtils` | 3 files | 17 files |
 
 ---
 
@@ -7536,204 +7628,208 @@ graph TD
         N1[LangChainMemoryAdapter]
         N2[MCPToolObserverAdapter]
         N3[RateLimiter]
-        N4[RestRouter]
-        N5[index]
-        N6[pagination]
+        N4[RecursaToolAdapter]
+        N5[RestRouter]
+        N6[index]
+        N7[pagination]
+        N8[recursaToolBounds]
+        N9[recursaToolSchemas]
+        N10[...1 more]
     end
 
     subgraph Agent
-        N7[AccessTracker]
-        N8[AgentMemoryConfig]
-        N9[AgentMemoryManager]
-        N10[AgentReflectionManager]
-        N11[ArtifactManager]
-        N12[CognitiveLoadAnalyzer]
-        N13[CollaborativeSynthesis]
-        N14[ConflictResolver]
-        N15[ConsolidationPipeline]
-        N16[ConsolidationScheduler]
-        N17[...166 more]
+        N11[AccessTracker]
+        N12[AgentMemoryConfig]
+        N13[AgentMemoryManager]
+        N14[AgentReflectionManager]
+        N15[ArtifactManager]
+        N16[CognitiveLoadAnalyzer]
+        N17[CollaborativeSynthesis]
+        N18[ConflictResolver]
+        N19[ConsolidationPipeline]
+        N20[ConsolidationScheduler]
+        N21[...166 more]
     end
 
     subgraph Cli
-        N18[audit]
-        N19[cache]
-        N20[check]
-        N21[decision]
-        N22[diag]
-        N23[doctor]
-        N24[entity]
-        N25[exclusion]
-        N26[graph]
-        N27[helpers]
-        N28[...21 more]
+        N22[audit]
+        N23[cache]
+        N24[check]
+        N25[decision]
+        N26[diag]
+        N27[doctor]
+        N28[entity]
+        N29[exclusion]
+        N30[graph]
+        N31[helpers]
+        N32[...21 more]
     end
 
     subgraph Core
-        N29[EntityManager]
-        N30[EntityStateMachine]
-        N31[GraphEventEmitter]
-        N32[GraphStorage]
-        N33[GraphTraversal]
-        N34[HierarchyManager]
-        N35[ManagerContext]
-        N36[ObservationManager]
-        N37[ObservationStore]
-        N38[PostgreSQLStorage]
-        N39[...26 more]
+        N33[EntityManager]
+        N34[EntityStateMachine]
+        N35[GraphEventEmitter]
+        N36[GraphStorage]
+        N37[GraphTraversal]
+        N38[HierarchyManager]
+        N39[ManagerContext]
+        N40[ObservationManager]
+        N41[ObservationStore]
+        N42[PostgreSQLStorage]
+        N43[...26 more]
     end
 
     subgraph Features
-        N40[AnalyticsManager]
-        N41[ArchiveManager]
-        N42[AuditLog]
-        N43[AutoLinker]
-        N44[BackupManager]
-        N45[CompressionManager]
-        N46[ContradictionDetector]
-        N47[FactExtractor]
-        N48[FreshnessManager]
-        N49[GovernanceManager]
-        N50[...8 more]
+        N44[AnalyticsManager]
+        N45[ArchiveManager]
+        N46[AuditLog]
+        N47[AutoLinker]
+        N48[BackupManager]
+        N49[CompressionManager]
+        N50[ContradictionDetector]
+        N51[FactExtractor]
+        N52[FreshnessManager]
+        N53[GovernanceManager]
+        N54[...8 more]
     end
 
     subgraph Entry
-        N51[index]
+        N55[index]
     end
 
     subgraph Search
-        N52[BM25Search]
-        N53[BasicSearch]
-        N54[BloomFilter]
-        N55[BloomPreScreener]
-        N56[BooleanSearch]
-        N57[EarlyTerminationManager]
-        N58[EmbeddingCache]
-        N59[EmbeddingService]
-        N60[EvidencePathBuilder]
-        N61[FuzzySearch]
-        N62[...44 more]
+        N56[BM25Search]
+        N57[BasicSearch]
+        N58[BloomFilter]
+        N59[BloomPreScreener]
+        N60[BooleanSearch]
+        N61[EarlyTerminationManager]
+        N62[EmbeddingCache]
+        N63[EmbeddingService]
+        N64[EvidencePathBuilder]
+        N65[FuzzySearch]
+        N66[...44 more]
     end
 
     subgraph Security
-        N63[ABACPolicy]
-        N64[APIKeyStore]
-        N65[PiiRedactor]
-        N66[RowLevelFilter]
-        N67[index]
+        N67[ABACPolicy]
+        N68[APIKeyStore]
+        N69[PiiRedactor]
+        N70[RowLevelFilter]
+        N71[index]
     end
 
     subgraph Root
-        N68[sqlite]
+        N72[sqlite]
     end
 
     subgraph Types
-        N69[agent-memory]
-        N70[artifact]
-        N71[event]
-        N72[index]
-        N73[learning]
-        N74[proceduralGraph]
-        N75[procedure]
-        N76[progress]
-        N77[reconstruction]
-        N78[result]
-        N79[...4 more]
+        N73[agent-memory]
+        N74[artifact]
+        N75[event]
+        N76[index]
+        N77[learning]
+        N78[proceduralGraph]
+        N79[procedure]
+        N80[progress]
+        N81[reconstruction]
+        N82[result]
+        N83[...4 more]
     end
 
     subgraph Utils
-        N80[AsyncMutex]
-        N81[BatchProcessor]
-        N82[CachePressureCoordinator]
-        N83[Diagnostics]
-        N84[EntityValidator]
-        N85[IIndexHealth]
-        N86[IndexHealthMonitor]
-        N87[MemoryMonitor]
-        N88[SchemaValidator]
-        N89[WorkerPoolManager]
-        N90[...40 more]
+        N84[AsyncMutex]
+        N85[BatchProcessor]
+        N86[CachePressureCoordinator]
+        N87[Diagnostics]
+        N88[EntityValidator]
+        N89[IIndexHealth]
+        N90[IndexHealthMonitor]
+        N91[MemoryMonitor]
+        N92[SchemaValidator]
+        N93[WorkerPoolManager]
+        N94[...40 more]
     end
 
     subgraph Workers
-        N91[levenshteinWorker]
+        N95[levenshteinWorker]
     end
 
-    N0 --> N64
-    N0 --> N4
-    N1 --> N35
-    N1 --> N69
-    N4 --> N35
-    N4 --> N6
-    N4 --> N0
-    N4 --> N3
-    N5 --> N4
+    N0 --> N68
+    N0 --> N5
+    N1 --> N39
+    N1 --> N73
+    N4 --> N39
+    N4 --> N77
+    N4 --> N8
+    N4 --> N9
+    N5 --> N39
+    N5 --> N7
     N5 --> N0
     N5 --> N3
-    N5 --> N6
-    N5 --> N2
-    N5 --> N1
-    N7 --> N69
-    N8 --> N15
-    N8 --> N14
-    N8 --> N13
-    N8 --> N33
-    N9 --> N32
-    N9 --> N29
-    N9 --> N36
-    N9 --> N69
-    N9 --> N7
-    N9 --> N15
-    N9 --> N14
-    N9 --> N8
-    N10 --> N69
-    N10 --> N29
-    N11 --> N29
-    N11 --> N70
-    N12 --> N69
-    N13 --> N69
+    N6 --> N5
+    N6 --> N0
+    N6 --> N3
+    N6 --> N7
+    N6 --> N2
+    N6 --> N4
+    N6 --> N1
+    N11 --> N73
+    N12 --> N19
+    N12 --> N18
+    N12 --> N17
+    N12 --> N37
+    N13 --> N36
     N13 --> N33
-    N14 --> N69
-    N15 --> N69
-    N15 --> N10
-    N16 --> N15
-    N16 --> N45
-    N16 --> N69
-    N18 --> N27
-    N18 --> N42
-    N19 --> N27
-    N20 --> N35
-    N20 --> N27
-    N21 --> N69
-    N21 --> N27
-    N22 --> N35
-    N22 --> N27
-    N23 --> N27
-    N23 --> N22
-    N24 --> N27
-    N25 --> N27
-    N26 --> N27
-    N27 --> N35
-    N29 --> N72
-    N29 --> N32
-    N29 --> N7
-    N29 --> N30
-    N29 --> N49
-    N31 --> N72
-    N32 --> N72
-    N32 --> N31
-    N33 --> N72
-    N33 --> N32
-    N33 --> N7
-    N34 --> N72
-    N34 --> N32
-    N35 --> N86
-    N35 --> N83
-    N35 --> N46
-    N35 --> N72
-    N35 --> N82
-    N35 --> N37
-    N35 --> N32
+    N13 --> N40
+    N13 --> N73
+    N13 --> N11
+    N13 --> N19
+    N13 --> N18
+    N13 --> N12
+    N14 --> N73
+    N14 --> N33
+    N15 --> N33
+    N15 --> N74
+    N16 --> N73
+    N17 --> N73
+    N17 --> N37
+    N18 --> N73
+    N19 --> N73
+    N19 --> N14
+    N20 --> N19
+    N20 --> N49
+    N20 --> N73
+    N22 --> N31
+    N22 --> N46
+    N23 --> N31
+    N24 --> N39
+    N24 --> N31
+    N25 --> N73
+    N25 --> N31
+    N26 --> N39
+    N26 --> N31
+    N27 --> N31
+    N27 --> N26
+    N28 --> N31
+    N29 --> N31
+    N30 --> N31
+    N31 --> N39
+    N33 --> N76
+    N33 --> N36
+    N33 --> N11
+    N33 --> N34
+    N33 --> N53
+    N35 --> N76
+    N36 --> N76
+    N36 --> N35
+    N37 --> N76
+    N37 --> N36
+    N37 --> N11
+    N38 --> N76
+    N38 --> N36
+    N39 --> N90
+    N39 --> N87
 ```
 
 ---
@@ -7743,21 +7839,21 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 394 |
+| Total TypeScript Files | 398 |
 | Total Modules | 12 |
-| Total Lines of Code | 124937 |
-| Total Exports | 2769 |
-| Total Re-exports | 1700 |
-| Total Classes | 275 |
-| Total Interfaces | 820 |
-| Total Functions | 623 |
-| Total Type Guards | 42 |
+| Total Lines of Code | 125968 |
+| Total Exports | 2799 |
+| Total Re-exports | 1705 |
+| Total Classes | 276 |
+| Total Interfaces | 824 |
+| Total Functions | 637 |
+| Total Type Guards | 43 |
 | Total Enums | 4 |
-| Type-only Imports | 846 |
+| Type-only Imports | 855 |
 | Runtime Circular Deps | 0 |
 | Type-only Circular Deps | 15 |
 | Entry/Build Roots | 4 |
-| Reachable Files | 394 |
+| Reachable Files | 398 |
 | Dormant Files (orphaned / test-only) | 0 (0 / 0) |
 
 ---

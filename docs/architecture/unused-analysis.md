@@ -12,9 +12,9 @@
 - **Dormant files** (runtime code on disk, unreachable from any entry/build root): 0
   - **Orphaned (reachable from nothing — delete/wire candidates)**: 0
   - **Test-only (exercised by a test, ships nothing)**: 0
-- **Potentially unused exports**: 115
+- **Potentially unused exports**: 118
   - **Unreferenced anywhere (deletion candidates)**: 0
-  - **Referenced in-module (type contracts / helpers backing live exports)**: 115
+  - **Referenced in-module (type contracts / helpers backing live exports)**: 118
 
 Seeded reachability roots (4):
 
@@ -77,6 +77,14 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 - `RestLimits` (interface) — 3 in-file refs
 
+### `src/adapters/recursaToolBounds.ts`
+
+- `byteSize` (function) — 5 in-file refs
+
+### `src/adapters/recursaToolSupport.ts`
+
+- `messageOf` (function) — 7 in-file refs
+
 ### `src/agent/CollaborativeSynthesis.ts`
 
 - `ConflictView` (interface) — 6 in-file refs
@@ -105,7 +113,6 @@ support exports that ARE used, so they cannot be deleted in isolation.
 - `isInteractionRecord` (function) — 1 in-file ref
 - `ScannedRecord` (interface) — 2 in-file refs
 - `ScanResult` (interface) — 1 in-file ref
-- `INTERACTION_KINDS` (constant) — 4 in-file refs
 - `MAX_RESULT_LIMIT` (constant) — 2 in-file refs
 
 ### `src/agent/harness/InteractionLogRegex.ts`
@@ -221,9 +228,17 @@ support exports that ARE used, so they cannot be deleted in isolation.
 - `UsageReportingLLMProvider` (interface) — 1 in-file ref
 - `DistillerMode` (type) — 2 in-file refs
 
+### `src/agent/skills/SkillPublisher.ts`
+
+- `SkillPublisherOptions` (interface) — 1 in-file ref
+
 ### `src/agent/skills/skillRecordUtils.ts`
 
 - `LexicalSkillMatch` (interface) — 4 in-file refs
+
+### `src/agent/skills/skillTreeFs.ts`
+
+- `TreeDirRefusal` (type) — 2 in-file refs
 
 ### `src/cli/commands/audit.ts`
 

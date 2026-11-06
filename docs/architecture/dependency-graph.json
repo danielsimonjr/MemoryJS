@@ -3,9 +3,9 @@
     "name": "@danielsimonjr/memoryjs",
     "version": "4.5.0",
     "lastUpdated": "2026-11-06",
-    "totalFiles": 394,
+    "totalFiles": 398,
     "totalModules": 12,
-    "totalExports": 2769
+    "totalExports": 2799
   },
   "entryPoints": [
     {
@@ -161,6 +161,159 @@
           "DEFAULT_MAX_BUCKETS"
         ]
       },
+      "src/adapters/RecursaToolAdapter.ts": {
+        "description": "RecursaToolAdapter: the reference implementation of the Recursa harness tool surface (spec",
+        "externalDependencies": [
+          {
+            "package": "zod",
+            "imports": [
+              "z"
+            ]
+          }
+        ],
+        "nodeDependencies": [
+          {
+            "module": "path",
+            "imports": [
+              "dirname"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "../core/ManagerContext.js",
+            "imports": [
+              "ManagerContext"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../core/context/LearningFacade.js",
+            "imports": [
+              "LearningLoop",
+              "LearningLoopDeps"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../agent/harness/InteractionLog.js",
+            "imports": [
+              "InteractionLog"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../agent/evaluation/Evaluator.js",
+            "imports": [
+              "Evaluator",
+              "Solver"
+            ]
+          },
+          {
+            "file": "../agent/evaluation/DeterministicJudge.js",
+            "imports": [
+              "DeterministicJudge",
+              "RubricJudge"
+            ]
+          },
+          {
+            "file": "../agent/learning/types.js",
+            "imports": [
+              "LearningSolver"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../agent/learning/RecursiveLearner.js",
+            "imports": [
+              "RecursiveStartOptions"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../agent/procedural/graph/CompletionProvider.js",
+            "imports": [
+              "PGCompletionProvider"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../agent/knowledge/KnowledgeRepository.js",
+            "imports": [
+              "LoadForContextOptions"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/skills.js",
+            "imports": [
+              "SkillId"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/learning.js",
+            "imports": [
+              "CriterionResult",
+              "SolveResult",
+              "TaskRecord"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../agent/skills/SkillPublisher.js",
+            "imports": [
+              "SkillPublisher"
+            ]
+          },
+          {
+            "file": "./recursaToolBounds.js",
+            "imports": [
+              "boundResult"
+            ]
+          },
+          {
+            "file": "./recursaToolSupport.js",
+            "imports": [
+              "ToolFailure",
+              "definedOnly",
+              "fail",
+              "failureOf",
+              "issuesOf",
+              "jsonSchemaOf",
+              "publishTargetOf",
+              "reservedKeyPath",
+              "RecursaToolResult"
+            ]
+          },
+          {
+            "file": "./recursaToolSchemas.js",
+            "imports": [
+              "evalRunSchema",
+              "knowledgeLoadSchema",
+              "learnStartSchema",
+              "learnSubmitSchema",
+              "logAppendSchema",
+              "logSelectSchema",
+              "skillsImportSchema",
+              "skillsPublishSchema",
+              "submitChildSchema",
+              "traceIdSchema"
+            ]
+          }
+        ],
+        "exports": [
+          "createRecursaTools"
+        ],
+        "interfaces": [
+          "RecursaToolDescriptor",
+          "RecursaToolSet",
+          "RecursaToolDeps"
+        ],
+        "functions": [
+          "createRecursaTools"
+        ]
+      },
       "src/adapters/RestRouter.ts": {
         "description": "REST Router",
         "externalDependencies": [],
@@ -300,6 +453,17 @@
             "reExport": true
           },
           {
+            "file": "./RecursaToolAdapter.js",
+            "imports": [
+              "createRecursaTools",
+              "RecursaToolSet",
+              "RecursaToolDeps",
+              "RecursaToolDescriptor",
+              "RecursaToolResult"
+            ],
+            "reExport": true
+          },
+          {
             "file": "./LangChainMemoryAdapter.js",
             "imports": [
               "LangChainMemoryAdapter"
@@ -330,6 +494,11 @@
           "PaginatedResult",
           "MCPToolObserverAdapter",
           "extractToolName",
+          "createRecursaTools",
+          "RecursaToolSet",
+          "RecursaToolDeps",
+          "RecursaToolDescriptor",
+          "RecursaToolResult",
           "LangChainMemoryAdapter"
         ],
         "reExported": [
@@ -355,6 +524,11 @@
           "PaginatedResult",
           "MCPToolObserverAdapter",
           "extractToolName",
+          "createRecursaTools",
+          "RecursaToolSet",
+          "RecursaToolDeps",
+          "RecursaToolDescriptor",
+          "RecursaToolResult",
           "LangChainMemoryAdapter"
         ]
       },
@@ -375,6 +549,123 @@
         "functions": [
           "parsePaginationParams",
           "paginate"
+        ]
+      },
+      "src/adapters/recursaToolBounds.ts": {
+        "description": "Byte-budget helpers of the Recursa tool adapter: every successful result passes through",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "byteSize",
+          "boundResult"
+        ],
+        "functions": [
+          "byteSize",
+          "boundResult"
+        ]
+      },
+      "src/adapters/recursaToolSchemas.ts": {
+        "description": "Argument schemas of the Recursa tool adapter (spec section 3.8). Each schema validates the",
+        "externalDependencies": [
+          {
+            "package": "zod",
+            "imports": [
+              "z"
+            ]
+          }
+        ],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../agent/harness/InteractionLogFormat.js",
+            "imports": [
+              "INTERACTION_KINDS"
+            ]
+          }
+        ],
+        "exports": [
+          "knowledgeLoadSchema",
+          "skillsPublishSchema",
+          "skillsImportSchema",
+          "learnStartSchema",
+          "traceIdSchema",
+          "learnSubmitSchema",
+          "submitChildSchema",
+          "logAppendSchema",
+          "logSelectSchema",
+          "evalRunSchema"
+        ],
+        "constants": [
+          "knowledgeLoadSchema",
+          "skillsPublishSchema",
+          "skillsImportSchema",
+          "learnStartSchema",
+          "traceIdSchema",
+          "learnSubmitSchema",
+          "submitChildSchema",
+          "logAppendSchema",
+          "logSelectSchema",
+          "evalRunSchema"
+        ]
+      },
+      "src/adapters/recursaToolSupport.ts": {
+        "description": "Shared plumbing of the Recursa tool adapter: the stable failure codes, the mapping of thrown",
+        "externalDependencies": [
+          {
+            "package": "zod",
+            "imports": [
+              "z"
+            ]
+          }
+        ],
+        "nodeDependencies": [
+          {
+            "module": "path",
+            "imports": [
+              "isAbsolute",
+              "resolve"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "../utils/errors.js",
+            "imports": [
+              "ValidationError",
+              "KnowledgeGraphError"
+            ]
+          },
+          {
+            "file": "../agent/skills/skillTreeFs.js",
+            "imports": [
+              "resolveConfinedTreeDir"
+            ]
+          }
+        ],
+        "exports": [
+          "messageOf",
+          "fail",
+          "failureOf",
+          "issuesOf",
+          "jsonSchemaOf",
+          "reservedKeyPath",
+          "definedOnly",
+          "publishTargetOf",
+          "ToolFailure"
+        ],
+        "classes": [
+          "ToolFailure"
+        ],
+        "functions": [
+          "messageOf",
+          "fail",
+          "failureOf",
+          "issuesOf",
+          "jsonSchemaOf",
+          "reservedKeyPath",
+          "definedOnly",
+          "publishTargetOf"
         ]
       }
     },
@@ -8696,7 +8987,8 @@
               "CriterionResult",
               "LearnResult",
               "LeafState",
-              "SolveResult"
+              "SolveResult",
+              "TaskRecord"
             ],
             "typeOnly": true
           },
@@ -9701,6 +9993,7 @@
             "imports": [
               "SubsetRecord",
               "ChildSummary",
+              "CriteriaMap",
               "RecursiveState",
               "RecursiveOptions"
             ],
@@ -9788,6 +10081,7 @@
           {
             "file": "../../types/learning.js",
             "imports": [
+              "CriterionResult",
               "TaskRecord",
               "TokenTotals"
             ],
@@ -9976,6 +10270,12 @@
               "MergeRecord",
               "RecursiveState",
               "SubsetRecord",
+              "absorbChildCriteria"
+            ]
+          },
+          {
+            "file": "./RecursiveLearnerState.js",
+            "imports": [
               "childResultOf",
               "copyRecursive",
               "loadRecursive",
@@ -9990,7 +10290,12 @@
               "checkStartOptions",
               "resetForNextRound",
               "summarizeChild",
-              "assertChildDone",
+              "assertChildDone"
+            ]
+          },
+          {
+            "file": "./RecursiveDrive.js",
+            "imports": [
               "driveRun",
               "failedSummary",
               "initialRecursiveState",
@@ -10045,6 +10350,7 @@
           {
             "file": "../../types/learning.js",
             "imports": [
+              "CriterionResult",
               "Diagnosis",
               "EvalMetrics",
               "Feedback",
@@ -10105,6 +10411,8 @@
           "loadRecursive",
           "saveRecursive",
           "metricsOf",
+          "feedbackOf",
+          "absorbChildCriteria",
           "pick",
           "sumTokens",
           "childResultOf",
@@ -10125,6 +10433,8 @@
           "loadRecursive",
           "saveRecursive",
           "metricsOf",
+          "feedbackOf",
+          "absorbChildCriteria",
           "pick",
           "sumTokens",
           "childResultOf",
@@ -10193,7 +10503,9 @@
             "file": "./RecursiveLearnerState.js",
             "imports": [
               "combineRevisions",
+              "feedbackOf",
               "metricsOf",
+              "CriteriaMap",
               "RecursiveState"
             ]
           },
@@ -13960,8 +14272,7 @@
             "module": "path",
             "imports": [
               "dirname",
-              "join",
-              "resolve"
+              "join"
             ]
           }
         ],
@@ -14000,7 +14311,8 @@
               "pathExists",
               "readConfinedSkillFile",
               "recoverPublishedTree",
-              "removeBestEffort"
+              "removeBestEffort",
+              "resolveConfinedTreeDir"
             ]
           },
           {
@@ -14034,7 +14346,8 @@
           "ImportConflict",
           "ImportParseError",
           "ImportReport",
-          "PublishOptions"
+          "PublishOptions",
+          "SkillPublisherOptions"
         ],
         "constants": [
           "SKILL_MARKER_FILE"
@@ -14276,7 +14589,10 @@
             "imports": [
               "basename",
               "dirname",
+              "isAbsolute",
               "join",
+              "relative",
+              "resolve",
               "sep"
             ]
           }
@@ -14287,15 +14603,29 @@
             "imports": [
               "renameOver"
             ]
+          },
+          {
+            "file": "../../utils/errors.js",
+            "imports": [
+              "ValidationError"
+            ]
+          },
+          {
+            "file": "../../utils/entityUtils.js",
+            "imports": [
+              "validateFilePath"
+            ]
           }
         ],
         "exports": [
+          "resolveConfinedTreeDir",
           "recoverPublishedTree",
           "removeBestEffort",
           "pathExists",
           "readConfinedSkillFile"
         ],
         "functions": [
+          "resolveConfinedTreeDir",
           "recoverPublishedTree",
           "removeBestEffort",
           "pathExists",
@@ -28890,9 +29220,13 @@
           "src/adapters/LangChainMemoryAdapter.ts",
           "src/adapters/MCPToolObserverAdapter.ts",
           "src/adapters/RateLimiter.ts",
+          "src/adapters/RecursaToolAdapter.ts",
           "src/adapters/RestRouter.ts",
           "src/adapters/index.ts",
-          "src/adapters/pagination.ts"
+          "src/adapters/pagination.ts",
+          "src/adapters/recursaToolBounds.ts",
+          "src/adapters/recursaToolSchemas.ts",
+          "src/adapters/recursaToolSupport.ts"
         ]
       },
       {
@@ -29346,32 +29680,32 @@
       "src/sqlite.ts",
       "src/workers/levenshteinWorker.ts"
     ],
-    "reachableCount": 394,
+    "reachableCount": 398,
     "dormantCount": 0,
     "orphaned": [],
     "testOnly": []
   },
   "statistics": {
-    "totalTypeScriptFiles": 394,
+    "totalTypeScriptFiles": 398,
     "totalModules": 12,
-    "totalLinesOfCode": 124937,
-    "totalExports": 2769,
-    "totalClasses": 275,
-    "totalInterfaces": 820,
-    "totalFunctions": 623,
-    "totalTypeGuards": 42,
+    "totalLinesOfCode": 125968,
+    "totalExports": 2799,
+    "totalClasses": 276,
+    "totalInterfaces": 824,
+    "totalFunctions": 637,
+    "totalTypeGuards": 43,
     "totalEnums": 4,
-    "totalConstants": 168,
-    "totalReExports": 1700,
-    "totalTypeOnlyImports": 846,
+    "totalConstants": 178,
+    "totalReExports": 1705,
+    "totalTypeOnlyImports": 855,
     "runtimeCircularDeps": 0,
     "typeOnlyCircularDeps": 15,
     "entryRoots": 4,
-    "reachableFiles": 394,
+    "reachableFiles": 398,
     "dormantFiles": 0,
     "orphanedFiles": 0,
     "testOnlyFiles": 0,
     "unusedFilesCount": 0,
-    "unusedExportsCount": 115
+    "unusedExportsCount": 118
   }
 }

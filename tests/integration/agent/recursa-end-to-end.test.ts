@@ -48,7 +48,7 @@ describe('Recursa end to end', () => {
     try {
       root = mkdtempSync(join(tmpdir(), 'recursa-e2e-'));
       const publishDir = join(root, 'skills');
-      context = new ManagerContext(join(root, 'memory.jsonl'));
+      context = new ManagerContext({ storagePath: join(root, 'memory.jsonl'), skillPublishRoot: root });
       const ctx = context;
 
       const boot = await ctx.bootstrapper({ learning: { publishDir } }).run({

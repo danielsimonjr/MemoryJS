@@ -14,7 +14,7 @@
  * @experimental Spec RS-18. The step API may gain fields.
  */
 
-import type { CriterionResult, LearnResult, LeafState, SolveResult } from '../../types/learning.js';
+import type { CriterionResult, LearnResult, LeafState, SolveResult, TaskRecord } from '../../types/learning.js';
 import { runAllWithStats } from '../harness/ConcurrencyLimiter.js';
 import { EMPTY_METRICS, taskRecordsJson } from './LeafLearnerStore.js';
 import {
@@ -200,6 +200,7 @@ export class LeafLearner {
     if (run.state.phase === 'done') throw new Error(`LeafLearner: run ${traceId} is done`);
     for (const id of Object.keys(payload)) {
       if (!run.state.pending.includes(id)) throw new Error(`LeafLearner: task ${id} is not pending for ${kind}`);
+      if (kind === 'judge') assertKnownCriteria(run.tasks.find((t) => t.id === id), payload[id] as CriterionResult[] | null);
     }
     const full = this.answersOf(traceId);
     if (kind === 'solve' && run.state.phase === 'solve') {
@@ -361,4 +362,18 @@ export class LeafLearner {
         return undefined;
     }
   }
+}
+
+/**
+ * Reject judge results naming a criterion that is not in the task's rubric.
+ *
+ * @param task - Task the results are for.
+ * @param results - Submitted results (`null` = judge failed).
+ * @throws RangeError for an unknown `criterionId`.
+ */
+function assertKnownCriteria(task: TaskRecord | undefined, results: CriterionResult[] | null): void {
+  if (!task || results === null) return;
+  const known = new Set(task.rubric.map((c) => c.id));
+  const unknown = results.find((r) => !known.has(r.criterionId));
+  if (unknown) throw new RangeError(`LeafLearner: unknown criterionId ${unknown.criterionId} for task ${task.id}`);
 }

@@ -92,8 +92,8 @@ export interface LearningLoop {
   learn(opts: RecursiveStartOptions): Promise<LearnResult>;
   /** Create a resumable run (leaf or recursive, chosen as in `learn`). */
   start(opts: RecursiveStartOptions): Promise<LeafState | RecursiveState>;
-  /** Advance a leaf run until external work is needed or it is done. */
-  next(traceId: string): Promise<StepRequest>;
+  /** Advance a leaf run until external work is needed or it is done; `opts.signal` aborts it. */
+  next(traceId: string, opts?: { signal?: AbortSignal }): Promise<StepRequest>;
   /** Store solve results (`'solve'`) or judge results (`'judge'`) for a leaf run. */
   submit(traceId: string, kind: 'solve' | 'judge', payload: Record<string, SolveResult | CriterionResult[] | null>): Promise<LeafState>;
   /** Current persisted state of a run (leaf or recursive), with its learning report (spec RS-23). */
@@ -211,9 +211,9 @@ export class LearningFacade {
     return {
       learn: (opts) => (usesRecursiveLearner(opts) ? recursive.learn(withThreshold(opts), deps) : learner.learn(opts as LeafStartOptions, deps)),
       start: (opts) => (usesRecursiveLearner(opts) ? recursive.start(withThreshold(opts)) : learner.start(opts as LeafStartOptions)),
-      next: async (traceId) => {
+      next: async (traceId, nextOpts) => {
         await leafOnly('next', traceId);
-        return learner.next(traceId);
+        return learner.next(traceId, nextOpts ?? {});
       },
       submit: async (traceId, kind, payload) => {
         await leafOnly('submit', traceId);

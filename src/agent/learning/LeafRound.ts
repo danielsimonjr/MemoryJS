@@ -199,6 +199,7 @@ export async function completeEvaluation(env: LeafEnv, ctx: Ctx): Promise<void> 
   const { run } = ctx;
   const metrics: EvalMetrics = summarize(run.tasks, run.state.feedback);
   run.beforePass ??= Object.fromEntries(run.tasks.map((t) => [t.id, run.state.feedback[t.id]?.allPass === true]));
+  run.beforeCriteria ??= Object.fromEntries(run.tasks.map((t) => [t.id, [...(run.state.feedback[t.id]?.criteria ?? [])]]));
   run.before ??= metrics;
   run.after = metrics;
   await env.traces.setMetrics(run.state.traceId, metrics);

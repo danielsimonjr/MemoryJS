@@ -2476,6 +2476,56 @@ const out = await boot.run({ sources, solver, judge, budget: { maxRounds: 2 }, c
 - `CorpusMapper.map(sources)`: one navigation leaf per `ref` (first text wins; a different repeat is a conflict recorded once per call), folded into summary levels. A loader must resolve to a string; refs must be non-empty and at most 493 characters (`MAX_REF_CHARS`). All are `ValidationError`s.
 - `BoundaryRecorder.record({ region, status })` keeps the original region name; two distinct regions with the same slug throw a `ValidationError` naming both.
 
+## Harness / MCP tool adapter (Recursa §3.8)
+
+`createRecursaTools(ctx, deps)` (`src/adapters/RecursaToolAdapter.ts`, `@experimental`) is the reference
+JSON-in/JSON-out surface a downstream MCP server or Claude Code plugin wraps one-to-one. It is stateless,
+`call` never throws, and failures return `{ ok: false, error: { code, message } }` (`RecursaToolResult`; the
+descriptor type is `RecursaToolDescriptor`, and the old `ToolResult` / `ToolDescriptor` names remain as
+`@deprecated` aliases exported from the adapter module only). Codes:
+
+| Code | Meaning |
+|---|---|
+| `invalid_args` | zod validation (every object is strict: unknown keys fail), a `__proto__` / `constructor` / `prototype` key anywhere in the arguments, library validation (`RangeError` / `TypeError` / `ValidationError`), a refused skills `dir`, unknown `eval.run` answer ids, a judge result with an unknown `criterionId` |
+| `not_found` | unknown trace (or child trace) |
+| `invalid_state` | protocol misuse: leaf/recursive mismatch, an out-of-phase or duplicate submit, a non-pending task id, a child that is not part of the round or not done, a stale-state race |
+| `not_configured` | log tools without `deps.interactionLog`; skills tools without `deps.publishDir` |
+| `solver_required` | `merge` (or another solver-backed call) without `deps.solver` |
+| `aborted` / `unknown_tool` | the signal fired / no such tool |
+| `internal_error` | a real bug; a library `KnowledgeGraphError` keeps its own code instead |
+
+The skills tools are confined to `deps.publishDir`: without `dir` they target `publishDir` itself; a `dir`
+must be a relative subpath strictly below it and goes through the `SkillPublisher` confinement (`..`,
+absolute paths, symlinked directories resolving outside, `/proc` / `/sys` / `/dev` are refused before
+anything is created). `SkillPublisher` itself takes `{ root }` (default `process.cwd()`; `ctx.skillPublisher`
+uses `ManagerContextOptions.skillPublishRoot`) and throws `ValidationError` with `errors[0] = 'dir:<reason>'`
+(`path-traversal`, `outside-root`, `is-root`, `symlink-escape`, `special-filesystem`).
+`recursa.learn.next` returns the `StepRequest` verbatim so the harness runs solves itself; every other success
+is bounded to `maxBytes` (default 64 KiB) and carries `truncated: true` when shrunk.
+
+| Tool | Library call |
+|---|---|
+| `recursa.knowledge.load` | `ctx.knowledgeRepository.loadForContext({ role, taskHint, budgetTokens, sections, includeSkillIds, maxSkills })` |
+| `recursa.skills.publish` | `new SkillPublisher(storage, skillManager, { root }).publish(publishDir[/dir], { snapshotId })`; needs `deps.publishDir` |
+| `recursa.skills.import` | the same publisher's `importSkills(publishDir[/dir])`; returns the `ImportReport` (conflicts included) |
+| `recursa.learn.start` | `ctx.learningLoop(deps).start(opts)` (leaf or recursive, chosen as in `learn`) |
+| `recursa.learn.next` | `loop.next(traceId, { signal })`: `solve` / `judge` `StepRequest`, or `done` |
+| `recursa.learn.submit` | `loop.submit(traceId, 'solve' \| 'judge', payload)` |
+| `recursa.learn.plan` | `loop.plan(traceId)` |
+| `recursa.learn.submitChild` | `loop.submitChild(traceId, childTraceId, failure?)` |
+| `recursa.learn.merge` | `loop.merge(traceId, { signal })`; needs `deps.solver` (else `solver_required`) |
+| `recursa.learn.reflect` | `loop.reflect(traceId)` |
+| `recursa.learn.status` | `loop.status(traceId)` (state plus `LearningReport`) |
+| `recursa.log.append` | `deps.interactionLog.append({ sessionId, kind, tag?, content, ts? })`; `tokens` is validated and echoed, not stored (the log has no token field) |
+| `recursa.log.select` | `deps.interactionLog.select(addr, { regex?, lines?, fields? })`: the excerpt only |
+| `recursa.eval.run` | `new Evaluator().evaluate(tasks, solver, judge, { knowledge?, concurrency? })` with `solver` = `answers[task.id]`; judge = `deps.judge` or `DeterministicJudge`; answers for unknown ids are `invalid_args`, tasks without an answer fail with the note `no answer` and are listed in `missing` |
+
+```ts
+const tools = createRecursaTools(ctx, { publishDir: './skills', interactionLog });
+tools.list();                                   // 14 descriptors, section 3.8 order
+await tools.call('recursa.learn.start', { tasks, budget: { maxRounds: 3 } });
+```
+
 ## Verification
 
 Two tools measure this repository. The two tools use different scopes.
@@ -2485,8 +2535,8 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 
 | Claim | Value | Source |
 |---|---|---|
-| totalExports | 3915 | repo-tools map |
-| totalSourceFiles | 961 | repo-tools map |
+| totalExports | 3955 | repo-tools map |
+| totalSourceFiles | 970 | repo-tools map |
 
 The figures below come from `bun run tools:deps` and `bun run tools:deps:full`. These generators read `src/` only. The gate does not check these figures. Read them in `dependency-summary.compact.json` and `TEST_COVERAGE.md`.
 

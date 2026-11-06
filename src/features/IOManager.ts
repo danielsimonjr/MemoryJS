@@ -413,7 +413,7 @@ export class IOManager {
   }
 
   private skillPublisher(): SkillPublisher {
-    return new SkillPublisher(this.storage, new SkillManager(this.storage));
+    return new SkillPublisher(this.storage, new SkillManager(this.storage), { root: this.storageDir() });
   }
 
   /**
