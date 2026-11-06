@@ -61,11 +61,19 @@ export interface SkillRecord {
   /** Sources the skill was derived from. */
   sources: SkillSource[];
   /** Lineage back to the revision and tasks that produced the skill. */
-  lineage: { revisionId?: string; parentSkillId?: SkillId; learnedFromTaskIds?: string[] };
+  lineage: {
+    revisionId?: string;
+    parentSkillId?: SkillId;
+    learnedFromTaskIds?: string[];
+    /** What produced the current content (`'manual'` after a SKILL.md edit is absorbed). */
+    producedBy?: 'leaf' | 'merge' | 'bootstrap' | 'manual';
+  };
   /** Usage outcome counters. */
   stats: { applied: number; helped: number; hurt: number };
   /** Set when the skill is retired; retired skills are never deleted. */
   retired?: { at: IsoDateTime; reason: string };
+  /** `skillContentHash` of the SKILL.md text from the last publish (spec RS-3). */
+  publishedHash?: string;
   /** Harness front-matter keys preserved verbatim (for example `allowed-tools`). */
   extra?: Record<string, unknown>;
   /** Creation timestamp. */

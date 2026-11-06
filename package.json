@@ -184,13 +184,17 @@
   },
   "peerDependencies": {
     "@huggingface/transformers": "^4.3.1",
-    "pg": ">=8.0.0"
+    "pg": ">=8.0.0",
+    "yaml": ">=2.0.0"
   },
   "peerDependenciesMeta": {
     "@huggingface/transformers": {
       "optional": true
     },
     "pg": {
+      "optional": true
+    },
+    "yaml": {
       "optional": true
     }
   },

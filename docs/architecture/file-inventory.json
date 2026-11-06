@@ -1,12 +1,12 @@
 {
   "generated": "2026-11-06",
-  "totalFiles": 807,
+  "totalFiles": 828,
   "byDisposition": {
-    "reachable": 317,
+    "reachable": 322,
     "build-entry": 4,
-    "test-only": 0,
+    "test-only": 4,
     "orphan": 0,
-    "test": 470,
+    "test": 482,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -14,8 +14,8 @@
   },
   "byArea": {
     "benchmarks": 4,
-    "src": 321,
-    "tests": 470,
+    "src": 330,
+    "tests": 482,
     "tools": 10,
     "config": 2
   },
@@ -348,6 +348,34 @@
       "area": "src",
       "disposition": "reachable",
       "loc": 63
+    },
+    {
+      "file": "src/agent/knowledge/InstructionSetManager.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "test-only",
+      "loc": 309
+    },
+    {
+      "file": "src/agent/knowledge/knowledgeDigest.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "test-only",
+      "loc": 254
+    },
+    {
+      "file": "src/agent/knowledge/KnowledgeRepository.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "test-only",
+      "loc": 500
+    },
+    {
+      "file": "src/agent/knowledge/knowledgeRevision.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "test-only",
+      "loc": 342
     },
     {
       "file": "src/agent/MemoryBackend.ts",
@@ -782,6 +810,41 @@
       "area": "src",
       "disposition": "reachable",
       "loc": 541
+    },
+    {
+      "file": "src/agent/skills/SkillFormat.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 423
+    },
+    {
+      "file": "src/agent/skills/SkillManager.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 463
+    },
+    {
+      "file": "src/agent/skills/SkillPublisher.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 299
+    },
+    {
+      "file": "src/agent/skills/skillRecordUtils.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 56
+    },
+    {
+      "file": "src/agent/skills/skillTreeFs.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 83
     },
     {
       "file": "src/agent/SQLiteBackend.ts",
@@ -1369,7 +1432,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 2111
+      "loc": 2146
     },
     {
       "file": "src/features/KeywordExtractor.ts",
@@ -1866,7 +1929,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 385
+      "loc": 386
     },
     {
       "file": "src/types/learning.ts",
@@ -1922,7 +1985,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 279
+      "loc": 287
     },
     {
       "file": "src/types/task-scheduler.ts",
@@ -1936,7 +1999,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 2563
+      "loc": 2586
     },
     {
       "file": "src/utils/AsyncMutex.ts",
@@ -3038,6 +3101,48 @@
       "loc": 60
     },
     {
+      "file": "tests/unit/agent/knowledge/InstructionSetManager.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 96
+    },
+    {
+      "file": "tests/unit/agent/knowledge/knowledgeDigest.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 89
+    },
+    {
+      "file": "tests/unit/agent/knowledge/knowledgeFixtures.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 152
+    },
+    {
+      "file": "tests/unit/agent/knowledge/KnowledgeHardening.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 139
+    },
+    {
+      "file": "tests/unit/agent/knowledge/KnowledgeRepository.rollback.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 135
+    },
+    {
+      "file": "tests/unit/agent/knowledge/KnowledgeRepository.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 220
+    },
+    {
       "file": "tests/unit/agent/memoryBackend-wiring.test.ts",
       "package": "(root)",
       "area": "tests",
@@ -3456,6 +3561,48 @@
       "area": "tests",
       "disposition": "test",
       "loc": 610
+    },
+    {
+      "file": "tests/unit/agent/skills/SkillFormat.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 240
+    },
+    {
+      "file": "tests/unit/agent/skills/SkillHardening.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 179
+    },
+    {
+      "file": "tests/unit/agent/skills/SkillIOConfinement.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 64
+    },
+    {
+      "file": "tests/unit/agent/skills/SkillManager.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 259
+    },
+    {
+      "file": "tests/unit/agent/skills/SkillPublisher.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 216
+    },
+    {
+      "file": "tests/unit/agent/skills/SkillWritePath.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 123
     },
     {
       "file": "tests/unit/agent/SQLiteBackend.test.ts",
