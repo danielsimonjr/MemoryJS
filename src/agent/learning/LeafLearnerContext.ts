@@ -251,14 +251,18 @@ export function pendingTasks(run: LeafRun): TaskRecord[] {
 }
 
 /**
- * Knowledge for one solver call, rendered from live `K`.
+ * Knowledge for one solver call, rendered from live `K`. Skills learned for the tasks
+ * (`scope.tasks` contains `task:<id>`) are always included (spec §3.4 loadability contract).
  *
  * @param env - Learner dependencies.
  * @param taskHint - Task input.
+ * @param taskIds - Tasks the call concerns.
  * @returns Loaded knowledge.
  */
-export async function knowledgeFor(env: LeafEnv, taskHint: string): Promise<LoadedKnowledge> {
-  return env.repository.loadForContext({ role: env.role, taskHint });
+export async function knowledgeFor(env: LeafEnv, taskHint: string, taskIds: readonly string[] = []): Promise<LoadedKnowledge> {
+  const repo = env.repository as KnowledgeRepository & { skillIdsForTasks?: (ids: readonly string[]) => Promise<string[]> };
+  const includeSkillIds = taskIds.length > 0 && repo.skillIdsForTasks ? await repo.skillIdsForTasks(taskIds) : [];
+  return env.repository.loadForContext({ role: env.role, taskHint, includeSkillIds });
 }
 
 /**
@@ -269,7 +273,7 @@ export async function knowledgeFor(env: LeafEnv, taskHint: string): Promise<Load
  * @returns Loaded knowledge.
  */
 export async function knowledgeForTasks(env: LeafEnv, tasks: readonly TaskRecord[]): Promise<LoadedKnowledge> {
-  return knowledgeFor(env, tasks.map((t) => t.input).join('\n'));
+  return knowledgeFor(env, tasks.map((t) => t.input).join('\n'), tasks.map((t) => t.id));
 }
 
 /**

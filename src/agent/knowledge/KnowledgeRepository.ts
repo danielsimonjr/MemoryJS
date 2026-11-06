@@ -21,21 +21,14 @@
 
 import type { Entity, IGraphStorage } from '../../types/types.js';
 import type {
-  InstructionSetRecord,
   InstructionSetRole,
   KnowledgeRevisionRecord,
-  KnowledgeSnapshotEntity,
   KnowledgeSnapshotRecord,
   SkillId,
   SkillRecord,
 } from '../../types/skills.js';
 import {
-  isFailureMemory,
-  isHeuristicMemory,
-  isInstructionSetEntity,
   isKnowledgeSnapshotEntity,
-  isReflectionMemory,
-  isSkillEntity,
   toIsoDateTime,
 } from '../../types/agent-memory.js';
 import type { FailureRecord } from '../../types/agent-memory.js';
@@ -50,7 +43,6 @@ import {
 } from './InstructionSetManager.js';
 import {
   clone,
-  compareIds,
   diffSnapshots,
   digestOf,
   assertBudgetTokens,
@@ -60,6 +52,15 @@ import {
 import { safeApplyOp, planWrites, workFrom, type PlannedWrite } from './knowledgeRevision.js';
 import { ScratchKnowledge, renderLoadedKnowledge, type LoadItem } from './ScratchKnowledge.js';
 import { rankSkillsLexically } from '../skills/skillRecordUtils.js';
+import {
+  findSnapshot,
+  latestSnapshotId,
+  memoryRefsOf,
+  payloadOf,
+  resolveMaxSkills,
+  selectSkills,
+  skillIdsForTaskIds,
+} from './knowledgeLoad.js';
 
 export type { KnowledgeDiff, IdDelta } from './knowledgeDigest.js';
 
@@ -150,6 +151,10 @@ export interface LoadForContextOptions {
   multiplier?: number;
   /** Sections to load (default all). Omitted sections are not queried; skills are matched only when listed. */
   sections?: ReadonlyArray<'instructions' | 'skills' | 'failures'>;
+  /** Skills loaded before lexical matches, regardless of score (budget still applies). */
+  includeSkillIds?: readonly (SkillId | string)[];
+  /** Maximum skills considered (default 20). */
+  maxSkills?: number;
 }
 
 /** Result of {@link KnowledgeRepository.loadForContext}. */
@@ -343,6 +348,15 @@ export class KnowledgeRepository {
   }
 
   /**
+   * Live skills learned for the given tasks (`scope.tasks` contains `task:<id>`).
+   * @param taskIds - Task ids.
+   * @returns Skill ids, at most 50.
+   */
+  async skillIdsForTasks(taskIds: readonly string[]): Promise<SkillId[]> {
+    return skillIdsForTaskIds(await this.skills.list(), taskIds);
+  }
+
+  /**
    * Digest of live `K`, without writing a snapshot.
    * @returns The digest, comparable with `KnowledgeSnapshotRecord.digest`.
    */
@@ -365,7 +379,12 @@ export class KnowledgeRepository {
     const multiplier = options.multiplier ?? readEnvNumber('MEMORY_CONTEXT_TOKEN_MULTIPLIER', 1.3);
     const want = new Set(options.sections ?? ['instructions', 'skills', 'failures']);
     const instructions = want.has('instructions') ? instructionItemsFor(await this.instructionSets.list(), options.role) : [];
-    const matches = want.has('skills') ? await this.skills.match(options.taskHint, { limit: LOOKUP_LIMIT }) : [];
+    const maxSkills = resolveMaxSkills(options.maxSkills);
+    const included = (options.includeSkillIds ?? []).flatMap((id) => this.skills.get(id) ?? []);
+    const matched = want.has('skills') ? await this.skills.match(options.taskHint, { limit: maxSkills }) : [];
+    const matches = want.has('skills')
+      ? selectSkills(included, matched.map((m) => m.skill), maxSkills).map((skill) => ({ skill, score: 0, matched: [] }))
+      : [];
     const failures = want.has('failures') ? await this.failures.lookupForTask(options.taskHint, { limit: LOOKUP_LIMIT }) : [];
     const candidates: LoadItem[] = [
       ...instructions.map((item): LoadItem => ({ kind: 'instruction', item })),
@@ -456,42 +475,4 @@ export class KnowledgeRepository {
     }
     return { failedOpIndex: writes[index]?.origin ?? 0, reason: result.error ?? 'batch write failed' };
   }
-}
-
-// ==================== Helpers ====================
-
-function findSnapshot(entities: readonly Entity[], id: string): KnowledgeSnapshotEntity | undefined {
-  return entities.find((e) => e.name === id && isKnowledgeSnapshotEntity(e)) as KnowledgeSnapshotEntity | undefined;
-}
-
-function latestSnapshotId(entities: readonly Entity[]): string {
-  let best = '';
-  let bestN = -1;
-  for (const entity of entities) {
-    const match = /^K-(\d+)$/.exec(entity.name);
-    if (!match || !isKnowledgeSnapshotEntity(entity)) continue;
-    const n = Number(match[1]);
-    if (n > bestN) [bestN, best] = [n, entity.name];
-  }
-  return best;
-}
-
-function payloadOf(entities: readonly Entity[]): {
-  instructionSets: InstructionSetRecord[];
-  skills: SkillRecord[];
-} {
-  return {
-    instructionSets: entities.filter(isInstructionSetEntity).map((e) => e.instructionSetRecord),
-    skills: entities.filter(isSkillEntity).map((e) => e.skillRecord),
-  };
-}
-
-function memoryRefsOf(entities: readonly Entity[]): KnowledgeSnapshotRecord['memoryRefs'] {
-  const ids = (guard: (e: unknown) => boolean, pick: (e: Entity) => string): string[] =>
-    entities.filter(guard).map(pick).sort(compareIds);
-  return {
-    heuristicIds: ids(isHeuristicMemory, (e) => (e as unknown as { heuristicRecord: { id: string } }).heuristicRecord.id),
-    failureIds: ids(isFailureMemory, (e) => (e as unknown as { failureRecord: { id: string } }).failureRecord.id),
-    reflectionIds: ids(isReflectionMemory, (e) => (e as unknown as { reflectionRecord: { id: string } }).reflectionRecord.id),
-  };
 }

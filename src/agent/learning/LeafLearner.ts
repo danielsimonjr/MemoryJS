@@ -114,10 +114,11 @@ export class LeafLearner {
     const traceId = await this.opts.traces.create({
       learnerKind: 'leaf',
       round: 0,
-      subsetLabel: 'all',
+      subsetLabel: opts.subsetLabel ?? 'all',
       actions: [],
       revisionIds: [],
       metrics: EMPTY_METRICS,
+      ...(opts.parentTraceId !== undefined ? { parentTraceId: opts.parentTraceId } : {}),
     });
     await this.opts.traces.writeTasks(traceId, taskRecordsJson(tasks));
     const run: Ctx['run'] = {
@@ -342,7 +343,7 @@ export class LeafLearner {
         return { kind: 'done', result: resultOf(run) };
       case 'solve': {
         const tasks = [];
-        for (const task of pendingTasks(run)) tasks.push({ task, knowledge: await knowledgeFor(this.env, task.input) });
+        for (const task of pendingTasks(run)) tasks.push({ task, knowledge: await knowledgeFor(this.env, task.input, [task.id]) });
         return { kind: 'solve', tasks };
       }
       case 'judge':

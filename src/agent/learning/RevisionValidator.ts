@@ -172,6 +172,7 @@ export async function planValidation(
     knowledge[task.id] = await scratch.loadForContext({
       role: options.role ?? 'solver',
       taskHint: task.input,
+      includeSkillIds: await scratch.skillIdsForTasks([task.id]),
       ...(options.budgetTokens !== undefined ? { budgetTokens: options.budgetTokens } : {}),
     });
   }

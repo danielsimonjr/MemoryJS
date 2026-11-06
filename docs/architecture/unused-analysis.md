@@ -12,9 +12,9 @@
 - **Dormant files** (runtime code on disk, unreachable from any entry/build root): 0
   - **Orphaned (reachable from nothing — delete/wire candidates)**: 0
   - **Test-only (exercised by a test, ships nothing)**: 0
-- **Potentially unused exports**: 89
+- **Potentially unused exports**: 115
   - **Unreferenced anywhere (deletion candidates)**: 0
-  - **Referenced in-module (type contracts / helpers backing live exports)**: 89
+  - **Referenced in-module (type contracts / helpers backing live exports)**: 115
 
 Seeded reachability roots (4):
 
@@ -95,6 +95,11 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 - `PatternDetectorOptions` (interface) — 1 in-file ref
 
+### `src/agent/bootstrap/bootstrapShared.ts`
+
+- `MemoryEntityParts` (interface) — 1 in-file ref
+- `PartitionableSource` (interface) — 2 in-file refs
+
 ### `src/agent/harness/InteractionLogFormat.ts`
 
 - `isInteractionRecord` (function) — 1 in-file ref
@@ -118,12 +123,24 @@ support exports that ARE used, so they cannot be deleted in isolation.
 - `ScratchApplyResult` (type) — 1 in-file ref
 - `SkillMatcher` (type) — 5 in-file refs
 
+### `src/agent/knowledge/knowledgeLoad.ts`
+
+- `DEFAULT_MAX_SKILLS` (constant) — 1 in-file ref
+- `MAX_TASK_SKILLS` (constant) — 2 in-file refs
+
+### `src/agent/learning/ChildKnowledgeOverlay.ts`
+
+- `OverlayBase` (interface) — 2 in-file refs
+- `CHILD_REVISIONS_TAG` (constant) — 3 in-file refs
+
 ### `src/agent/learning/Diagnoser.ts`
 
 - `buildDiagnosisPrompt` (function) — 1 in-file ref
 
 ### `src/agent/learning/KnowledgeEditor.ts`
 
+- `taskRef` (function) — 2 in-file refs
+- `taskKeywords` (function) — 1 in-file ref
 - `buildDraftPrompt` (function) — 1 in-file ref
 
 ### `src/agent/learning/LeafLearnerContext.ts`
@@ -141,14 +158,57 @@ support exports that ARE used, so they cannot be deleted in isolation.
 - `callContextOf` (function) — 2 in-file refs
 - `completeEvaluation` (function) — 2 in-file refs
 
+### `src/agent/learning/LearningReflector.ts`
+
+- `preferredStrategyOf` (function) — 1 in-file ref
+
 ### `src/agent/learning/LearningTrace.ts`
 
 - `buildTraceEntity` (function) — 1 in-file ref
 - `DEFAULT_TRACE_MAX_ACTIONS` (constant) — 2 in-file refs
 
+### `src/agent/learning/RecursiveChildren.ts`
+
+- `RecursiveCtor` (type) — 2 in-file refs
+
+### `src/agent/learning/RecursiveDrive.ts`
+
+- `mergeDepsOf` (function) — 2 in-file refs
+- `CheckedStart` (interface) — 2 in-file refs
+
+### `src/agent/learning/RecursiveEvaluate.ts`
+
+- `LiveEvaluation` (interface) — 1 in-file ref
+
+### `src/agent/learning/RecursiveLearnerState.ts`
+
+- `sumTokens` (function) — 2 in-file refs
+- `SplitEvidence` (interface) — 2 in-file refs
+- `LoadedRecursive` (interface) — 1 in-file ref
+
+### `src/agent/learning/RecursiveMerge.ts`
+
+- `ValidateAndApplyArgs` (interface) — 2 in-file refs
+
+### `src/agent/learning/RecursivePlan.ts`
+
+- `splitContextOf` (function) — 1 in-file ref
+- `normalizeSubsets` (function) — 1 in-file ref
+
+### `src/agent/learning/RevisionGeneralize.ts`
+
+- `canGeneralize` (function) — 2 in-file refs
+- `GENERALIZE_DESCRIPTION_JACCARD` (constant) — 2 in-file refs
+
 ### `src/agent/learning/llmJson.ts`
 
 - `escapeFenceContent` (function) — 2 in-file refs
+- `escapeHeading` (function) — 3 in-file refs
+
+### `src/agent/learning/revisionMergeShared.ts`
+
+- `BODY_MAX_CHARS` (constant) — 3 in-file refs
+- `FIELD_MAX_CHARS` (constant) — 1 in-file ref
 
 ### `src/agent/procedural/graph/backing/ProceduralGraphState.ts`
 
@@ -198,9 +258,14 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 - `DatabaseCtor` (type) — 6 in-file refs
 
+### `src/core/context/BootstrapFacade.ts`
+
+- `BootstrapFacadeDeps` (interface) — 1 in-file ref
+
 ### `src/core/context/LearningFacade.ts`
 
 - `LearningFacadeDeps` (interface) — 1 in-file ref
+- `DEFAULT_LOOP_LEAF_THRESHOLD` (constant) — 1 in-file ref
 
 ### `src/core/context/StorageInfraFacade.ts`
 

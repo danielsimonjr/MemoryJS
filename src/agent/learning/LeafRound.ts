@@ -126,7 +126,7 @@ async function recordSolves(env: LeafEnv, ctx: Ctx, payload: Record<string, Solv
     run.answers[id] = capAnswer(result.answer);
     run.state.results[id] = { answer: '', traceAddrs: result.traceAddrs, ...(result.tokens ? { tokens: result.tokens } : {}) };
     const task = run.tasks.find((t) => t.id === id)!;
-    const knowledge = await knowledgeFor(env, task.input);
+    const knowledge = await knowledgeFor(env, task.input, [task.id]);
     acct.recordSolve(id, sha256Hex(knowledge.markdown), result.tokens);
   }
 }
@@ -198,6 +198,7 @@ export async function submitRoundJudge(env: LeafEnv, ctx: Ctx, payload: Record<s
 export async function completeEvaluation(env: LeafEnv, ctx: Ctx): Promise<void> {
   const { run } = ctx;
   const metrics: EvalMetrics = summarize(run.tasks, run.state.feedback);
+  run.beforePass ??= Object.fromEntries(run.tasks.map((t) => [t.id, run.state.feedback[t.id]?.allPass === true]));
   run.before ??= metrics;
   run.after = metrics;
   await env.traces.setMetrics(run.state.traceId, metrics);

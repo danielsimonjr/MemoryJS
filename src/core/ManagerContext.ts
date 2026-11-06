@@ -46,6 +46,8 @@ export type { ProceduralGraphConfig } from './context/AgentCognitionFacade.js';
 import { AgentBookkeepingFacade } from './context/AgentBookkeepingFacade.js';
 import { KnowledgeGovernanceFacade } from './context/KnowledgeGovernanceFacade.js';
 import { LearningFacade, type LearningLoop, type LearningLoopDeps } from './context/LearningFacade.js';
+import { BootstrapFacade, type BootstrapperOptions } from './context/BootstrapFacade.js';
+import type { Bootstrapper } from '../agent/bootstrap/Bootstrapper.js';
 import { readEnvNumber, type EnvNumberBounds } from '../utils/envConfig.js';
 import { HierarchyManager } from './HierarchyManager.js';
 import { GraphTraversal } from './GraphTraversal.js';
@@ -162,6 +164,8 @@ export class ManagerContext {
   private readonly knowledgeFacade: KnowledgeGovernanceFacade;
   /** Recursa learning-loop factory (constructs nothing until `learningLoop` is called). */
   private readonly learningFacade: LearningFacade;
+  /** Recursa bootstrapper factory (constructs nothing until `bootstrapper` is called). */
+  private readonly bootstrapFacade: BootstrapFacade;
 
   // ==================== LAZY-INITIALIZED CORE MANAGERS ====================
   private _entityManager?: EntityManager;
@@ -259,6 +263,12 @@ export class ManagerContext {
       getKnowledgeRepository: () => this.knowledgeRepository, getSkillManager: () => this.skillManager,
       getSkillPublisher: () => this.skillPublisher, getFailureManager: () => this.failureManager,
       getReflectionManager: () => this.reflectionManager,
+    });
+    this.bootstrapFacade = new BootstrapFacade({
+      storage: this.storage,
+      getEntityManager: () => this.entityManager, getRelationManager: () => this.relationManager,
+      getSkillManager: () => this.skillManager, getKnowledgeRepository: () => this.knowledgeRepository,
+      learningLoop: (d) => this.learningLoop(d),
     });
     this.memoryFacade = new AgentMemoryFacade({
       storage: this.storage,
@@ -618,13 +628,21 @@ export class ManagerContext {
   /** See {@link AgentCognitionFacade.reconstructiveMemory}. */
   reconstructiveMemory(config?: ReconstructiveMemoryConfig): ReconstructiveMemory { return this.cognitionFacade.reconstructiveMemory(config); }
   /**
-   * Leaf-only learning loop (Recursa RS-18). Each call builds a leaf learner over this context's
-   * knowledge repository, skills, failures and reflections, so nothing is constructed before the
-   * first call. `learn` runs to completion; `start` / `next` / `submit` / `status` drive it one step
-   * at a time. The recursive operations (`plan`, `submitChild`, `merge`, `reflect`) are Phase 5 and throw.
+   * Recursa learning loop (RS-18, RS-21). Each call builds fresh leaf and recursive learners over this
+   * context's knowledge, skills, failures and reflections; nothing is constructed before the first call.
+   * `learn` and `start` choose the recursive learner for split runs or more tasks than the leaf threshold.
+   * `plan` / `submitChild` / `merge` / `reflect` drive recursive runs; `next` / `submit` drive leaf runs.
    * @see LearningFacade.learningLoop
    */
   learningLoop(deps: LearningLoopDeps): LearningLoop { return this.learningFacade.learningLoop(deps); }
+  /**
+   * Recursa bootstrapper (spec section 3.7): maps a corpus, records boundary coverage, writes exploration
+   * notes, generates practice tasks and, when `run` gets a solver, learns from them through `learningLoop`.
+   * Nothing is constructed before the call; each call returns a new instance over this context's managers.
+   * @param deps - Optional summarizer, keyword extractor, LLM and learning settings.
+   * @see BootstrapFacade.bootstrapper
+   */
+  bootstrapper(deps: BootstrapperOptions = {}): Bootstrapper { return this.bootstrapFacade.bootstrapper(deps); }
   /** See {@link KnowledgeGovernanceFacade.transitionLedger}. */
   get transitionLedger(): TransitionLedger | null { return this.knowledgeFacade.transitionLedger; }
   /** See {@link KnowledgeGovernanceFacade.skillManager}. */

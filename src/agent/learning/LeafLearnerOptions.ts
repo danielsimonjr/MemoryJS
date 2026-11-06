@@ -112,7 +112,14 @@ export interface LeafLearnerOptions {
 }
 
 /** Input of {@link LeafLearner.start} and {@link LeafLearner.learn}. */
-export type LeafStartOptions = LearnOptions & { tasks: TaskRecord[]; sessionId?: string };
+export type LeafStartOptions = LearnOptions & {
+  tasks: TaskRecord[];
+  sessionId?: string;
+  /** Parent trace (recursive learner child); written as a `child_of` link. */
+  parentTraceId?: string;
+  /** Label of the subset this run learns (default `all`). */
+  subsetLabel?: string;
+};
 
 /**
  * Validate and normalize start options.

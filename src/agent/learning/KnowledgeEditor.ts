@@ -24,6 +24,7 @@ import type { Diagnosis, SolveResult, TaskRecord } from '../../types/learning.js
 import { toIsoDateTime } from '../../types/agent-memory.js';
 import type { LoadedKnowledge } from './types.js';
 import { logger } from '../../utils/logger.js';
+import { ENGLISH_STOPWORDS_SMALL, tokenSetWithoutStopwords } from '../../utils/textSimilarity.js';
 import {
   ABORTED,
   describeError,
@@ -46,6 +47,39 @@ const ANSWER_EXCERPT_CHARS = 1000;
 function headCodePoints(text: string, max: number): string {
   const points = Array.from(text);
   return points.length <= max ? text : points.slice(0, max).join('');
+}
+
+/** Content keywords of the task input carried on a learned skill (spec D1 loadability contract). */
+const TASK_KEYWORDS = 8;
+
+/**
+ * `scope.tasks` marker that ties a learned skill to the task it was learned from.
+ *
+ * @param taskId - Task id
+ * @returns `task:<taskId>`
+ */
+export function taskRef(taskId: string): string {
+  return `task:${taskId}`;
+}
+
+/**
+ * First {@link TASK_KEYWORDS} stopword-free tokens of a task input, in order of appearance.
+ *
+ * @param input - Task input
+ * @returns Keywords
+ */
+export function taskKeywords(input: string): string[] {
+  return [...tokenSetWithoutStopwords(input, ENGLISH_STOPWORDS_SMALL, 2)].slice(0, TASK_KEYWORDS);
+}
+
+/**
+ * Head of the failed-criteria text of a task (all criteria when no feedback is known).
+ *
+ * @param task - Task record
+ * @returns Up to 160 characters of criteria text
+ */
+function criteriaHead(task: TaskRecord): string {
+  return task.rubric.map((c) => c.text).join('; ').slice(0, 160) || 'learned skill';
 }
 
 /** Maximum characters of a drafted section (LLM output). */
@@ -220,15 +254,17 @@ export class KnowledgeEditor {
         const hasDocument = (task.sources ?? []).some((s) => s.kind === 'document');
         const sources: SkillSource[] = [
           ...(task.sources ?? []),
+          { ref: taskRef(task.id), kind: 'task' },
           ...d.evidenceAddrs.map((ref) => ({ ref, kind: 'trace' as const })),
         ];
+        const keywords = taskKeywords(task.input);
         const skill: Extract<RevisionOp, { op: 'skill.add' }>['skill'] = {
           name: inlineSafe(`Learned: ${task.id}`, 80),
-          description: inlineSafe(d.summary, 200),
+          description: inlineSafe(`${criteriaHead(task)} — ${keywords.join(' ')}`, 400),
           kind: hasDocument ? 'navigation' : 'convention',
           scope: {
             domains: [task.category ?? 'general'],
-            tasks: [task.id],
+            tasks: [taskRef(task.id), ...keywords],
             ...(task.tools ? { tools: task.tools } : {}),
           },
           uncertainty: 0.5,

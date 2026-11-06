@@ -39,9 +39,9 @@ This document provides a comprehensive dependency graph of all files, components
 The codebase is organized into the following modules:
 
 - **adapters**: 7 files
-- **agent**: 153 files
+- **agent**: 176 files
 - **cli**: 31 files
-- **core**: 35 files
+- **core**: 36 files
 - **features**: 18 files
 - **entry**: 1 file
 - **search**: 54 files
@@ -63,7 +63,7 @@ Seeded build/entry roots (package `exports`, `bin` targets, tsup entries, script
 - `src/sqlite.ts`
 - `src/workers/levenshteinWorker.ts`
 
-Reachable from a root: **370** of 370 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
+Reachable from a root: **394** of 394 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
 
 ---
 
@@ -927,6 +927,7 @@ Reachable from a root: **370** of 370 files. Dormant: **0** (0 orphaned, 0 test-
 **Exports:**
 - Classes: `ObservationDedupManager`
 - Interfaces: `DuplicateObservationOccurrence`, `DuplicateObservationGroup`, `ObservationDedupFilter`, `ObservationDedupManagerConfig`
+- Constants: `DEFAULT_DEDUP_JACCARD`
 
 ---
 
@@ -1309,6 +1310,194 @@ Reachable from a root: **370** of 370 files. Dormant: **0** (0 orphaned, 0 test-
 
 ---
 
+### `src/agent/bootstrap/Bootstrapper.ts` - Bootstrapper (Recursa RS-13): one pass from raw corpus to a learned knowledge snapshot.
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../types/types.js` | `IGraphStorage` | Import (type-only) |
+| `../../types/skills.js` | `NavigationNodeRecord, SkillId` | Import (type-only) |
+| `../../types/learning.js` | `LearnResult, LearningBudget, TaskRecord` | Import (type-only) |
+| `../../types/agent-memory.js` | `isNavigationNodeEntity` | Import |
+| `../../core/EntityManager.js` | `EntityManager` | Import |
+| `../../core/RelationManager.js` | `RelationManager` | Import |
+| `../../core/GraphStorage.js` | `GraphStorage` | Import (type-only) |
+| `../skills/SkillManager.js` | `SkillManager` | Import (type-only) |
+| `../knowledge/KnowledgeRepository.js` | `KnowledgeRepository` | Import (type-only) |
+| `../SummarizationService.js` | `SummarizationService` | Import (type-only) |
+| `../../features/KeywordExtractor.js` | `KeywordExtractor` | Import (type-only) |
+| `../procedural/graph/CompletionProvider.js` | `PGCompletionProvider` | Import (type-only) |
+| `../evaluation/DeterministicJudge.js` | `DeterministicJudge, RubricJudge` | Import |
+| `../evaluation/RubricAudit.js` | `RubricIssue` | Import (type-only) |
+| `../learning/LeafLearner.js` | `LeafLearner, LeafStartOptions` | Import |
+| `../learning/LearningTrace.js` | `LearningTrace` | Import |
+| `../learning/Diagnoser.js` | `Diagnoser` | Import |
+| `../learning/KnowledgeEditor.js` | `KnowledgeEditor` | Import |
+| `../learning/LeafLearnerDeps.js` | `createLeafLearnerDeps` | Import |
+| `../learning/types.js` | `LearningDeps, LearningSolver` | Import (type-only) |
+| `./CorpusMapper.js` | `CorpusMapper, CorpusMapOptions, CorpusSource, NavigationMap, navigationLeafName` | Import |
+| `./BoundaryRecorder.js` | `BoundaryRecorder` | Import |
+| `./ExplorationNotes.js` | `ExplorationNotes` | Import |
+| `./PracticeTaskGenerator.js` | `PracticeTaskGenerator` | Import |
+| `./bootstrapShared.js` | `throwIfAbortedSignal` | Import |
+
+**Exports:**
+- Classes: `Bootstrapper`
+- Interfaces: `BootstrapLearner`, `BootstrapperDeps`, `BootstrapRunInput`, `BootstrapResult`
+
+---
+
+### `src/agent/bootstrap/BoundaryRecorder.ts` - Coverage boundaries of a corpus (Recursa RS-11): which regions of the material are present,
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../types/types.js` | `Entity, IGraphStorage` | Import (type-only) |
+| `../../types/skills.js` | `CoverageRecord, SkillSource` | Import (type-only) |
+| `../../types/agent-memory.js` | `isCoverageEntity, toIsoDateTime` | Import |
+| `../../core/EntityManager.js` | `EntityManager` | Import |
+| `../../core/GraphStorage.js` | `GraphStorage` | Import (type-only) |
+| `../knowledge/knowledgeDigest.js` | `slugify` | Import |
+| `../../utils/errors.js` | `ValidationError` | Import |
+| `../../utils/tokenEstimate.js` | `estimateTokensFromText` | Import |
+| `./bootstrapShared.js` | `buildMemoryEntity, scalarText` | Import |
+
+**Exports:**
+- Classes: `BoundaryRecorder`
+- Interfaces: `RecordCoverageInput`, `BoundaryRecorderDeps`
+- Types: `ExpectedRegion`
+- Functions: `coverageEntityName`, `summarizeCoverage`
+- Constants: `DEFAULT_COVERAGE_BUDGET_TOKENS`
+
+---
+
+### `src/agent/bootstrap/CorpusMapper.ts` - Corpus navigation mapper (Recursa RS-10).
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../types/types.js` | `Entity, IGraphStorage, Relation` | Import (type-only) |
+| `../../types/skills.js` | `NavigationNodeRecord` | Import (type-only) |
+| `../../types/agent-memory.js` | `isNavigationNodeEntity` | Import |
+| `../../core/EntityManager.js` | `EntityManager` | Import |
+| `../../core/RelationManager.js` | `RelationManager` | Import |
+| `../../core/HierarchyManager.js` | `HierarchyManager` | Import |
+| `../../core/GraphStorage.js` | `GraphStorage` | Import (type-only) |
+| `../SummarizationService.js` | `SummarizationService` | Import |
+| `../../features/KeywordExtractor.js` | `KeywordExtractor` | Import |
+| `../harness/ConcurrencyLimiter.js` | `runAll` | Import |
+| `../reconstruction/MemoryGraphBridge.js` | `TOPIC_SUMMARIZES` | Import |
+| `../procedural/graph/canonical.js` | `sha256Hex` | Import |
+| `../../utils/errors.js` | `ValidationError` | Import |
+| `./bootstrapShared.js` | `assertDistinctSourceObjects, assertPartition, buildMemoryEntity, chunk, defaultPartitioner, nowIso, shortHash, throwIfAbortedSignal, unwrapResults` | Import |
+
+**Exports:**
+- Classes: `CorpusMapper`
+- Interfaces: `CorpusSource`, `CorpusMapOptions`, `NavigationMap`, `CorpusMapperDeps`
+- Types: `Partitioner`
+- Functions: `navigationLeafName`, `sourceEntityName`
+- Constants: `LOCATED_AT_RELATION`, `DEFAULT_SHARD_SIZE`, `DEFAULT_MAP_CONCURRENCY`, `MAX_REF_CHARS`
+
+---
+
+### `src/agent/bootstrap/ExplorationNotes.ts` - Exploration notes (Recursa RS-12): one convention skill per corpus, written as a cheatsheet.
+
+**External Dependencies:**
+| Package | Import |
+|---------|--------|
+| `zod` | `z` |
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../types/types.js` | `IGraphStorage` | Import (type-only) |
+| `../../types/skills.js` | `CoverageRecord, NavigationNodeRecord, SkillId, SkillSource` | Import (type-only) |
+| `../skills/SkillManager.js` | `SkillManager` | Import (type-only) |
+| `../procedural/graph/CompletionProvider.js` | `PGCompletionProvider` | Import (type-only) |
+| `../../utils/logger.js` | `logger` | Import |
+| `../knowledge/knowledgeDigest.js` | `slugify` | Import |
+| `../learning/llmJson.js` | `ABORTED, describeError, extractJsonObject, fencedText, inlineSafe, raceAbort` | Import |
+| `../harness/ConcurrencyLimiter.js` | `AbortError` | Import |
+| `./CorpusMapper.js` | `NavigationMap` | Import (type-only) |
+| `./BoundaryRecorder.js` | `summarizeCoverage` | Import |
+| `./bootstrapShared.js` | `scalarText, throwIfAbortedSignal` | Import |
+
+**Exports:**
+- Classes: `ExplorationNotes`
+- Interfaces: `NotesBullet`, `WriteNotesInput`, `ExplorationNotesDeps`
+- Types: `ExplorationSkillOps`
+- Functions: `skillNameFor`
+
+---
+
+### `src/agent/bootstrap/PracticeTaskGenerator.ts` - Practice task generator (Recursa RS-13): turns navigation nodes and source metadata into
+
+**External Dependencies:**
+| Package | Import |
+|---------|--------|
+| `zod` | `z` |
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../types/types.js` | `Entity, IGraphStorage` | Import (type-only) |
+| `../../types/skills.js` | `NavigationNodeRecord, SkillSource` | Import (type-only) |
+| `../../types/learning.js` | `Criterion, TaskRecord` | Import (type-only) |
+| `../../types/agent-memory.js` | `isTaskEntity` | Import |
+| `../../core/EntityManager.js` | `EntityManager` | Import |
+| `../../core/GraphStorage.js` | `GraphStorage` | Import (type-only) |
+| `../procedural/graph/CompletionProvider.js` | `PGCompletionProvider` | Import (type-only) |
+| `../evaluation/RubricAudit.js` | `auditRubrics, RubricIssue` | Import |
+| `../learning/llmJson.js` | `ABORTED, describeError, fencedText, inlineSafe, raceAbort, extractJsonObject` | Import |
+| `../harness/ConcurrencyLimiter.js` | `AbortError` | Import |
+| `../../utils/logger.js` | `logger` | Import |
+| `./bootstrapShared.js` | `buildMemoryEntity, nowIso, scalarText, shortHash, throwIfAbortedSignal` | Import |
+
+**Exports:**
+- Classes: `PracticeTaskGenerator`
+- Interfaces: `TaskSourceLike`, `GenerateTasksInput`, `GeneratedTasks`, `PracticeTaskGeneratorDeps`
+- Constants: `DEFAULT_TASK_COUNT`
+
+---
+
+### `src/agent/bootstrap/bootstrapShared.ts` - Small helpers shared by the bootstrap (corpus mapping) modules: deterministic short hashes,
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../types/types.js` | `Entity` | Import (type-only) |
+| `../../types/agent-memory.js` | `toIsoDateTime` | Import |
+| `../procedural/graph/canonical.js` | `sha256Hex` | Import |
+| `../harness/ConcurrencyLimiter.js` | `AbortError, RunResult` | Import |
+| `../../utils/errors.js` | `ValidationError` | Import |
+
+**Exports:**
+- Interfaces: `MemoryEntityParts`, `PartitionableSource`
+- Functions: `shortHash`, `chunk`, `scalarText`, `nowIso`, `buildMemoryEntity`, `defaultPartitioner`, `throwIfAbortedSignal`, `unwrapResults`, `assertDistinctSourceObjects`, `assertPartition`
+
+---
+
+### `src/agent/bootstrap/index.ts` - Recursa Phase 5 bootstrapping public surface (spec section 3.7, batch 5C): the corpus mapper,
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `./Bootstrapper.js` | `Bootstrapper` | Re-export |
+| `./CorpusMapper.js` | `CorpusMapper, LOCATED_AT_RELATION, DEFAULT_SHARD_SIZE, DEFAULT_MAP_CONCURRENCY, defaultPartitioner, navigationLeafName, sourceEntityName, MAX_REF_CHARS` | Re-export |
+| `./BoundaryRecorder.js` | `BoundaryRecorder, DEFAULT_COVERAGE_BUDGET_TOKENS, coverageEntityName, summarizeCoverage` | Re-export |
+| `./ExplorationNotes.js` | `ExplorationNotes, skillNameFor` | Re-export |
+| `./PracticeTaskGenerator.js` | `PracticeTaskGenerator, DEFAULT_TASK_COUNT` | Re-export |
+| `./Bootstrapper.js` | `BootstrapLearner, BootstrapperDeps, BootstrapResult, BootstrapRunInput` | Re-export (type-only) |
+| `./CorpusMapper.js` | `CorpusMapOptions, CorpusMapperDeps, CorpusSource, NavigationMap, Partitioner` | Re-export (type-only) |
+| `./BoundaryRecorder.js` | `BoundaryRecorderDeps, ExpectedRegion, RecordCoverageInput` | Re-export (type-only) |
+| `./ExplorationNotes.js` | `ExplorationNotesDeps, ExplorationSkillOps, NotesBullet, WriteNotesInput` | Re-export (type-only) |
+| `./PracticeTaskGenerator.js` | `GeneratedTasks, GenerateTasksInput, PracticeTaskGeneratorDeps, TaskSourceLike` | Re-export (type-only) |
+
+**Exports:**
+- Re-exports: `Bootstrapper`, `CorpusMapper`, `LOCATED_AT_RELATION`, `DEFAULT_SHARD_SIZE`, `DEFAULT_MAP_CONCURRENCY`, `defaultPartitioner`, `navigationLeafName`, `sourceEntityName`, `MAX_REF_CHARS`, `BoundaryRecorder`, `DEFAULT_COVERAGE_BUDGET_TOKENS`, `coverageEntityName`, `summarizeCoverage`, `ExplorationNotes`, `skillNameFor`, `PracticeTaskGenerator`, `DEFAULT_TASK_COUNT`, `BootstrapLearner`, `BootstrapperDeps`, `BootstrapResult`, `BootstrapRunInput`, `CorpusMapOptions`, `CorpusMapperDeps`, `CorpusSource`, `NavigationMap`, `Partitioner`, `BoundaryRecorderDeps`, `ExpectedRegion`, `RecordCoverageInput`, `ExplorationNotesDeps`, `ExplorationSkillOps`, `NotesBullet`, `WriteNotesInput`, `GeneratedTasks`, `GenerateTasksInput`, `PracticeTaskGeneratorDeps`, `TaskSourceLike`
+
+---
+
 ### `src/agent/causal/CausalReasoner.ts` - Causal Reasoner (3B.6)
 
 **Internal Dependencies:**
@@ -1629,6 +1818,7 @@ Reachable from a root: **370** of 370 files. Dormant: **0** (0 orphaned, 0 test-
 | `./evaluation/index.js` | `*` | Re-export |
 | `./knowledgeContext.js` | `*` | Re-export |
 | `./learning/index.js` | `*` | Re-export |
+| `./bootstrap/index.js` | `*` | Re-export |
 | `./AccessTracker.js` | `AccessTracker, AccessStats, AccessTrackerConfig, AccessContext` | Re-export |
 | `./DecayEngine.js` | `DecayEngine, DecayEngineConfig, DecayOperationOptions, ReinforcementOptions, DecayResult, ForgetOptions, ForgetResult` | Re-export |
 | `./DecayScheduler.js` | `DecayScheduler, DecaySchedulerConfig, DecayCycleResult` | Re-export |
@@ -1697,7 +1887,7 @@ Reachable from a root: **370** of 370 files. Dormant: **0** (0 orphaned, 0 test-
 | `./procedural/index.js` | `ProceduralGraphManagerConfig, PGPolicy, PGGraphStats, PGEvolutionOptions, PGEvolutionResult, PGEvolutionStopReason, PGEvolutionDependencies, PGSessionOptions, PGRefinerInput, PGCommitInput, PGCommitResult, IProceduralGraphBacking, PGValidatorOptions, PGCompletionProvider, PGTokenizer, PGSerializerStyle` | Re-export (type-only) |
 
 **Exports:**
-- Re-exports: `* from ./skills/index.js`, `* from ./knowledge/index.js`, `* from ./harness/index.js`, `* from ./evaluation/index.js`, `* from ./knowledgeContext.js`, `* from ./learning/index.js`, `AccessTracker`, `AccessStats`, `AccessTrackerConfig`, `AccessContext`, `DecayEngine`, `DecayEngineConfig`, `DecayOperationOptions`, `ReinforcementOptions`, `DecayResult`, `ForgetOptions`, `ForgetResult`, `DecayScheduler`, `DecaySchedulerConfig`, `DecayCycleResult`, `WorkingMemoryManager`, `WorkingMemoryConfig`, `SessionMemoryFilter`, `PromotionMarkOptions`, `PromotionCriteria`, `PromotionResult`, `ConfirmationResult`, `SessionManager`, `SessionConfig`, `StartSessionOptions`, `SessionHistoryOptions`, `EndSessionResult`, `SessionQueryBuilder`, `SessionSearchOptions`, `EntityWithContext`, `SearchFunction`, `EpisodicMemoryManager`, `EpisodicRelations`, `EpisodicMemoryConfig`, `CreateEpisodeOptions`, `TimelineOptions`, `ProspectiveMemoryManager`, `ProspectiveMemoryConfig`, `ProcedureInvoker`, `PredicateEvaluator`, `ScheduleOptions`, `FailureManager`, `FailureManagerConfig`, `FailureInput`, `FailureEntityOptions`, `LookupOptions`, `GetAllOptions`, `applyGuardedEdit`, `noteHelped`, `retire`, `GuardedEditError`, `GuardedChange`, `GuardedEditContext`, `GuardedEditErrorCode`, `GuardedEditResult`, `GuardedScalarField`, `PlanManager`, `PlanManagerConfig`, `CreatePlanOptions`, `PushSubGoalOptions`, `ListPlansOptions`, `AgentReflectionManager`, `ArchiveReflectionResult`, `ReflectionManagerConfig`, `ReflectionInput`, `ReflectionEntityOptions`, `ListReflectionsOptions`, `RelevanceOptions`, `ConsolidationPipeline`, `ProspectivePromotionStage`, `ReflectionStage`, `ConsolidationPipelineConfig`, `PipelineStage`, `ReflectionStageConfig`, `StageResult`, `SummarizationService`, `LLMSummarizationProvider`, `ISummarizationProvider`, `SummarizationConfig`, `SummarizationServiceOptions`, `GroupingResult`, `PatternDetector`, `RuleEvaluator`, `EvaluatorRule`, `SalienceEngine`, `SalienceEngineConfig`, `ContextWindowManager`, `ContextWindowManagerConfig`, `PrioritizeOptions`, `SpilloverResult`, `WakeUpOptions`, `WakeUpResult`, `MemoryFormatter`, `MemoryFormatterConfig`, `MultiAgentMemoryManager`, `MultiAgentConfig`, `ConflictResolver`, `ConflictResolverConfig`, `ResolutionResult`, `SessionCheckpointManager`, `SessionCheckpointData`, `SESSION_CHECKPOINT_ENTITY_TYPE`, `HAS_CHECKPOINT_RELATION`, `SNAPSHOTS_RELATION`, `migrateLegacySessionCheckpoints`, `decodeLegacyCheckpoint`, `AgentMemoryManager`, `CreateMemoryOptions`, `RetrieveContextOptions`, `CollaborativeSynthesis`, `CollaborativeSynthesisConfig`, `SynthesisResult`, `AgentMemoryConfig`, `loadConfigFromEnv`, `mergeConfig`, `validateConfig`, `ArtifactManager`, `IDistillationPolicy`, `DistilledMemory`, `DistillationConfig`, `NoOpDistillationPolicy`, `DefaultDistillationPolicy`, `CompositeDistillationPolicy`, `DistillationPipeline`, `DistillationStats`, `DistillationResult`, `AgentRole`, `RoleProfile`, `getRoleProfile`, `listRoleProfiles`, `resolveRoleProfile`, `createCustomProfile`, `EntropyFilterStage`, `computeEntropy`, `passesEntropyFilter`, `EntropyFilterConfig`, `LowEntropyContentError`, `FailureDistillation`, `FailureDistillationResult`, `FailureDistillationConfig`, `CognitiveLoadAnalyzer`, `CognitiveLoadConfig`, `VisibilityResolver`, `ConsolidationScheduler`, `ConsolidationSchedulerConfig`, `ConsolidationCycleResult`, `DreamEngine`, `DreamEngineConfig`, `DreamPhaseConfig`, `DreamEngineCallbacks`, `DreamPhaseResult`, `DreamCycleResult`, `ProfileManager`, `ProfileResponse`, `ProfileManagerConfig`, `ProfileOptions`, `ObserverPipeline`, `ObservationScore`, `ObserverPipelineOptions`, `ObserverPipelineStats`, `WorkThreadManager`, `migrateLegacyWorkThreads`, `decodeLegacyWorkThread`, `WORK_THREAD_ENTITY_TYPE`, `CHILD_OF_RELATION`, `BLOCKED_BY_RELATION`, `WorkThread`, `WorkThreadStatus`, `WorkThreadFilter`, `CreateWorkThreadOptions`, `ContextProfileManager`, `ContextProfile`, `ProfileConfig`, `MemoryEngine`, `MemoryEngineConfig`, `AddTurnOptions`, `AddTurnResult`, `DedupTier`, `DuplicateCheckResult`, `MemoryEngineEventName`, `ImportanceScorer`, `ImportanceScorerConfig`, `ScoreOptions`, `InMemoryBackend`, `SQLiteBackend`, `SQLiteBackendOptions`, `MemoryValidator`, `MemoryValidatorConfig`, `MemoryValidationResult`, `MemoryValidationIssue`, `MemoryContradiction`, `TrajectoryCompressor`, `TrajectoryCompressorConfig`, `DistillOptions`, `CompressedMemory`, `Granularity`, `RedundancyGroup`, `TrajectoryMergeStrategy`, `ExperienceExtractor`, `ExperienceExtractorConfig`, `Trajectory`, `Action`, `Outcome`, `Rule`, `HeuristicGuideline`, `DecisionRule`, `ClusterMethod`, `TrajectoryCluster`, `ExperienceType`, `Experience`, `CollaborationAuditEnforcer`, `AttributionMode`, `CollaborationAuditEnforcerOptions`, `QueryRewriter`, `ActiveRetrievalController`, `RewriteResult`, `RetrievalContext`, `RetrievalDecision`, `RetrievalRound`, `AdaptiveResult`, `ActiveRetrievalConfig`, `WorldStateSnapshot`, `WorldModelManager`, `WorldStateEntity`, `WorldStateChange`, `WorldModelManagerOptions`, `ProcedureManager`, `ProcedureStore`, `StepSequencer`, `decodeProcedure`, `PROCEDURE_ENTITY_TYPE`, `ProcedureManagerConfig`, `ProceduralGraph`, `ProceduralGraphManager`, `ProceduralGraphSession`, `ProceduralGraphEvolution`, `InMemoryProceduralGraphBacking`, `JsonlProceduralGraphBacking`, `SqliteProceduralGraphBacking`, `createProceduralGraphBacking`, `procedureToGraphInput`, `parseEditSet`, `parseSnapshot`, `prepareCandidate`, `validateSnapshot`, `applyCyclePolicy`, `PG_BUILT_IN_RELATIONS`, `PG_LIMITS`, `PGNodeSchema`, `PGEdgeSchema`, `PGSnapshotSchema`, `PGEditSetSchema`, `graphDigest`, `toolCatalogHash`, `evaluationFingerprint`, `storageKey`, `canonicalJson`, `sha256Hex`, `serializeLocalContext`, `serializeFullGraph`, `serializeGraphJson`, `adaptLLMProvider`, `completeWithBudget`, `tokenTail`, `concatTrajectories`, `generateGuidance`, `localizeForGuidance`, `buildRefinerPrompt`, `serializeRejections`, `proposeEdits`, `renderTemplate`, `withDataHandlingNote`, `DATA_HANDLING_NOTE`, `GUIDANCE_PROMPT_TEMPLATE`, `REFINER_PROMPT_TEMPLATE`, `FULL_GRAPH_CONTEXT_DESC`, `FULL_GRAPH_SOURCE`, `LOCAL_GRAPH_CONTEXT_DESC`, `LOCAL_GRAPH_SOURCE`, `CausalReasoner`, `DEFAULT_CAUSAL_RELATION_TYPES`, `CausalRelationType`, `CausalChain`, `CausalCycle`, `CausalReasonerConfig`, `HeuristicManager`, `AddHeuristicOptions`, `HeuristicMatch`, `HeuristicConflict`, `HeuristicUpdateResult`, `ExclusionManager`, `AddExclusionRuleInput`, `ExclusionCheckResult`, `DecisionManager`, `DecisionInput`, `DecisionEntityOptions`, `AcceptDecisionResult`, `RejectDecisionResult`, `SupersedeDecisionResult`, `ListDecisionsOptions`, `ProjectContextManager`, `ProjectContextManagerConfig`, `ProjectContextUpsertInput`, `ForContextOptions`, `ObservationDedupManager`, `DuplicateObservationOccurrence`, `DuplicateObservationGroup`, `ObservationDedupFilter`, `ObservationDedupManagerConfig`, `ToolAffordanceManager`, `ToolAffordanceManagerConfig`, `RecordOutcomeInput`, `ToolAffordanceStats`, `SuggestToolOptions`, `ToolSuggestion`, `ToolCallObserver`, `ToolCallEvent`, `ObservationDedupReportStage`, `HeuristicExtractionStage`, `ObservationDedupReportStageConfig`, `HeuristicExtractionStageConfig`, `DEFAULT_PERMISSION_MATRIX`, `permissionsForRole`, `RoleAssignmentStore`, `RbacMiddleware`, `Role`, `Permission`, `ResourceType`, `RoleAssignment`, `RbacPolicy`, `PermissionMatrix`, `PermissionMatrixRow`, `ResourcePermissionOverrides`, `RoleAssignmentStoreOptions`, `RbacMiddlewareOptions`, `CueTagContentGraph`, `normalizeKey`, `MemoryToolkit`, `EventKeywords`, `MemoryDistiller`, `extractJson`, `MemoryReconstructor`, `ReconstructiveMemory`, `ReconstructiveMemoryConfig`, `MemoryGraphBridge`, `TOPIC_SUMMARIZES`, `ReconstructiveBacking`, `BridgePersistResult`, `RelationConsolidator`, `RelationConsolidationStage`, `normalizeRelationType`, `relationKey`, `RelationConsolidatorRelationOps`, `RelationConsolidatorEntityOps`, `RelationEmbeddingProvider`, `RelationConsolidatorThresholds`, `RelationConsolidatorOptions`, `RelationAnalyzeOptions`, `RelationConsolidateOptions`, `ExactDuplicateGroup`, `InverseDuplicatePair`, `SemanticDuplicateGroup`, `RelationVerdict`, `ConsolidationFeedback`, `RelationConsolidationReport`, `RelationConsolidationResult`, `RelationConsolidationStageConfig`, `EventManager`, `eventEntityName`, `EVENT_ENTITY_TYPE`, `EVENT_STUB_ENTITY_TYPE`, `EVENT_TAG`, `FLOW_TAG_PREFIX`, `ACTOR_OF_RELATION`, `TARGETED_RELATION`, `OCCURRED_IN_RELATION`, `PARTICIPANT_IN_RELATION`, `EventManagerConfig`, `IMemoryBackend`, `MemoryTurn`, `WeightedTurn`, `GetWeightedOptions`, `ProceduralGraphManagerConfig`, `PGPolicy`, `PGGraphStats`, `PGEvolutionOptions`, `PGEvolutionResult`, `PGEvolutionStopReason`, `PGEvolutionDependencies`, `PGSessionOptions`, `PGRefinerInput`, `PGCommitInput`, `PGCommitResult`, `IProceduralGraphBacking`, `PGValidatorOptions`, `PGCompletionProvider`, `PGTokenizer`, `PGSerializerStyle`
+- Re-exports: `* from ./skills/index.js`, `* from ./knowledge/index.js`, `* from ./harness/index.js`, `* from ./evaluation/index.js`, `* from ./knowledgeContext.js`, `* from ./learning/index.js`, `* from ./bootstrap/index.js`, `AccessTracker`, `AccessStats`, `AccessTrackerConfig`, `AccessContext`, `DecayEngine`, `DecayEngineConfig`, `DecayOperationOptions`, `ReinforcementOptions`, `DecayResult`, `ForgetOptions`, `ForgetResult`, `DecayScheduler`, `DecaySchedulerConfig`, `DecayCycleResult`, `WorkingMemoryManager`, `WorkingMemoryConfig`, `SessionMemoryFilter`, `PromotionMarkOptions`, `PromotionCriteria`, `PromotionResult`, `ConfirmationResult`, `SessionManager`, `SessionConfig`, `StartSessionOptions`, `SessionHistoryOptions`, `EndSessionResult`, `SessionQueryBuilder`, `SessionSearchOptions`, `EntityWithContext`, `SearchFunction`, `EpisodicMemoryManager`, `EpisodicRelations`, `EpisodicMemoryConfig`, `CreateEpisodeOptions`, `TimelineOptions`, `ProspectiveMemoryManager`, `ProspectiveMemoryConfig`, `ProcedureInvoker`, `PredicateEvaluator`, `ScheduleOptions`, `FailureManager`, `FailureManagerConfig`, `FailureInput`, `FailureEntityOptions`, `LookupOptions`, `GetAllOptions`, `applyGuardedEdit`, `noteHelped`, `retire`, `GuardedEditError`, `GuardedChange`, `GuardedEditContext`, `GuardedEditErrorCode`, `GuardedEditResult`, `GuardedScalarField`, `PlanManager`, `PlanManagerConfig`, `CreatePlanOptions`, `PushSubGoalOptions`, `ListPlansOptions`, `AgentReflectionManager`, `ArchiveReflectionResult`, `ReflectionManagerConfig`, `ReflectionInput`, `ReflectionEntityOptions`, `ListReflectionsOptions`, `RelevanceOptions`, `ConsolidationPipeline`, `ProspectivePromotionStage`, `ReflectionStage`, `ConsolidationPipelineConfig`, `PipelineStage`, `ReflectionStageConfig`, `StageResult`, `SummarizationService`, `LLMSummarizationProvider`, `ISummarizationProvider`, `SummarizationConfig`, `SummarizationServiceOptions`, `GroupingResult`, `PatternDetector`, `RuleEvaluator`, `EvaluatorRule`, `SalienceEngine`, `SalienceEngineConfig`, `ContextWindowManager`, `ContextWindowManagerConfig`, `PrioritizeOptions`, `SpilloverResult`, `WakeUpOptions`, `WakeUpResult`, `MemoryFormatter`, `MemoryFormatterConfig`, `MultiAgentMemoryManager`, `MultiAgentConfig`, `ConflictResolver`, `ConflictResolverConfig`, `ResolutionResult`, `SessionCheckpointManager`, `SessionCheckpointData`, `SESSION_CHECKPOINT_ENTITY_TYPE`, `HAS_CHECKPOINT_RELATION`, `SNAPSHOTS_RELATION`, `migrateLegacySessionCheckpoints`, `decodeLegacyCheckpoint`, `AgentMemoryManager`, `CreateMemoryOptions`, `RetrieveContextOptions`, `CollaborativeSynthesis`, `CollaborativeSynthesisConfig`, `SynthesisResult`, `AgentMemoryConfig`, `loadConfigFromEnv`, `mergeConfig`, `validateConfig`, `ArtifactManager`, `IDistillationPolicy`, `DistilledMemory`, `DistillationConfig`, `NoOpDistillationPolicy`, `DefaultDistillationPolicy`, `CompositeDistillationPolicy`, `DistillationPipeline`, `DistillationStats`, `DistillationResult`, `AgentRole`, `RoleProfile`, `getRoleProfile`, `listRoleProfiles`, `resolveRoleProfile`, `createCustomProfile`, `EntropyFilterStage`, `computeEntropy`, `passesEntropyFilter`, `EntropyFilterConfig`, `LowEntropyContentError`, `FailureDistillation`, `FailureDistillationResult`, `FailureDistillationConfig`, `CognitiveLoadAnalyzer`, `CognitiveLoadConfig`, `VisibilityResolver`, `ConsolidationScheduler`, `ConsolidationSchedulerConfig`, `ConsolidationCycleResult`, `DreamEngine`, `DreamEngineConfig`, `DreamPhaseConfig`, `DreamEngineCallbacks`, `DreamPhaseResult`, `DreamCycleResult`, `ProfileManager`, `ProfileResponse`, `ProfileManagerConfig`, `ProfileOptions`, `ObserverPipeline`, `ObservationScore`, `ObserverPipelineOptions`, `ObserverPipelineStats`, `WorkThreadManager`, `migrateLegacyWorkThreads`, `decodeLegacyWorkThread`, `WORK_THREAD_ENTITY_TYPE`, `CHILD_OF_RELATION`, `BLOCKED_BY_RELATION`, `WorkThread`, `WorkThreadStatus`, `WorkThreadFilter`, `CreateWorkThreadOptions`, `ContextProfileManager`, `ContextProfile`, `ProfileConfig`, `MemoryEngine`, `MemoryEngineConfig`, `AddTurnOptions`, `AddTurnResult`, `DedupTier`, `DuplicateCheckResult`, `MemoryEngineEventName`, `ImportanceScorer`, `ImportanceScorerConfig`, `ScoreOptions`, `InMemoryBackend`, `SQLiteBackend`, `SQLiteBackendOptions`, `MemoryValidator`, `MemoryValidatorConfig`, `MemoryValidationResult`, `MemoryValidationIssue`, `MemoryContradiction`, `TrajectoryCompressor`, `TrajectoryCompressorConfig`, `DistillOptions`, `CompressedMemory`, `Granularity`, `RedundancyGroup`, `TrajectoryMergeStrategy`, `ExperienceExtractor`, `ExperienceExtractorConfig`, `Trajectory`, `Action`, `Outcome`, `Rule`, `HeuristicGuideline`, `DecisionRule`, `ClusterMethod`, `TrajectoryCluster`, `ExperienceType`, `Experience`, `CollaborationAuditEnforcer`, `AttributionMode`, `CollaborationAuditEnforcerOptions`, `QueryRewriter`, `ActiveRetrievalController`, `RewriteResult`, `RetrievalContext`, `RetrievalDecision`, `RetrievalRound`, `AdaptiveResult`, `ActiveRetrievalConfig`, `WorldStateSnapshot`, `WorldModelManager`, `WorldStateEntity`, `WorldStateChange`, `WorldModelManagerOptions`, `ProcedureManager`, `ProcedureStore`, `StepSequencer`, `decodeProcedure`, `PROCEDURE_ENTITY_TYPE`, `ProcedureManagerConfig`, `ProceduralGraph`, `ProceduralGraphManager`, `ProceduralGraphSession`, `ProceduralGraphEvolution`, `InMemoryProceduralGraphBacking`, `JsonlProceduralGraphBacking`, `SqliteProceduralGraphBacking`, `createProceduralGraphBacking`, `procedureToGraphInput`, `parseEditSet`, `parseSnapshot`, `prepareCandidate`, `validateSnapshot`, `applyCyclePolicy`, `PG_BUILT_IN_RELATIONS`, `PG_LIMITS`, `PGNodeSchema`, `PGEdgeSchema`, `PGSnapshotSchema`, `PGEditSetSchema`, `graphDigest`, `toolCatalogHash`, `evaluationFingerprint`, `storageKey`, `canonicalJson`, `sha256Hex`, `serializeLocalContext`, `serializeFullGraph`, `serializeGraphJson`, `adaptLLMProvider`, `completeWithBudget`, `tokenTail`, `concatTrajectories`, `generateGuidance`, `localizeForGuidance`, `buildRefinerPrompt`, `serializeRejections`, `proposeEdits`, `renderTemplate`, `withDataHandlingNote`, `DATA_HANDLING_NOTE`, `GUIDANCE_PROMPT_TEMPLATE`, `REFINER_PROMPT_TEMPLATE`, `FULL_GRAPH_CONTEXT_DESC`, `FULL_GRAPH_SOURCE`, `LOCAL_GRAPH_CONTEXT_DESC`, `LOCAL_GRAPH_SOURCE`, `CausalReasoner`, `DEFAULT_CAUSAL_RELATION_TYPES`, `CausalRelationType`, `CausalChain`, `CausalCycle`, `CausalReasonerConfig`, `HeuristicManager`, `AddHeuristicOptions`, `HeuristicMatch`, `HeuristicConflict`, `HeuristicUpdateResult`, `ExclusionManager`, `AddExclusionRuleInput`, `ExclusionCheckResult`, `DecisionManager`, `DecisionInput`, `DecisionEntityOptions`, `AcceptDecisionResult`, `RejectDecisionResult`, `SupersedeDecisionResult`, `ListDecisionsOptions`, `ProjectContextManager`, `ProjectContextManagerConfig`, `ProjectContextUpsertInput`, `ForContextOptions`, `ObservationDedupManager`, `DuplicateObservationOccurrence`, `DuplicateObservationGroup`, `ObservationDedupFilter`, `ObservationDedupManagerConfig`, `ToolAffordanceManager`, `ToolAffordanceManagerConfig`, `RecordOutcomeInput`, `ToolAffordanceStats`, `SuggestToolOptions`, `ToolSuggestion`, `ToolCallObserver`, `ToolCallEvent`, `ObservationDedupReportStage`, `HeuristicExtractionStage`, `ObservationDedupReportStageConfig`, `HeuristicExtractionStageConfig`, `DEFAULT_PERMISSION_MATRIX`, `permissionsForRole`, `RoleAssignmentStore`, `RbacMiddleware`, `Role`, `Permission`, `ResourceType`, `RoleAssignment`, `RbacPolicy`, `PermissionMatrix`, `PermissionMatrixRow`, `ResourcePermissionOverrides`, `RoleAssignmentStoreOptions`, `RbacMiddlewareOptions`, `CueTagContentGraph`, `normalizeKey`, `MemoryToolkit`, `EventKeywords`, `MemoryDistiller`, `extractJson`, `MemoryReconstructor`, `ReconstructiveMemory`, `ReconstructiveMemoryConfig`, `MemoryGraphBridge`, `TOPIC_SUMMARIZES`, `ReconstructiveBacking`, `BridgePersistResult`, `RelationConsolidator`, `RelationConsolidationStage`, `normalizeRelationType`, `relationKey`, `RelationConsolidatorRelationOps`, `RelationConsolidatorEntityOps`, `RelationEmbeddingProvider`, `RelationConsolidatorThresholds`, `RelationConsolidatorOptions`, `RelationAnalyzeOptions`, `RelationConsolidateOptions`, `ExactDuplicateGroup`, `InverseDuplicatePair`, `SemanticDuplicateGroup`, `RelationVerdict`, `ConsolidationFeedback`, `RelationConsolidationReport`, `RelationConsolidationResult`, `RelationConsolidationStageConfig`, `EventManager`, `eventEntityName`, `EVENT_ENTITY_TYPE`, `EVENT_STUB_ENTITY_TYPE`, `EVENT_TAG`, `FLOW_TAG_PREFIX`, `ACTOR_OF_RELATION`, `TARGETED_RELATION`, `OCCURRED_IN_RELATION`, `PARTICIPANT_IN_RELATION`, `EventManagerConfig`, `IMemoryBackend`, `MemoryTurn`, `WeightedTurn`, `GetWeightedOptions`, `ProceduralGraphManagerConfig`, `PGPolicy`, `PGGraphStats`, `PGEvolutionOptions`, `PGEvolutionResult`, `PGEvolutionStopReason`, `PGEvolutionDependencies`, `PGSessionOptions`, `PGRefinerInput`, `PGCommitInput`, `PGCommitResult`, `IProceduralGraphBacking`, `PGValidatorOptions`, `PGCompletionProvider`, `PGTokenizer`, `PGSerializerStyle`
 
 ---
 
@@ -1737,8 +1927,8 @@ Reachable from a root: **370** of 370 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `../../types/types.js` | `Entity, IGraphStorage` | Import (type-only) |
-| `../../types/skills.js` | `InstructionSetRecord, InstructionSetRole, KnowledgeRevisionRecord, KnowledgeSnapshotEntity, KnowledgeSnapshotRecord, SkillId, SkillRecord` | Import (type-only) |
-| `../../types/agent-memory.js` | `isFailureMemory, isHeuristicMemory, isInstructionSetEntity, isKnowledgeSnapshotEntity, isReflectionMemory, isSkillEntity, toIsoDateTime` | Import |
+| `../../types/skills.js` | `InstructionSetRole, KnowledgeRevisionRecord, KnowledgeSnapshotRecord, SkillId, SkillRecord` | Import (type-only) |
+| `../../types/agent-memory.js` | `isKnowledgeSnapshotEntity, toIsoDateTime` | Import |
 | `../../types/agent-memory.js` | `FailureRecord` | Import (type-only) |
 | `../../core/TransactionManager.js` | `BatchTransaction` | Import |
 | `../../core/EntityManager.js` | `EntityManager` | Import |
@@ -1746,10 +1936,11 @@ Reachable from a root: **370** of 370 files. Dormant: **0** (0 orphaned, 0 test-
 | `../../utils/envConfig.js` | `readEnvNumber` | Import |
 | `../../utils/tokenEstimate.js` | `estimateTokensFromText` | Import |
 | `./InstructionSetManager.js` | `instructionItemsFor, InstructionSetManager` | Import |
-| `./knowledgeDigest.js` | `clone, compareIds, diffSnapshots, digestOf, assertBudgetTokens, fitInOrder, KnowledgeDiff` | Import |
+| `./knowledgeDigest.js` | `clone, diffSnapshots, digestOf, assertBudgetTokens, fitInOrder, KnowledgeDiff` | Import |
 | `./knowledgeRevision.js` | `safeApplyOp, planWrites, workFrom, PlannedWrite` | Import |
 | `./ScratchKnowledge.js` | `ScratchKnowledge, renderLoadedKnowledge, LoadItem` | Import |
 | `../skills/skillRecordUtils.js` | `rankSkillsLexically` | Import |
+| `./knowledgeLoad.js` | `findSnapshot, latestSnapshotId, memoryRefsOf, payloadOf, resolveMaxSkills, selectSkills, skillIdsForTaskIds` | Import |
 | `./knowledgeDigest.js` | `KnowledgeDiff, IdDelta` | Re-export (type-only) |
 
 **Exports:**
@@ -1765,7 +1956,7 @@ Reachable from a root: **370** of 370 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `../../types/skills.js` | `InstructionSetRecord, InstructionSetRole, RevisionOp, SkillRecord` | Import (type-only) |
+| `../../types/skills.js` | `InstructionSetRecord, InstructionSetRole, RevisionOp, SkillId, SkillRecord` | Import (type-only) |
 | `../../types/agent-memory.js` | `FailureRecord` | Import (type-only) |
 | `../../utils/envConfig.js` | `readEnvNumber` | Import |
 | `../../utils/tokenEstimate.js` | `estimateTokensFromText` | Import |
@@ -1773,6 +1964,7 @@ Reachable from a root: **370** of 370 files. Dormant: **0** (0 orphaned, 0 test-
 | `./knowledgeDigest.js` | `assertBudgetTokens, clone, fitInOrder` | Import |
 | `./knowledgeRevision.js` | `safeApplyOp, workFrom` | Import |
 | `../skills/skillRecordUtils.js` | `rankSkillsLexically` | Import |
+| `./knowledgeLoad.js` | `resolveMaxSkills, selectSkills, skillIdsForTaskIds` | Import |
 | `./KnowledgeRepository.js` | `FailureLookupLike, LoadedKnowledge, LoadForContextOptions, SkillMatchLike` | Import (type-only) |
 
 **Exports:**
@@ -1818,6 +2010,22 @@ Reachable from a root: **370** of 370 files. Dormant: **0** (0 orphaned, 0 test-
 
 ---
 
+### `src/agent/knowledge/knowledgeLoad.ts` - Skill selection shared by `KnowledgeRepository.loadForContext` and
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../types/types.js` | `Entity` | Import (type-only) |
+| `../../types/skills.js` | `InstructionSetRecord, KnowledgeSnapshotEntity, KnowledgeSnapshotRecord, SkillId, SkillRecord` | Import (type-only) |
+| `../../types/agent-memory.js` | `isFailureMemory, isHeuristicMemory, isInstructionSetEntity, isKnowledgeSnapshotEntity, isReflectionMemory, isSkillEntity` | Import |
+| `./knowledgeDigest.js` | `compareIds` | Import |
+
+**Exports:**
+- Functions: `skillIdsForTaskIds`, `resolveMaxSkills`, `selectSkills`, `findSnapshot`, `latestSnapshotId`, `payloadOf`, `memoryRefsOf`
+- Constants: `DEFAULT_MAX_SKILLS`, `MAX_TASK_SKILLS`
+
+---
+
 ### `src/agent/knowledge/knowledgeRevision.ts` - Revision machinery for `KnowledgeRepository` (Recursa RS-5/RS-6): applies
 
 **Node.js Built-in Dependencies:**
@@ -1858,6 +2066,28 @@ Reachable from a root: **370** of 370 files. Dormant: **0** (0 orphaned, 0 test-
 
 ---
 
+### `src/agent/learning/ChildKnowledgeOverlay.ts` - Isolated knowledge overlay for one child learner (Recursa RS-21).
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../types/types.js` | `Entity, IGraphStorage` | Import (type-only) |
+| `../../types/skills.js` | `KnowledgeRevisionRecord` | Import (type-only) |
+| `../../types/agent-memory.js` | `isLearningTraceEntity` | Import |
+| `../../core/EntityManager.js` | `EntityManager` | Import (type-only) |
+| `../../utils/errors.js` | `VersionConflictError` | Import |
+| `../knowledge/KnowledgeRepository.js` | `KnowledgeRepository, ApplyResult, LoadForContextOptions, LoadedKnowledge` | Import (type-only) |
+| `../knowledge/ScratchKnowledge.js` | `ScratchKnowledge` | Import (type-only) |
+| `./observationChunks.js` | `decodeChunks, encodeChunks, isTagged` | Import |
+
+**Exports:**
+- Classes: `ChildKnowledgeOverlay`
+- Interfaces: `OverlayBase`
+- Functions: `readChildRevisions`
+- Constants: `CHILD_REVISIONS_TAG`
+
+---
+
 ### `src/agent/learning/Diagnoser.ts` - Diagnoser (spec RS-15): classifies why a failed task failed and records failure memory.
 
 **External Dependencies:**
@@ -1886,6 +2116,24 @@ Reachable from a root: **370** of 370 files. Dormant: **0** (0 orphaned, 0 test-
 
 ---
 
+### `src/agent/learning/InProcessLearnHandler.ts` - In-process handler for `kind: 'learn'` subagent tasks (Recursa RS-21).
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../harness/ConcurrencyLimiter.js` | `SubagentHandler` | Import (type-only) |
+| `./LeafLearner.js` | `LeafLearner` | Import (type-only) |
+| `./RecursiveLearner.js` | `RecursiveLearner` | Import |
+| `./RecursiveDrive.js` | `runLeafTrace` | Import |
+| `./types.js` | `LearningDeps` | Import (type-only) |
+
+**Exports:**
+- Interfaces: `ChildDriverSource`, `LearnTaskInput`
+- Functions: `createInProcessLearnHandler`
+- Constants: `DEFAULT_CHILD_CONCURRENCY`
+
+---
+
 ### `src/agent/learning/KnowledgeEditor.ts` - KnowledgeEditor (spec RS-16): turns diagnoses into one knowledge revision.
 
 **External Dependencies:**
@@ -1908,12 +2156,13 @@ Reachable from a root: **370** of 370 files. Dormant: **0** (0 orphaned, 0 test-
 | `../../types/agent-memory.js` | `toIsoDateTime` | Import |
 | `./types.js` | `LoadedKnowledge` | Import (type-only) |
 | `../../utils/logger.js` | `logger` | Import |
+| `../../utils/textSimilarity.js` | `ENGLISH_STOPWORDS_SMALL, tokenSetWithoutStopwords` | Import |
 | `./llmJson.js` | `ABORTED, describeError, escapeProse, extractJsonObject, fencedText, inlineSafe, raceAbort` | Import |
 
 **Exports:**
 - Classes: `KnowledgeEditor`
 - Interfaces: `KnowledgeEditorDeps`, `KnowledgeEditContext`
-- Functions: `buildDraftPrompt`
+- Functions: `taskRef`, `taskKeywords`, `buildDraftPrompt`
 
 ---
 
@@ -2085,6 +2334,25 @@ Reachable from a root: **370** of 370 files. Dormant: **0** (0 orphaned, 0 test-
 
 ---
 
+### `src/agent/learning/LearningReflector.ts` - Learning reflector (Recursa RS-21): one `learning` reflection per recursive round.
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../types/learning.js` | `EvalMetrics` | Import (type-only) |
+| `../../types/agent-memory.js` | `ReflectionRecord` | Import (type-only) |
+| `../AgentReflectionManager.js` | `AgentReflectionManager` | Import (type-only) |
+| `../procedural/graph/CompletionProvider.js` | `PGCompletionProvider` | Import (type-only) |
+| `./LearningTrace.js` | `LearningTrace` | Import (type-only) |
+
+**Exports:**
+- Classes: `LearningReflector`
+- Interfaces: `ReflectChild`, `ReflectInput`, `ReflectResult`, `LearningReflectorOptions`
+- Functions: `preferredStrategyOf`
+- Constants: `MAX_KEY_INSIGHTS`
+
+---
+
 ### `src/agent/learning/LearningTrace.ts` - Learning-trace manager (Recursa RS-22).
 
 **Internal Dependencies:**
@@ -2106,6 +2374,249 @@ Reachable from a root: **370** of 370 files. Dormant: **0** (0 orphaned, 0 test-
 - Interfaces: `LearningTraceDeps`, `LearningTraceOptions`, `TraceTree`
 - Functions: `foldTraceActions`, `buildTraceEntity`
 - Constants: `TRACE_RECORD_BYTE_BUDGET`, `DEFAULT_TRACE_MAX_ACTIONS`
+
+---
+
+### `src/agent/learning/RecursiveChildren.ts` - Child factories of the recursive learner (Recursa RS-21): a leaf learner or a nested recursive
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../types/learning.js` | `LearningBudget, TaskRecord` | Import (type-only) |
+| `./LeafLearner.js` | `LeafStartOptions` | Import (type-only) |
+| `./LeafLearner.js` | `LeafLearner` | Import |
+| `./ChildKnowledgeOverlay.js` | `ChildKnowledgeOverlay` | Import |
+| `./RecursiveLearner.js` | `RecursiveLearner, RecursiveLearnerOptions` | Import (type-only) |
+| `./RecursiveLearnerState.js` | `RecursiveState, SubsetRecord` | Import (type-only) |
+| `./RevisionValidator.js` | `RevisionValidator` | Import (type-only) |
+| `./RevisionMerger.js` | `RevisionMerger` | Import (type-only) |
+| `./RecursiveLearner.js` | `SplitFn` | Import (type-only) |
+
+**Exports:**
+- Interfaces: `ChildFactoryContext`
+- Types: `RecursiveCtor`
+- Functions: `leafOver`, `recursiveOver`, `createChildRun`
+
+---
+
+### `src/agent/learning/RecursiveDrive.ts` - In-process driving of the recursive learner (Recursa RS-21): the plan / children / merge /
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../types/learning.js` | `LearnResult, LearnStopReason, LearningBudget, TaskRecord` | Import (type-only) |
+| `./LeafLearnerOptions.js` | `resolveOptions` | Import |
+| `./LearningAccountant.js` | `LearningAccountant` | Import |
+| `./RecursiveLearnerState.js` | `DEFAULT_LEAF_THRESHOLD, DEFAULT_MAX_DEPTH` | Import |
+| `../harness/ConcurrencyLimiter.js` | `AbortError, runAll, runAllWithStats` | Import |
+| `./llmJson.js` | `describeError` | Import |
+| `./LeafLearner.js` | `LeafLearner` | Import |
+| `./LearningTrace.js` | `LearningTrace` | Import (type-only) |
+| `./RecursiveLearnerState.js` | `SubsetRecord, ChildSummary, RecursiveState, RecursiveOptions` | Import (type-only) |
+| `./RecursiveLearnerState.js` | `childResultOf, pick` | Import |
+| `./RecursiveLearnerState.js` | `loadRecursive` | Import |
+| `./LeafLearnerStore.js` | `loadRun` | Import |
+| `./RecursivePlan.js` | `childPhaseBudgetStop` | Import |
+| `./types.js` | `LearningDeps` | Import (type-only) |
+| `./RecursiveLearner.js` | `MergeDeps, RecursiveLearner, RecursiveStartOptions` | Import (type-only) |
+
+**Exports:**
+- Classes: `KeyedMutex`
+- Interfaces: `CheckedStart`
+- Functions: `driveRun`, `assertChildDone`, `runLeafTrace`, `mergeDepsOf`, `failedSummary`, `wallClockStop`, `checkStartOptions`, `initialRecursiveState`, `summarizeChild`, `resetForNextRound`
+
+---
+
+### `src/agent/learning/RecursiveEvaluate.ts` - Live-`K` evaluation and round settlement of the recursive learner (Recursa RS-21, spec §3.4 B1).
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../types/learning.js` | `TaskRecord, TokenTotals` | Import (type-only) |
+| `../evaluation/DeterministicJudge.js` | `RubricJudge` | Import (type-only) |
+| `../harness/ConcurrencyLimiter.js` | `runAll` | Import |
+| `../knowledge/KnowledgeRepository.js` | `KnowledgeRepository` | Import (type-only) |
+| `./LeafLearnerStore.js` | `feedbackFromCriteria` | Import |
+| `./types.js` | `LearningSolver` | Import (type-only) |
+
+**Exports:**
+- Interfaces: `LiveEvaluation`
+- Functions: `evaluateLive`, `fixedBetween`
+
+---
+
+### `src/agent/learning/RecursiveLearner.ts` - Recursive learner (Recursa RS-21): Algorithm 1 lines 9-16 as a resumable state machine.
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../types/learning.js` | `LearnOptions, LearnResult, LearnStopReason, TaskRecord` | Import (type-only) |
+| `../../types/types.js` | `IGraphStorage` | Import (type-only) |
+| `../../types/agent-memory.js` | `toIsoDateTime` | Import |
+| `../../core/EntityManager.js` | `EntityManager` | Import (type-only) |
+| `../knowledge/KnowledgeRepository.js` | `KnowledgeRepository` | Import (type-only) |
+| `../evaluation/DeterministicJudge.js` | `RubricJudge` | Import (type-only) |
+| `./ChildKnowledgeOverlay.js` | `ChildKnowledgeOverlay` | Import |
+| `./LeafLearner.js` | `LeafLearner` | Import (type-only) |
+| `./LeafLearnerOptions.js` | `DiagnoserLike, KnowledgeEditorLike` | Import (type-only) |
+| `./LeafLearnerStore.js` | `EMPTY_METRICS, taskRecordsJson` | Import |
+| `./LearningAccountant.js` | `LearningAccountant` | Import |
+| `./LearningReflector.js` | `LearningReflector` | Import (type-only) |
+| `./LearningTrace.js` | `LearningTrace` | Import (type-only) |
+| `./RevisionValidator.js` | `RevisionValidator` | Import |
+| `./RevisionMerger.js` | `RevisionMerger` | Import |
+| `./SplitStrategies.js` | `split` | Import |
+| `./RecursivePlan.js` | `absorbEvidence, childBudgetOf, planSubsets` | Import |
+| `./types.js` | `LearningDeps, LearningSolver` | Import (type-only) |
+| `./RecursiveLearnerState.js` | `MergeRecord, RecursiveState, SubsetRecord, childResultOf, copyRecursive, loadRecursive, metricsOf, saveRecursive` | Import |
+| `./RecursiveDrive.js` | `KeyedMutex, checkStartOptions, resetForNextRound, summarizeChild, assertChildDone, driveRun, failedSummary, initialRecursiveState, wallClockStop` | Import |
+| `./RecursiveMerge.js` | `buildChildOutcomes, mergeOutcomeOf, publishAccepted, reflectChildrenOf, settleRound, validateAndApplyMerge` | Import |
+| `./RecursiveEvaluate.js` | `evaluateLive` | Import |
+| `./RecursiveChildren.js` | `ChildFactoryContext, createChildRun, leafOver, recursiveOver` | Import |
+
+**Exports:**
+- Classes: `RecursiveLearner`
+- Interfaces: `RecursiveLearnerOptions`, `MergeDeps`, `MergeOutcome`, `ReflectDecision`
+- Types: `SplitFn`, `RecursiveStartOptions`
+
+---
+
+### `src/agent/learning/RecursiveLearnerState.ts` - State, persistence and child-result helpers of the recursive learner (Recursa RS-21).
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../types/learning.js` | `Diagnosis, EvalMetrics, Feedback, LearnStopReason, LearningBudget, SplitStrategyName, TaskRecord, TokenTotals` | Import (type-only) |
+| `../../types/skills.js` | `KnowledgeRevisionRecord` | Import (type-only) |
+| `../../types/agent-memory.js` | `IsoDateTime` | Import (type-only) |
+| `./LearningTrace.js` | `LearningTrace` | Import (type-only) |
+| `./LearningAccountant.js` | `AccountantState` | Import (type-only) |
+| `./types.js` | `LeafPhase` | Import (type-only) |
+| `./LeafLearnerStore.js` | `loadRun, summarize` | Import |
+
+**Exports:**
+- Interfaces: `SubsetRecord`, `SplitEvidence`, `ChildSummary`, `RecursiveOptions`, `MergeRecord`, `RecursiveState`, `LoadedRecursive`, `ChildResult`
+- Types: `RecursivePhase`
+- Functions: `loadRecursive`, `saveRecursive`, `metricsOf`, `pick`, `sumTokens`, `childResultOf`, `combineRevisions`, `copyRecursive`
+- Constants: `DEFAULT_MAX_DEPTH`, `DEFAULT_LEAF_THRESHOLD`
+
+---
+
+### `src/agent/learning/RecursiveMerge.ts` - Validation and application of a recursive round's merged revision (Recursa RS-21, §5.2).
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../types/skills.js` | `KnowledgeRevisionRecord` | Import (type-only) |
+| `../../types/learning.js` | `LearnStopReason, TaskRecord` | Import (type-only) |
+| `./RecursiveEvaluate.js` | `fixedBetween` | Import |
+| `../../types/types.js` | `IGraphStorage` | Import (type-only) |
+| `./LearningReflector.js` | `ReflectChild` | Import (type-only) |
+| `./RevisionMerger.js` | `ChildOutcome` | Import (type-only) |
+| `../../types/agent-memory.js` | `toIsoDateTime` | Import |
+| `./RecursiveLearnerState.js` | `combineRevisions, metricsOf, RecursiveState` | Import |
+| `./ChildKnowledgeOverlay.js` | `readChildRevisions` | Import |
+| `../knowledge/KnowledgeRepository.js` | `KnowledgeRepository` | Import (type-only) |
+| `./LearningTrace.js` | `LearningTrace` | Import (type-only) |
+| `./RevisionValidator.js` | `RevisionValidator` | Import (type-only) |
+| `./RecursiveLearnerState.js` | `MergeRecord` | Import (type-only) |
+| `./RecursiveLearner.js` | `MergeDeps, MergeOutcome` | Import (type-only) |
+
+**Exports:**
+- Interfaces: `ValidateAndApplyArgs`
+- Functions: `validateAndApplyMerge`, `buildChildOutcomes`, `reflectChildrenOf`, `publishAccepted`, `settleRound`, `mergeOutcomeOf`
+
+---
+
+### `src/agent/learning/RecursivePlan.ts` - Planning helpers of the recursive learner (Recursa RS-21, spec §3.7 S1/S2).
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../types/learning.js` | `LearningBudget, SplitStrategyName, TaskRecord` | Import (type-only) |
+| `../knowledge/KnowledgeRepository.js` | `KnowledgeRepository` | Import (type-only) |
+| `./LearningAccountant.js` | `LearningAccountant` | Import |
+| `./RecursiveLearnerState.js` | `ChildResult, RecursiveState, SubsetRecord` | Import (type-only) |
+| `./SplitStrategies.js` | `CONCRETE_SPLITS, SplitContext, TaskSubset` | Import |
+
+**Exports:**
+- Functions: `splitContextOf`, `planSubsets`, `childBudgetOf`, `absorbEvidence`, `childPhaseBudgetStop`, `normalizeSubsets`
+
+---
+
+### `src/agent/learning/RevisionGeneralize.ts` - Step 3 of the revision merger (spec RS-20, §3.7 B2): generalize `skill.add` ops from two or
+
+**Node.js Built-in Dependencies:**
+| Module | Import |
+|--------|--------|
+| `crypto` | `createHash` |
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../types/skills.js` | `RevisionOp, SkillSource` | Import (type-only) |
+| `../../utils/textSimilarity.js` | `ENGLISH_STOPWORDS_SMALL, jaccard, tokenSetWithoutStopwords` | Import |
+| `./llmJson.js` | `escapeHeadings, escapeProse, fencedText, inlineSafe` | Import |
+| `./revisionMergeShared.js` | `BodySchema, NAME_MAX_CHARS, labelOfEntry, union, CallJson, ChildOutcome, Entry, RevisionMergeResult` | Import |
+| `./RevisionReconcile.js` | `MergePlan` | Import (type-only) |
+
+**Exports:**
+- Functions: `canGeneralize`, `generalizeAdds`
+- Constants: `GENERALIZE_DESCRIPTION_JACCARD`
+
+---
+
+### `src/agent/learning/RevisionMerger.ts` - RevisionMerger (spec RS-20): merges the knowledge revisions of child learners into one revision.
+
+**External Dependencies:**
+| Package | Import |
+|---------|--------|
+| `zod` | `z` |
+
+**Node.js Built-in Dependencies:**
+| Module | Import |
+|--------|--------|
+| `crypto` | `randomUUID` |
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../types/skills.js` | `RevisionOp, KnowledgeRevisionRecord` | Import (type-only) |
+| `../../types/agent-memory.js` | `toIsoDateTime` | Import |
+| `../procedural/graph/CompletionProvider.js` | `PGCompletionProvider` | Import (type-only) |
+| `../ObservationDedupManager.js` | `DEFAULT_DEDUP_JACCARD` | Import |
+| `../../utils/textSimilarity.js` | `ENGLISH_STOPWORDS_SMALL, jaccard, tokenSetWithoutStopwords` | Import |
+| `../harness/ConcurrencyLimiter.js` | `AbortError` | Import |
+| `./llmJson.js` | `ABORTED, describeError, extractJsonObject, raceAbort` | Import |
+| `../../utils/logger.js` | `logger` | Import |
+| `./revisionMergeShared.js` | `union, CallJson, ChildOutcome, Entry, RevisionMergeResult, RevisionMergerDeps` | Import |
+| `./RevisionReconcile.js` | `reconcileTargets, MergePlan` | Import |
+| `./RevisionGeneralize.js` | `generalizeAdds` | Import |
+| `./revisionMergeShared.js` | `ChildOutcome, RevisionMergeResult, RevisionMergerDeps` | Re-export (type-only) |
+
+**Exports:**
+- Classes: `RevisionMerger`
+- Re-exports: `ChildOutcome`, `RevisionMergeResult`, `RevisionMergerDeps`
+
+---
+
+### `src/agent/learning/RevisionReconcile.ts` - Step 2 of the revision merger (spec RS-20, §3.7 S7): reconcile `skill.update` /
+
+**External Dependencies:**
+| Package | Import |
+|---------|--------|
+| `zod` | `z` |
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../types/skills.js` | `RevisionOp, SkillRecord` | Import (type-only) |
+| `./llmJson.js` | `fencedText, inlineSafe` | Import |
+| `./revisionMergeShared.js` | `InstructionPatchSchema, SkillPatchSchema, canonical, fixedOfEntry, labelOfEntry, targetOf, CallJson, ChildOutcome, Entry, RevisionMergeResult` | Import |
+
+**Exports:**
+- Interfaces: `MergePlan`
+- Functions: `foldOps`, `reconcileTargets`
 
 ---
 
@@ -2131,7 +2642,21 @@ Reachable from a root: **370** of 370 files. Dormant: **0** (0 orphaned, 0 test-
 
 ---
 
-### `src/agent/learning/index.ts` - Recursa Phase 4 public surface: learning-loop callbacks, the diagnoser, the knowledge editor,
+### `src/agent/learning/SplitStrategies.ts` - Split strategies (spec RS-19): partition a set of tasks into labelled subsets for recursive
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../types/learning.js` | `Diagnosis, SplitStrategyName, TaskRecord` | Import (type-only) |
+
+**Exports:**
+- Interfaces: `TaskSubset`, `SplitContext`
+- Functions: `preferredSplitOf`, `isPartition`, `split`
+- Constants: `CONCRETE_SPLITS`
+
+---
+
+### `src/agent/learning/index.ts` - Recursa public surface for the learning loop: learning-loop callbacks, the diagnoser, the knowledge
 
 **Internal Dependencies:**
 | File | Imports | Type |
@@ -2143,6 +2668,11 @@ Reachable from a root: **370** of 370 files. Dormant: **0** (0 orphaned, 0 test-
 | `./LeafLearnerDeps.js` | `createLeafLearnerDeps` | Re-export |
 | `./LearningTrace.js` | `LearningTrace` | Re-export |
 | `./LearningAccountant.js` | `LearningAccountant` | Re-export |
+| `./SplitStrategies.js` | `split, isPartition` | Re-export |
+| `./RevisionMerger.js` | `RevisionMerger` | Re-export |
+| `./RecursiveLearner.js` | `RecursiveLearner` | Re-export |
+| `./LearningReflector.js` | `LearningReflector, MAX_KEY_INSIGHTS` | Re-export |
+| `./InProcessLearnHandler.js` | `createInProcessLearnHandler, DEFAULT_CHILD_CONCURRENCY` | Re-export |
 | `./Diagnoser.js` | `DiagnoserDeps, DiagnoseItem, DiagnoseOptions, FailureDedupStore` | Re-export (type-only) |
 | `./KnowledgeEditor.js` | `KnowledgeEditorDeps, KnowledgeEditContext` | Re-export (type-only) |
 | `./RevisionValidator.js` | `ValidateOptions, ValidationPlan, ValidationPlanOptions, ValidationPlanResult, ValidationVerdictResult` | Re-export (type-only) |
@@ -2151,16 +2681,22 @@ Reachable from a root: **370** of 370 files. Dormant: **0** (0 orphaned, 0 test-
 | `./LearningTrace.js` | `LearningTraceDeps, LearningTraceOptions, TraceTree` | Re-export (type-only) |
 | `./LearningAccountant.js` | `AccountantState, LearningAccountantOptions, LearningReport, TokenTotals` | Re-export (type-only) |
 | `./types.js` | `LearningSolver, LoadedKnowledge, LearningDeps, JudgeAnswer, StepRequest` | Re-export (type-only) |
+| `./SplitStrategies.js` | `TaskSubset, SplitContext` | Re-export (type-only) |
+| `./RevisionMerger.js` | `ChildOutcome, RevisionMergeResult, RevisionMergerDeps` | Re-export (type-only) |
+| `./RecursiveLearner.js` | `MergeDeps, MergeOutcome, RecursiveLearnerOptions, RecursiveStartOptions, ReflectDecision, SplitFn` | Re-export (type-only) |
+| `./RecursiveLearnerState.js` | `RecursivePhase, RecursiveState, SubsetRecord` | Re-export (type-only) |
+| `./LearningReflector.js` | `LearningReflectorOptions, ReflectChild, ReflectInput, ReflectResult` | Re-export (type-only) |
+| `./InProcessLearnHandler.js` | `ChildDriverSource, LearnTaskInput` | Re-export (type-only) |
 
 **Exports:**
-- Re-exports: `Diagnoser`, `KnowledgeEditor`, `RevisionValidator`, `planValidation`, `decideValidation`, `LeafLearner`, `createLeafLearnerDeps`, `LearningTrace`, `LearningAccountant`, `DiagnoserDeps`, `DiagnoseItem`, `DiagnoseOptions`, `FailureDedupStore`, `KnowledgeEditorDeps`, `KnowledgeEditContext`, `ValidateOptions`, `ValidationPlan`, `ValidationPlanOptions`, `ValidationPlanResult`, `ValidationVerdictResult`, `DiagnoserLike`, `KnowledgeEditorLike`, `LeafCallContext`, `LeafLearnerOptions`, `LeafStartOptions`, `LeafDepsParts`, `LeafLearnerDeps`, `LearningTraceDeps`, `LearningTraceOptions`, `TraceTree`, `AccountantState`, `LearningAccountantOptions`, `LearningReport`, `TokenTotals`, `LearningSolver`, `LoadedKnowledge`, `LearningDeps`, `JudgeAnswer`, `StepRequest`
+- Re-exports: `Diagnoser`, `KnowledgeEditor`, `RevisionValidator`, `planValidation`, `decideValidation`, `LeafLearner`, `createLeafLearnerDeps`, `LearningTrace`, `LearningAccountant`, `split`, `isPartition`, `RevisionMerger`, `RecursiveLearner`, `LearningReflector`, `MAX_KEY_INSIGHTS`, `createInProcessLearnHandler`, `DEFAULT_CHILD_CONCURRENCY`, `DiagnoserDeps`, `DiagnoseItem`, `DiagnoseOptions`, `FailureDedupStore`, `KnowledgeEditorDeps`, `KnowledgeEditContext`, `ValidateOptions`, `ValidationPlan`, `ValidationPlanOptions`, `ValidationPlanResult`, `ValidationVerdictResult`, `DiagnoserLike`, `KnowledgeEditorLike`, `LeafCallContext`, `LeafLearnerOptions`, `LeafStartOptions`, `LeafDepsParts`, `LeafLearnerDeps`, `LearningTraceDeps`, `LearningTraceOptions`, `TraceTree`, `AccountantState`, `LearningAccountantOptions`, `LearningReport`, `TokenTotals`, `LearningSolver`, `LoadedKnowledge`, `LearningDeps`, `JudgeAnswer`, `StepRequest`, `TaskSubset`, `SplitContext`, `ChildOutcome`, `RevisionMergeResult`, `RevisionMergerDeps`, `MergeDeps`, `MergeOutcome`, `RecursiveLearnerOptions`, `RecursiveStartOptions`, `ReflectDecision`, `SplitFn`, `RecursivePhase`, `RecursiveState`, `SubsetRecord`, `LearningReflectorOptions`, `ReflectChild`, `ReflectInput`, `ReflectResult`, `ChildDriverSource`, `LearnTaskInput`
 
 ---
 
 ### `src/agent/learning/llmJson.ts` - Shared helpers for LLM-backed learning steps: JSON extraction from model output,
 
 **Exports:**
-- Functions: `extractJsonObject`, `raceAbort`, `describeError`, `escapeFenceContent`, `fencedText`, `escapeProse`, `inlineSafe`
+- Functions: `extractJsonObject`, `raceAbort`, `describeError`, `escapeFenceContent`, `fencedText`, `escapeHeading`, `escapeHeadings`, `escapeProse`, `inlineSafe`
 - Constants: `ABORTED`
 
 ---
@@ -2170,6 +2706,27 @@ Reachable from a root: **370** of 370 files. Dormant: **0** (0 orphaned, 0 test-
 **Exports:**
 - Functions: `splitForObservations`, `encodeChunks`, `isTagged`, `decodeChunks`
 - Constants: `OBSERVATION_CHUNK_CHARS`
+
+---
+
+### `src/agent/learning/revisionMergeShared.ts` - Types and helpers shared by the revision merger's steps (spec RS-20).
+
+**External Dependencies:**
+| Package | Import |
+|---------|--------|
+| `zod` | `z` |
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../procedural/graph/CompletionProvider.js` | `PGCompletionProvider` | Import (type-only) |
+| `../../types/skills.js` | `KnowledgeRevisionRecord, RevisionOp` | Import (type-only) |
+
+**Exports:**
+- Interfaces: `ChildOutcome`, `RevisionMergeResult`, `RevisionMergerDeps`, `Entry`
+- Types: `CallJson`
+- Functions: `canonical`, `union`, `targetOf`, `labelOfEntry`, `fixedOfEntry`
+- Constants: `BODY_MAX_CHARS`, `FIELD_MAX_CHARS`, `NAME_MAX_CHARS`, `SkillPatchSchema`, `InstructionPatchSchema`, `BodySchema`
 
 ---
 
@@ -3938,6 +4495,8 @@ Reachable from a root: **370** of 370 files. Dormant: **0** (0 orphaned, 0 test-
 | `./context/AgentBookkeepingFacade.js` | `AgentBookkeepingFacade` | Import |
 | `./context/KnowledgeGovernanceFacade.js` | `KnowledgeGovernanceFacade` | Import |
 | `./context/LearningFacade.js` | `LearningFacade, LearningLoop, LearningLoopDeps` | Import |
+| `./context/BootstrapFacade.js` | `BootstrapFacade, BootstrapperOptions` | Import |
+| `../agent/bootstrap/Bootstrapper.js` | `Bootstrapper` | Import (type-only) |
 | `../utils/envConfig.js` | `readEnvNumber, EnvNumberBounds` | Import |
 | `./HierarchyManager.js` | `HierarchyManager` | Import |
 | `./GraphTraversal.js` | `GraphTraversal` | Import |
@@ -4338,6 +4897,31 @@ Reachable from a root: **370** of 370 files. Dormant: **0** (0 orphaned, 0 test-
 
 ---
 
+### `src/core/context/BootstrapFacade.ts` - BootstrapFacade
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../GraphStorage.js` | `GraphStorage` | Import (type-only) |
+| `../EntityManager.js` | `EntityManager` | Import (type-only) |
+| `../RelationManager.js` | `RelationManager` | Import (type-only) |
+| `../../agent/knowledge/KnowledgeRepository.js` | `KnowledgeRepository` | Import (type-only) |
+| `../../agent/skills/SkillManager.js` | `SkillManager` | Import (type-only) |
+| `../../agent/SummarizationService.js` | `SummarizationService` | Import |
+| `../../agent/procedural/graph/CompletionProvider.js` | `PGCompletionProvider` | Import (type-only) |
+| `../../types/learning.js` | `LearnResult` | Import (type-only) |
+| `../../agent/bootstrap/Bootstrapper.js` | `Bootstrapper, BootstrapLearner` | Import |
+| `../../agent/learning/LeafLearner.js` | `LeafStartOptions` | Import (type-only) |
+| `../../agent/learning/types.js` | `LearningDeps` | Import (type-only) |
+| `../../features/KeywordExtractor.js` | `KeywordExtractor` | Import |
+| `./LearningFacade.js` | `LearningLoop, LearningLoopDeps` | Import (type-only) |
+
+**Exports:**
+- Classes: `BootstrapFacade`
+- Interfaces: `BootstrapFacadeDeps`, `BootstrapperOptions`
+
+---
+
 ### `src/core/context/KnowledgeGovernanceFacade.ts` - KnowledgeGovernanceFacade
 
 **Internal Dependencies:**
@@ -4380,18 +4964,26 @@ Reachable from a root: **370** of 370 files. Dormant: **0** (0 orphaned, 0 test-
 | `../../agent/AgentReflectionManager.js` | `AgentReflectionManager` | Import (type-only) |
 | `../../agent/harness/InteractionLog.js` | `InteractionLog` | Import (type-only) |
 | `../../agent/learning/LearningAccountant.js` | `LearningReport` | Import (type-only) |
+| `../../agent/learning/LearningAccountant.js` | `LearningAccountant` | Import |
 | `../../agent/learning/LearningTrace.js` | `LearningTrace` | Import |
 | `../../agent/learning/Diagnoser.js` | `Diagnoser` | Import |
 | `../../agent/learning/KnowledgeEditor.js` | `KnowledgeEditor` | Import |
 | `../../agent/learning/LeafLearner.js` | `LeafLearner, LeafStartOptions` | Import |
 | `../../agent/learning/LeafLearnerDeps.js` | `createLeafLearnerDeps` | Import |
+| `../../agent/learning/LearningReflector.js` | `LearningReflector` | Import |
+| `../../agent/learning/RecursiveLearner.js` | `RecursiveLearner, MergeDeps, MergeOutcome, RecursiveStartOptions, ReflectDecision` | Import |
+| `../../agent/learning/RecursiveLearnerState.js` | `RecursiveState, SubsetRecord` | Import (type-only) |
+| `../../utils/envConfig.js` | `readEnvStrictInt` | Import |
+| `../../agent/learning/RevisionMerger.js` | `RevisionMerger` | Import |
 | `../../agent/learning/types.js` | `LearningDeps, StepRequest` | Import (type-only) |
-| `../../types/learning.js` | `CriterionResult, LearnResult, LeafState, SolveResult` | Import (type-only) |
+| `../../types/learning.js` | `CriterionResult, LearnResult, LeafState, SolveResult, TaskRecord` | Import (type-only) |
 
 **Exports:**
 - Classes: `LearningFacade`
 - Interfaces: `LearningFacadeDeps`, `LearningLoop`
 - Types: `LearningLoopDeps`
+- Functions: `leafThresholdOf`, `usesRecursiveLearner`
+- Constants: `DEFAULT_LOOP_LEAF_THRESHOLD`
 
 ---
 
@@ -6865,56 +7457,56 @@ Reachable from a root: **370** of 370 files. Dormant: **0** (0 orphaned, 0 test-
 
 | File | Imports From | Exports To |
 |------|--------------|------------|
-| `src/core/ManagerContext` | 90 files | 9 files |
+| `src/core/ManagerContext` | 92 files | 9 files |
+| `src/types/types` | 1 file | 84 files |
 | `src/types/index` | 12 files | 69 files |
-| `src/types/types` | 1 file | 74 files |
-| `src/agent/index` | 69 files | 1 file |
+| `src/types/agent-memory` | 3 files | 72 files |
+| `src/agent/index` | 70 files | 1 file |
 | `src/utils/index` | 38 files | 27 files |
-| `src/types/agent-memory` | 3 files | 60 files |
-| `src/core/GraphStorage` | 16 files | 42 files |
-| `src/core/EntityManager` | 12 files | 41 files |
+| `src/core/GraphStorage` | 16 files | 47 files |
+| `src/core/EntityManager` | 12 files | 48 files |
 | `src/search/index` | 50 files | 1 file |
-| `src/utils/errors` | 0 files | 36 files |
-| `src/utils/logger` | 0 files | 34 files |
+| `src/utils/errors` | 0 files | 40 files |
+| `src/utils/logger` | 0 files | 37 files |
+| `src/types/learning` | 2 files | 33 files |
+| `src/types/skills` | 1 file | 33 files |
 | `src/agent/AgentMemoryManager` | 30 files | 3 files |
 | `src/core/context/AgentMemoryFacade` | 31 files | 1 file |
+| `src/agent/knowledge/KnowledgeRepository` | 14 files | 17 files |
+| `src/agent/learning/RecursiveLearner` | 23 files | 6 files |
+| `src/utils/textSimilarity` | 0 files | 29 files |
+| `src/agent/bootstrap/Bootstrapper` | 25 files | 3 files |
 | `src/cli/commands/helpers` | 4 files | 23 files |
 | `src/agent/ConsolidationPipeline` | 19 files | 7 files |
-| `src/utils/textSimilarity` | 0 files | 26 files |
+| `src/agent/learning/types` | 5 files | 20 files |
 | `src/cli/commands/index` | 24 files | 1 file |
 | `src/core/context/SearchFacade` | 24 files | 1 file |
 | `src/agent/ContextWindowManager` | 18 files | 6 files |
-| `src/agent/knowledge/KnowledgeRepository` | 13 files | 10 files |
-| `src/types/learning` | 2 files | 21 files |
+| `src/core/RelationManager` | 6 files | 18 files |
+| `src/core/context/LearningFacade` | 22 files | 2 files |
 | `src/cli/formatters` | 2 files | 20 files |
 | `src/core/context/AgentCognitionFacade` | 21 files | 1 file |
 | `src/search/SearchManager` | 17 files | 5 files |
-| `src/core/RelationManager` | 6 files | 15 files |
-| `src/types/skills` | 1 file | 20 files |
-| `src/utils/envConfig` | 1 file | 20 files |
+| `src/utils/envConfig` | 1 file | 21 files |
+| `src/agent/learning/LearningTrace` | 10 files | 11 files |
+| `src/agent/skills/SkillManager` | 11 files | 10 files |
+| `src/agent/learning/LeafLearner` | 10 files | 10 files |
 | `src/core/ObservationManager` | 12 files | 8 files |
 | `src/features/IOManager` | 16 files | 4 files |
 | `src/search/RankedSearch` | 11 files | 9 files |
 | `src/types/proceduralGraph` | 0 files | 20 files |
 | `src/utils/constants` | 0 files | 20 files |
 | `src/utils/entityUtils` | 3 files | 17 files |
-| `src/agent/AgentMemoryConfig` | 15 files | 4 files |
-| `src/agent/DecayEngine` | 8 files | 11 files |
-| `src/agent/procedural/graph/index` | 16 files | 3 files |
-| `src/agent/learning/types` | 5 files | 13 files |
-| `src/agent/skills/SkillManager` | 11 files | 7 files |
-| `src/core/context/LearningFacade` | 17 files | 1 file |
-| `src/core/index` | 16 files | 1 file |
 
 ---
 
 <a id="circular-dependency-analysis"></a>
 ## Circular Dependency Analysis
 
-**12 circular dependencies detected:**
+**15 circular dependencies detected:**
 
 - **Runtime cycles**: 0 (require attention)
-- **Type-only cycles**: 12 (safe, no runtime impact)
+- **Type-only cycles**: 15 (safe, no runtime impact)
 
 ### Type-Only Circular Dependencies
 
@@ -6930,7 +7522,7 @@ These cycles only involve type imports and are safe (erased at runtime):
 - src/agent/procedural/graph/backing/IProceduralGraphBacking.ts -> src/agent/procedural/graph/backing/InMemoryProceduralGraphBacking.ts -> src/agent/procedural/graph/backing/LockedProceduralGraphBacking.ts -> src/agent/procedural/graph/backing/ProceduralGraphState.ts -> src/agent/procedural/graph/backing/IProceduralGraphBacking.ts
 - src/agent/procedural/graph/backing/IProceduralGraphBacking.ts -> src/agent/procedural/graph/backing/SqliteProceduralGraphBacking.ts -> src/agent/procedural/graph/backing/IProceduralGraphBacking.ts
 - src/agent/procedural/graph/ProceduralGraphSession.ts -> src/agent/procedural/graph/ProceduralGuidance.ts -> src/agent/procedural/graph/ProceduralGraphSession.ts
-- ... and 2 more
+- ... and 5 more
 
 ---
 
@@ -6960,7 +7552,7 @@ graph TD
         N14[ConflictResolver]
         N15[ConsolidationPipeline]
         N16[ConsolidationScheduler]
-        N17[...143 more]
+        N17[...166 more]
     end
 
     subgraph Cli
@@ -6988,7 +7580,7 @@ graph TD
         N36[ObservationManager]
         N37[ObservationStore]
         N38[PostgreSQLStorage]
-        N39[...25 more]
+        N39[...26 more]
     end
 
     subgraph Features
@@ -7151,21 +7743,21 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 370 |
+| Total TypeScript Files | 394 |
 | Total Modules | 12 |
-| Total Lines of Code | 119085 |
-| Total Exports | 2588 |
-| Total Re-exports | 1631 |
-| Total Classes | 264 |
-| Total Interfaces | 769 |
-| Total Functions | 545 |
-| Total Type Guards | 41 |
+| Total Lines of Code | 124937 |
+| Total Exports | 2769 |
+| Total Re-exports | 1700 |
+| Total Classes | 275 |
+| Total Interfaces | 820 |
+| Total Functions | 623 |
+| Total Type Guards | 42 |
 | Total Enums | 4 |
-| Type-only Imports | 726 |
+| Type-only Imports | 846 |
 | Runtime Circular Deps | 0 |
-| Type-only Circular Deps | 12 |
+| Type-only Circular Deps | 15 |
 | Entry/Build Roots | 4 |
-| Reachable Files | 370 |
+| Reachable Files | 394 |
 | Dormant Files (orphaned / test-only) | 0 (0 / 0) |
 
 ---

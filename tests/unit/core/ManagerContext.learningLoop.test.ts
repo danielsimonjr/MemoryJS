@@ -6,7 +6,8 @@
  *   missing knowledge, the editor's `skill.add` teaches it, and the run stops `all-pass` in the
  *   second learning round.
  * - The stepwise `start` / `next` / `submit` / `status` path reaches `done` the same way.
- * - The Phase 5 operations throw.
+ * - The Phase 5 operations (`plan` / `submitChild` / `merge` / `reflect`) are covered in
+ *   `ManagerContext.learningLoop.recursive.test.ts`; the leaf path is unchanged.
  */
 import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import { ManagerContext } from '../../../src/core/ManagerContext.js';
@@ -198,12 +199,10 @@ describe.each(BACKENDS)('ManagerContext.learningLoop on $name storage', (backend
     expect(entity.learningTraceRecord.actions.some((a) => a.outcome.startsWith('publish-failed: '))).toBe(true);
   });
 
-  it('the Phase 5 operations throw a clear error', () => {
+  it('a small run without split stays on the leaf learner (no recursive child fields)', async () => {
     const ctx = newCtx();
     const loop = ctx.learningLoop({ solver: skillSolver(PASSING), judge: JUDGE });
-    expect(() => loop.plan()).toThrow(/Phase 5/);
-    expect(() => loop.submitChild()).toThrow(/Phase 5/);
-    expect(() => loop.merge()).toThrow(/Phase 5/);
-    expect(() => loop.reflect()).toThrow(/Phase 5/);
+    const state = await loop.start({ taskIds: TASKS.map((t) => t.id), tasks: TASKS, budget: { maxRounds: 3 } });
+    expect(state).not.toHaveProperty('childTraceIds');
   });
 });

@@ -331,7 +331,17 @@ const after = await ctx.worldModelManager.getCurrentState();
 const change = ctx.worldModelManager.detectStateChange(before, after);
 ```
 
-### 8. RBAC and PII redaction
+### 8. Learning loop (Recursa, experimental)
+
+```typescript
+// solver: { solve(task, knowledge) } — knowledge.markdown holds the loaded instructions and skills
+const loop = ctx.learningLoop({ solver, judge: new DeterministicJudge() });
+const result = await loop.learn({ taskIds: tasks.map((t) => t.id), tasks, budget: { maxRounds: 3 } });
+console.log(result.stoppedBecause, result.before.allPass, '→', result.after.allPass);
+// More than MEMORY_LEARNING_LEAF_THRESHOLD (20) tasks, or a `split`, runs the recursive learner.
+```
+
+### 9. RBAC and PII redaction
 
 ```typescript
 // Grant a role
