@@ -4,28 +4,28 @@
 
 # Complete File Inventory
 
-**Generated**: 2026-11-05 (by tools/create-dependency-graph)
+**Generated**: 2026-11-06 (by tools/create-dependency-graph)
 
 Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks/`, root-level `*.config.ts` — tagged with a disposition. A completeness census: no `.ts` may be silently missing. The self-check gate does a MAXIMAL, location-agnostic repo walk (broader than this census’s enumerated discovery) and fails the run if any `.ts` on disk is unaccounted.
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 802
+**Total files**: 806
 
 ## Disposition counts
 
 | Disposition | Count | Meaning |
 | --- | --: | --- |
-| `reachable` | 315 | A `src/` file in the module graph, reachable from a root. |
+| `reachable` | 317 | A `src/` file in the module graph, reachable from a root. |
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 467 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 469 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 4 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 0 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **802** | |
+| **Total** | **806** | |
 
 ## Per-area counts
 
@@ -33,8 +33,8 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | --- | --: |
 | `benchmarks` | 4 |
 | `config` | 2 |
-| `src` | 319 |
-| `tests` | 467 |
+| `src` | 321 |
+| `tests` | 469 |
 | `tools` | 10 |
 
 ## All files
@@ -301,16 +301,18 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/security/PiiRedactor.ts` | src | reachable | 164 |
 | `src/security/RowLevelFilter.ts` | src | reachable | 133 |
 | `src/sqlite.ts` | src | build-entry | 20 |
-| `src/types/agent-memory.ts` | src | reachable | 2432 |
+| `src/types/agent-memory.ts` | src | reachable | 2522 |
 | `src/types/artifact.ts` | src | reachable | 154 |
 | `src/types/event.ts` | src | reachable | 138 |
-| `src/types/index.ts` | src | reachable | 326 |
+| `src/types/index.ts` | src | reachable | 385 |
+| `src/types/learning.ts` | src | reachable | 246 |
 | `src/types/proceduralGraph.ts` | src | reachable | 254 |
 | `src/types/procedure.ts` | src | reachable | 72 |
 | `src/types/progress.ts` | src | reachable | 196 |
 | `src/types/reconstruction.ts` | src | reachable | 206 |
 | `src/types/result.ts` | src | reachable | 97 |
 | `src/types/search.ts` | src | reachable | 345 |
+| `src/types/skills.ts` | src | reachable | 281 |
 | `src/types/task-scheduler.ts` | src | reachable | 34 |
 | `src/types/types.ts` | src | reachable | 2563 |
 | `src/utils/AsyncMutex.ts` | src | reachable | 174 |
@@ -767,13 +769,15 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/tools/observations-to-columns.test.ts` | tools | tool | 780 |
 | `tests/unit/tools/plan-doc-audit.test.ts` | tools | tool | 326 |
 | `tests/unit/tools/segment-jsonl.test.ts` | tools | tool | 411 |
-| `tests/unit/types/agent-memory.test.ts` | tests | test | 885 |
+| `tests/unit/types/agent-memory.test.ts` | tests | test | 893 |
 | `tests/unit/types/entity-content-hash.test.ts` | tests | test | 53 |
 | `tests/unit/types/entity-new-fields.test.ts` | tests | test | 54 |
+| `tests/unit/types/learning.types.test.ts` | tests | test | 210 |
 | `tests/unit/types/profile-entity.test.ts` | tests | test | 24 |
 | `tests/unit/types/progress.test.ts` | tests | test | 413 |
 | `tests/unit/types/result.test.ts` | tests | test | 91 |
 | `tests/unit/types/search.test.ts` | tests | test | 591 |
+| `tests/unit/types/skills.types.test.ts` | tests | test | 271 |
 | `tests/unit/types/trust-level.test.ts` | tests | test | 108 |
 | `tests/unit/utils/AsyncMutex.test.ts` | tests | test | 232 |
 | `tests/unit/utils/BatchProcessor.test.ts` | tests | test | 672 |

@@ -9,6 +9,15 @@
  */
 
 import type { Entity } from './types.js';
+import type {
+  CoverageEntity,
+  InstructionSetEntity,
+  KnowledgeRevisionEntity,
+  KnowledgeSnapshotEntity,
+  NavigationNodeEntity,
+  SkillEntity,
+} from './skills.js';
+import type { LearningTraceEntity, TaskEntity } from './learning.js';
 
 // ==================== Context Profiles ====================
 
@@ -171,6 +180,14 @@ export const MEMORY_TYPES = [
   'decision',
   'project_context',
   'tool_affordance',
+  'skill',
+  'instruction_set',
+  'knowledge_snapshot',
+  'knowledge_revision',
+  'navigation_node',
+  'coverage',
+  'task',
+  'learning_trace',
 ] as const;
 
 /**
@@ -1057,7 +1074,7 @@ export function isProceduralMemory(entity: unknown): entity is AgentEntity & { m
 }
 
 /** Kinds of record field that a record guard checks. */
-type RecordFieldKind = 'string' | 'number' | 'object' | 'array';
+type RecordFieldKind = 'string' | 'number' | 'object' | 'array' | 'optionalObject';
 
 /**
  * Checks one field of a record against each record field kind.
@@ -1071,6 +1088,10 @@ const RECORD_FIELD_KIND_CHECK: Readonly<
   number: (record, field) => typeof record[field] === 'number',
   object: (record, field) => typeof record[field] === 'object' && record[field] !== null,
   array: (record, field) => Array.isArray(record[field]),
+  optionalObject: (record, field) => {
+    const value = record[field];
+    return value === undefined || (typeof value === 'object' && value !== null && !Array.isArray(value));
+  },
 };
 
 /**
@@ -1544,8 +1565,9 @@ export type ReflectionId = string & { readonly __reflectionId: unique symbol };
  * - `session`: applies only to the source session
  * - `project`: applies across a project (multi-session)
  * - `global`: applies across all projects (durable agent-level insight)
+ * - `learning`: produced by the recursive learner (Recursa, spec RS-21)
  */
-export type ReflectionScope = 'session' | 'project' | 'global';
+export type ReflectionScope = 'session' | 'project' | 'global' | 'learning';
 
 /**
  * Reflection record (Phase 2 Sprint 8, Catalog Type 10).
@@ -1657,6 +1679,79 @@ const heuristicGuard = recordGuard('heuristic', 'heuristicRecord', {
 /** Type guard for heuristic-memory entities. */
 export function isHeuristicMemory(entity: unknown): entity is HeuristicEntity {
   return heuristicGuard(entity);
+}
+
+// ==================== Recursa Knowledge & Learning Entities (spec §3.0) ====================
+
+const skillGuard = recordGuard('skill', 'skillRecord', {
+  id: 'string', name: 'string', description: 'string', kind: 'string', scope: 'object',
+  uncertainty: 'number', body: 'string', resources: 'array', sources: 'array',
+  lineage: 'object', stats: 'object', createdAt: 'string', lastUpdatedAt: 'string',
+  retired: 'optionalObject',
+});
+/** Type guard for skill entities (`skillRecord`). */
+export function isSkillEntity(entity: unknown): entity is SkillEntity {
+  return skillGuard(entity);
+}
+
+const instructionSetGuard = recordGuard('instruction_set', 'instructionSetRecord', {
+  id: 'string', role: 'string', sections: 'array', createdAt: 'string', lastUpdatedAt: 'string',
+});
+/** Type guard for instruction-set entities (`instructionSetRecord`). */
+export function isInstructionSetEntity(entity: unknown): entity is InstructionSetEntity {
+  return instructionSetGuard(entity);
+}
+
+const knowledgeSnapshotGuard = recordGuard('knowledge_snapshot', 'knowledgeSnapshotRecord', {
+  id: 'string', createdAt: 'string', instructionSets: 'array', skills: 'array',
+  memoryRefs: 'object', digest: 'string',
+});
+/** Type guard for knowledge-snapshot entities (`knowledgeSnapshotRecord`). */
+export function isKnowledgeSnapshotEntity(entity: unknown): entity is KnowledgeSnapshotEntity {
+  return knowledgeSnapshotGuard(entity);
+}
+
+const knowledgeRevisionGuard = recordGuard('knowledge_revision', 'knowledgeRevisionRecord', {
+  id: 'string', baseSnapshotId: 'string', ops: 'array', rationale: 'string',
+  diagnosedFailureIds: 'array', producedBy: 'string', createdAt: 'string',
+});
+/** Type guard for knowledge-revision entities (`knowledgeRevisionRecord`). */
+export function isKnowledgeRevisionEntity(entity: unknown): entity is KnowledgeRevisionEntity {
+  return knowledgeRevisionGuard(entity);
+}
+
+const navigationNodeGuard = recordGuard('navigation_node', 'navigationNodeRecord', {
+  level: 'number', ref: 'string', title: 'string', summary: 'string',
+  keywords: 'array', metadata: 'object', contentHash: 'string', sourceRefs: 'array',
+});
+/** Type guard for navigation-node entities (`navigationNodeRecord`). */
+export function isNavigationNodeEntity(entity: unknown): entity is NavigationNodeEntity {
+  return navigationNodeGuard(entity);
+}
+
+const coverageGuard = recordGuard('coverage', 'coverageRecord', {
+  region: 'string', status: 'string', evidence: 'array', note: 'string', recordedAt: 'string',
+});
+/** Type guard for coverage entities (`coverageRecord`). */
+export function isCoverageEntity(entity: unknown): entity is CoverageEntity {
+  return coverageGuard(entity);
+}
+
+const taskGuard = recordGuard('task', 'taskRecord', {
+  id: 'string', input: 'string', rubric: 'array',
+});
+/** Type guard for task entities (`taskRecord`). */
+export function isTaskEntity(entity: unknown): entity is TaskEntity {
+  return taskGuard(entity);
+}
+
+const learningTraceGuard = recordGuard('learning_trace', 'learningTraceRecord', {
+  id: 'string', learnerKind: 'string', round: 'number', subsetLabel: 'string',
+  actions: 'array', revisionIds: 'array', metrics: 'object',
+});
+/** Type guard for learning-trace entities (`learningTraceRecord`). */
+export function isLearningTraceEntity(entity: unknown): entity is LearningTraceEntity {
+  return learningTraceGuard(entity);
 }
 
 // ==================== Exclusion Memory (Phase 3 — do_not_remember) ====================
