@@ -172,7 +172,7 @@ Observations carry `[skill-name]:`, `[kind]:`, `[scope]:` scalar lines so lexica
 
 **RS-2 `SkillManager`** (`src/agent/skills/SkillManager.ts`, ≤ 450 lines)
 - `add(input) → SkillId`: validates `name` (non-empty, ≤ 80 chars), `scope.domains` non-empty,
-  `uncertainty ∈ [0,1]`; content-hash dedup on `sha256(name + body)` returns the existing id.
+  `uncertainty ∈ [0,1]`; content-hash dedup on `sha256(name + '\0' + body)` (NUL separator, so `('ab','c')` and `('a','bc')` differ) returns the existing id of a live skill; a retired match does not dedup.
 - `get(id)`, `list({ kind?, domain?, includeRetired? })`.
 - `update(id, patch, { expectedVersion })` → `'updated' | 'not-found' | 'version-conflict'` through
   `EntityManager.updateEntity` (the `HeuristicManager` / `FailureManager` OCC pattern).

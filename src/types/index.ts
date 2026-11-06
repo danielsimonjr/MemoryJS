@@ -105,6 +105,7 @@ export type {
   // Phase 10 Sprint 2: Graph change events types
   GraphEventType,
   GraphEventBase,
+  SkillEvent,
   EntityCreatedEvent,
   EntityUpdatedEvent,
   EntityDeletedEvent,

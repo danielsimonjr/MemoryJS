@@ -40,6 +40,9 @@ import { BackupManager } from './BackupManager.js';
 import { EntitySchema, RelationSchema } from '../utils/schemas.js';
 import { PiiRedactor } from '../security/PiiRedactor.js';
 import { durableWriteFile } from '../utils/durableWriteFile.js';
+import { SkillManager } from '../agent/skills/SkillManager.js';
+import { SkillPublisher, type PublishResult, type ImportReport } from '../agent/skills/SkillPublisher.js';
+export type { ImportConflict, ImportReport, PublishResult } from '../agent/skills/SkillPublisher.js';
 
 /**
  * Sec6 — opt-in PII redaction for export/backup surfaces.
@@ -379,6 +382,38 @@ export class IOManager {
     this.relationManager = options.relationManager;
     this.governanceHooks = options.governanceHooks;
     this.backups = new BackupManager(storage, this.backupDir, options.governanceHooks);
+  }
+
+  /**
+   * Publish every non-retired skill as a SKILL.md tree (spec RS-3). `dir` is
+   * confined to the storage directory.
+   *
+   * @param dir - Target directory, relative to the storage directory or absolute inside it.
+   * @returns The publish result (location, marker, skill count).
+   * @experimental Recursa skill publishing.
+   */
+  async exportSkills(dir: string): Promise<PublishResult> {
+    return this.skillPublisher().publish(validateFilePath(dir, this.storageDir(), true));
+  }
+
+  /**
+   * Compare a published SKILL.md tree with the skill entities and absorb or report each skill.
+   * `dir` is confined to the storage directory.
+   *
+   * @param dir - Published tree, relative to the storage directory or absolute inside it.
+   * @returns The import report (absorbed, unchanged, conflicts, parse errors, unmatched).
+   * @experimental Recursa skill import.
+   */
+  async importSkills(dir: string): Promise<ImportReport> {
+    return this.skillPublisher().importSkills(validateFilePath(dir, this.storageDir(), true));
+  }
+
+  private storageDir(): string {
+    return dirname(this.storage.getFilePath());
+  }
+
+  private skillPublisher(): SkillPublisher {
+    return new SkillPublisher(this.storage, new SkillManager(this.storage));
   }
 
   /**

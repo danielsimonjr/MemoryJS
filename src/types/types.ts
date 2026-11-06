@@ -2034,7 +2034,10 @@ export type GraphEventType =
   | 'observation:added'
   | 'observation:deleted'
   | 'graph:saved'
-  | 'graph:loaded';
+  | 'graph:loaded'
+  | 'skill:added'
+  | 'skill:updated'
+  | 'skill:retired';
 
 /**
  * Phase 10 Sprint 2: Base interface for all graph events.
@@ -2220,6 +2223,22 @@ export interface GraphLoadedEvent extends GraphEventBase {
 }
 
 /**
+ * Recursa (spec RS-2): event emitted by `SkillManager` after a skill write
+ * commits. `skill:added` follows a new skill entity, `skill:updated` an edit
+ * or outcome counter change, `skill:retired` a retirement.
+ *
+ * @example
+ * ```typescript
+ * emitter.on('skill:retired', (event) => console.log(`Retired ${event.skillId}`));
+ * ```
+ */
+export interface SkillEvent extends GraphEventBase {
+  type: 'skill:added' | 'skill:updated' | 'skill:retired';
+  /** Id (entity name) of the skill. */
+  skillId: string;
+}
+
+/**
  * Phase 10 Sprint 2: Union type of all possible graph events.
  *
  * Use this when handling any type of graph event.
@@ -2234,7 +2253,8 @@ export type GraphEvent =
   | ObservationAddedEvent
   | ObservationDeletedEvent
   | GraphSavedEvent
-  | GraphLoadedEvent;
+  | GraphLoadedEvent
+  | SkillEvent;
 
 /**
  * Phase 10 Sprint 2: Listener function type for graph events.
@@ -2259,6 +2279,9 @@ export interface GraphEventMap {
   'observation:deleted': ObservationDeletedEvent;
   'graph:saved': GraphSavedEvent;
   'graph:loaded': GraphLoadedEvent;
+  'skill:added': SkillEvent;
+  'skill:updated': SkillEvent;
+  'skill:retired': SkillEvent;
 }
 
 /**
