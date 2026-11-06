@@ -37,6 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `TODO.md` and `todo.md` were two tracked files whose names differ only in case. On a case-insensitive file system they were one file, so a checkout showed a false change. The oversize-file list is now a section of `todo.md`, and `TODO.md` is gone.
+
 - `MultiAgentMemoryManager.createAgentMemory` (and so `AgentMemoryManager` multi-agent writes) kept only its managed fields and dropped the caller's `tags`, `ttl`, `projectId`, `parentId`, `contentHash` and version-chain fields (`version`, `parentEntityName`, `rootEntityName`, `isLatest`). The caller's entity is now spread first and the managed fields applied on top; a regression test covers both backends.
 - Test output no longer carries the expected-failure logs: `ContextWindowManager.wakeUp` test stubs implement `ensureLoaded` and `getEntityByName`, the REST router's deliberate `threw` logs are silenced in their tests with an assertion that they are logged, and `test:ci` passes `--disable-warning=ExperimentalWarning` so `node:sqlite` stops warning in every worker.
 - `src/cli/index.ts` registers its process-level `unhandledRejection` / `uncaughtException` safety nets once per process. Re-importing the module added a listener each time and triggered `MaxListenersExceededWarning`; a test now asserts the count stays flat across 20 re-imports.
