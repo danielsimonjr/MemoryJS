@@ -13,12 +13,15 @@
  * @module core/ManagerContext
  */
 
+import { StreamingExporter } from '../features/StreamingExporter.js';
+import type { AuditLog } from '../features/AuditLog.js';
 import { logger } from '../utils/logger.js';
 import { IndexHealthMonitor, type IndexHealthReport } from '../utils/IndexHealthMonitor.js';
 import { buildDiagnosticsReport, type DiagnosticsOptions, type DiagnosticsReport } from '../utils/Diagnostics.js';
 import { BatchTransaction } from './TransactionManager.js';
 import { ContradictionDetector } from '../features/ContradictionDetector.js';
-import { validateFilePath, sidecarPath } from '../utils/index.js';
+import { validateFilePath } from '../utils/index.js';
+import { sidecarPath } from '../utils/sidecarPath.js';
 import type { BatchResult, BatchOptions, Entity } from '../types/index.js';
 import { CachePressureCoordinator } from '../utils/CachePressureCoordinator.js';
 import type { MaterializedViewsManager } from '../search/MaterializedViews.js';
@@ -29,8 +32,10 @@ import { createStorage, createStorageFromPath } from './StorageFactory.js';
 // S9: side-effect import registers the SQLiteStorage constructor with
 // StorageFactory (which no longer static-imports the SQLiteStorage module),
 // keeping MEMORY_STORAGE_TYPE=sqlite working for direct ManagerContext
-// consumers. Tree-shaking bundlers (sideEffects: false) may drop this;
-// such consumers use preloadSQLiteStorage() instead.
+// consumers. package.json `sideEffects` lists the sqlite-register modules and
+// the hashed dist chunks (the ESM build inlines this registration into one),
+// so bundlers that honour `sideEffects` keep it. preloadSQLiteStorage() is the
+// explicit path for any consumer that cannot rely on that.
 import './sqlite-register.js';
 import { EntityManager } from './EntityManager.js';
 import { RelationManager } from './RelationManager.js';
@@ -53,6 +58,8 @@ import { HierarchyManager } from './HierarchyManager.js';
 import { GraphTraversal } from './GraphTraversal.js';
 import type { SearchManager } from '../search/SearchManager.js';
 import type { RankedSearch } from '../search/RankedSearch.js';
+import type { TemporalSearch } from '../search/TemporalSearch.js';
+import type { FreshnessManager } from '../features/FreshnessManager.js';
 import type { GraphRankPrior } from '../search/GraphRankPrior.js';
 import type { HybridSearchManager } from '../search/HybridSearchManager.js';
 import type { LLMQueryPlanner, LLMQueryPlannerConfig } from '../search/LLMQueryPlanner.js';
@@ -386,6 +393,16 @@ export class ManagerContext {
   get searchManager(): SearchManager { return this.searchFacade.searchManager; }
   /** See {@link StorageInfraFacade.bloomPreScreener}. */
   get bloomPreScreener(): BloomPreScreener | null { return this.infra.bloomPreScreener; }
+  /** See {@link KnowledgeGovernanceFacade.governanceManager}; its public `auditLog`. */
+  get auditLog(): AuditLog { return this.governanceManager.auditLog; }
+  /**
+   * Create a {@link StreamingExporter} that writes to `filePath`. Not lazy:
+   * the exporter is bound to one output file, so each call returns a new instance.
+   * @param filePath - Export target; the exporter validates it on construction.
+   */
+  streamingExporter(filePath: string): StreamingExporter { return new StreamingExporter(filePath); }
+  /** See {@link SearchFacade.temporalSearch}. */
+  get temporalSearch(): TemporalSearch { return this.searchFacade.temporalSearch; }
   /** See {@link SearchFacade.rankedSearch}. */
   get rankedSearch(): RankedSearch { return this.searchFacade.rankedSearch; }
   /** See {@link SearchFacade.graphRankPrior}. */
@@ -592,6 +609,8 @@ export class ManagerContext {
   get patternDetector(): PatternDetector { return this.memoryFacade.patternDetector; }
   /** See {@link AgentBookkeepingFacade.memoryValidator}. */
   get memoryValidator(): MemoryValidator { return this.bookkeepingFacade.memoryValidator; }
+  /** See {@link AgentBookkeepingFacade.freshnessManager}. */
+  get freshnessManager(): FreshnessManager { return this.bookkeepingFacade.freshnessManager; }
   /** See {@link AgentBookkeepingFacade.heuristicManager}. */
   get heuristicManager(): HeuristicManager { return this.bookkeepingFacade.heuristicManager; }
   /** See {@link AgentBookkeepingFacade.observationDedupManager}. */

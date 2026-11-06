@@ -16,6 +16,8 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 
 ## Open Work
 
+> **Learning loop (Recursa):** shipped in #274–#282 (skills, instruction sets, harness, evaluation, leaf and recursive learner, bootstrapping, `RecursaToolAdapter`). See `docs/development/RECURSA_SPEC_2026-11-06.md` §4.1 for the PR map. Not an open item.
+
 ### Priority 1 — next sprint
 
 #### 1. ~~Failure Memory hardening (Phase 2 Sprint 4)~~ — ✅ shipped
@@ -48,12 +50,12 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 
 ### Priority 2 — within 1–2 sprints
 
-#### 1. ~~Tool Affordance Memory (Phase 2 Sprint 7 — new memory type)~~ — ✅ shipped (v2.0.x)
+#### 6. ~~Tool Affordance Memory (Phase 2 Sprint 7 — new memory type)~~ — ✅ shipped (v2.0.x)
 - Closed via four workflow turns per [`TOOL_AFFORDANCE_PLAN.md`](./TOOL_AFFORDANCE_PLAN.md): Tool A `ToolAffordanceManager` + `'tool_affordance'` memory type, Tool B `ToolCallObserver` producer pipeline, Tool C `MCPToolObserverAdapter` protocol shim, Tool D CLI + docs close
 - Scope expansion: MemoryJS now tracks tool-call outcomes via `ctx.toolCallObserver` in addition to entity-layer memories. Documented on the Phase 2 Q4 resolution
 - Manager surface: `recordOutcome` / `rollingStats` / `suggestTool` / `get` / `list` / `remove`. Observer: `observeStart` / `observeComplete` / `observeError` / `observePartial` / `cancel`. MCP shim: `wrapToolCall(envelope, handler)`. CLI: `memory tool-affordance list|show|stats|suggest`
 
-#### 2. ~~Reflection Log scheduled pass (Phase 2 Sprint 8)~~ — ✅ shipped
+#### 7. ~~Reflection Log scheduled pass (Phase 2 Sprint 8)~~ — ✅ shipped
 - Closed via `AgentReflectionManager` (`src/agent/AgentReflectionManager.ts`; renamed from `ReflectionManager` in v2.9.x, back-compat alias `ReflectionMemoryManager`) + `MemoryType: 'reflection'` extension + `ctx.reflectionManager` lazy getter + `ReflectionStage` appended to `ConsolidationPipeline`
 - New `ReflectionRecord` schema with `scope: 'session' | 'project' | 'global'`, `evidence: string[]`, `generalization_confidence: number`, `keyInsights[]`, content-hash dedup on `sha256(scope + sorted(evidence))`
 - **Additive** by design (no supersession of evidence entities); raw `PatternResult.confidence ≥ 0.4` gate; session-end scheduling via explicit `runOnSessionEnd(sessionId)` helper (no `SessionManager` coupling)
@@ -61,26 +63,26 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 - Sprint 8 follow-ups closed in v2.0.x: (a) `PatternResult.sourceEntities` narrowing — `detectPatterns` now accepts optional `entityNames` and `ReflectionStage` attributes evidence only to entities whose observations matched a qualifying pattern; (b) `ExperienceExtractor.synthesizeExperience` wiring — `ReflectionStageConfig.experienceExtractor` (optional) drives `ReflectionRecord.experienceType` via `Experience.type` classification.
 - Aliased export `ReflectionMemoryManager` at the agent barrel to avoid collision with existing `src/search/ReflectionManager` (progressive query refinement)
 
-#### 3. Concrete Vector-DB drivers (MEM-06)
+#### 8. Concrete Vector-DB drivers (MEM-06)
 - `IVectorDBAdapter` interface + `InMemoryVectorAdapter` + `InMemoryVectorStore` + `SQLiteVectorStore` + `QuantizedVectorStore` all shipped
 - Concrete external drivers still pending: **pgvector**, **Pinecone**, **Weaviate**
 - Effort: high (each driver is its own integration project + auth + rate-limiting story)
 
-#### 4. PostgreSQL backend (MEM-05)
+#### 9. PostgreSQL backend (MEM-05)
 - Multi-user / multi-tenant deployment with row-level tenant isolation
 - `IDatabaseAdapter` interface shipped; concrete `PostgreSQLBackend` not started
 - Effort: high (PostgreSQL ↔ FTS / pg_trgm parity work)
 
-#### 5. ~~Spell correction layer~~ — ✅ shipped (v2.0.x)
+#### 10. ~~Spell correction layer~~ — ✅ shipped (v2.0.x)
 - Closed via `src/search/SpellChecker.ts` — two-stage bigram-Jaccard pre-filter + Levenshtein re-rank, vocabulary auto-built from entity names + tag values, exposed via `ctx.spellChecker`
 - Optional `QueryAnalyzer` integration ("did you mean…?" at parse time) deferred as a separate follow-up — the standalone manager API is the v1 surface
 
-#### 6. Query Language DSL frontend
+#### 11. Query Language DSL frontend
 - `QueryParser` + `QueryDslError` + `QueryAnalyzer` shipped
 - Full DSL frontend (SQL-like syntax, visual query builder) still pending
 - Effort: high
 
-#### 7. REST API generation polish — ⚠️ partial (v2.0.x)
+#### 12. REST API generation polish — ⚠️ partial (v2.0.x)
 - Shipped in v2.0.x: `RateLimiter` (`src/adapters/RateLimiter.ts`, in-memory token bucket) + pagination helpers (`paginate` / `parsePaginationParams` in `src/adapters/pagination.ts`, wired into `RestRouter.withDefaults` `/entities` and `/search`)
 - **Still pending** (each warrants a go/no-go): Fastify plugin wrapper (adds dep — flagged by minimal-deps policy); OpenAPI generation (substantial — would parse `RouteDefinition` into OpenAPI 3.0 spec)
 - Effort remaining: medium per deferred piece
@@ -93,68 +95,68 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 - Decision Rationale: storage-backed `DecisionManager` with discriminated lifecycle (proposed → accepted | rejected; accepted → superseded) + ADR markdown dual-write (`exportAsAdrMarkdown` / static `parseAdrMarkdown`). CLI: `memory decision`
 - Project Context: storage-backed `ProjectContextManager` (one record per `projectId`; facts/conventions/commands/glossary) + `ContextWindowManager.wakeUp` integration (`WakeUpResult.projectContext` field). CLI: `memory project-context`
 
-#### 8. Framework integrations
+#### 13. Framework integrations
 - `LangChainMemoryAdapter` scaffolded in `src/adapters/`
 - LlamaIndex, Haystack, Semantic Kernel adapters not started
 - Effort: medium per framework
 
-#### 9. Concrete external DB drivers
+#### 14. Concrete external DB drivers
 - PostgreSQL adapter with pg_trgm for text search (overlaps with MEM-05)
 - MongoDB integration for document-oriented storage
 - Effort: high
 
-#### 10. Encryption & GDPR tooling
+#### 15. Encryption & GDPR tooling
 - PII redactor + audit log shipped
 - Formal GDPR-export workflow + right-to-erasure confirmation + tenant data isolation reports pending
 - Effort: medium
 
-#### 11. Public API tiering completion
+#### 16. Public API tiering completion
 - API-stability tags added; coverage incomplete
 - Need explicit `@stable` / `@beta` / `@internal` on every public export
 - Effort: low (mechanical, but requires sweep)
 
 ### Priority 4 — strategic / gated
 
-#### 12. Elasticsearch integration
+#### 17. Elasticsearch integration
 - Optional add-on; SQLite FTS5 + BM25 covers the common case
 - Offload advanced full-text search; sync entities to ES index; hybrid local + ES queries
 - Effort: high. **Gated**: user pull required to justify the dep
 
-#### 13. Multi-node distributed architecture
+#### 18. Multi-node distributed architecture
 - In-process building blocks ready: `WriteAheadLog`, `EntityProxy`, `CRDTGraph`, `FileSegmentStorage`, `FnvSegmentRouter`
 - Missing: cross-host coordinator, read replicas, replication transport
 - Effort: very high. **Gated**: design doc + clustering model decision required
 
-#### 14. Cloud-native deployment artefacts
+#### 19. Cloud-native deployment artefacts
 - Kubernetes manifests / Helm chart / Docker image / serverless adapters / cloud-storage backends (S3 / GCS / Azure Blob)
 - Likely lives in a sibling repo (e.g., `memoryjs-deploy`) once API stability is declared
 - Effort: medium-high. **Gated**: API-stability declaration
 
-#### 15. GraphQL support
+#### 20. GraphQL support
 - Build on top of REST layer once `RestRouter` is fleshed out
 - Effort: medium. **Gated**: user pull
 
 ### Priority 5 — long horizon
 
-#### 16. GPU acceleration
+#### 21. GPU acceleration
 - CUDA-accelerated similarity search, batch embedding generation, parallel graph algorithm execution
 - `src/search/Node2Vec.ts` source comments explicitly defer GPU; CPU-only envelope currently covers ~10 M entities
 - Effort: very high. **Deferred**: CPU envelope is sufficient for now
 
-#### 17. Real-time collaboration transport
+#### 22. Real-time collaboration transport
 - CRDT primitives + collaboration synthesis + conflict resolution all shipped
 - WebSocket / SignalR transport layer to make multi-user editing live still pending
 - Effort: very high. **Out of scope** for core library — build on top via MCP server or sibling package
 
-#### 18. GraphSAGE for inductive learning
+#### 23. GraphSAGE for inductive learning
 - node2vec shipped (`BiasedRandomWalk` + `SkipGramTrainer`); GraphSAGE adds a TensorFlow/PyTorch dependency
 - Effort: very high. **Out of scope** — adds heavy ML dep for marginal capability gain over node2vec
 
-#### 19. Knowledge graph completion (predict missing relations)
+#### 24. Knowledge graph completion (predict missing relations)
 - Pattern detection + anomaly detection shipped; predictive relation-completion not started
 - Effort: very high. **Speculative** — needs concrete user motivation
 
-#### 20. Clawvault — out of scope
+#### 25. Clawvault — out of scope
 - Separate concept, 4-phase plan from `CLAWVAULT_IDEAS.md` / `CLAWVAULT_IMPLEMENTATION_PLAN.md`
 - Per `GAP_ANALYSIS_VS_SUPERMEMORY.md`: "Out of scope for core library; better suited as separate packages or MCP tools"
 - **Spin out** as `memoryjs-clawvault` sibling repo when there's pull
@@ -178,7 +180,7 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 > `IDistillationPolicy`/providers already cover it), and their temporal agent (a stub; MemoryJS is ahead).
 > Suggested order: R2 → R4 → R5 → R1 → R3.
 
-#### R1. Event reification — n-ary "triangle" model with first-class event hubs
+#### ~~R1. Event reification — n-ary "triangle" model with first-class event hubs~~ — ✅ shipped
 - brainapi2 reifies every action as an event node: `(Actor)-[MADE]->(EventHub)-[TARGETED]->(Target)` +
   `[OCCURRED_WITHIN]` context edges, grouped by a `flow_key`. Fixes the arity limit of flat triples —
   "who did what, to whom, where, when" becomes one queryable unit
@@ -188,7 +190,7 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
   existing storage; `GraphTraversal` + `TemporalSearch` are the query substrate; `IOManager.ingest()`
   is the producer. Effort: **M**
 
-#### R2. Traceable reasoning paths in query answers (`explain: true`)
+#### ~~R2. Traceable reasoning paths in query answers (`explain: true`)~~ — ✅ shipped
 - brainapi2's `/retrieve/context` returns the answer **plus the graph path that derived it** (`triples`,
   hop dicts with `via_uuid` breadcrumbs, depth/hop caps, truncation flag) — evidence paths instead of
   opaque similarity hits
@@ -197,7 +199,7 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
   results with `evidencePaths: { nodes, relations, viaQueryTerm }[]`. Best differentiator-per-effort of
   this batch — the core argument for graph memory over vector RAG. Effort: **M**
 
-#### R3. Relation-level consolidation with corrective feedback (Janitor pattern)
+#### ~~R3. Relation-level consolidation with corrective feedback (Janitor pattern)~~ — ✅ shipped
 - brainapi2's Janitor validates new relationships against a 2nd-degree-neighbor snapshot and feeds
   structured corrections back to the writer (≤3 iterations); semantic edge dedup via embedding
   similarity >0.90 on relation descriptions
@@ -207,7 +209,7 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
   `LLMProvider` validation tier (mirrors the `LLMQueryPlanner` optional-provider pattern). Guards the
   graph as LLM-driven ingestion grows. Effort: **M**
 
-#### R4. Queryable provenance: audit query API + source-chunk linkage
+#### ~~R4. Queryable provenance: audit query API + source-chunk linkage~~ — ✅ shipped
 - brainapi2 exposes provenance as a retrieval surface (`/retrieve/changelogs` with filters,
   `/retrieve/text-chunks` linking every fact to the source text that produced it)
 - MemoryJS delta: `AuditLog` is write-only (no query API) and observations don't record their ingestion
@@ -215,7 +217,7 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
   Effort: **S**; (b) `sourceRef` on observations written by `ingest()` (chunk id into an ingest
   manifest) so evidence paths (R2) extend answer → relation → observation → source chunk — Effort: **M**
 
-#### R5. Ingestion cost/quality dial (`mode: accurate | balanced | lightweight`)
+#### ~~R5. Ingestion cost/quality dial (`mode: accurate | balanced | lightweight`)~~ — ✅ shipped
 - brainapi2 runs its whole swarm under one mode switch (full extraction + validation loops vs
   important-entities-only, skip validation), with per-stage token accounting
 - MemoryJS delta: `ingest()`/`MemoryDistiller` pick LLM-vs-heuristic by provider *presence*, not by
@@ -227,13 +229,13 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 - **R6 Polarity-aware synergies**: `polarity` on entities + `findSynergies()` blending embedding and
   bridge-structure similarity to find allied/*opposing* entities (their `entity_sibilings.py` weights
   direct ×1.30 / indirect ×0.70). Needs evidence agent users want alliance/opposition queries. Effort: M
-- **R7 NL-guided neighbor retrieval**: `lookFor?: string` on traversal/neighbor options, ranking
+- ~~**R7 NL-guided neighbor retrieval**~~ — ✅ shipped: `lookFor?: string` on traversal/neighbor options, ranking
   candidate neighbors by embedding similarity to a free-text description of the desired connection.
   Small, high-utility for agent tool use. Effort: S
 - **R8 Self-documenting MCP meta-tool**: a `get_search_operation_instructions`-style tool teaching the
   calling LLM the recommended search workflow at runtime, + a bounded read-only structured-query escape
   hatch. Validate against memory-mcp's current surface. Effort: S
-- **R9 `memory doctor` preflight**: CLI diagnostics for the documented gotchas — Node version,
+- ~~**R9 `memory doctor` preflight**~~ — ✅ shipped: CLI diagnostics for the documented gotchas — Node version,
   `better-sqlite3` ABI (`NODE_MODULE_VERSION` mismatch), `dist/workers/` presence, embedding-provider
   reachability, strict-literal env flags. Effort: S
 

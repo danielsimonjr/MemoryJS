@@ -16,9 +16,19 @@ import type { LeafLearner } from './LeafLearner.js';
 import { RecursiveLearner } from './RecursiveLearner.js';
 import { runLeafTrace } from './RecursiveDrive.js';
 import type { LearningDeps } from './types.js';
+import { readEnvStrictInt } from '../../utils/envConfig.js';
 
 /** Concurrency used when a leaf child is driven by the handler (matches `MEMORY_LEARNING_CONCURRENCY`). */
 export const DEFAULT_CHILD_CONCURRENCY = 4;
+
+/**
+ * Child concurrency for leaf runs: `MEMORY_LEARNING_CONCURRENCY` (strict
+ * integer >= 1) when set and valid, else {@link DEFAULT_CHILD_CONCURRENCY}.
+ * Read on every handled task.
+ */
+function resolveChildConcurrency(): number {
+  return readEnvStrictInt('MEMORY_LEARNING_CONCURRENCY', { min: 1 }) ?? DEFAULT_CHILD_CONCURRENCY;
+}
 
 /** Anything that resolves a child trace id to its driver (the learning loop facade does). */
 export interface ChildDriverSource {
@@ -59,7 +69,7 @@ export function createInProcessLearnHandler(source: ChildDriverSource, deps: Lea
     const driver = await source.childDriver(childTraceId);
     const runDeps: LearningDeps = signal ? { ...deps, signal } : deps;
     if (driver instanceof RecursiveLearner) await driver.drive(childTraceId, runDeps);
-    else await runLeafTrace(driver, childTraceId, runDeps, DEFAULT_CHILD_CONCURRENCY);
+    else await runLeafTrace(driver, childTraceId, runDeps, resolveChildConcurrency());
     return { childTraceId, done: true };
   };
 }

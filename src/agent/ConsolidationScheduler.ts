@@ -6,7 +6,7 @@
  *
  * Mirrors the DecayScheduler pattern:
  * - Configurable interval
- * - Gated by MEMORY_AUTO_CONSOLIDATION env bool in ManagerContext
+ * - Gated by MEMORY_AUTO_CONSOLIDATION or MEMORY_CONSOLIDATION_SCHEDULER_ENABLED (either `true`)
  * - runNow() for on-demand execution
  * - Callbacks for monitoring
  * - Idempotent start()

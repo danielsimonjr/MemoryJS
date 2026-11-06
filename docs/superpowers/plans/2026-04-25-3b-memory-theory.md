@@ -250,7 +250,7 @@ src/types/world.ts              — WorldState / WorldStateEntity / EnvironmentR
 
 - [ ] **Step 1** — Type definitions: create `src/types/procedure.ts`, `src/types/retrieval.ts`, `src/types/causal.ts`, `src/types/world.ts`; re-export from `src/types/index.ts`. Run `npm run typecheck`.
 - [ ] **Step 2** — §3B.4 core: `ProcedureStore` → `StepSequencer` → `ProcedureManager`. Unit tests. Wire `procedureManager` lazy getter in `ManagerContext`.
-- [ ] **Step 3** — §3B.4 integration: patch `ExperienceExtractor.synthesizeExperience` and `FailureDistillation.distill` cross-links. Integration test.
+- [x] **Step 3** — §3B.4 integration: patch `ExperienceExtractor.synthesizeExperience` and `FailureDistillation.distill` cross-links. Integration test.
 - [ ] **Step 4** — §3B.5 core: `QueryRewriter` → `ActiveRetrievalController`. Unit tests. Patch `ContextWindowManager.wakeUp` signature. Wire `activeRetrieval` lazy getter.
 - [ ] **Step 5** — §3B.6 core: `CausalRelationValidator` → `CausalReasoner`. Unit tests (include cycle detection + counterfactual). Wire `causalReasoner` lazy getter.
 - [ ] **Step 6** — §3B.7 core: `WorldStateSnapshot` → `WorldModelManager`. Unit tests. Wire `worldModel` lazy getter. Patch `GovernanceManager` with optional guard.

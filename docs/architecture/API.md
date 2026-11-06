@@ -1,5 +1,7 @@
 # MemoryJS — API Reference
 
+> **Code samples.** Samples assume `const ctx = new ManagerContext('./memory.jsonl')` and the placeholders `graph: KnowledgeGraph` (from `await ctx.storage.loadGraph()`), `entities: Entity[]` and `storage: IGraphStorage`. Every other name in a sample is imported or declared in it.
+
 Complete reference for the MemoryJS library public API. For a high-level
 summary see [README.md](../../README.md); for environment-variable reference
 see [CLAUDE.md](../../CLAUDE.md). Per-version changes live in
@@ -37,10 +39,10 @@ surface only.
 25. [ProcedureManager + CausalReasoner + WorldModelManager + ActiveRetrievalController](#proceduremanager--causalreasoner--worldmodelmanager--activeretrievalcontroller) *(3B.4–3B.7)*
 26. [IMemoryBackend](#imemorybackend) *(v1.12.0)*
 27. [GraphRankPrior + HybridSearchManager](#graphrankprior--hybridsearchmanager) *(v2.9.0)*
-28. [EventManager](#eventmanager) *(Unreleased, R1, `@experimental`)*
-29. [EvidencePathBuilder](#evidencepathbuilder) *(Unreleased, R2, `@experimental`)*
-30. [RelationConsolidator](#relationconsolidator) *(Unreleased, R3, `@experimental`)*
-31. [ApiKeyAuthMiddleware](#apikeyauthmiddleware) *(Unreleased, Sec9)*
+28. [EventManager](#eventmanager) *(3.0.0, R1, `@experimental`)*
+29. [EvidencePathBuilder](#evidencepathbuilder) *(3.0.0, R2, `@experimental`)*
+30. [RelationConsolidator](#relationconsolidator) *(3.0.0, R3, `@experimental`)*
+31. [ApiKeyAuthMiddleware](#apikeyauthmiddleware) *(3.0.0, Sec9)*
 32. [ProceduralGraphManager](#proceduralgraphmanager) (`ctx.createProceduralGraph`, `@experimental`)
 33. [Batch primitives and helper surface](#batch-primitives-and-helper-surface) *(2026-11 design pass)*
 
@@ -50,9 +52,19 @@ surface only.
 
 Central access point for all managers. Provides lazy-initialized access to all subsystems.
 
+### Getters for freshness, temporal search, collaboration, export, and audit
+
+- `ctx.freshnessManager`: lazy `FreshnessManager` (TTL and confidence reports). Built by the bookkeeping facade.
+- `ctx.temporalSearch`: lazy `TemporalSearch` (natural-language time ranges). Built by the search facade.
+- `ctx.streamingExporter(filePath)`: factory. Returns a new `StreamingExporter` bound to `filePath` on each call, so it is not lazy.
+- `ctx.auditLog`: returns the same `AuditLog` instance as `ctx.governanceManager.auditLog`. It constructs nothing new.
+- `AgentMemoryManager.collaborativeSynthesis`: lazy `CollaborativeSynthesis`, built from the manager's storage, a `GraphTraversal`, the salience engine, and `config.collaborativeSynthesis`.
+
+The full member list is in [API_REFERENCE.md](../guides/API_REFERENCE.md#managercontext--lazy-getter-list-current).
+
 ### Constructor
 
-```typescript
+```text
 new ManagerContext(memoryFilePath: string)
 ```
 
@@ -63,11 +75,13 @@ Storage backend is selected via the `MEMORY_STORAGE_TYPE` environment variable (
 
 **Example:**
 ```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
 // JSONL storage (default)
 const ctx = new ManagerContext('./memory.jsonl');
 
 // SQLite storage (set MEMORY_STORAGE_TYPE=sqlite)
-const ctx = new ManagerContext('./memory.db');
+// SQLite alternative (replaces the JSONL line above):
+// const ctx = new ManagerContext('./memory.db');
 ```
 
 ### Properties
@@ -133,7 +147,7 @@ const ctx = new ManagerContext('./memory.db');
 
 Procedural Graph is created via `createProceduralGraph(config)`, not a `ctx.proceduralGraph` getter:
 
-```typescript
+```text
 createProceduralGraph(config: {
   backing: { type: 'jsonl' | 'sqlite' | 'memory'; path?: string } | IProceduralGraphBacking;
   policy?: PGPolicy;
@@ -150,7 +164,7 @@ Default sidecar path is `<basename>-procedural-graph.jsonl` (`.db` for sqlite). 
 
 Get the Agent Memory Manager for AI agent memory operations.
 
-```typescript
+```text
 agentMemory(config?: AgentMemoryConfig): AgentMemoryManager
 ```
 
@@ -190,7 +204,7 @@ Unified facade for AI agent memory operations including sessions, working memory
 
 Start a new agent session.
 
-```typescript
+```text
 async startSession(options?: SessionOptions): Promise<SessionEntity>
 ```
 
@@ -205,6 +219,7 @@ interface SessionOptions {
 
 **Example:**
 ```typescript
+declare const agentMem: import('@danielsimonjr/memoryjs').AgentMemoryManager;
 const session = await agentMem.startSession({
   goalDescription: 'Help user plan a trip to Japan',
   taskType: 'planning'
@@ -215,7 +230,7 @@ const session = await agentMem.startSession({
 
 End an active session.
 
-```typescript
+```text
 async endSession(sessionId: string): Promise<void>
 ```
 
@@ -223,7 +238,7 @@ async endSession(sessionId: string): Promise<void>
 
 Get the currently active session.
 
-```typescript
+```text
 async getActiveSession(): Promise<SessionEntity | null>
 ```
 
@@ -231,29 +246,32 @@ async getActiveSession(): Promise<SessionEntity | null>
 
 Add a working memory entry to a session.
 
-```typescript
-async addWorkingMemory(
-  sessionId: string,
-  content: string,
-  options?: WorkingMemoryOptions
-): Promise<AgentEntity>
+```text
+async addWorkingMemory(options: CreateMemoryOptions): Promise<AgentEntity>
 ```
 
 **Parameters:**
 ```typescript
-interface WorkingMemoryOptions {
-  ttlHours?: number;
-  confidence?: number;          // 0.0-1.0
+import type { MemoryVisibility } from '@danielsimonjr/memoryjs';
+interface CreateMemoryOptions {
+  sessionId: string;
+  content: string;
   importance?: number;          // 0-10
-  autoPromote?: boolean;
+  taskId?: string;
+  ttlHours?: number;
+  agentId?: string;             // recorded when multi-agent mode is enabled
+  visibility?: MemoryVisibility;
 }
 ```
 
 **Example:**
 ```typescript
-await agentMem.addWorkingMemory(session.id, 'User prefers budget travel', {
-  confidence: 0.9,
-  importance: 7
+declare const agentMem: import('@danielsimonjr/memoryjs').AgentMemoryManager;
+declare const session: Awaited<ReturnType<typeof agentMem.startSession>>;
+await agentMem.addWorkingMemory({
+  sessionId: session.name,
+  content: 'User prefers budget travel',
+  importance: 7,
 });
 ```
 
@@ -261,7 +279,7 @@ await agentMem.addWorkingMemory(session.id, 'User prefers budget travel', {
 
 Get all working memories for a session.
 
-```typescript
+```text
 async getWorkingMemories(sessionId: string): Promise<AgentEntity[]>
 ```
 
@@ -269,7 +287,7 @@ async getWorkingMemories(sessionId: string): Promise<AgentEntity[]>
 
 Remove expired working memories.
 
-```typescript
+```text
 async clearExpiredMemories(): Promise<number>
 ```
 
@@ -279,7 +297,7 @@ async clearExpiredMemories(): Promise<number>
 
 Strengthen a memory (reset decay, increase confirmation count).
 
-```typescript
+```text
 async reinforceMemory(entityName: string): Promise<void>
 ```
 
@@ -287,7 +305,7 @@ async reinforceMemory(entityName: string): Promise<void>
 
 Promote a working memory to long-term storage.
 
-```typescript
+```text
 async promoteToLongTerm(entityName: string): Promise<void>
 ```
 
@@ -295,7 +313,7 @@ async promoteToLongTerm(entityName: string): Promise<void>
 
 Consolidate session memories into long-term storage.
 
-```typescript
+```text
 async consolidateSession(
   sessionId: string,
   options?: ConsolidateOptions
@@ -323,11 +341,21 @@ interface ConsolidationResult {
 
 ### retrieveForContext
 
-Retrieve memories optimized for LLM context window.
+Retrieve memories optimized for LLM context window. `AgentMemoryManager.retrieveForContext`
+takes `RetrieveContextOptions` and maps them onto the `ContextWindowManager` options below
+(`sessionId` → `context.currentSession`, `taskId` → `context.currentTask`, `keywords` joined →
+`context.queryText`). Call `agentMem.contextWindowManager.retrieveForContext()` directly for the
+full `ContextRetrievalOptions` (`maxSlots`, `composeHops`, `summarizeExcluded`).
 
-```typescript
-async retrieveForContext(options: ContextRetrievalOptions): Promise<ContextPackage>
+```text
+async retrieveForContext(options?: RetrieveContextOptions): Promise<ContextPackage>
 ```
+
+`RetrieveContextOptions`: `sessionId?`, `taskId?`, `keywords?: string[]`, `maxTokens?` (default
+`contextWindow.defaultMaxTokens`, else 4000), `includeWorkingMemory?`, `includeEpisodicRecent?`,
+`includeSemanticRelevant?`, `mustInclude?: string[]`.
+
+`ContextWindowManager.retrieveForContext` parameters:
 
 **Parameters:**
 ```typescript
@@ -354,6 +382,7 @@ interface SalienceContext {
 
 **Returns:**
 ```typescript
+import { AgentEntity, ExcludedEntity, TokenBreakdown } from '@danielsimonjr/memoryjs';
 interface ContextPackage {
   memories: AgentEntity[];
   totalTokens: number;
@@ -374,12 +403,11 @@ interface ContextPackage {
 
 **Example:**
 ```typescript
+declare const agentMem: import('@danielsimonjr/memoryjs').AgentMemoryManager;
 const pkg = await agentMem.retrieveForContext({
   maxTokens: 4000,
-  context: {
-    currentTask: 'Recommend hotels in Tokyo',
-    queryText: 'What hotels fit my budget?'
-  },
+  taskId: 'Recommend hotels in Tokyo',
+  keywords: ['hotels', 'budget'],
   includeWorkingMemory: true
 });
 ```
@@ -388,7 +416,7 @@ const pkg = await agentMem.retrieveForContext({
 
 Get most salient memories for a context.
 
-```typescript
+```text
 async getMostSalient(
   context: SalienceContext,
   limit: number
@@ -397,6 +425,7 @@ async getMostSalient(
 
 **Returns:**
 ```typescript
+import { AgentEntity } from '@danielsimonjr/memoryjs';
 interface ScoredEntity {
   entity: AgentEntity;
   salienceScore: number;
@@ -414,7 +443,7 @@ interface ScoredEntity {
 
 Start the decay scheduler.
 
-```typescript
+```text
 start(): void
 ```
 
@@ -422,7 +451,7 @@ start(): void
 
 Stop the decay scheduler.
 
-```typescript
+```text
 stop(): void
 ```
 
@@ -436,7 +465,7 @@ Manages entity CRUD operations.
 
 Create one or more entities in the knowledge graph.
 
-```typescript
+```text
 async createEntities(entities: CreateEntity[]): Promise<Entity[]>
 ```
 
@@ -467,10 +496,10 @@ const entities = await ctx.entityManager.createEntities([
 
 ### getEntity
 
-Retrieve a single entity by name. (The O(1) `storage.getEntityByName(name): Entity | undefined`
+Retrieve a single entity by name. (The O(1) `storage.getEntity(name): Entity | undefined`
 is the underlying `IGraphStorage` primitive; `EntityManager` exposes `getEntity`.)
 
-```typescript
+```text
 async getEntity(name: string, options?: GetEntityOptions): Promise<Entity | null>
 ```
 
@@ -478,7 +507,7 @@ async getEntity(name: string, options?: GetEntityOptions): Promise<Entity | null
 
 Update an entity, optionally requiring a specific version (η.5.5.c).
 
-```typescript
+```text
 async updateEntity(
   name: string,
   updates: Partial<Entity>,
@@ -492,7 +521,7 @@ If `expectedVersion` is supplied and doesn't match the current `version` field o
 
 Mark an entity as no longer valid by setting `validUntil` (does not delete the entity; `entityAsOf` still returns it for past timestamps). Idempotent — a second call updates the existing `validUntil`.
 
-```typescript
+```text
 async invalidateEntity(name: string, ended?: string): Promise<void>
 ```
 
@@ -502,7 +531,7 @@ async invalidateEntity(name: string, ended?: string): Promise<void>
 
 Time-travel query — get the version of an entity that was valid at a given timestamp.
 
-```typescript
+```text
 async entityAsOf(name: string, asOf: string): Promise<Entity | null>
 ```
 
@@ -512,7 +541,7 @@ async entityAsOf(name: string, asOf: string): Promise<Entity | null>
 
 Get the chronological version history of an entity (across `invalidateEntity` cascades).
 
-```typescript
+```text
 async entityTimeline(name: string): Promise<Entity[]>
 ```
 
@@ -520,7 +549,7 @@ async entityTimeline(name: string): Promise<Entity[]>
 
 Retrieve all entities.
 
-```typescript
+```text
 async getAllEntities(): Promise<Entity[]>
 ```
 
@@ -528,7 +557,7 @@ async getAllEntities(): Promise<Entity[]>
 
 Delete one or more entities by name.
 
-```typescript
+```text
 async deleteEntities(entityNames: string[]): Promise<void>
 ```
 
@@ -540,7 +569,7 @@ async deleteEntities(entityNames: string[]): Promise<void>
 
 Add tags to an entity.
 
-```typescript
+```text
 async addTags(entityName: string, tags: string[]): Promise<Entity>
 ```
 
@@ -548,7 +577,7 @@ async addTags(entityName: string, tags: string[]): Promise<Entity>
 
 Remove tags from an entity.
 
-```typescript
+```text
 async removeTags(entityName: string, tags: string[]): Promise<Entity>
 ```
 
@@ -556,7 +585,7 @@ async removeTags(entityName: string, tags: string[]): Promise<Entity>
 
 Set entity importance score.
 
-```typescript
+```text
 async setImportance(entityName: string, importance: number): Promise<Entity>
 ```
 
@@ -567,7 +596,7 @@ async setImportance(entityName: string, importance: number): Promise<Entity>
 
 Add tags to multiple entities at once.
 
-```typescript
+```text
 async addTagsToMultipleEntities(entityNames: string[], tags: string[]): Promise<Entity[]>
 ```
 
@@ -575,7 +604,7 @@ async addTagsToMultipleEntities(entityNames: string[], tags: string[]): Promise<
 
 Replace a tag across all entities.
 
-```typescript
+```text
 async replaceTag(oldTag: string, newTag: string): Promise<number>
 ```
 
@@ -585,7 +614,7 @@ async replaceTag(oldTag: string, newTag: string): Promise<number>
 
 Merge two tags into a target tag.
 
-```typescript
+```text
 async mergeTags(tag1: string, tag2: string, targetTag: string): Promise<number>
 ```
 
@@ -593,7 +622,7 @@ async mergeTags(tag1: string, tag2: string, targetTag: string): Promise<number>
 
 Public bulk enumeration, replacing the old `entityManager['storage']` private-access pattern.
 
-```typescript
+```text
 async listEntities(filter?: { entityType?: string }): Promise<Entity[]>
 ```
 
@@ -603,7 +632,7 @@ When `filter.entityType` is supplied, takes an O(k) `TypeIndex` fast path (`stor
 
 Atomically rename an entity, rewriting every stored reference to the old name.
 
-```typescript
+```text
 async renameEntity(oldName: string, newName: string): Promise<Entity>
 ```
 
@@ -628,7 +657,7 @@ Manages relation CRUD operations.
 
 Create one or more relations between entities.
 
-```typescript
+```text
 async createRelations(relations: CreateRelation[]): Promise<Relation[]>
 ```
 
@@ -657,7 +686,7 @@ await ctx.relationManager.createRelations([
 
 Get all relations for an entity.
 
-```typescript
+```text
 async getRelations(entityName: string): Promise<Relation[]>
 ```
 
@@ -665,7 +694,7 @@ async getRelations(entityName: string): Promise<Relation[]>
 
 Delete specific relations.
 
-```typescript
+```text
 async deleteRelations(relations: Relation[]): Promise<void>
 ```
 
@@ -673,7 +702,7 @@ async deleteRelations(relations: Relation[]): Promise<void>
 
 Get all relations in the graph.
 
-```typescript
+```text
 async getAllRelations(): Promise<Relation[]>
 ```
 
@@ -681,7 +710,7 @@ async getAllRelations(): Promise<Relation[]>
 
 Mark the active (non-terminated) relation matching `from`/`relationType`/`to` as ended, by setting `properties.validUntil` (without deleting it).
 
-```typescript
+```text
 async invalidateRelation(
   from: string,
   relationType: string,
@@ -696,7 +725,7 @@ Throws `RelationNotFoundError` if no active relation matches.
 
 Get all relations involving an entity that were valid at a given timestamp.
 
-```typescript
+```text
 async queryAsOf(
   entityName: string,
   asOf: string,   // ISO 8601 date string
@@ -708,7 +737,7 @@ async queryAsOf(
 
 Return all relations involving an entity sorted chronologically by `properties.validFrom` (unbounded relations last).
 
-```typescript
+```text
 async timeline(
   entityName: string,
   options?: { direction?: 'outgoing' | 'incoming' | 'both' }  // default 'both'
@@ -725,7 +754,7 @@ Manages entity observations.
 
 Add observations to entities.
 
-```typescript
+```text
 async addObservations(additions: ObservationAddition[]): Promise<ObservationResult[]>
 ```
 
@@ -748,7 +777,7 @@ await ctx.observationManager.addObservations([
 
 Remove observations from entities.
 
-```typescript
+```text
 async deleteObservations(deletions: ObservationDeletion[]): Promise<ObservationResult[]>
 ```
 
@@ -758,7 +787,7 @@ async deleteObservations(deletions: ObservationDeletion[]): Promise<ObservationR
 
 Mark a specific observation (matched by its content string) as no longer valid at a given point in time, without removing it from the entity's `observations[]`. Adds an `observationMeta[]` entry recording the boundary.
 
-```typescript
+```text
 async invalidateObservation(
   entityName: string,
   content: string,
@@ -770,7 +799,7 @@ async invalidateObservation(
 
 Return the observations that were valid for an entity at a given timestamp.
 
-```typescript
+```text
 async observationsAsOf(entityName: string, asOf: string): Promise<string[]>
 ```
 
@@ -786,7 +815,7 @@ Manages parent-child entity relationships.
 
 Set or remove an entity's parent.
 
-```typescript
+```text
 async setEntityParent(entityName: string, parentName: string | null): Promise<Entity>
 ```
 
@@ -798,7 +827,7 @@ async setEntityParent(entityName: string, parentName: string | null): Promise<En
 
 Get direct children of an entity.
 
-```typescript
+```text
 async getChildren(entityName: string): Promise<Entity[]>
 ```
 
@@ -806,7 +835,7 @@ async getChildren(entityName: string): Promise<Entity[]>
 
 Get parent of an entity.
 
-```typescript
+```text
 async getParent(entityName: string): Promise<Entity | null>
 ```
 
@@ -814,7 +843,7 @@ async getParent(entityName: string): Promise<Entity | null>
 
 Get all ancestors (parent chain to root).
 
-```typescript
+```text
 async getAncestors(entityName: string): Promise<Entity[]>
 ```
 
@@ -822,7 +851,7 @@ async getAncestors(entityName: string): Promise<Entity[]>
 
 Get all descendants (recursive children).
 
-```typescript
+```text
 async getDescendants(entityName: string): Promise<Entity[]>
 ```
 
@@ -830,7 +859,7 @@ async getDescendants(entityName: string): Promise<Entity[]>
 
 Get entity and all descendants with their relations.
 
-```typescript
+```text
 async getSubtree(entityName: string): Promise<KnowledgeGraph>
 ```
 
@@ -838,7 +867,7 @@ async getSubtree(entityName: string): Promise<KnowledgeGraph>
 
 Get all entities without parents.
 
-```typescript
+```text
 async getRootEntities(): Promise<Entity[]>
 ```
 
@@ -846,7 +875,7 @@ async getRootEntities(): Promise<Entity[]>
 
 Get depth in hierarchy (0 = root).
 
-```typescript
+```text
 async getEntityDepth(entityName: string): Promise<number>
 ```
 
@@ -854,7 +883,7 @@ async getEntityDepth(entityName: string): Promise<number>
 
 Move entity to new parent.
 
-```typescript
+```text
 async moveEntity(entityName: string, newParentName: string | null): Promise<Entity>
 ```
 
@@ -868,7 +897,7 @@ Provides multiple search strategies.
 
 Basic text search across entities.
 
-```typescript
+```text
 async searchNodes(query: string, options?: SearchOptions): Promise<KnowledgeGraph>
 ```
 
@@ -896,7 +925,7 @@ const results = await ctx.searchManager.searchNodes('TypeScript', {
 
 TF-IDF relevance-ranked search.
 
-```typescript
+```text
 async searchNodesRanked(query: string, options?: RankedSearchOptions): Promise<SearchResult[]>
 ```
 
@@ -904,7 +933,7 @@ async searchNodesRanked(query: string, options?: RankedSearchOptions): Promise<S
 
 Retrieve specific entities by name with their relations.
 
-```typescript
+```text
 async openNodes(names: string[]): Promise<KnowledgeGraph>
 ```
 
@@ -912,7 +941,7 @@ async openNodes(names: string[]): Promise<KnowledgeGraph>
 
 Search entities by creation/modification date.
 
-```typescript
+```text
 async searchByDateRange(options: DateRangeOptions): Promise<KnowledgeGraph>
 ```
 
@@ -920,7 +949,7 @@ async searchByDateRange(options: DateRangeOptions): Promise<KnowledgeGraph>
 
 Boolean query search with AND/OR/NOT operators.
 
-```typescript
+```text
 async booleanSearch(query: string, options?: SearchOptions): Promise<KnowledgeGraph>
 ```
 
@@ -942,12 +971,13 @@ await ctx.searchManager.booleanSearch('NOT archived AND (project OR task)');
 
 Typo-tolerant search using Levenshtein distance.
 
-```typescript
+```text
 async fuzzySearch(query: string, options?: FuzzySearchOptions): Promise<KnowledgeGraph>
 ```
 
 **Parameters:**
 ```typescript
+import { SearchOptions } from '@danielsimonjr/memoryjs';
 interface FuzzySearchOptions extends SearchOptions {
   threshold?: number;  // 0.0-1.0, default 0.7
 }
@@ -957,7 +987,7 @@ interface FuzzySearchOptions extends SearchOptions {
 
 Automatically select and execute the best search method based on query characteristics.
 
-```typescript
+```text
 async autoSearch(query: string, limit?: number): Promise<SmartSearchResult>
 ```
 
@@ -965,7 +995,7 @@ async autoSearch(query: string, limit?: number): Promise<SmartSearchResult>
 
 Get "did you mean" suggestions.
 
-```typescript
+```text
 async getSearchSuggestions(query: string, limit?: number): Promise<string[]>
 ```
 
@@ -973,13 +1003,13 @@ async getSearchSuggestions(query: string, limit?: number): Promise<string[]>
 
 Get cost estimates for a query across search strategies.
 
-```typescript
+```text
 async getSearchCostEstimates(query: string): Promise<CostEstimate[]>
 ```
 
 ### Saved Search Methods
 
-```typescript
+```text
 async getSavedSearch(name: string): Promise<SavedSearch | null>
 async deleteSavedSearch(name: string): Promise<boolean>
 async updateSavedSearch(name: string, updates: Partial<SavedSearch>): Promise<SavedSearch>
@@ -987,7 +1017,7 @@ async updateSavedSearch(name: string, updates: Partial<SavedSearch>): Promise<Sa
 
 ### Cache Management
 
-```typescript
+```text
 clearAllCaches(): void
 clearFuzzyCache(): void
 clearBooleanCache(): void
@@ -998,7 +1028,7 @@ clearRankedCache(): void
 
 Natural-language time-range search via `chrono-node`.
 
-```typescript
+```text
 async searchByTime(query: string, options?: TemporalSearchOptions): Promise<KnowledgeGraph>
 ```
 
@@ -1008,7 +1038,7 @@ Accepts expressions like `"last hour"`, `"yesterday"`, `"between Jan 1 and Feb 1
 
 Auto-selects the best search strategy for the query (basic / boolean / fuzzy / ranked / semantic / hybrid). BM25 indexing is now incremental — single-entity creates and updates touch only the affected postings list instead of rebuilding the full corpus.
 
-```typescript
+```text
 async autoSearch(query: string, options?: SearchOptions): Promise<{
   results: SearchResult[];
   selectedMethod: string;
@@ -1018,7 +1048,7 @@ async autoSearch(query: string, options?: SearchOptions): Promise<{
 
 ### Diagnostics (Phase 0/1, v1.15.0)
 
-```typescript
+```text
 ctx.searchManager.explainPlan(query: string): ExplainPlanResult   // { ascii: string; json: QueryPlan }
 ctx.indexHealth(): IndexHealthReport
 ctx.diagnostics(options?: DiagnosticsOptions): DiagnosticsReport  // composes indexHealth() + entity counts
@@ -1036,7 +1066,7 @@ Graph algorithms and traversal operations.
 
 Find shortest path between two entities using Dijkstra's algorithm.
 
-```typescript
+```text
 async findShortestPath(source: string, target: string, options?: PathOptions): Promise<PathResult | null>
 ```
 
@@ -1051,6 +1081,7 @@ interface PathOptions {
 
 **Returns:**
 ```typescript
+import { Relation } from '@danielsimonjr/memoryjs';
 interface PathResult {
   path: string[];        // Entity names in order
   relations: Relation[]; // Relations along the path
@@ -1062,7 +1093,7 @@ interface PathResult {
 
 Find all paths between two entities up to a maximum depth.
 
-```typescript
+```text
 async findAllPaths(source: string, target: string, options?: PathOptions): Promise<PathResult[]>
 ```
 
@@ -1070,7 +1101,7 @@ async findAllPaths(source: string, target: string, options?: PathOptions): Promi
 
 Three separate methods for centrality calculation:
 
-```typescript
+```text
 async calculateDegreeCentrality(direction?: 'in' | 'out' | 'both', topN?: number): Promise<CentralityResult[]>
 async calculateBetweennessCentrality(options?: { approximate?: boolean; sampleRate?: number; topN?: number }): Promise<CentralityResult[]>
 async calculatePageRank(dampingFactor?: number, maxIterations?: number, tolerance?: number, topN?: number): Promise<CentralityResult[]>
@@ -1084,11 +1115,11 @@ interface CentralityResult {
 }
 ```
 
-### getConnectedComponents
+### findConnectedComponents
 
 Find connected components in the graph.
 
-```typescript
+```text
 async findConnectedComponents(): Promise<ConnectedComponentsResult>
 ```
 
@@ -1105,13 +1136,14 @@ interface ConnectedComponentsResult {
 
 Breadth-first and depth-first traversal.
 
-```typescript
+```text
 async bfs(startEntity: string, options?: TraversalOptions): Promise<TraversalResult>
 async dfs(startEntity: string, options?: TraversalOptions): Promise<TraversalResult>
 ```
 
 **Returns:**
 ```typescript
+import { Relation } from '@danielsimonjr/memoryjs';
 interface TraversalResult {
   visited: string[];
   edges: Relation[];
@@ -1122,7 +1154,7 @@ interface TraversalResult {
 
 Get all neighbors of an entity with their connecting relations.
 
-```typescript
+```text
 async getNeighborsWithRelations(entityName: string, options?: { direction?: 'in' | 'out' | 'both' }): Promise<NeighborResult[]>
 ```
 
@@ -1130,7 +1162,7 @@ async getNeighborsWithRelations(entityName: string, options?: { direction?: 'in'
 
 Hyperlink-Induced Topic Search — computes `hub` and `authority` scores for every entity. Useful for identifying high-quality information sources (high authority) vs. broad connectors (high hub).
 
-```typescript
+```text
 async hits(options?: { maxIterations?: number; tolerance?: number }): Promise<Map<string, { hub: number; authority: number }>>
 ```
 
@@ -1138,7 +1170,7 @@ async hits(options?: { maxIterations?: number; tolerance?: number }): Promise<Ma
 
 Enumerate maximal cliques in the (undirected projection of the) graph via Bron–Kerbosch with pivot selection.
 
-```typescript
+```text
 async findMaximalCliques(options?: { minSize?: number; maxCliques?: number }): Promise<string[][]>
 ```
 
@@ -1146,7 +1178,7 @@ async findMaximalCliques(options?: { minSize?: number; maxCliques?: number }): P
 
 Greedy modularity-optimization community detection. Returns each entity's community ID.
 
-```typescript
+```text
 async louvainCommunities(options?: { resolution?: number; maxIterations?: number }): Promise<Map<string, number>>
 ```
 
@@ -1160,8 +1192,9 @@ Import, export, and backup operations.
 
 Export graph to various formats.
 
-```typescript
-async exportGraph(format: ExportFormat, options?: ExportOptions): Promise<string>
+```text
+exportGraph(graph: ReadonlyKnowledgeGraph, format: ExportFormat, options?: PiiRedactionOption): string
+exportGraphWithCompression(graph: ReadonlyKnowledgeGraph, format: ExportFormat, options?: ExportOptions & PiiRedactionOption): Promise<ExportResult>
 ```
 
 **Parameters:**
@@ -1184,10 +1217,10 @@ interface ExportOptions {
 **Example:**
 ```typescript
 // Export to JSON
-const json = await ctx.ioManager.exportGraph('json');
-
+const graph = await ctx.storage.loadGraph();
+const json = ctx.ioManager.exportGraph(graph, 'json');
 // Export filtered graph to compressed GraphML
-await ctx.ioManager.exportGraph('graphml', {
+const result = await ctx.ioManager.exportGraphWithCompression(graph, 'graphml', {
   filter: { tags: ['project'] },
   compress: true,
   outputPath: './projects.graphml.br'
@@ -1198,7 +1231,7 @@ await ctx.ioManager.exportGraph('graphml', {
 
 Import graph from various formats.
 
-```typescript
+```text
 async importGraph(
   format: 'json' | 'csv' | 'graphml',
   data: string,
@@ -1230,7 +1263,7 @@ interface ImportResult {
 
 Create a backup of the current graph.
 
-```typescript
+```text
 async createBackup(options?: BackupOptions): Promise<BackupInfo>
 ```
 
@@ -1238,7 +1271,7 @@ async createBackup(options?: BackupOptions): Promise<BackupInfo>
 
 Restore from a backup.
 
-```typescript
+```text
 async restoreFromBackup(backupPath: string): Promise<RestoreResult>
 ```
 
@@ -1246,7 +1279,7 @@ async restoreFromBackup(backupPath: string): Promise<RestoreResult>
 
 List available backups.
 
-```typescript
+```text
 async listBackups(): Promise<BackupInfo[]>
 ```
 
@@ -1254,17 +1287,17 @@ async listBackups(): Promise<BackupInfo[]>
 
 Delete a backup. Since v1.15.0 (Phase 5) this delegates to `BackupManager.delete()` which adds a symlink-attack guard before the underlying `fs.unlink`.
 
-```typescript
+```text
 async deleteBackup(backupId: string): Promise<void>
 ```
 
 > All five backup methods (`createBackup` / `listBackups` / `restoreFromBackup` / `deleteBackup` / `cleanOldBackups`) are thin facades over [`BackupManager`](#backupmanager) since v1.15.0 Phase 5. Existing callers see no API change.
 
-### ingest (v1.9.0 — Conversation Ingestion; Unreleased — provenance + mode dial, R4b/R5)
+### ingest (v1.9.0 — Conversation Ingestion; provenance + mode dial, R4b/R5, 3.0.0)
 
 Format-agnostic conversation ingestion pipeline.
 
-```typescript
+```text
 async ingest(
   input: string | { messages: ChatMessage[] } | ChatMessage[],
   options?: IngestOptions
@@ -1301,7 +1334,7 @@ interface IngestResult {
 
 Pure function that splits a transcript into per-session text segments using delimiter regex.
 
-```typescript
+```text
 splitTranscript(content: string, options?: SplitOptions): SplitResult
 ```
 
@@ -1309,7 +1342,7 @@ splitTranscript(content: string, options?: SplitOptions): SplitResult
 
 In addition to `json` / `csv` / `graphml` / `gexf` / `dot` / `markdown` / `mermaid`, `exportGraph` accepts W3C Linked-Data targets:
 
-```typescript
+```text
 async exportGraph(format: 'turtle' | 'rdf-xml' | 'json-ld', options?: ExportOptions): Promise<string>
 ```
 
@@ -1325,7 +1358,7 @@ Manages tag aliases and synonyms.
 
 Create a tag alias.
 
-```typescript
+```text
 async addTagAlias(alias: string, canonical: string, description?: string): Promise<TagAlias>
 ```
 
@@ -1338,7 +1371,7 @@ await ctx.tagManager.addTagAlias('js', 'javascript', 'JavaScript shorthand');
 
 Resolve a tag to its canonical form.
 
-```typescript
+```text
 async resolveTag(tag: string): Promise<string>
 ```
 
@@ -1346,7 +1379,7 @@ async resolveTag(tag: string): Promise<string>
 
 List all tag aliases.
 
-```typescript
+```text
 async listTagAliases(): Promise<TagAlias[]>
 ```
 
@@ -1354,7 +1387,7 @@ async listTagAliases(): Promise<TagAlias[]>
 
 Remove a tag alias.
 
-```typescript
+```text
 async removeTagAlias(alias: string): Promise<boolean>
 ```
 
@@ -1362,7 +1395,7 @@ async removeTagAlias(alias: string): Promise<boolean>
 
 Get all aliases for a canonical tag.
 
-```typescript
+```text
 async getAliasesForTag(canonicalTag: string): Promise<string[]>
 ```
 
@@ -1376,7 +1409,7 @@ Duplicate detection and entity merging.
 
 Find potential duplicate entities.
 
-```typescript
+```text
 async findDuplicates(threshold?: number): Promise<string[][]>
 ```
 
@@ -1389,7 +1422,7 @@ async findDuplicates(threshold?: number): Promise<string[][]>
 
 Merge multiple entities into one.
 
-```typescript
+```text
 async mergeEntities(entityNames: string[], targetName?: string): Promise<Entity>
 ```
 
@@ -1402,7 +1435,7 @@ async mergeEntities(entityNames: string[], targetName?: string): Promise<Entity>
 
 Automatically find and merge duplicates.
 
-```typescript
+```text
 async compressGraph(threshold?: number, dryRun?: boolean): Promise<CompressionResult>
 ```
 
@@ -1416,7 +1449,7 @@ Graph statistics and validation.
 
 Get graph statistics.
 
-```typescript
+```text
 async getGraphStats(): Promise<GraphStats>
 ```
 
@@ -1437,12 +1470,13 @@ interface GraphStats {
 
 Validate graph integrity.
 
-```typescript
+```text
 async validateGraph(): Promise<ValidationReport>
 ```
 
 **Returns:**
 ```typescript
+import { ValidationIssue, ValidationWarning } from '@danielsimonjr/memoryjs';
 interface ValidationReport {
   isValid: boolean;
   issues: ValidationIssue[];    // type: 'orphaned_relation' | 'duplicate_entity' | 'invalid_data'
@@ -1464,7 +1498,7 @@ Archive old or low-importance entities to compressed storage.
 
 ### archiveEntities
 
-```typescript
+```text
 async archiveEntities(criteria: ArchiveCriteria, options?: { dryRun?: boolean }): Promise<ArchiveResult>
 ```
 
@@ -1479,13 +1513,13 @@ interface ArchiveCriteria {
 
 ### listArchives
 
-```typescript
+```text
 async listArchives(): Promise<ArchiveInfo[]>
 ```
 
 ### getArchiveDir
 
-```typescript
+```text
 getArchiveDir(): string
 ```
 
@@ -1495,7 +1529,7 @@ getArchiveDir(): string
 
 Vector similarity search using embeddings. Requires `MEMORY_EMBEDDING_PROVIDER` to be configured.
 
-```typescript
+```text
 async isAvailable(): Promise<boolean>
 async indexAll(graph: KnowledgeGraph, options?: { forceReindex?: boolean }): Promise<void>
 async search(graph: KnowledgeGraph, query: string, limit?: number, minSimilarity?: number): Promise<SemanticResult[]>
@@ -1509,7 +1543,7 @@ async clearIndex(): Promise<void>
 
 Normalize entity observations by resolving pronouns and anchoring dates.
 
-```typescript
+```text
 async normalizeObservations(entity: Entity, options?: NormalizeOptions): Promise<NormalizedResult>
 resolvePronouns(text: string, entity: Entity): string
 anchorRelativeDates(text: string, refDate: Date): string
@@ -1531,7 +1565,7 @@ interface NormalizeOptions {
 
 Stages operations and applies them in one full-graph save. Staging methods only record the operation; storage is not touched until `commit()`.
 
-```typescript
+```text
 begin(): void                                                  // throws TRANSACTION_ACTIVE if one is open
 createEntity(entity: Omit<Entity, 'createdAt' | 'lastModified'>): void
 updateEntity(name: string, updates: Partial<Entity>): void
@@ -1560,7 +1594,7 @@ getOperationCount(): number
 
 Fluent API for building batch operations.
 
-```typescript
+```text
 createEntity(entity: CreateEntity): BatchTransaction
 updateEntity(name: string, updates: Partial<Entity>): BatchTransaction
 deleteEntity(name: string): BatchTransaction
@@ -1591,7 +1625,7 @@ Use this for atomic multi-operation writes. `GovernanceManager.withTransaction` 
 
 Create storage backend instances.
 
-```typescript
+```text
 createStorage(config: { type: 'jsonl' | 'sqlite' | 'postgres' | 'postgresql'; path: string }): IGraphStorage
 createStorageFromPath(path: string): IGraphStorage
 ```
@@ -1636,7 +1670,7 @@ Both first-party backends pass the guards. Minimal fakes usually do not, and man
 
 ### `ConsolidationPipeline.promoteMemories(entityNames, targetType)`
 
-```typescript
+```text
 async promoteMemories(
   entityNames: readonly string[],
   targetType: MemoryType
@@ -1658,6 +1692,11 @@ Records the same access context for many entities. With delta-capable storage, a
 Conditional triggers (`scheduleConditional`) are evaluated by `tick()` through a code-supplied evaluator. There is no env var and no built-in predicate language.
 
 ```typescript
+import { ProspectiveMemoryManager } from '@danielsimonjr/memoryjs';
+declare const storage: import('@danielsimonjr/memoryjs').IGraphStorage;
+declare const predicateEvaluator: import('@danielsimonjr/memoryjs').PredicateEvaluator;
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+import type { ProspectiveEntity } from '@danielsimonjr/memoryjs';
 type PredicateEvaluator = (
   predicate: string,
   context: { entity: ProspectiveEntity; now: Date }
@@ -1734,6 +1773,7 @@ interface Entity {
 ### AgentEntity
 
 ```typescript
+import { Entity } from '@danielsimonjr/memoryjs';
 interface AgentEntity extends Entity {
   memoryType: 'working' | 'episodic' | 'semantic';
   sessionId?: string;
@@ -1762,6 +1802,7 @@ interface AgentEntity extends Entity {
 ### SessionEntity
 
 ```typescript
+import { AgentEntity } from '@danielsimonjr/memoryjs';
 interface SessionEntity extends AgentEntity {
   entityType: 'session';
   memoryType: 'episodic';
@@ -1788,6 +1829,7 @@ interface Relation {
 ### KnowledgeGraph
 
 ```typescript
+import { Entity, Relation } from '@danielsimonjr/memoryjs';
 interface KnowledgeGraph {
   entities: Entity[];
   relations: Relation[];
@@ -1797,6 +1839,7 @@ interface KnowledgeGraph {
 ### SearchResult
 
 ```typescript
+import { Entity } from '@danielsimonjr/memoryjs';
 interface SearchResult {
   entity: Entity;
   score: number;
@@ -1825,7 +1868,7 @@ Discriminated-union return type for operations with expected, caller-handled
 failure modes (`src/types/result.ts`, exported from the types barrel).
 Introduced by the v2.0.0 Theme 1 error-signalling audit.
 
-```typescript
+```text
 type Result<T, E = Error> =
   | { readonly ok: true; readonly value: T }
   | { readonly ok: false; readonly error: E };
@@ -1866,13 +1909,13 @@ unions — do not treat this section as a copy of that module.
 
 ### create
 
-```typescript
+```text
 async create(options?: BackupOptions): Promise<BackupResult>
 ```
 
 ### list
 
-```typescript
+```text
 async list(): Promise<BackupInfo[]>
 ```
 
@@ -1880,7 +1923,7 @@ async list(): Promise<BackupInfo[]>
 
 Reads, optionally Brotli-decompresses, and writes the backup payload over the live storage file. Rejects symbolic links via `fs.lstat().isSymbolicLink()`.
 
-```typescript
+```text
 async restore(backupPath: string): Promise<RestoreResult>
 ```
 
@@ -1888,7 +1931,7 @@ async restore(backupPath: string): Promise<RestoreResult>
 
 Validates the path stays in `backupDir`, rejects symlinks, unlinks the backup, then attempts to remove the `.meta.json` sidecar (derived via `path.basename` + revalidated independently).
 
-```typescript
+```text
 async delete(backupPath: string): Promise<void>
 ```
 
@@ -1896,7 +1939,7 @@ async delete(backupPath: string): Promise<void>
 
 Keeps the N most recent backups; deletes the rest via `delete()`.
 
-```typescript
+```text
 async cleanOld(keepCount?: number): Promise<number>
 ```
 
@@ -1910,7 +1953,7 @@ async cleanOld(keepCount?: number): Promise<number>
 
 Dedup-first write. Runs the four-tier dedup chain (exact contentHash → 50% prefix overlap → token Jaccard ≥ `MEMORY_ENGINE_JACCARD_THRESHOLD` → optional semantic). Emits `memoryEngine:turnAdded` or `memoryEngine:duplicateDetected`.
 
-```typescript
+```text
 async addTurn(content: string, opts: {
   sessionId: string;
   role: 'user' | 'assistant' | 'system' | 'tool';
@@ -1922,7 +1965,7 @@ async addTurn(content: string, opts: {
 
 Run the dedup chain without writing.
 
-```typescript
+```text
 async checkDuplicate(content: string, sessionId: string): Promise<DuplicateResult | null>
 ```
 
@@ -1930,7 +1973,7 @@ async checkDuplicate(content: string, sessionId: string): Promise<DuplicateResul
 
 Chronological turns for a session.
 
-```typescript
+```text
 async getSessionTurns(
   sessionId: string,
   opts?: { role?: 'user' | 'assistant' | 'system' | 'tool'; limit?: number }
@@ -1941,13 +1984,13 @@ async getSessionTurns(
 
 Number of turns that the dedup chain rejected for a session in this process. The count is not persisted. `deleteSession` resets it. Exclusion-manager rejections are not counted.
 
-```typescript
+```text
 getRepeatedTurnCount(sessionId: string): number
 ```
 
 ### deleteSession / listSessions
 
-```typescript
+```text
 async deleteSession(sessionId: string): Promise<{ deleted: number }>
 async listSessions(): Promise<string[]>
 ```
@@ -1964,13 +2007,13 @@ Integer [0, 10] scoring via `length × keyword × recent-turn-overlap` signals. 
 
 ## GovernanceManager
 
-(v1.6.0; **Unreleased** — enforcement chokepoint, Sec1) Policy enforcement and audit logging for memory mutations. Wired via `ctx.governanceManager`.
+(v1.6.0; enforcement chokepoint, Sec1, 3.0.0) Policy enforcement and audit logging for memory mutations. Wired via `ctx.governanceManager`.
 
 ### withTransaction
 
 Groups operations under one governed scope for audit attribution. **It is not an atomic transaction.** Each operation persists immediately. If `fn` throws, the audit entries recorded in the call are marked `rolled_back` (new `rolled_back` entries are appended) and the error is re-thrown. **Storage is not reverted.** For atomic multi-operation writes use `ctx.batch()` or `TransactionManager.commit()`.
 
-```typescript
+```text
 async withTransaction<T>(fn: (tx: GovernanceTransaction) => Promise<T>, agentId?: string): Promise<T>
 ```
 
@@ -1978,13 +2021,13 @@ async withTransaction<T>(fn: (tx: GovernanceTransaction) => Promise<T>, agentId?
 
 Reverses one recorded operation, identified by its audit entry id. It loads the graph and undoes the recorded change (a `create` is undone by deleting the entity; a `delete` is undone by recreating the entity from the entry's before snapshot), saves the graph, and appends a `rolled_back` audit entry. An unknown id throws `KnowledgeGraphError` with code `AUDIT_ENTRY_NOT_FOUND`. It is not invoked automatically by `withTransaction`.
 
-```typescript
+```text
 async rollback(auditEntryId: string): Promise<void>
 ```
 
 ### setPolicy / GovernancePolicy (interface)
 
-```typescript
+```text
 setPolicy(policy: GovernancePolicy): void
 
 interface GovernancePolicy {
@@ -1998,7 +2041,7 @@ Consulted before every mutation the manager handles; a hook returning `false` th
 
 ### Constructor options — `redactAuditSnapshots` (Sec6)
 
-```typescript
+```text
 new GovernanceManager(storage: GraphStorage, auditLog: AuditLog, options?: {
   redactAuditSnapshots?: boolean;  // default false — PII-redact before/after snapshots before they hit the audit log
   redactor?: PiiRedactor;          // custom redactor; defaults to new PiiRedactor()
@@ -2007,7 +2050,7 @@ new GovernanceManager(storage: GraphStorage, auditLog: AuditLog, options?: {
 
 The live graph is never mutated — only the audit-log copies are redacted.
 
-### Unreleased — enforcement chokepoint (Sec1)
+### Enforcement chokepoint (Sec1, 3.0.0)
 
 `MEMORY_GOVERNANCE_ENABLED` was previously read nowhere in `src/`, so setting it did nothing and no mutation path was governed. Now, when it is the strict literal `'true'` (checked once at first `ctx.entityManager` access), `ManagerContext` wires this manager's live policy + audit log directly into `EntityManager` via `EntityManager.setGovernanceHooks()` — so `createEntities`/`updateEntity`/`batchUpdate`/`deleteEntities`/`renameEntity` are policy-checked (`GovernanceError` on denial) and audited (fire-and-forget; an audit-sink failure never fails the underlying write) without requiring the caller to route writes through `withTransaction`. Policy is read live via `getPolicy()`, so a `setPolicy()` call after construction takes effect on the next mutation. Unset env var = zero checks, zero audit calls on `EntityManager` (pre-Sec1 behavior); `ctx.governanceManager` remains usable manually via `withTransaction` either way.
 
@@ -2017,7 +2060,7 @@ The live graph is never mutated — only the audit-log copies are redacted.
 
 (v1.6.0) Wired via `ctx.freshnessManager`.
 
-```typescript
+```text
 calculateFreshness(entity: Entity, now?: Date): FreshnessScore
 async getStaleEntities(threshold?: number): Promise<Entity[]>
 async getExpiredEntities(): Promise<Entity[]>
@@ -2030,22 +2073,27 @@ async generateReport(): Promise<FreshnessReport>
 
 ## RbacMiddleware + RoleAssignmentStore
 
-(η.6.1) Available in code via `ctx.rbacMiddleware` and `ctx.roleAssignmentStore` (lazy getters, always present); there is no `MEMORY_RBAC_ENABLED` env var (RBAC is not enabled by environment, and `checkPermission` is called by your own code).
+(η.6.1) Available in code via `ctx.rbacMiddleware` and `ctx.roleAssignmentStore` (lazy getters, always present). RBAC is not enabled by an environment variable; `checkPermission` is called by your own code.
 
-```typescript
+```text
+// Synchronous decision. Denies when no active assignment matches.
 ctx.rbacMiddleware.checkPermission(
   agentId: string,
-  action: 'read' | 'write' | 'delete' | 'admin',
-  resourceType: string,
-  resourceName?: string
-): Promise<boolean>
+  action: Permission,            // 'read' | 'write' | 'delete' | 'manage'
+  resourceType: ResourceType,    // e.g. 'entity', 'relation'
+  resourceName?: string,         // exact name or slash-delimited descendant
+  now?: string,                  // ISO 8601; defaults to the current time
+): boolean
 
-ctx.roleAssignmentStore.assignRole(agentId: string, role: string): Promise<void>
-ctx.roleAssignmentStore.revokeRole(agentId: string, role: string): Promise<void>
-ctx.roleAssignmentStore.listAssignments(agentId?: string): Promise<RoleAssignment[]>
+// Async grant and revoke; list reads are synchronous.
+ctx.roleAssignmentStore.assign(assignment: RoleAssignment): Promise<void>
+ctx.roleAssignmentStore.revoke(agentId: string, role: Role): Promise<void>
+ctx.roleAssignmentStore.list(agentId: string): RoleAssignment[]
+ctx.roleAssignmentStore.listActive(agentId: string, now?: string): RoleAssignment[]
+ctx.roleAssignmentStore.hydrate(): Promise<void>   // load persisted assignments
 ```
 
-`ctx.roleAssignmentStore` is in-memory; no `MEMORY_RBAC_ASSIGNMENTS_FILE` env var is read.
+`ctx.roleAssignmentStore` persists through its own sidecar when storage is file-backed; it does not read a `MEMORY_RBAC_*` environment variable.
 
 ---
 
@@ -2053,7 +2101,7 @@ ctx.roleAssignmentStore.listAssignments(agentId?: string): Promise<RoleAssignmen
 
 (3B.4–3B.7) See dedicated component docs in [`COMPONENTS.md`](./COMPONENTS.md). Brief surface:
 
-```typescript
+```text
 // 3B.4 — Procedural memory
 ctx.procedureManager.addProcedure(spec: ProcedureSpec): Promise<string>
 ctx.procedureManager.matchProcedure(context: unknown): Promise<ProcedureMatch[]>
@@ -2083,7 +2131,7 @@ ctx.worldModelManager.detectStateChange(): Promise<StateChangeEvent[]>
 
 `cyclePolicy` defaults to `reject`, or `repair` when `paperCompatible` is true. `createSkeleton` delegates to `createGraph` and therefore audits as `createGraph`. `canEvolve === false` returns `stoppedBecause: 'aborted'`. `listRejections` strips `trajectoryRefs`. The caller supplies `rollout`, `evaluate`, `refiner`, and `tokenizer` to `evolve`; the library never executes guidance text.
 
-```typescript
+```text
 async createGraph(input: {
   graphId: string;
   nodes: PGNode[];
@@ -2151,7 +2199,7 @@ async dispose(): Promise<void>
 ```
 
 **Example:**
-```typescript
+```text
 const pg = await ctx.createProceduralGraph({
   backing: { type: 'jsonl' }, // sidecar <basename>-procedural-graph.jsonl
 });
@@ -2181,11 +2229,12 @@ const evolved = await pg.evolve({
 (v1.12.0) Pluggable backend interface for `MemoryEngine`. Selected via `MEMORY_BACKEND=sqlite|in-memory` and accessed via `ctx.memoryBackend`.
 
 ```typescript
+import type { MemoryTurn, GetWeightedOptions, WeightedTurn } from '@danielsimonjr/memoryjs';
 interface IMemoryBackend {
-  add(entry: MemoryEntry): Promise<void>;
-  get(id: string): Promise<MemoryEntry | null>;
-  get_weighted(filter: WeightedFilter): Promise<WeightedMemoryEntry[]>;
-  delete(id: string): Promise<void>;
+  add(turn: MemoryTurn): Promise<void>;
+  get_weighted(query: string, sessionId: string, options?: GetWeightedOptions): Promise<WeightedTurn[]>;
+  delete_session(sessionId: string): Promise<void>;
+  list_sessions(): Promise<string[]>;
 }
 ```
 
@@ -2201,7 +2250,7 @@ interface IMemoryBackend {
 
 `@experimental`. Cached graph-connectivity ranking signal: normalized PageRank over `GraphTraversal`, with a degree-only fallback beyond `maxPageRankEntities` (default 50 000). Event-invalidated (per-item entity/relation events + `graph:saved`, which covers manager-level batch mutations). Wired via `ctx.graphRankPrior` (lazy getter).
 
-```typescript
+```text
 new GraphRankPrior(
   source: GraphTraversal | GraphStorage,
   options?: {
@@ -2224,7 +2273,7 @@ dispose(): void
 
 Combines semantic, lexical, symbolic, and (optionally) graph-connectivity search layers. Wired via `ctx.hybridSearchManager` (lazy getter; attaches `graphRankPrior` only when `MEMORY_HYBRID_GRAPH_WEIGHT > 0`).
 
-```typescript
+```text
 new HybridSearchManager(
   semanticSearch: SemanticSearch | null,
   rankedSearch: RankedSearch,
@@ -2248,7 +2297,7 @@ async search(
 
 Opt-in post-scoring boost for TF-IDF/BM25 ranked search.
 
-```typescript
+```text
 setGraphPrior(prior: GraphRankPrior | null, boost?: number): void
 ```
 
@@ -2262,11 +2311,11 @@ Multiplies each result's score by `score × (1 + boost × normalizedPageRank)` a
 
 ## EventManager
 
-(Unreleased — R1, `@experimental`) Reifies actions as first-class `entityType: 'event'` hub entities with role-typed relations. Wired via `ctx.eventManager`.
+(3.0.0 — R1, `@experimental`) Reifies actions as first-class `entityType: 'event'` hub entities with role-typed relations. Wired via `ctx.eventManager`.
 
 ### recordEvent
 
-```typescript
+```text
 async recordEvent(input: RecordEventInput): Promise<EventRecord>
 
 interface RecordEventInput {
@@ -2286,7 +2335,7 @@ Creates an `event-<action>-<shortId>`-named hub entity plus role-typed relations
 
 ### getEvent / queryEvents / getFlow / whoDidWhat
 
-```typescript
+```text
 async getEvent(name: string): Promise<EventRecord | null>
 async queryEvents(filter?: EventQueryFilter): Promise<EventRecord[]>
 async getFlow(flowKey: string): Promise<EventRecord[]>            // chronological, by flow tag
@@ -2296,7 +2345,7 @@ async whoDidWhat(filter?: WhoDidWhatFilter): Promise<WhoDidWhatEntry[]>
 Queries use the storage `TypeIndex`/`RelationIndex` — O(k)/O(1), no full-graph scans.
 
 **Example:**
-```typescript
+```text
 await ctx.eventManager.recordEvent({
   action: 'deployed', actor: 'alice', target: 'api-service',
   context: 'production', flowKey: 'release-42',
@@ -2309,9 +2358,9 @@ const who = await ctx.eventManager.whoDidWhat({ target: 'api-service' });
 
 ## EvidencePathBuilder
 
-(Unreleased — R2, `@experimental`) Builds traceable graph paths from search-query anchors to a result entity — the "why" behind a hit. Constructed per search call when `explain: true` is requested; not exposed as a `ManagerContext` getter.
+(3.0.0 — R2, `@experimental`) Builds traceable graph paths from search-query anchors to a result entity — the "why" behind a hit. Constructed per search call when `explain: true` is requested; not exposed as a `ManagerContext` getter.
 
-```typescript
+```text
 new EvidencePathBuilder(graph: ReadonlyKnowledgeGraph, options?: {
   maxDepth?: number;            // default 3 hops
   maxPathsPerResult?: number;   // default 3
@@ -2337,9 +2386,9 @@ Wired automatically into `HybridSearchManager.search({ explain: true })` and `LL
 
 ## RelationConsolidator
 
-(Unreleased — R3, `@experimental`) Three-tier "Janitor" pass for relation-level deduplication and neighborhood validation. Not wired into `ManagerContext` — construct directly.
+(3.0.0 — R3, `@experimental`) Three-tier "Janitor" pass for relation-level deduplication and neighborhood validation. Not wired into `ManagerContext` — construct directly.
 
-```typescript
+```text
 new RelationConsolidator(
   relationOps: { getRelations, createRelations, deleteRelations },  // RelationManager or a structural fake
   entityOps?: { listEntities },                                     // needed for tier 1/2 corpus scans
@@ -2367,9 +2416,9 @@ async consolidate(options?: { newRelations?: Relation[]; apply?: boolean }): Pro
 
 ## ApiKeyAuthMiddleware
 
-(Unreleased — Sec9) Reference authentication layer wiring `APIKeyStore.validate()` into `RestRouter`.
+(3.0.0 — Sec9) Reference authentication layer wiring `APIKeyStore.validate()` into `RestRouter`.
 
-```typescript
+```text
 new ApiKeyAuthMiddleware(options: {
   store: APIKeyStore;
   requiredScopes?: (method: RestMethod, path: string) => readonly string[];  // default: GET → [] (['entities:read'] for a key with projectIds), others → ['entities:write']
@@ -2387,7 +2436,7 @@ interface AuthContext { keyId: string; scopes: readonly string[]; ownerId?: stri
 `401 { error: 'unauthorized' }` for a missing/unknown/revoked/expired key — the specific rejection reason is intentionally not serialized to the client (available server-side via `onReject` for logging). `403 { error: 'forbidden', requiredScopes }` for a valid key lacking a required scope.
 
 **Example:**
-```typescript
+```text
 const store = new APIKeyStore();
 const auth = new ApiKeyAuthMiddleware({ store });
 const router = RestRouter.withDefaults(ctx, { auth });
@@ -2400,7 +2449,10 @@ const router = RestRouter.withDefaults(ctx, { auth });
 `@experimental`. Exported from `src/agent` (`src/agent/evaluation/`).
 
 ```typescript
+declare const provider: import('@danielsimonjr/memoryjs').LLMProvider;
 import { Evaluator, DeterministicJudge, LLMRubricJudge, stratifiedSplit, auditRubrics } from '@danielsimonjr/memoryjs';
+declare const tasks: import('@danielsimonjr/memoryjs').TaskRecord[];
+declare const solver: import('@danielsimonjr/memoryjs').Solver;
 
 const { train, test } = stratifiedSplit(tasks, { testFraction: 0.3, by: 'difficulty', seed: 7 });
 const judge = new LLMRubricJudge({ provider }); // falls back per criterion to DeterministicJudge
@@ -2420,6 +2472,15 @@ const issues = auditRubrics(tasks); // placeholder | files | contradicts (adviso
 `@experimental`. Exported from `src/agent` (`src/agent/learning/`); wired as `ctx.learningLoop(deps)`.
 
 ```typescript
+declare const taskId: string;
+declare const answer: string;
+declare const traceAddrs: string[];
+declare const solver: import('@danielsimonjr/memoryjs').LearningSolver;
+declare const judge: import('@danielsimonjr/memoryjs').DeterministicJudge;
+declare const publishDir: string;
+declare const interactionLog: import('@danielsimonjr/memoryjs').InteractionLog;
+declare const taskIds: string[];
+declare const tasks: import('@danielsimonjr/memoryjs').TaskRecord[];
 const loop = ctx.learningLoop({ solver, judge, publishDir, interactionLog });
 const result = await loop.learn({ taskIds, tasks, budget: { maxRounds: 3 } });
 // result.stoppedBecause: 'all-pass' | 'no-progress' | 'budget-rounds' | 'budget-tokens' | 'budget-time' | 'aborted'
@@ -2445,6 +2506,11 @@ const status = await loop.status(traceId);    // LeafState + { report }
 `@experimental`. Exported from `src/agent` (`src/agent/learning/`); driven through `ctx.learningLoop(deps)`.
 
 ```typescript
+declare const solver: import('@danielsimonjr/memoryjs').LearningSolver;
+declare const judge: import('@danielsimonjr/memoryjs').DeterministicJudge;
+declare const llmProvider: import('@danielsimonjr/memoryjs').LLMProvider;
+declare const taskIds: string[];
+declare const tasks: import('@danielsimonjr/memoryjs').TaskRecord[];
 const loop = ctx.learningLoop({ solver, judge, llmProvider });
 const result = await loop.learn({ taskIds, tasks, budget: { maxRounds: 3, maxTokens: 50_000 }, split: 'auto' });
 
@@ -2468,6 +2534,10 @@ const decision = await loop.reflect(traceId); // { decision: 'continue' | 'done'
 `@experimental`. Exported from `src/agent` (`src/agent/bootstrap/`); wired as `ctx.bootstrapper(deps)`.
 
 ```typescript
+declare const llmProvider: import('@danielsimonjr/memoryjs').LLMProvider;
+declare const sources: import('@danielsimonjr/memoryjs').CorpusSource[];
+declare const solver: import('@danielsimonjr/memoryjs').LearningSolver;
+declare const judge: import('@danielsimonjr/memoryjs').DeterministicJudge;
 const boot = ctx.bootstrapper({ llmProvider });
 const out = await boot.run({ sources, solver, judge, budget: { maxRounds: 2 }, corpusLabel: 'invoices', taskCount: 40 });
 // out: navigation map, coverage records, notesSkillId, practice tasks + rubric audit, optional learn result
@@ -2521,6 +2591,9 @@ is bounded to `maxBytes` (default 64 KiB) and carries `truncated: true` when shr
 | `recursa.eval.run` | `new Evaluator().evaluate(tasks, solver, judge, { knowledge?, concurrency? })` with `solver` = `answers[task.id]`; judge = `deps.judge` or `DeterministicJudge`; answers for unknown ids are `invalid_args`, tasks without an answer fail with the note `no answer` and are listed in `missing` |
 
 ```ts
+import { createRecursaTools } from '@danielsimonjr/memoryjs';
+declare const interactionLog: import('@danielsimonjr/memoryjs').InteractionLog;
+declare const tasks: import('@danielsimonjr/memoryjs').TaskRecord[];
 const tools = createRecursaTools(ctx, { publishDir: './skills', interactionLog });
 tools.list();                                   // 14 descriptors, section 3.8 order
 await tools.call('recursa.learn.start', { tasks, budget: { maxRounds: 3 } });
@@ -2535,8 +2608,8 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 
 | Claim | Value | Source |
 |---|---|---|
-| totalExports | 3955 | repo-tools map |
-| totalSourceFiles | 970 | repo-tools map |
+| totalExports | 3984 | repo-tools map |
+| totalSourceFiles | 995 | repo-tools map |
 
 The figures below come from `bun run tools:deps` and `bun run tools:deps:full`. These generators read `src/` only. The gate does not check these figures. Read them in `dependency-summary.compact.json` and `TEST_COVERAGE.md`.
 

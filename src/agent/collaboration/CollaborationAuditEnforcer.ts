@@ -30,9 +30,9 @@ export type AttributionMode = 'strict' | 'lenient';
 /** Constructor options. */
 export interface CollaborationAuditEnforcerOptions {
   /**
-   * `strict` (default) throws on missing agentId. Drive from
-   * `MEMORY_AUDIT_ATTRIBUTION_REQUIRED` to flip behavior at construction
-   * time.
+   * `strict` (default) throws on missing agentId. `ManagerContext` does not
+   * construct this enforcer and does not read `MEMORY_AUDIT_ATTRIBUTION_REQUIRED`;
+   * pass `mode` in code.
    */
   mode?: AttributionMode;
 }

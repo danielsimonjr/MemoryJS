@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { execSync } from 'node:child_process';
+import { execSync, spawnSync } from 'node:child_process';
 import {
   extractSymbols,
   checkSymbol,
@@ -321,5 +321,52 @@ describe('plan-doc-audit / runAudit end-to-end (no symbols)', () => {
     expect(result.findings).toHaveLength(2);
     // Both have no extractable symbols → leave with no-symbols-extracted
     expect(result.findings.every((f) => f.recommendation === 'leave')).toBe(true);
+  });
+});
+
+describe('plan-doc-audit / CLI exit codes', () => {
+  let tmpRoot: string;
+  const script = join(process.cwd(), 'tools/plan-doc-audit/audit.ts');
+  const tsx = join(process.cwd(), 'node_modules/.bin/tsx');
+
+  beforeEach(() => {
+    tmpRoot = mkdtempSync(join(tmpdir(), 'plan-doc-exit-'));
+    mkdirSync(join(tmpRoot, 'src'), { recursive: true });
+    mkdirSync(join(tmpRoot, 'docs/superpowers/plans'), { recursive: true });
+    execSync('git init -q', { cwd: tmpRoot });
+    execSync('git config user.email t@t.local', { cwd: tmpRoot });
+    execSync('git config user.name test', { cwd: tmpRoot });
+    execSync('git config commit.gpgsign false', { cwd: tmpRoot });
+    writeFileSync(join(tmpRoot, 'src/real.ts'), 'export function shippedThing(): number {\n  return 1;\n}\n');
+    writeFileSync(
+      join(tmpRoot, 'docs/superpowers/plans/plan.md'),
+      '- [ ] Verify `shippedThing` is available\n',
+    );
+    execSync('git add .', { cwd: tmpRoot });
+    execSync('git -c core.autocrlf=false commit -q -m t', { cwd: tmpRoot });
+  });
+
+  afterEach(() => {
+    if (tmpRoot) rmSync(tmpRoot, { recursive: true, force: true });
+  });
+
+  function run(args: string[]): { status: number | null; stdout: string } {
+    const r = spawnSync(tsx, [script, ...args], { cwd: tmpRoot, encoding: 'utf-8' });
+    return { status: r.status, stdout: r.stdout };
+  }
+
+  it('dry-run exits 0 even when flip-eligible items exist', () => {
+    const r = run([]);
+    expect(r.stdout).toContain('Flip-eligible (every symbol shipped):  1');
+    expect(r.status).toBe(0);
+  });
+
+  it('--strict exits 1 when flip-eligible items exist in dry-run', () => {
+    expect(run(['--strict']).status).toBe(1);
+  });
+
+  it('--apply exits 0 and ticks the box', () => {
+    expect(run(['--apply']).status).toBe(0);
+    expect(readFileSync(join(tmpRoot, 'docs/superpowers/plans/plan.md'), 'utf-8')).toContain('- [x] Verify');
   });
 });

@@ -205,9 +205,9 @@ export class ProspectiveMemoryManager {
   ): Promise<ProspectiveEntity> {
     if (!this.predicateEvaluator && !this.conditionalWarningEmitted) {
       logger.warn(
-        'ProspectiveMemoryManager.scheduleConditional: predicate evaluation is not implemented in this version. ' +
+        'ProspectiveMemoryManager.scheduleConditional: no predicateEvaluator is configured. ' +
           'The intention will persist but will never auto-fire. ' +
-          'See docs/roadmap/MEMORY_TYPES_EXPANSION.md §4.7.'
+          'Pass one via ManagerContextOptions.prospectivePredicateEvaluator.'
       );
       this.conditionalWarningEmitted = true;
     }

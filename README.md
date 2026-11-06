@@ -1,218 +1,79 @@
 # MemoryJS
 
+> **Code samples.** Samples assume `const ctx = new ManagerContext('./memory.jsonl')` and the placeholders `graph: KnowledgeGraph` (from `await ctx.storage.loadGraph()`), `entities: Entity[]` and `storage: IGraphStorage`. Every other name in a sample is imported or declared in it.
+
 [![NPM](https://img.shields.io/npm/v/@danielsimonjr/memoryjs.svg)](https://www.npmjs.com/package/@danielsimonjr/memoryjs)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-7.0+-blue.svg)](https://www.typescriptlang.org/)
 
-A TypeScript knowledge-graph library for AI agents and applications that need
-structured long-term memory. Entities, relations, and observations with
-multiple storage backends (JSONL, SQLite, PostgreSQL), advanced search (BM25, TF-IDF,
-fuzzy, semantic, hybrid, temporal, LLM-planned), graph algorithms, bitemporal
-versioning, RBAC, and a complete Agent Memory System (session lifecycle,
-working / episodic / semantic / procedural memory, decay, salience, consolidation,
-causal reasoning, world-model orchestration).
+A TypeScript knowledge-graph library for AI agents and applications that need structured long-term memory.
+Entities, relations and observations are stored on JSONL, SQLite or (optionally) PostgreSQL. On top sit search
+(BM25, TF-IDF, fuzzy, semantic, hybrid, temporal, LLM-planned), graph algorithms, bitemporal versioning, RBAC, an
+Agent Memory System, and the experimental Recursa skill and learning harness.
 
-> Powers [@danielsimonjr/memory-mcp](https://www.npmjs.com/package/@danielsimonjr/memory-mcp),
-> a Model Context Protocol server for Claude and other MCP clients. The
-> library and the MCP server share the same core; this package is published
-> independently so non-MCP applications can use it directly.
+Current version: **4.5.0**. Runtime: Node.js 22.12.0 or later. Development: Bun 1.4.2 or later.
+The CLI is `memory` (or `memoryjs`): `bunx --package @danielsimonjr/memoryjs memory --help`.
 
-For a runnable CLI (`memory` / `memoryjs`): `bunx --package @danielsimonjr/memoryjs memory --help` (shorter: `bunx @danielsimonjr/memoryjs --help`).
+> Powers [@danielsimonjr/memory-mcp](https://www.npmjs.com/package/@danielsimonjr/memory-mcp), a Model Context
+> Protocol server. The library and the MCP server share one core; this package is published separately.
 
 ## Table of Contents
 
-- [Features](#features)
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [Core Concepts](#core-concepts)
-- [Storage Options](#storage-options)
-- [Search Capabilities](#search-capabilities)
-- [Graph Algorithms](#graph-algorithms)
-- [Agent Memory System](#agent-memory-system)
-- [API Reference](#api-reference)
-- [Configuration](#configuration)
-- [Development](#development)
-- [Documentation](#documentation)
-- [License](#license)
+- [Features](#features) · [Installation](#installation) · [Quick Start](#quick-start) · [Core Concepts](#core-concepts)
+- [Storage](#storage-options) · [Search](#search-capabilities) · [Graph Algorithms](#graph-algorithms)
+- [Import, Export and Skills](#import-export-and-skills) · [Agent Memory](#agent-memory-system)
+- [Governance and Audit](#governance-access-control-and-audit) · [Temporal and Causal](#bitemporal-versioning-and-causal-reasoning)
+- [Recursa](#recursa-skills-knowledge-and-learning) · [Reconstructive Memory and Procedural Graphs](#reconstructive-memory-and-procedural-graphs)
+- [Adapters and CLI](#adapters-and-the-cli) · [API Reference](#api-reference) · [Configuration](#configuration)
+- [Troubleshooting](#troubleshooting) · [Development](#development) · [Documentation](#documentation) · [License and Related](#license-and-related)
 
 ## Features
 
-### Knowledge graph
+Every entry point below is exercised by a runnable file in [`examples/`](examples/); the examples run under the
+`tests/examples/` gate, so the samples in this README stay in step with the API.
 
-| Capability | Entry point |
-|---|---|
-| Entity / relation / observation CRUD | `ctx.entityManager`, `ctx.relationManager`, `ctx.observationManager` |
-| Optimistic concurrency control on updates | `entityManager.updateEntity(name, updates, { expectedVersion })` |
-| Bitemporal versioning (entities + observations) | `invalidateEntity()` / `entityAsOf()` / `entityTimeline()` |
-| Temporal relations (validity windows) | `relationManager.invalidateRelation()` / `queryAsOf()` / `timeline()` |
-| Memory versioning with contradiction-driven supersession | `Entity.version` / `parentEntityName` / `rootEntityName` / `supersededBy` |
-| Project scoping | `Entity.projectId` + `new ManagerContext(path, { defaultProjectId })` |
-| Two-tier deletion (exact match → semantic fallback) | `ctx.semanticForget` |
-| Hierarchical nesting + traversal | `ctx.hierarchyManager` (ancestors / descendants / subtrees) |
-| Stable named references that survive entity renames | `ctx.refIndex.register()` / `resolve()` |
-| Stable entity ids + atomic rename (relations / hierarchy / version-chain rewritten) | `Entity.id` (UUID) + `entityManager.renameEntity(oldName, newName)` |
-| Bulk enumeration with TypeIndex fast path | `entityManager.listEntities({ entityType? })` |
-| Event reification — actions as first-class event hubs (who did what, to whom, where, when) | `ctx.eventManager.recordEvent()` / `queryEvents()` / `whoDidWhat()` |
-| Multi-format import / export | `ctx.ioManager.exportGraph(format)` — JSON, CSV, GraphML, GEXF, DOT, Markdown, Mermaid |
-| W3C Linked Data export | `ctx.ioManager.exportGraph('turtle' \| 'rdf-xml' \| 'json-ld')` |
-| Conversation ingestion (format-agnostic) with source-chunk provenance + cost/quality modes | `ctx.ioManager.ingest(input, { mode: 'accurate' \| 'balanced' \| 'lightweight', keepSourceText })` |
-
-### Search & retrieval
-
-| Capability | Entry point |
-|---|---|
-| Auto-selecting search with method explanation | `ctx.searchManager.autoSearch(query)` |
-| TF-IDF + BM25 ranked search (incremental indexing) | `ctx.rankedSearch`, `BM25Search` |
-| Boolean (AND / OR / NOT) with AST parser | `ctx.searchManager.booleanSearch()` |
-| Fuzzy matching (Levenshtein, N-gram pre-filtered) | `ctx.searchManager.fuzzySearch()` |
-| Semantic search with pluggable embedding provider; SQLite keeps vectors in the `embeddings` table and reuses them across restarts | `ctx.semanticSearch` (set `MEMORY_EMBEDDING_PROVIDER`) |
-| Hybrid (semantic + lexical + symbolic + opt-in graph connectivity) | `ctx.hybridSearchManager.search(graph, query, options)` |
-| Graph-connectivity ranking signal (cached normalized PageRank) | `ctx.graphRankPrior` + `MEMORY_HYBRID_GRAPH_WEIGHT` / `MEMORY_RANKED_GRAPH_BOOST` |
-| Traceable evidence paths — *why* each result matched | `ctx.hybridSearchManager.search(graph, query, { explain: true })` → `evidencePaths` |
-| NL-guided neighbor retrieval (free-text "look for") | `ctx.graphTraversal.getNeighborsWithRelations(name, { lookFor })` |
-| Temporal range queries with natural-language parsing | `ctx.searchManager.searchByTime("last hour")` |
-| LLM-planned natural-language queries | `ctx.llmQueryPlanner({ llmProvider })` once, then `ctx.queryNaturalLanguage(text)` (keyword fallback without a provider) |
-| Query diagnostics (`explainPlan`, index health) | `ctx.searchManager.explainPlan(query)`, `ctx.indexHealth()`, aggregate `ctx.diagnostics()` |
-
-### Graph algorithms
-
-| Capability | Entry point |
-|---|---|
-| Shortest path + all paths | `ctx.graphTraversal.findShortestPath()` / `findAllPaths()` |
-| Centrality — degree, betweenness, PageRank, HITS | `ctx.graphTraversal.calculatePageRank()` / `calculateHITS()` |
-| Community detection (Louvain), clique enumeration | `ctx.graphTraversal.findCommunities()` / `findCliques()` |
-| Connected components | `ctx.graphTraversal.findConnectedComponents()` |
-
-### Agent Memory System
-
-| Capability | Entry point |
-|---|---|
-| Sessions, working memory, episodic memory | `ctx.agentMemory()` — `startSession` / `addWorkingMemory` / `retrieveForContext` |
-| Turn-aware conversation memory with 4-tier dedup (exact / prefix / Jaccard / semantic) | `ctx.memoryEngine.addTurn()` / `getSessionTurns()` / `getRepeatedTurnCount()` |
-| Decay, salience, freshness | `DecayEngine`, `SalienceEngine`, `ctx.freshnessManager` |
-| Role profiles — `researcher` / `planner` / `executor` / `reviewer` / `coordinator` | `getRoleProfile(role)` / `resolveRoleProfile(agentType)` (`MEMORY_AGENT_ROLE` is reserved and not read) |
-| Memory consolidation, summarization, pattern detection | `ConsolidationPipeline`, `ConsolidationScheduler` |
-| Collaborative synthesis with conflict resolution | `CollaborativeSynthesis.synthesize()` / `resolveConflicts()` |
-| Failure-driven distillation, cognitive load analysis | `FailureDistillation`, `CognitiveLoadAnalyzer` |
-| Procedural memory (executable procedures with feedback refinement) | `ctx.procedureManager.addProcedure()` / `matchProcedure()` / `refineProcedure()` |
-| Relation consolidation — spelling-variant merge, semantic dedup, LLM validation with corrective feedback | `RelationConsolidator.analyze()` / `consolidate()` (+ pipeline stage) |
-| Active retrieval (iterative query rewriting) | `ctx.activeRetrieval.adaptiveRetrieve()` |
-| Causal reasoning — causes / effects / counterfactuals / cycle detection | `ctx.causalReasoner.findCauses()` / `findEffects()` / `counterfactual()` |
-| World-state orchestrator | `ctx.worldModelManager.getCurrentState()` / `predictOutcome()` |
-| Per-agent persistent journal | `AgentMemoryManager.writeDiary()` / `readDiary()` |
-| Prospective memory (intentions-to-act) | `ctx.prospectiveMemory.scheduleAt()` / `scheduleOnEvent()` / `scheduleConditional()` / `tick()` / `cancel()` |
-| Failure memory (pre-task `applicability_hint` lookup) | `ctx.failureManager.record()` / `lookupForTask()` |
-| Plan memory (hierarchical goal trees) | `ctx.plan.createPlan()` / `pushSubGoal()` / `transitionNode()` |
-| Reflection memory (additive insights with content-hash dedup) | `ctx.reflectionManager.create()` / `getRelevantForSession()` |
-| Heuristic memory (condition → action guidelines) | `ctx.heuristicManager.add()` / `match()` / `reinforce()` |
-| Decision rationale (ADR-style records) | `ctx.decisionManager.propose()` / `accept()` / `supersede()` |
-| Project context (facts / conventions / commands / glossary) | `ctx.projectContextManager.upsert()` / `forContext()` |
-| Tool affordance (outcome-aware tool suggestions) | `ctx.toolAffordanceManager.recordOutcome()` / `suggestTool()` |
-| Trust hierarchy — `ground-truth` / `verified` / `inferred` / `unverified` | `MemorySource.trustLevel` + `inferTrustLevel()` |
-
-### Storage & performance
-
-| Capability | Entry point |
-|---|---|
-| JSONL or SQLite backend (FTS5, BM25, WAL mode) | `MEMORY_STORAGE_TYPE=jsonl\|sqlite` |
-| Pluggable Memory Engine backend | `MEMORY_BACKEND=sqlite\|in-memory` |
-| Memory-mapped file loading for large stores | `MEMORY_USE_MMAP=true`, `MEMORY_MMAP_THRESHOLD_BYTES` |
-| Segment-sharded JSONL (FNV-routed N-way shards) | `MEMORY_STORAGE_SEGMENT_COUNT=2..1024` |
-| Columnar observation storage | `JsonlColumnStore` (env-gated) |
-| Tiered index — LRU hot / disk warm / Brotli cold | `LRUHotTier` → `DiskWarmTier` → `BrotliColdTier` via `TieredIndex` |
-| In-memory entity-cache compression | `ctx.compressedEntityCache`, `CompressedMap` |
-| Backup lifecycle (create / list / restore / delete) with symlink-attack guards | `ctx.ioManager` (delegates to `BackupManager`) |
-| Streaming export with Brotli compression | `ctx.streamingExporter` |
-| Entity archival to compressed storage | `ctx.archiveManager` |
-| Duplicate detection + entity merging | `ctx.compressionManager` |
-
-### Governance, security, multi-agent
-
-| Capability | Entry point |
-|---|---|
-| Policy enforcement + audit grouping (`withTransaction` is not atomic; see API.md) | `ctx.governanceManager.withTransaction()` / `GovernancePolicy` |
-| Enforced governance — every EntityManager mutation policy-checked + audited | `MEMORY_GOVERNANCE_ENABLED=true` (`GovernanceError` on denial) |
-| Tamper-evident audit trail (SHA-256 hash chain, `verifyChain()`) + query CLI | `ctx.auditLog` / `memory audit log\|history\|verify\|stats` |
-| REST API-key auth (Bearer / X-Api-Key, scopes, timing-safe) | `ApiKeyAuthMiddleware` + `RestRouter` `auth` option |
-| REST tenancy — keys scoped to projects. **A key without `projectIds` can access ALL projects.** | `APIKeyStore.issue({ projectIds })` |
-| Strict-mode attribution enforcer | `CollaborationAuditEnforcer` (requires `agentId` on every mutation) |
-| RBAC — role / permission / matrix / middleware | `ctx.rbacMiddleware.checkPermission()` / `ctx.roleAssignmentStore` |
-| ABAC + row-level security + API-key scoping | `src/security/abac.ts`, `rls.ts`, `apiKeys.ts` |
-| PII redactor (email / SSN / CC / phone / IP) | `new PiiRedactor().redactGraph()` / `redactWithStats()` |
-| Visibility hierarchies (5-level: `private` / `team` / `org` / `shared` / `public`) | `VisibilityResolver.canAccess()` |
-| Time-window + role-gated visibility | `AgentEntity.visibleFrom` / `visibleUntil` / `allowedRoles[]` |
-| Path-traversal protection | `validateFilePath(path, baseDir?, confineToBase=true)` |
-
-### Tooling
-
-| Capability | Entry point |
-|---|---|
-| Command-line interface | `bunx --package @danielsimonjr/memoryjs memory --help` (or `bunx @danielsimonjr/memoryjs --help`) |
-| End-to-end smoke test against a fresh temp graph (~30 ops) | `memory smoke --keep --verbose` |
-| Diagnostic snapshot + graph health checks | `memory diag` / `memory health` |
-| Environment preflight (Node version / ABI, workers, env-flag lint, provider reachability) | `memory doctor [--json]` |
-| Audit-trail query + chain verification | `memory audit log\|history\|verify\|stats` |
-| Orphan + missing-parent + cycle detection with optional repair | `memory check [--apply]` |
-| Rebuild ranked + spell indexes | `memory reindex [--ranked\|--spell]` |
-| Inspect a single entity verbosely | `memory show <name>` |
-| Hierarchy tree (JSON or `--ascii`) | `memory tree [root]` |
-| Search-cache stats / clear | `memory cache stats \| clear` |
-| Interactive REPL | `memory interactive` |
-
+| Area | What you get | Entry points |
+|---|---|---|
+| Knowledge graph | CRUD, bitemporal entities and relations, hierarchies, stable refs, event reification, import and export, batched writes | `ctx.entityManager`, `ctx.relationManager`, `ctx.ioManager`, `ctx.batch()`, `ctx.eventManager` |
+| Search | Auto, ranked (BM25), boolean, fuzzy, temporal, semantic, hybrid with evidence paths, LLM-planned | `ctx.searchManager`, `ctx.rankedSearch`, `ctx.hybridSearchManager`, `ctx.semanticSearch` |
+| Graph algorithms | Shortest path, centrality, communities, cliques, components, traversal | `ctx.graphTraversal` |
+| Agent Memory | Sessions, working and episodic memory, turn dedup, wake-up context, decay, consolidation, causal reasoning, world model | `ctx.agentMemory()`, `ctx.memoryEngine`, `ctx.causalReasoner`, `ctx.worldModelManager` |
+| Specialised memory | Procedural, prospective, failure, plan, reflection, heuristic, decision, project-context, tool-affordance | `ctx.procedureManager`, `ctx.prospectiveMemory`, `ctx.failureManager`, and others (API Reference) |
+| Recursa (`@experimental`) | Skills, instruction sets, knowledge snapshots, SKILL.md publishing, leaf and recursive learning, bootstrapping, evaluation, harness tools | `ctx.skillManager`, `ctx.instructionSets`, `ctx.knowledgeRepository`, `ctx.learningLoop()`, `ctx.bootstrapper()`, `createRecursaTools()` |
+| Reconstructive memory (`@experimental`) | Cue, tag and content graph built from dialogue, with bounded reconstruction | `ctx.reconstructiveMemory()` |
+| Procedural graphs (`@experimental`) | Execution graphs with per-step guidance | `ctx.createProceduralGraph()` |
+| Storage | JSONL, SQLite (FTS5), PostgreSQL; segment-sharded JSONL; mmap loading; backups | `MEMORY_STORAGE_TYPE`, `ctx.ioManager.createBackup()` |
+| Governance and security | Policy enforcement, tamper-evident audit, RBAC, attribution, PII redaction, ABAC, API keys | `ctx.governanceManager`, `ctx.auditLog`, `ctx.rbacMiddleware`, `PiiRedactor`, `APIKeyStore` |
+| Integration | REST router, rate limiter, MCP observer, LangChain adapter, `memory` CLI | `RestRouter`, `RateLimiter`, `MCPToolObserverAdapter`, `LangChainMemoryAdapter` |
 
 ## Installation
 
-```bash
-bun add @danielsimonjr/memoryjs
-```
+Install with `bun add @danielsimonjr/memoryjs`.
 
-The package still lives on the npm registry, so npm and pnpm consumers can
-keep installing it from there.
+npm and pnpm consumers can install the same package from the npm registry. Subpath imports keep load footprints
+small (`sideEffects` is `false`): `/sqlite`, `/core`, `/search`, `/agent`, `/features`, `/utils`, `/types`,
+`/adapters` and `/security` are available next to the root entry point.
 
-Subpath imports are available for smaller load footprints — e.g.
-`@danielsimonjr/memoryjs/search`, `/agent`, `/types`, `/sqlite` — with
-`sideEffects: false` for bundler tree-shaking. The root import remains the
-full-featured entry point.
+Requirements: Node.js 22.12.0 or later at runtime; Bun 1.4.2 or later for development (`bun.lock` is authoritative).
 
-### Requirements
+Optional peer dependencies:
 
-- Bun >= 1.4.2 (documented install and development workflow)
-- Node.js >= 22.12.0 (production runtime of the published package)
-- TypeScript >= 7.0 (for development)
-
-### Optional peer dependencies
-
-| Package | Install it to use |
+| Package | Needed for |
 |---|---|
-| `@huggingface/transformers` ^4.3.1 | The `local` embedding provider, which is the default `MEMORY_EMBEDDING_PROVIDER`. It runs the `Xenova/all-MiniLM-L6-v2` model (8-bit weights) offline through Transformers.js. Without the package, the `local` provider is not ready and semantic search is not available. |
-| `yaml` >= 2.0.0 | Full YAML front matter when reading and publishing Recursa `SKILL.md` files. Without it, a built-in subset parser is used |
-| `pg` >= 8.0.0 | The PostgreSQL storage backend |
-
-```bash
-bun add @huggingface/transformers
-```
-
-The `local` provider runs on `onnxruntime-node`, which `@huggingface/transformers` 4.3.1 pins to 1.30.0.
-That release ships native binaries for macOS arm64, Linux x64, Linux arm64, Windows x64 and Windows arm64.
-It ships no binary for macOS x64 (Intel). On an Intel Mac, set `MEMORY_EMBEDDING_PROVIDER` to `openai`, `llamacpp` or `none`.
+| `@huggingface/transformers` ^4.3.1 | The `local` embedding provider, the default. Without it, `ctx.semanticSearch` is unavailable. It pins `onnxruntime-node` 1.30.0, which has no macOS x64 (Intel) binary; on Intel Macs set `MEMORY_EMBEDDING_PROVIDER` to `openai`, `llamacpp` or `none`. |
+| `yaml` >= 2.0.0 | Full YAML front matter in Recursa `SKILL.md` files (a built-in subset parser is used without it). |
+| `pg` >= 8.0.0 | The PostgreSQL backend (`MEMORY_STORAGE_TYPE=postgres`). |
 
 ## Quick Start
 
-### 1. Initialize storage
+Create a context over a file, then write and read entities.
 
-```typescript
-import { ManagerContext } from '@danielsimonjr/memoryjs';
+```ts
+import { EntityNotFoundError, ManagerContext } from '@danielsimonjr/memoryjs';
 
-// JSONL storage (default, human-readable)
-const ctx = new ManagerContext('./memory.jsonl');
+const storagePath = './memory.jsonl';
+const ctx = new ManagerContext(storagePath);
 
-// Or SQLite (set MEMORY_STORAGE_TYPE=sqlite in the environment)
-const sqliteCtx = new ManagerContext('./memory.db');
-```
-
-### 2. Create entities
-
-```typescript
 await ctx.entityManager.createEntities([
   {
     name: 'TypeScript',
@@ -228,942 +89,806 @@ await ctx.entityManager.createEntities([
     tags: ['backend', 'server'],
   },
 ]);
-```
 
-### 3. Create relations
-
-```typescript
 await ctx.relationManager.createRelations([
   { from: 'TypeScript', to: 'Node.js', relationType: 'runs_on' },
 ]);
 ```
 
-### 4. Search
+Full example: [`examples/01-quick-start.ts`](examples/01-quick-start.ts)
 
-```typescript
-// Auto-select the best method
-const auto = await ctx.searchManager.autoSearch('JavaScript');
+```ts
+import { EntityNotFoundError, ManagerContext } from '@danielsimonjr/memoryjs';
 
-// Substring + tag search
-const nodes = await ctx.searchManager.searchNodes('JavaScript');
+const storagePath = './memory.jsonl';
+const ctx = new ManagerContext(storagePath);
 
-// Boolean (AND / OR / NOT) with an AST parser
-const both = await ctx.searchManager.booleanSearch('TypeScript AND runtime');
+const matches = await ctx.searchManager.searchNodes('runtime');
 
-// Fuzzy (typo-tolerant; N-gram pre-filtered) — threshold is positional
-const fuzzy = await ctx.searchManager.fuzzySearch('Typscript', 0.7);
+const entity = await ctx.entityManager.getEntity('TypeScript');
 
-// Ranked TF-IDF / BM25
-const ranked = await ctx.rankedSearch.searchNodesRanked('runtime environment',
-  undefined, undefined, undefined, 10);
+const languages = await ctx.entityManager.listEntities({ entityType: 'language' });
 
-// Active retrieval — iterative query rewriting until coverage threshold
-const adaptive = await ctx.activeRetrieval.adaptiveRetrieve({ query: 'memory leak' });
-console.log(adaptive.bestResults, adaptive.bestCoverage, adaptive.rounds);
+const relations = await ctx.relationManager.getRelations('TypeScript');
+
+const observations = await ctx.observationManager.getObservationsFor('Node.js');
 ```
 
-### 5. Multi-agent collaboration
+Full example: [`examples/01-quick-start.ts`](examples/01-quick-start.ts)
 
-```typescript
-// Optimistic concurrency control — fail loudly on stale writes
-try {
-  await ctx.entityManager.updateEntity('Alice',
-    { importance: 9 },
-    { expectedVersion: 3 });
-} catch (e) {
-  if (e instanceof Error && e.name === 'VersionConflictError') {
-    // Refetch + retry
-  }
-}
-
-// Synthesize a view across agents + resolve conflicts
-const agent = ctx.agentMemory();
-const synth = await agent.collaborativeSynthesis.synthesize('Alice');
-const winners = agent.collaborativeSynthesis.resolveConflicts(synth, {
-  strategy: 'highest_confidence',
-});
-
-// Enforce attribution on every mutation
-import { CollaborationAuditEnforcer, AuditLog } from '@danielsimonjr/memoryjs';
-const enforcer = new CollaborationAuditEnforcer(
-  ctx.entityManager,
-  new AuditLog('./audit.jsonl'),
-);
-await enforcer.createEntities(
-  [{ name: 'X', entityType: 't', observations: ['fact'] }],
-  'agent-alice', // throws AttributionRequiredError if agentId is missing
-);
-```
-
-### 6. Bitemporal versioning
-
-```typescript
-// Mark an entity as no longer valid at a specific time
-await ctx.entityManager.invalidateEntity('OldFact', '2025-12-31T00:00:00Z');
-
-// Time-travel query
-const past = await ctx.entityManager.entityAsOf('Alice', '2024-06-15T00:00:00Z');
-
-// Per-observation validity windows
-await ctx.observationManager.invalidateObservation(
-  'Alice', 'works at Acme', '2024-12-31T00:00:00Z',
-);
-const obsAtTime = await ctx.observationManager.observationsAsOf(
-  'Alice', '2024-06-15T00:00:00Z',
-);
-```
-
-### 7. Causal reasoning and world model
-
-```typescript
-// Forward inference — "what does X cause?"
-const effects = await ctx.causalReasoner.findEffects('rain', ['flooding', 'erosion']);
-
-// Counterfactual — "what if we remove this edge?"
-const surviving = await ctx.causalReasoner.counterfactual({
-  seed: 'rain', removeFrom: 'rain', removeTo: 'flooding', predict: 'flooding',
-});
-
-// World-state snapshot + diff
-const before = await ctx.worldModelManager.getCurrentState();
-// ... mutations ...
-const after = await ctx.worldModelManager.getCurrentState();
-const change = ctx.worldModelManager.detectStateChange(before, after);
-```
-
-### 8. Learning loop (Recursa, experimental)
-
-```typescript
-// solver: { solve(task, knowledge) } — knowledge.markdown holds the loaded instructions and skills
-const loop = ctx.learningLoop({ solver, judge: new DeterministicJudge() });
-const result = await loop.learn({ taskIds: tasks.map((t) => t.id), tasks, budget: { maxRounds: 3 } });
-console.log(result.stoppedBecause, result.before.allPass, '→', result.after.allPass);
-// More than MEMORY_LEARNING_LEAF_THRESHOLD (20) tasks, or a `split`, runs the recursive learner.
-```
-
-### 9. RBAC and PII redaction
-
-```typescript
-// Grant a role
-await ctx.roleAssignmentStore.assign({
-  agentId: 'alice', role: 'writer', resourceType: 'entity',
-});
-ctx.rbacMiddleware.checkPermission('alice', 'write', 'entity'); // true
-
-// Redact PII from exports / logs
-import { PiiRedactor } from '@danielsimonjr/memoryjs';
-const redactor = new PiiRedactor();
-const cleanGraph = redactor.redactGraph(graph);
-const { text, stats } = redactor.redactWithStats(observation);
-```
+`ctx.close()` releases the storage handles and is idempotent.
 
 ## Core Concepts
 
-### Entity
-
-The primary node in the knowledge graph. Required fields are `name`, `entityType`,
-and `observations`; the rest are optional and unlock specific features:
-
-```typescript
-interface Entity {
-  name: string;              // Unique identifier (public key)
-  id?: string;               // Stable opaque UUID — assigned at creation, survives renames
-  entityType: string;        // Classification (person, project, concept, …)
-  observations: string[];    // Atomic facts about the entity
-  parentId?: string;         // Parent entity for hierarchical nesting
-  tags?: string[];           // Lowercase tags for categorisation
-  importance?: number;       // 0–10 scale for prioritisation
-  createdAt?: string;        // ISO 8601
-  lastModified?: string;     // ISO 8601
-
-  // Freshness
-  ttl?: number;              // Seconds until stale
-  confidence?: number;       // [0, 1] belief strength
-
-  // Project scoping + supersession
-  projectId?: string;        // Multi-project isolation
-  version?: number;          // Drives optimistic concurrency on updates
-  parentEntityName?: string;
-  rootEntityName?: string;
-  isLatest?: boolean;
-  supersededBy?: string;
-
-  // Memory-engine deduplication
-  contentHash?: string;      // SHA-256 for O(1) exact-equality dedup
-
-  // Bitemporal validity (orthogonal to supersession)
-  validFrom?: string;
-  validUntil?: string;
-  observationMeta?: Array<{
-    content: string;
-    validFrom?: string;
-    validUntil?: string;
-    recordedAt?: string;
-  }>;
-}
-```
-
-### Relation
-
-A directed edge between two entities:
-
-```typescript
-interface Relation {
-  from: string;           // Source entity name
-  to: string;             // Target entity name
-  relationType: string;   // Relationship type (active voice — "depends_on", "wrote")
-}
-```
-
-### Observation
-
-A discrete atomic fact about an entity. Use `addObservations()` to append without
-overwriting; combined with the bitemporal axis and per-observation `validFrom` /
-`validUntil` you can preserve historical state instead of mutating in place.
-
-### ManagerContext
-
-The central facade. Construct it with a storage-path string; every manager is
-exposed as a property with lazy initialisation:
-
-```typescript
-const ctx = new ManagerContext('./memory.jsonl');
-
-// Core
-ctx.entityManager        // Entity CRUD + hierarchy + temporal validity + OCC
-ctx.relationManager      // Relation management + temporal invalidation
-ctx.observationManager   // Observation CRUD + bitemporal axis
-ctx.hierarchyManager     // Tree operations (parent / children / ancestors)
-ctx.searchManager        // All search operations including `searchByTime`
-ctx.rankedSearch         // TF-IDF / BM25 ranked search
-ctx.graphTraversal       // BFS / DFS / shortest path / centrality / communities
-ctx.tagManager           // Tag aliases + bulk operations
-ctx.refIndex             // Stable name → entity O(1) lookup
-
-// Storage + I/O
-ctx.ioManager            // Import / export (RDF/Turtle/JSON-LD) / backup / ingest
-ctx.archiveManager       // Entity archival
-ctx.compressionManager   // Duplicate detection, entity merging
-ctx.analyticsManager     // Graph statistics + validation
-ctx.semanticForget       // Two-tier deletion with audit
-ctx.governanceManager    // Transactions + policy enforcement
-ctx.freshnessManager     // TTL / confidence freshness reports
-
-// Search extensions
-ctx.semanticSearch       // Vector similarity (lazy; needs embedding provider)
-ctx.temporalSearch       // Natural-language time-range search
-ctx.activeRetrieval      // Iterative query rewriting (no LLM required)
-ctx.queryNaturalLanguage // Convenience wrapper for NL → StructuredQuery (text only; provider set via ctx.llmQueryPlanner)
-
-// Memory engine + agent system
-ctx.memoryEngine         // Turn-aware conversation memory (4-tier dedup)
-ctx.memoryBackend        // Pluggable IMemoryBackend (in-memory / sqlite)
-ctx.agentMemory()        // Agent Memory System facade
-
-// Memory intelligence
-ctx.memoryValidator      // Consistency / contradictions / temporal-order checks
-ctx.trajectoryCompressor // Distill / abstract / merge redundant trajectories
-
-// Specialised memory managers
-ctx.procedureManager     // Executable procedure memory + feedback refinement
-ctx.causalReasoner       // findCauses / findEffects / counterfactual
-ctx.worldModelManager    // State-snapshot orchestrator + diff
-ctx.heuristicManager     // Condition → action guidelines
-ctx.decisionManager      // ADR-style decision records
-ctx.projectContextManager
-ctx.toolAffordanceManager
-ctx.spellChecker         // Vocabulary-driven spell suggestions
-ctx.exclusionManager     // `do_not_remember` content-pattern rules
-ctx.observationDedupManager
-
-// Access control + audit
-ctx.roleAssignmentStore
-ctx.rbacMiddleware
-```
+- **Entity**: a named node; `name` is the public key. `tags`, `importance` (0 to 10), `ttl`, `confidence`, `version`,
+  `validFrom` and `validUntil` are optional and enable freshness, versioning and bitemporal queries.
+- **Relation**: a directed edge `from` to `to` with a `relationType` in active voice (`depends_on`, `works_at`).
+- **Observation**: one atomic fact. `addObservations()` appends; `invalidateObservation()` closes a window so history is kept.
+- **ManagerContext**: the facade, `new ManagerContext('./memory.jsonl')` or `new ManagerContext({ storagePath, storageType })`. Managers are created on first access.
+- **Batch**: `ctx.batch(fn)` applies queued mutations in one load-apply-save pass; if `fn` throws, nothing is applied ([`examples/04-import-export.ts`](examples/04-import-export.ts)).
 
 ## Storage Options
 
-### Comparison
+| Backend | Select with | Path argument | Notes |
+|---|---|---|---|
+| JSONL (default) | nothing, or `MEMORY_STORAGE_TYPE=jsonl` | File path | Human-readable. Single process only. |
+| SQLite | `storageType: 'sqlite'`, or `MEMORY_STORAGE_TYPE=sqlite` | Database file | FTS5 with BM25, WAL mode. Needs `better-sqlite3`, or `node:sqlite` on Node 22.16+. |
+| PostgreSQL | `MEMORY_STORAGE_TYPE=postgres` (or `postgresql`) | Connection string, such as `postgres://user:pass@host:5432/db` | Needs `pg`. The pool opens on first use and the schema is created then. Search is LIKE-based in this version. |
 
-| Feature | JSONL (Default) | SQLite (better-sqlite3) |
-|---------|-----------------|-------------------------|
-| Format | Human-readable text | Native binary database |
-| Transactions | Basic | Full ACID with WAL mode |
-| Full-Text Search | Basic | FTS5 with BM25 ranking |
-| Performance | Good | 3-10x faster |
-| Concurrency | One owning process; in-process writes serialized | Thread-safe with async-mutex |
-| Best For | Small graphs, debugging | Large graphs (10k+ entities) |
+The `storageType` option takes `jsonl` or `sqlite`. A set `MEMORY_STORAGE_TYPE` overrides it, so deployments can switch
+backends without code changes. PostgreSQL is selected only through the environment. Its tests mock the `pg` client; the
+repository's suite does not run it against a live server.
 
-### JSONL Storage
+SQLite notes: `better-sqlite3` loads first, else `node:sqlite`; `MEMORY_SQLITE_DRIVER=node` forces the latter.
 
-```typescript
-const ctx = new ManagerContext('./memory.jsonl');
+```ts
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+import { SQLiteStorage } from '@danielsimonjr/memoryjs/sqlite';
+
+const storagePath = './memory.db';
+
+const ctx = new ManagerContext({ storagePath, storageType: 'sqlite' });
+
+const storage: unknown = ctx.storage;
+const ranked = storage instanceof SQLiteStorage
+  ? storage.fullTextSearch('refund ledger', { limit: 5 })
+  : [];
 ```
 
-Features:
-- Human-readable line-delimited JSON
-- In-memory caching with write-through invalidation
-- Atomic writes: temp file, fsync, rename, then directory fsync where the platform supports it
-- The live file is never rewritten in place. If Windows blocks the rename after retries, the write fails and the previous file stays intact.
-- Batches and transactions hold the storage write lock from read to save
-- **Single-process only.** Open each JSONL file from one process. The write lock cannot coordinate a second process; use SQLite for multi-process access.
-- Backward compatibility for legacy formats
-
-### SQLite Storage
-
-```typescript
-// Set MEMORY_STORAGE_TYPE=sqlite environment variable
-const ctx = new ManagerContext('./memory.db');
-```
-
-Features:
-- FTS5 full-text search with BM25 ranking
-- WAL mode for better concurrency
-- Referential integrity with ON DELETE CASCADE
-- ACID transactions
-
-SQLite drivers:
-- `better-sqlite3` loads first. It requires a native binary. Installers that skip install scripts do not create it.
-- If `better-sqlite3` is missing, `SQLiteStorage` uses `node:sqlite`. This requires Node 22.16.0 or later. Earlier `node:sqlite` versions lack the FTS5 module.
-- Install `better-sqlite3` on Node 22.12.0 to 22.15.
-- `MEMORY_SQLITE_DRIVER=node` forces `node:sqlite`. The same Node floor applies.
-- SQLite builds without FTS5 stop storage at first use. The error names Node 22.16.0.
-
-### Storage Files
-
-When using JSONL, related files are automatically created:
-
-```
-/your/data/directory/
-├── memory.jsonl                    # Main knowledge graph
-├── memory-saved-searches.jsonl     # Saved search queries
-├── memory-tag-aliases.jsonl        # Tag synonym mappings
-└── .backups/                       # Timestamped backups
-```
+Full example: [`examples/15-sqlite.ts`](examples/15-sqlite.ts)
 
 ## Search Capabilities
 
-### Available methods
+| Method | Use it for |
+|---|---|
+| `searchManager.searchNodes(query)` | Substring and tag matching |
+| `searchManager.autoSearch(query)` | Default entry point; returns `selectedMethod` and `selectionReason` |
+| `searchManager.booleanSearch(query)` | AND, OR, NOT, with parentheses |
+| `searchManager.fuzzySearch(query, threshold?)` | Typo tolerance (threshold 0 to 1, positional) |
+| `rankedSearch.searchNodesRanked(query, ...)` | Relevance order with a score |
+| `searchManager.searchByTime(query)` | "last hour", "since 2024-01-01" |
+| `hybridSearchManager.search(graph, query, options)` | Semantic, lexical and symbolic signals combined |
+| `queryNaturalLanguage(text)` | LLM-planned search; set the provider first with `ctx.llmQueryPlanner({ llmProvider })` |
 
-| Method | Description | Use case |
-|---|---|---|
-| `searchManager.autoSearch(query)` | Auto-selects the best method + explains why | Default entry point |
-| `searchManager.searchNodes(query)` | Substring + tag matching | Simple queries |
-| `searchManager.booleanSearch(query)` | AND / OR / NOT with AST parser | Complex filters |
-| `searchManager.fuzzySearch(query)` | Levenshtein + N-gram pre-filter | Typo tolerance |
-| `searchManager.searchByTime(query)` | Natural-language time ranges (`chrono-node`) | "last hour", "since 2024-01-01" |
-| `rankedSearch.searchNodesRanked(query, ...)` | TF-IDF / BM25 ranking | Most-relevant ordering |
-| `semanticSearch.search(query)` | Vector similarity (requires embedding provider); persistent on SQLite | Semantic queries |
-| `new HybridSearchManager(...).search(query)` | Semantic + lexical + symbolic | Multi-signal ranking |
-| `activeRetrieval.adaptiveRetrieve({ query })` | Iterative query rewriting + coverage check | Adaptive refinement |
-| `queryNaturalLanguage(text)` | LLM-planned NL decomposition; the provider is set first with `ctx.llmQueryPlanner({ llmProvider })` (fallback: keyword) | Free-text queries |
-| `causalReasoner.findEffects(seed, candidates)` | Subgraph traversal over `causes`/`enables`/`prevents` | Causal inference |
+```ts
+import { ManagerContext } from '@danielsimonjr/memoryjs';
 
-### Auto-search
+const storagePath = './memory.jsonl';
+const ctx = new ManagerContext(storagePath);
 
-```typescript
-const auto = await ctx.searchManager.autoSearch('TypeScript runtime');
-console.log(auto.selectedMethod, auto.selectionReason);
-console.log(auto.results);
+const ranked = await ctx.rankedSearch.searchNodesRanked('runtime platform', undefined, undefined, undefined, 5);
+
+const fuzzyPositional = await ctx.searchManager.fuzzySearch('Typscript', 0.7);
+
+const fuzzyOptions = await ctx.searchManager.fuzzySearch('Typscript', { tags: ['programming'], minImportance: 5 });
+
+const boolean = await ctx.searchManager.booleanSearch('person AND (frontend OR backend)');
+
+const filtered = await ctx.searchManager.searchNodes('engineer', { tags: ['backend'], minImportance: 5 });
 ```
 
-### Boolean search
+Full example: [`examples/02-search.ts`](examples/02-search.ts)
 
-```typescript
-// AND — both terms must match
-await ctx.searchManager.booleanSearch('TypeScript AND runtime');
+Hybrid search takes the graph (`ctx.storage.loadGraph()`) and per-signal weights. Filters go in `symbolic`. Options
+`semantic`, `lexical`, `explain`, `graphWeight` and `expandNeighbors` are optional. The example uses `semanticWeight: 0`
+so it never loads an embedding model:
 
-// OR — either term matches
-await ctx.searchManager.booleanSearch('frontend OR backend');
+```ts
+import { ManagerContext } from '@danielsimonjr/memoryjs';
 
-// NOT — exclude term
-await ctx.searchManager.booleanSearch('JavaScript NOT browser');
+const storagePath = './memory.jsonl';
+const ctx = new ManagerContext(storagePath);
 
-// Grouping
-await ctx.searchManager.booleanSearch('(TypeScript OR JavaScript) AND server');
-```
+const recent = await ctx.searchManager.searchByTime('last hour');
 
-### Fuzzy search
+const graph = await ctx.storage.loadGraph();
 
-```typescript
-// Typo-tolerant; threshold 0–1 (higher = stricter)
-await ctx.searchManager.fuzzySearch('Typscript', { threshold: 0.7 });
-```
-
-### Hybrid search
-
-`HybridSearchManager` combines three signal layers. Instantiate it directly —
-it is exported from the package but not wired onto `ManagerContext` because the
-weighting + filter configuration is application-specific.
-
-```typescript
-import { HybridSearchManager } from '@danielsimonjr/memoryjs';
-
-const hybrid = new HybridSearchManager(ctx.storage, ctx.rankedSearch);
-const results = await hybrid.search('programming concepts', {
-  weights: {
-    semantic: 0.5,   // Vector similarity (requires embeddings)
-    lexical: 0.3,    // TF-IDF text matching
-    symbolic: 0.2,   // Metadata (tags, importance, type)
-  },
-  filters: {
-    entityTypes: ['concept'],
-    minImportance: 5,
-    tags: ['programming'],
-  },
+const hybrid = await ctx.hybridSearchManager.search(graph, 'runtime', {
+  semanticWeight: 0,
+  lexicalWeight: 0.7,
+  symbolicWeight: 0.3,
+  symbolic: { tags: ['backend', 'company'], importance: { min: 5 } },
+  limit: 5,
 });
 ```
+
+Full example: [`examples/02-search.ts`](examples/02-search.ts)
+
+`ctx.semanticSearch` is `null` when no embedding provider is available, so check it before a semantic query.
 
 ## Graph Algorithms
 
-### Path finding
+`calculatePageRank(damping, iterations, tolerance, topN)` returns a `CentralityResult` (`scores`, a `Map`;
+`topEntities`; `algorithm`). `findShortestPath()` returns a `PathResult` or `null`. `findCommunities()` returns
+`communities` and `modularity`; `findCliques({ minSize, maxCliques })` returns `string[][]`.
 
-```typescript
-// Shortest path between entities (BFS)
-const result = await ctx.graphTraversal.findShortestPath('A', 'Z');
-console.log(result.path);     // ['A', 'B', 'C', 'Z']
-console.log(result.distance); // 3
+```ts
+import { ManagerContext } from '@danielsimonjr/memoryjs';
 
-// All paths with a depth bound
-const all = await ctx.graphTraversal.findAllPaths('A', 'Z', { maxDepth: 5 });
-// → [['A', 'B', 'Z'], ['A', 'C', 'D', 'Z'], …]
-```
+const storagePath = './memory.jsonl';
+const ctx = new ManagerContext(storagePath);
 
-### Centrality
+const shortest = await ctx.graphTraversal.findShortestPath('A', 'Z');
 
-Each centrality algorithm has its own method (no unified `getCentrality()` — the
-algorithms have different parameters and return shapes):
-
-```typescript
-const degree = await ctx.graphTraversal.calculateDegreeCentrality();
-const between = await ctx.graphTraversal.calculateBetweennessCentrality();
-const pagerank = await ctx.graphTraversal.calculatePageRank();
-const hits = await ctx.graphTraversal.calculateHITS();
-// Each returns a Map<entityName, score>
-```
-
-### Connected components, communities, cliques
-
-```typescript
 const components = await ctx.graphTraversal.findConnectedComponents();
-const communities = await ctx.graphTraversal.findCommunities();   // Louvain
-const cliques = await ctx.graphTraversal.findCliques(/* minSize */ 3);
+
+const pagerank = await ctx.graphTraversal.calculatePageRank(0.85, 100, 1e-6, 3);
+
+const degree = await ctx.graphTraversal.calculateDegreeCentrality();
 ```
 
-### Traversal
+Full example: [`examples/03-graph-algorithms.ts`](examples/03-graph-algorithms.ts)
 
-```typescript
-// Returns a TraversalResult { visited, edges, depthMap }
-const bfs = ctx.graphTraversal.bfs('startNode', { maxDepth: 3 });
-const dfs = ctx.graphTraversal.dfs('startNode');
+## Import, Export and Skills
+
+`exportGraph(graph, format)` is synchronous and returns text. `importGraph(format, data, mergeStrategy, dryRun)` takes
+`json`, `csv` or `graphml`, with merge strategies `replace`, `skip`, `merge` or `fail`. `createBackup()` returns a
+`BackupResult` with `path`; `restoreFromBackup(path)` restores it.
+
+```ts
+import { join } from 'node:path';
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+
+const storagePath = './memory.jsonl';
+const ctx = new ManagerContext(storagePath);
+
+const graph = await ctx.storage.loadGraph();
+
+const json = ctx.ioManager.exportGraph(graph, 'json');
+
+const targetPath = join(join(storagePath, '..'), 'target.jsonl');
+
+const target = new ManagerContext(targetPath);
+
+const dry = await target.ioManager.importGraph('json', json, 'skip', true);
+
+const real = await target.ioManager.importGraph('json', json, 'skip');
 ```
+
+Full example: [`examples/04-import-export.ts`](examples/04-import-export.ts)
+
+`exportSkills(dir)` and `importSkills(dir)` publish and read `SKILL.md` trees below the storage directory
+(see [`examples/04-import-export.ts`](examples/04-import-export.ts)).
 
 ## Agent Memory System
 
-A memory system for AI agents with session lifecycle, working / episodic /
-semantic / procedural memory, decay, salience, multi-agent visibility, and
-specialised memory types (prospective, failure, plan, reflection, heuristic,
-decision rationale, project context, tool affordance).
+Working memory is short-term and may expire or be promoted. Episodic memory is a timeline of events. Every memory is an
+entity, so it is searchable and versioned.
 
-### Key components
-
-| Component | Purpose |
-|---|---|
-| `AgentMemoryManager` | Unified facade for the system |
-| `SessionManager` | Session lifecycle (start / end / restore / checkpoint) |
-| `WorkingMemoryManager` | Short-term, session-scoped memories with promotion |
-| `EpisodicMemoryManager` | Timeline-based event memories |
-| `DecayEngine` | Time-based importance decay |
-| `SalienceEngine` | Context-aware memory scoring |
-| `MultiAgentMemoryManager` | Cross-agent memory with visibility controls |
-| `ConflictResolver` | Resolution strategies for concurrent updates |
-
-### Quick start
-
-```typescript
+```ts
 import { ManagerContext } from '@danielsimonjr/memoryjs';
 
-const ctx = new ManagerContext('./memory.jsonl');
-const agent = ctx.agentMemory();
+const storagePath = './memory.jsonl';
+const ctx = new ManagerContext(storagePath);
 
-// Start a session
-const session = await agent.startSession({ agentId: 'my-agent' });
-
-// Add working memory
-await agent.addWorkingMemory({
-  sessionId: session.name,
-  content: 'User prefers dark mode',
-  importance: 7,
+const agent = ctx.agentMemory({
+  decay: { halfLifeHours: 168, minImportance: 0.1 },
 });
 
-// Episodic event
-await agent.createEpisode('Completed onboarding flow', {
-  sessionId: session.name,
+const session = await agent.startSession({ agentId: 'support-bot', goalDescription: 'Answer billing questions' });
+
+const sessionId = session.name;
+
+const working = await agent.addWorkingMemory({
+  sessionId,
+  content: 'User prefers dark mode and short answers',
+  importance: 7,
+  ttlHours: 24,
+});
+
+const episode = await agent.createEpisode('Resolved a duplicate-charge ticket', {
+  sessionId,
   importance: 8,
 });
 
-// Retrieve context for an LLM prompt (token-budgeted)
-const context = await agent.retrieveForContext({
-  maxTokens: 2000,
-  includeEpisodic: true,
+const first = await ctx.memoryEngine.addTurn('How do I update my card?', {
+  sessionId,
+  role: 'user',
+  importance: 6,
 });
 
-// End session
-await agent.endSession(session.name);
+const repeat = await ctx.memoryEngine.addTurn('How do I update my card?', {
+  sessionId,
+  role: 'user',
+});
 ```
 
-### Memory types
+Full example: [`examples/05-agent-memory.ts`](examples/05-agent-memory.ts)
 
-```typescript
-type MemoryType =
-  | 'working'      // Short-term, session-scoped; may be promoted
-  | 'episodic'     // Timeline-based event memories
-  | 'semantic'     // Long-term factual knowledge
-  | 'procedural'   // Executable procedures with feedback refinement
-  | 'prospective'  // Intentions-to-act at a future time / event / condition
-  | 'failure'      // Pre-task failure lookup keyed on applicability_hint
-  | 'plan'         // Hierarchical goal trees with sub-tasks + acceptance criteria
-  | 'reflection'   // Additive derived insights with content-hash dedup
-  | 'heuristic';   // Condition → action guidelines
+`wakeUp({ knowledge, taskHint, maxL0Tokens, maxL1Tokens })` builds a token-budgeted context block; the `knowledge`
+argument adds shared instructions and the skills that match `taskHint`. `runDecayCycle()` applies time decay. Both are
+shown in [`examples/05-agent-memory.ts`](examples/05-agent-memory.ts).
+
+Memory types (`MEMORY_TYPES`) are working, episodic, semantic, procedural, prospective, failure, plan, reflection,
+heuristic, exclusion, decision, project_context, tool_affordance, skill and instruction_set. `MemorySource.trustLevel`
+(`ground-truth`, `verified`, `inferred`, `unverified`) is set by hand or with `inferTrustLevel(source)`.
+
+## Governance, Access Control and Audit
+
+### Multi-agent memory
+
+Each memory has an `agentId` and a visibility: `private`, `team`, `org`, `shared` or `public`. `MultiAgentMemoryManager`
+decides who can read what. `collaborativeSynthesis` walks the graph from a seed, ranks neighbours by salience, and reports
+conflicts: two agents' claims with the same identity (`rootEntityName`, or `name`).
+
+```ts
+import { CollaborativeSynthesis, ManagerContext, MultiAgentMemoryManager, type Entity } from '@danielsimonjr/memoryjs';
+
+const storagePath = './memory.jsonl';
+const ctx = new ManagerContext(storagePath);
+
+const multi = new MultiAgentMemoryManager(ctx.storage);
+
+await multi.registerAgent('researcher', { name: 'Researcher', type: 'llm' });
+
+const shared = await multi.createAgentMemory('researcher', {
+  name: 'research-finding',
+  entityType: 'finding',
+  memoryType: 'semantic',
+  observations: ['Latency dropped 30% after caching'],
+});
+
+await multi.shareMemory(shared.name, 'researcher');
 ```
 
-Each specialised type has a dedicated manager on `ManagerContext` —
-`ctx.prospectiveMemory`, `ctx.failureManager`, `ctx.plan`, `ctx.reflectionManager`,
-`ctx.heuristicManager`, `ctx.decisionManager`, `ctx.projectContextManager`,
-`ctx.toolAffordanceManager`.
+Full example: [`examples/06-multi-agent.ts`](examples/06-multi-agent.ts)
 
-**Trust hierarchy mixin**: every `MemorySource` may carry an optional
-categorical `trustLevel`: `'ground-truth' | 'verified' | 'inferred' | 'unverified'`.
-Used by the `'trust_level'` `ConflictStrategy` (with recency tiebreak) and
-backfilled from `method` + `reliability` via `inferTrustLevel(source)`.
+`createAgentMemory()` does not persist `rootEntityName`, so identity-linked claims are written with
+`entityManager.createEntities()`; the example shows both halves, including the conflict winner that `collaborativeSynthesis` recommends.
 
-### Decay
+### Policy and audit
 
-Memories naturally decay over time unless reinforced:
+With `MEMORY_GOVERNANCE_ENABLED=true` (exact string), every mutation is checked against the policy and audited; a denial
+throws `GovernanceError`. Audit writes are fire-and-forget.
 
-```typescript
-const agent = ctx.agentMemory({
-  decay: {
-    halfLifeHours: 168,  // One-week half-life
-    minImportance: 0.1,  // Never fully forget
+```ts
+import {
+  AuditLog,
+  CollaborationAuditEnforcer,
+  GovernanceError,
+  ManagerContext,
+  PiiRedactor,
+} from '@danielsimonjr/memoryjs';
+
+const storagePath = './memory.jsonl';
+process.env.MEMORY_GOVERNANCE_ENABLED = 'true';
+const ctx = new ManagerContext(storagePath);
+
+ctx.governanceManager.setPolicy({
+  canCreate: (entity) => entity.entityType !== 'secret',
+});
+
+let denied = false;
+try {
+  await ctx.entityManager.createEntities([{ name: 'API key', entityType: 'secret', observations: ['redacted'] }]);
+} catch (err) {
+  denied = err instanceof GovernanceError;
+}
+```
+
+Full example: [`examples/07-governance-rbac.ts`](examples/07-governance-rbac.ts)
+
+Audit entries go to `MEMORY_AUDIT_LOG_FILE` or a `<basename>-audit.jsonl` sidecar. `ctx.auditLog.verifyChain()` checks the
+SHA-256 hash chain; `memory audit verify` does the same from the CLI.
+
+### RBAC, attribution and PII
+
+Grants are data. `checkPermission()` is synchronous and takes `read`, `write`, `delete` or `manage`. Roles are `reader`,
+`writer`, `admin`, `owner`, or a custom string. `CollaborationAuditEnforcer` rejects mutations that do not name an agent.
+`PiiRedactor` masks emails, SSNs, card numbers, phone numbers and IP addresses.
+
+```ts
+import { join } from 'node:path';
+import {
+  AuditLog,
+  CollaborationAuditEnforcer,
+  GovernanceError,
+  ManagerContext,
+  PiiRedactor,
+} from '@danielsimonjr/memoryjs';
+
+const storagePath = './memory.jsonl';
+const ctx = new ManagerContext(storagePath);
+
+await ctx.roleAssignmentStore.assign({ agentId: 'alice', role: 'writer', resourceType: 'entity' });
+
+const aliceWrite = ctx.rbacMiddleware.checkPermission('alice', 'write', 'entity');
+
+const aliceManage = ctx.rbacMiddleware.checkPermission('alice', 'manage', 'entity');
+
+const enforcer = new CollaborationAuditEnforcer(ctx.entityManager, new AuditLog(join(storagePath, '..', 'attr-audit.jsonl')));
+
+const attributed = await enforcer.createEntities(
+  [{ name: 'Attributed note', entityType: 'note', observations: ['written by alice'] }],
+  'alice',
+);
+
+const redactor = new PiiRedactor();
+
+const { text, stats } = redactor.redactWithStats('Contact jane@example.com or 555-123-4567');
+```
+
+Full example: [`examples/07-governance-rbac.ts`](examples/07-governance-rbac.ts)
+
+## Bitemporal Versioning and Causal Reasoning
+
+`invalidateEntity()` and `invalidateRelation()` close a validity window; the `asOf` queries read the graph as it was. Relations
+have no `validFrom`: they are valid from creation until invalidated.
+
+```ts
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+
+const storagePath = './memory.jsonl';
+const ctx = new ManagerContext(storagePath);
+
+const before = await ctx.relationManager.queryAsOf('Alice', '2100-01-01', { direction: 'outgoing' });
+
+await ctx.relationManager.invalidateRelation('Alice', 'works_at', 'Acme', '2025-01-01T00:00:00Z');
+
+const in2024 = await ctx.relationManager.queryAsOf('Alice', '2024-06-01', { direction: 'outgoing' });
+
+const history = await ctx.relationManager.timeline('Alice', { direction: 'outgoing' });
+
+await ctx.entityManager.invalidateEntity('Globex', '2030-01-01T00:00:00Z');
+
+const globexIn2026 = await ctx.entityManager.entityAsOf('Globex', '2026-01-01T00:00:00Z');
+```
+
+Full example: [`examples/08-versioning-causal.ts`](examples/08-versioning-causal.ts)
+
+Causal reasoning walks `causes`, `enables`, `prevents`, `precedes` and `correlates` relations. The counterfactual removes
+one edge and reports which paths to the effect survive. `detectStateChange()` diffs two world-state snapshots:
+
+```ts
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+
+const storagePath = './memory.jsonl';
+const ctx = new ManagerContext(storagePath);
+
+const effects = await ctx.causalReasoner.findEffects('Rain', ['Flooding', 'Erosion']);
+
+const causes = await ctx.causalReasoner.findCauses('Erosion', ['Rain', 'Flooding']);
+
+const withoutLink = await ctx.causalReasoner.counterfactual({
+  seed: 'Rain',
+  removeFrom: 'Flooding',
+  removeTo: 'Erosion',
+  predict: 'Erosion',
+});
+
+const snapshotBefore = await ctx.worldModelManager.getCurrentState();
+
+const snapshotAfter = await ctx.worldModelManager.getCurrentState();
+
+const change = ctx.worldModelManager.detectStateChange(snapshotBefore, snapshotAfter);
+```
+
+Full example: [`examples/08-versioning-causal.ts`](examples/08-versioning-causal.ts)
+
+## Recursa: Skills, Knowledge and Learning
+
+Recursa is `@experimental`: shapes may change in a minor release, and changes are recorded in the changelog.
+
+- **Skills** have a scope (`domains` is required), matching and outcome tracking. **Instruction sets** hold role-scoped
+  sections (`solver`, `learner`, `shared`). **Knowledge** combines both with failure lessons into a snapshot, and
+  `loadForContext()` loads them for a task within a token budget.
+- **SKILL.md publishing** writes live skills to a directory. Publish paths are confined to `skillPublishRoot`
+  (default `process.cwd()`), so pass the root explicitly as the example does.
+
+```ts
+import { dirname, join } from 'node:path';
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+
+const storagePath = './memory.jsonl';
+const ctx = new ManagerContext({ storagePath, skillPublishRoot: dirname(storagePath) });
+
+const refundId = await ctx.skillManager.add({
+  name: 'Refund duplicate charges',
+  description: 'Use when a customer reports the same charge twice',
+  kind: 'procedure',
+  scope: { domains: ['billing'], tasks: ['billing-dispute'] },
+  uncertainty: 0.15,
+  body: '1. Confirm both charges in the ledger.\n2. Refund the later one.',
+  sources: [{ ref: 'runbook:billing', kind: 'document' }],
+});
+
+const matches = await ctx.skillManager.match('customer charged twice billing', { limit: 3 });
+
+await ctx.skillManager.recordOutcome(refundId, 'helped');
+
+const instructionId = await ctx.instructionSets.add({
+  role: 'solver',
+  sections: [
+    {
+      heading: 'Tone',
+      text: 'Be brief and confirm the amount before acting.',
+      sources: [{ ref: 'style-guide', kind: 'document' }],
+      uncertainty: 0.1,
+    },
+  ],
+});
+
+const rendered = await ctx.instructionSets.render('solver', { budgetTokens: 200 });
+
+const snapshot = await ctx.knowledgeRepository.snapshot('before-review');
+
+const loaded = await ctx.knowledgeRepository.loadForContext({
+  role: 'solver',
+  taskHint: 'customer charged twice',
+  budgetTokens: 400,
+});
+
+const published = await ctx.skillPublisher.publish('published-skills');
+```
+
+Full example: [`examples/09-recursa-skills-knowledge.ts`](examples/09-recursa-skills-knowledge.ts)
+
+### Learning loop
+
+`ctx.learningLoop(deps)` runs solve, judge, diagnose and edit rounds. `learn()` returns a `LearnResult` (`before`, `after`,
+`stoppedBecause`). Runs with more tasks than `MEMORY_LEARNING_LEAF_THRESHOLD` (default 20), or with a `split`, use the
+recursive learner. The step-wise protocol (`start()`, `next()`, `submit()`) lets the caller run the solve and judge steps.
+The deterministic diagnoser may stop a small run with `no-progress`; the example checks the protocol, not a score.
+
+```ts
+import {
+  DeterministicJudge,
+  ManagerContext,
+  type LearningSolver,
+  type LoadedKnowledge,
+  type SolveResult,
+  type TaskRecord,
+} from '@danielsimonjr/memoryjs';
+
+const storagePath = './memory.jsonl';
+const ctx = new ManagerContext(storagePath);
+
+const tasks: TaskRecord[] = [
+  { id: 'task-refund', input: 'Refund a duplicate charge', category: 'billing', rubric: [
+    { id: 'c1', text: 'Names the refund action', kind: 'fact', expected: 'refund' },
+  ] },
+  { id: 'task-reset', input: 'Reset a locked account', category: 'auth', rubric: [
+    { id: 'c1', text: 'Mentions the reset link', kind: 'fact', expected: 'reset link' },
+  ] },
+  { id: 'task-invoice', input: 'Resend an invoice', category: 'billing', rubric: [
+    { id: 'c1', text: 'Mentions the invoice', kind: 'fact', expected: 'invoice' },
+  ] },
+];
+
+const solver: LearningSolver = {
+  async solve(task: TaskRecord, knowledge: LoadedKnowledge): Promise<SolveResult> {
+    const answer = knowledge.markdown.includes(task.id)
+      ? task.rubric.map((c) => String(c.expected)).join(' ')
+      : 'I am not sure';
+    return { answer, traceAddrs: [] };
   },
-  enableAutoDecay: true,
-});
+};
 
-// Reinforce a memory
-await agent.confirmMemory('memory_name', 0.1);  // Boost confidence
-await agent.promoteMemory('memory_name', 'episodic');  // Promote to long-term
+const judge = new DeterministicJudge();
+
+const loop = ctx.learningLoop({ solver, judge });
+
+const result = await loop.learn({ taskIds: tasks.map((t) => t.id), tasks, budget: { maxRounds: 3 } });
+
+const stepLoop = ctx.learningLoop({ solver, judge });
+
+const started = await stepLoop.start({ taskIds: tasks.slice(0, 2).map((t) => t.id), tasks: tasks.slice(0, 2), budget: { maxRounds: 1 } });
+
+const traceId = started.traceId;
+
+let request = await stepLoop.next(traceId);
+
+let steps = 0;
+
+while (request.kind !== 'done' && steps++ < 20) {
+  if (request.kind === 'solve') {
+    const payload: Record<string, SolveResult> = {};
+    for (const { task, knowledge } of request.tasks) payload[task.id] = await solver.solve(task, knowledge);
+    await stepLoop.submit(traceId, 'solve', payload);
+  } else if (request.kind === 'judge') {
+    const payload: Record<string, Awaited<ReturnType<DeterministicJudge['judge']>>> = {};
+    for (const answer of request.answers) payload[answer.task.id] = await judge.judge(answer.task, answer.answer);
+    await stepLoop.submit(traceId, 'judge', payload);
+  }
+  request = await stepLoop.next(traceId);
+}
+
+const status = await stepLoop.status(traceId);
 ```
 
-### Multi-agent
+Full example: [`examples/10-recursa-learning.ts`](examples/10-recursa-learning.ts)
 
-```typescript
-// Register an agent
-agent.registerAgent('agent_1', {
-  name: 'Research Agent',
-  type: 'llm',
-  trustLevel: 0.8,
-  capabilities: ['read', 'write'],
+### Bootstrapping, evaluation and harness support
+
+`ctx.bootstrapper(deps).run({ sources, solver, budget, corpusLabel, taskCount })` maps a corpus into a navigation tree,
+records coverage, writes exploration notes, generates practice tasks, runs one learning pass and snapshots the result as
+`bootstrap`. An injected `learner` replaces the learning adapter. Full example:
+[`examples/11-recursa-bootstrap.ts`](examples/11-recursa-bootstrap.ts).
+
+`DeterministicJudge` checks answers against rubric criteria. `Evaluator.evaluate()` returns metrics and per-task feedback,
+`stratifiedSplit()` makes a seeded split, and `LLMRubricJudge` judges with a model. `InteractionLog` is an append-only
+sidecar (`<basename>-interactions.jsonl`) addressed `e1`, `e2`, ...; `EvictionIndex` marks spilled ranges; `ConcurrencyLimiter`
+runs work with bounded concurrency.
+
+### Harness tool adapter
+
+`createRecursaTools(ctx, deps)` exposes 14 tools as JSON-in, JSON-out calls. `call()` never throws; it returns `{ ok, result }`
+or `{ ok: false, error: { code, message } }`. The tools are `recursa.knowledge.load`, `recursa.skills.publish`,
+`recursa.skills.import`, `recursa.learn.*` (eight tools: `start`, `next`, `submit`, `plan`, `submitChild`, `merge`, `reflect`, `status`),
+`recursa.log.append`, `recursa.log.select` and `recursa.eval.run`.
+
+```ts
+import { join } from 'node:path';
+import {
+  InteractionLog,
+  ManagerContext,
+  ToolCallObserver,
+  createRecursaTools,
+} from '@danielsimonjr/memoryjs';
+
+const storagePath = './memory.jsonl';
+const ctx = new ManagerContext(storagePath);
+
+const log = new InteractionLog(storagePath);
+
+const tools = createRecursaTools(ctx, { interactionLog: log, publishDir: join(storagePath, '..', 'skills') });
+
+const appended = await tools.call('recursa.log.append', {
+  sessionId: 'session-1',
+  kind: 'note',
+  tag: 'triage',
+  content: 'Customer reports two identical charges on order 42.',
 });
 
-// Create with visibility (private / team / org / shared / public)
-await agent.addWorkingMemory({
-  sessionId: session.name,
-  content: 'Shared insight',
-  visibility: 'shared',
-  ownerAgentId: 'agent_1',
-});
+const addr = appended.ok ? String((appended.result as { addr?: string }).addr ?? '') : '';
 
-// Cross-agent search
-const results = await agent.searchCrossAgent('agent_2', 'query');
+const selected = await tools.call('recursa.log.select', { addr: addr || 'e1', regex: 'charges' });
+
+const observer = new ToolCallObserver(ctx.toolAffordanceManager);
+
+observer.setInteractionLog(log, 'session-1');
+
+const callId = observer.observeStart('search_nodes', { query: 'refund' });
+
+await observer.observeComplete(callId, { result: '1 match' });
 ```
+
+Full example: [`examples/12-harness-tools.ts`](examples/12-harness-tools.ts)
+
+## Reconstructive Memory and Procedural Graphs
+
+`@experimental`. Reconstructive memory follows the Cue, Tag, Content model of Ji, Li and Hooi (ICML 2026). `ingest()` distils
+dialogue turns into a graph; `reconstruct()` runs a bounded loop of traversal actions and gathers evidence.
+
+```ts
+import { ManagerContext, ReconstructiveMemory, type DialogueTurn } from '@danielsimonjr/memoryjs';
+
+const storagePath = './memory.jsonl';
+const ctx = new ManagerContext(storagePath);
+
+const dialogue: DialogueTurn[] = [
+  { id: 'D1:1', speaker: 'Alice', text: 'I started learning rust in March.', timestamp: '2026-03-02T10:00:00Z' },
+  { id: 'D1:2', speaker: 'Bob', text: 'Nice. Are you still using it for the parser project?', timestamp: '2026-03-02T10:01:00Z' },
+  { id: 'D1:3', speaker: 'Alice', text: 'Yes, the parser is rewritten in rust now.', timestamp: '2026-04-10T09:30:00Z' },
+];
+
+const memory = ctx.reconstructiveMemory();
+
+const distilled = await memory.ingest(dialogue);
+
+const result = await memory.reconstruct('What language did Alice learn?', {
+  maxSteps: 4,
+  perStepBudget: 5,
+  evidenceTarget: 3,
+});
+
+const restored = new ReconstructiveMemory({ snapshot: memory.toSnapshot() });
+```
+
+Full example: [`examples/13-reconstructive-memory.ts`](examples/13-reconstructive-memory.ts)
+
+A procedural graph has actions and states as nodes, with conditions, guidance and pitfalls on edges; a session returns
+guidance for the current task. Its `backing` (`memory`, `jsonl`, `sqlite`) is separate from `MEMORY_STORAGE_TYPE`. Full
+example: [`examples/14-procedural-graph.ts`](examples/14-procedural-graph.ts).
+
+```ts
+import { ManagerContext, type PGEdge, type PGNode } from '@danielsimonjr/memoryjs';
+
+const storagePath = './memory.jsonl';
+const ctx = new ManagerContext(storagePath);
+
+const nodes: PGNode[] = [
+  { id: 'cart', type: 'STATE', description: 'Cart has items' },
+  { id: 'pay', type: 'ACTION', description: 'Charge the card', actionName: 'pay' },
+  { id: 'receipt', type: 'STATE', description: 'Receipt sent' },
+];
+
+const edges: PGEdge[] = [
+  { source: 'cart', relation: 'LEADS_TO', target: 'pay', condition: null, guidance: 'Confirm the total first', pitfalls: 'Do not charge twice' },
+  { source: 'pay', relation: 'LEADS_TO', target: 'receipt', condition: 'payment succeeded', guidance: null, pitfalls: null },
+];
+
+const graphs = await ctx.createProceduralGraph({ backing: { type: 'memory' } });
+
+const created = await graphs.createGraph({ graphId: 'checkout', nodes, edges, entryNodeId: 'cart' });
+
+const session = await graphs.openSession('checkout', {
+  taskDescription: 'Complete checkout',
+  toolCatalog: ['pay'],
+  guidanceMode: 'attributes-only',
+});
+
+const guidance = session ? await session.guidance('what next?') : undefined;
+
+const stats = await graphs.stats('checkout');
+```
+
+Full example: [`examples/14-procedural-graph.ts`](examples/14-procedural-graph.ts)
+
+## Adapters and the CLI
+
+| Adapter | Purpose |
+|---|---|
+| `RestRouter` | REST router over the managers. Takes an optional `ApiKeyAuthMiddleware` (Bearer or `X-Api-Key`). |
+| `APIKeyStore` | Issues keys with `issue({ ownerId, scopes, projectIds, ttlSeconds })`. **A key without `projectIds` can access every project.** |
+| `MCPToolObserverAdapter` | Observes MCP tool calls through `ToolCallObserver`. |
+| `LangChainMemoryAdapter` | LangChain-style memory adapter. |
+| `createRecursaTools()` | The 14-tool Recursa adapter above. |
+
+The `memory` binary covers the graph, search, import and export, maintenance, audit and diagnostics; `memory --help`
+lists every command, and `--storage <path>` comes before the command. [`examples/16-cli.sh`](examples/16-cli.sh) runs more of them after `bun run build`:
+
+```bash
+memory entity create Alice --type person --observation "Senior engineer" --tags core backend
+memory relation create Alice works_at Acme
+memory observation add Alice "Joined in 2024"
+```
+
+Full example: [`examples/16-cli.sh`](examples/16-cli.sh)
+
+```bash
+memory search engineer
+memory search engineer --ranked --limit 5
+memory search Alise --fuzzy --threshold 0.7
+```
+
+Full example: [`examples/16-cli.sh`](examples/16-cli.sh)
+
+```bash
+memory stats
+memory check
+memory doctor --json
+memory audit verify
+```
+
+Full example: [`examples/16-cli.sh`](examples/16-cli.sh)
 
 ## API Reference
 
-Method tables below cover the most-used surfaces. For the full surface use
-your IDE's go-to-definition or read `dist/index.d.ts`.
+The most-used members. The full surface is in [`docs/architecture/API.md`](docs/architecture/API.md) and
+[`docs/guides/API_REFERENCE.md`](docs/guides/API_REFERENCE.md); after a build, `dist/index.d.ts` has every type.
 
-### EntityManager
-
-| Method | Description |
+| Manager | Methods |
 |---|---|
-| `createEntities(entities)` | Create multiple entities in one batch |
-| `deleteEntities(names)` | Delete entities by name |
-| `getEntity(name, options?)` | Get one entity (with optional access tracking) |
-| `updateEntity(name, updates, { expectedVersion? })` | Partial update; opt-in optimistic concurrency |
-| `addTags(name, tags)` / `removeTags(name, tags)` | Tag management |
-| `setImportance(name, score)` | Set importance (0–10) |
-| `getVersionChain(name)` / `getLatestVersion(name)` | Supersession chains |
-| `invalidateEntity(name, ended?)` | Set `validUntil` (bitemporal) |
-| `entityAsOf(name, asOf)` | Time-travel query |
-| `entityTimeline(name)` | Versions sorted by `validFrom` |
+| `ctx.entityManager` | `createEntities`, `getEntity(name)`, `listEntities({ entityType? })`, `updateEntity(name, updates, { expectedVersion? })`, `renameEntity`, `deleteEntities`, `addTags`, `removeTags`, `setImportance`, `invalidateEntity`, `entityAsOf`, `entityTimeline`, `registerRef`, `resolveRef` |
+| `ctx.relationManager` | `createRelations`, `getRelations(name)`, `deleteRelations`, `invalidateRelation(from, relationType, to)`, `queryAsOf(name, asOf, { direction? })`, `timeline(name)` |
+| `ctx.observationManager` | `addObservations([{ entityName, contents }])`, `deleteObservations`, `getObservationsFor(name)`, `invalidateObservation`, `observationsAsOf` |
+| `ctx.searchManager` | `searchNodes`, `openNodes`, `booleanSearch`, `fuzzySearch`, `autoSearch`, `searchByTime`, `explainPlan`, `saveSearch` |
+| `ctx.rankedSearch` | `searchNodesRanked(query, tags?, minImportance?, maxImportance?, limit?)` |
+| `ctx.hybridSearchManager` | `search(graph, query, options)` |
+| `ctx.graphTraversal` | `findShortestPath`, `findAllPaths`, `findConnectedComponents`, `findCommunities`, `findCliques`, `calculateDegreeCentrality`, `calculateBetweennessCentrality`, `calculatePageRank`, `calculateHITS`, `getNeighborsWithRelations`, `bfs`, `dfs` |
+| `ctx.ioManager` | `exportGraph(graph, format)`, `importGraph(format, data, mergeStrategy?, dryRun?)`, `ingest`, `createBackup`, `listBackups`, `restoreFromBackup`, `deleteBackup`, `exportSkills`, `importSkills` |
+| `ctx.agentMemory(config?)` | `startSession`, `endSession`, `addWorkingMemory`, `createEpisode`, `retrieveForContext`, `wakeUp`, `confirmMemory`, `promoteMemory`, `runDecayCycle`, `getTimeline`, `collaborativeSynthesis` |
+| `ctx.memoryEngine` | `addTurn`, `checkDuplicate`, `getSessionTurns`, `getRepeatedTurnCount`, `deleteSession`, `listSessions` |
+| `ctx.skillManager` / `instructionSets` / `knowledgeRepository` | `add`, `match`, `recordOutcome`, `retire` / `add`, `render` / `snapshot`, `loadForContext`, `diff` |
+| `ctx.learningLoop(deps)` | `learn`, `start`, `next`, `submit`, `status`, `plan`, `merge`, `reflect` |
+| `ctx.governanceManager` | `setPolicy`, `withTransaction`, `rollback` |
+| `ctx.auditLog` (getter: `governanceManager.auditLog`) | `append`, `query`, `getHistory`, `stats`, `verifyChain` |
+| `ctx.roleAssignmentStore` / `rbacMiddleware` | `assign`, `revoke`, `list`, `listActive` / `checkPermission(agentId, action, resourceType, resourceName?)` |
+| `ctx.causalReasoner` / `worldModelManager` | `findCauses`, `findEffects`, `counterfactual`, `detectCycles` / `getCurrentState`, `detectStateChange`, `predictOutcome` |
+| `ctx.streamingExporter(path)` (factory: a new exporter per call), `ctx.freshnessManager`, `ctx.temporalSearch`, `ctx.semanticForget` | Streaming export; freshness reports; natural-language time search; two-tier deletion |
 
-### RelationManager
+Role profiles are code helpers: `getRoleProfile(role)`, `resolveRoleProfile(agentType)`, `listRoleProfiles()`.
+`MEMORY_AGENT_ROLE` is reserved and not read by the library.
 
-| Method | Description |
-|---|---|
-| `createRelations(relations)` | Create multiple relations |
-| `getRelations(entityName)` | Incoming + outgoing relations |
-| `deleteRelations(relations)` | Delete specific relations |
-| `invalidateRelation(from, type, to, ended?)` | Set `validUntil` on a relation |
-| `queryAsOf(entity, asOf, options?)` | Relations valid at time T |
-| `timeline(entity, options?)` | Chronological history |
-
-### ObservationManager
-
-| Method | Description |
-|---|---|
-| `addObservations(adds, dedupOptions?)` | Add observations (optional dedup) |
-| `deleteObservations(deletions)` | Remove specific observations |
-| `getObservationsFor(entityName)` | Read observations (column-store-aware) |
-| `invalidateObservation(entity, content, ended?)` | Set per-observation `validUntil` |
-| `observationsAsOf(entity, asOf)` | Observations valid at time T |
-
-### SearchManager (`ctx.searchManager`)
-
-| Method | Description |
-|---|---|
-| `searchNodes(query, options?)` | Substring + tag matching |
-| `booleanSearch(query, options?)` | AND / OR / NOT with AST |
-| `fuzzySearch(query, options?)` | Levenshtein + N-gram pre-filter |
-| `searchByTime(query, options?)` | Natural-language time ranges |
-| `autoSearch(query, limit?)` | Auto-select best method; returns `selectedMethod` + `selectionReason` |
-| `openNodes(names)` | Bulk-fetch entities by name |
-
-For ranked search use `ctx.rankedSearch.searchNodesRanked(query, tags?, min?, max?, limit?)`.
-For hybrid search, instantiate `HybridSearchManager` directly.
-
-### IOManager (`ctx.ioManager`)
-
-| Method | Description |
-|---|---|
-| `exportGraph(graph, format)` | Export to `json` / `csv` / `graphml` / `gexf` / `dot` / `markdown` / `mermaid` / `turtle` / `rdf-xml` / `json-ld` |
-| `exportGraphWithCompression(graph, format, options?)` | Brotli-compressed export |
-| `importGraph(format, data, options?)` | Import with merge strategies (`replace` / `skip` / `merge` / `fail`) |
-| `ingest(input, options?)` | Conversation ingestion pipeline (format-agnostic) |
-| `splitTranscript(content, options?)` | Split multi-session transcripts |
-| `visualizeGraph(options?)` | Interactive HTML visualisation |
-| `createBackup(options?)` / `restoreFromBackup(path)` / `deleteBackup(path)` / `cleanOldBackups(keepCount?)` | Backup lifecycle |
-
-### GraphTraversal (`ctx.graphTraversal`)
-
-| Method | Description |
-|---|---|
-| `findShortestPath(from, to)` | BFS shortest path |
-| `findAllPaths(from, to, options?)` | All paths with depth bound |
-| `findConnectedComponents()` | Isolated subgraphs |
-| `findCliques(minSize?)` | Maximal cliques |
-| `findCommunities()` | Louvain community detection |
-| `calculateDegreeCentrality()` / `calculateBetweennessCentrality()` / `calculatePageRank()` / `calculateHITS()` | Centrality (each returns `Map<entityName, score>`) |
-| `bfs(start, options?)` / `dfs(start, options?)` | Returns `TraversalResult` |
-
-### CausalReasoner (`ctx.causalReasoner`)
-
-| Method | Description |
-|---|---|
-| `findEffects(cause, candidates, maxDepth?)` | Forward inference; sorted by causal-strength product |
-| `findCauses(effect, candidates, maxDepth?)` | Backward inference (symmetric inverse) |
-| `counterfactual({ seed, removeFrom, removeTo, predict })` | Pure: doesn't mutate the graph |
-| `detectCycles(seed, maxDepth?)` | Depth-bounded DFS over causal subgraph |
-
-### ProcedureManager (`ctx.procedureManager`)
-
-| Method | Description |
-|---|---|
-| `addProcedure({ steps, ... })` | Persist a procedure; auto-generates id |
-| `getProcedure(id)` / `getStep(id, order)` / `getNextStep(id, order)` | Access |
-| `openSequencer(id)` | Stateful execution cursor with fallback support |
-| `matchProcedure(context, candidates, threshold?)` | Token-overlap match |
-| `refineProcedure(id, { succeeded, notes? })` | EWMA success-rate update |
-
-### Procedural Graph (`ctx.createProceduralGraph`)
-
-Self-evolving execution graphs (Lu et al., arXiv:2609.09153). Nodes are actions or states; edges carry `condition`, `guidance`, and `pitfalls`. Revisions are validated before they become the retained head.
-
-```ts
-const pg = await ctx.createProceduralGraph({
-  backing: { type: 'jsonl' }, // sidecar <basename>-procedural-graph.jsonl
-});
-await pg.createGraph({ graphId: 'checkout', nodes, edges });
-
-const session = await pg.openSession('checkout', {
-  taskDescription: 'Complete checkout',
-  toolCatalog: ['pay'],
-});
-const tip = await session?.guidance('what next?');
-
-const evolved = await pg.evolve({
-  graphId: 'checkout',
-  mode: 'static_incremental',
-  trainingTasks, validationTasks,
-  batchSize: 4, maxRounds: 3, maxTokens: 2000,
-  cyclePolicy: 'reject', paperCompatible: false,
-  toolCatalog: ['pay'], taskDescription: 'Complete checkout',
-  taskFailurePolicy: 'fail-round',
-}, { rollout, evaluate, refiner, tokenizer });
-```
-
-`paperCompatible: true` uses paper defaults (`cyclePolicy: 'repair'`; one-time modes may commit without a validation gate; prompts are byte-identical to the paper's Appendix B.5). Outside that mode every prompt ends with an untrusted-data handling note. Caller supplies `rollout` / `evaluate` / `refiner`; the library never executes guidance text. Budgets: `maxRounds`, `maxWallClockMs`, and an `AbortSignal` on `evolve`; `maxGuidanceCalls`, `maxContextBytes`, `timeoutMs`, `maxOutputChars`, and `maxObservationChars` on sessions. `pg.stats(graphId)` returns head version, digest, node/edge counts, and revision/rejection counts for health checks.
-
-Persistence: the JSONL backing is append-only and single-writer per file (a torn tail from a crash is healed at the next `open()`); the SQLite backing commits each retained revision in one transaction and honours `MEMORY_SQLITE_DRIVER`. Neither backing is selected by `MEMORY_STORAGE_TYPE`.
-
-### WorldModelManager (`ctx.worldModelManager`)
-
-| Method | Description |
-|---|---|
-| `getCurrentState()` | Snapshot from the live graph (capped at `maxSnapshotSize`) |
-| `validateFact(observation, entityName)` | Delegates to `MemoryValidator` if wired |
-| `predictOutcome(action, candidates)` | Delegates to `CausalReasoner.findEffects` |
-| `detectStateChange(before, after)` | Pure snapshot diff |
-
-### ActiveRetrievalController (`ctx.activeRetrieval`)
-
-| Method | Description |
-|---|---|
-| `shouldRetrieve(context)` | Cost heuristic; rejects empty / over-budget |
-| `adaptiveRetrieve(context)` | Iterative rewrite + retrieve until coverage threshold |
-
-### CollaborativeSynthesis (`ctx.agentMemory().collaborativeSynthesis`)
-
-| Method | Description |
-|---|---|
-| `synthesize(seedEntity, context?)` | BFS + salience scoring; surfaces multi-agent conflicts |
-| `resolveConflicts(result, policy)` | Pick winners per `most_recent` / `highest_confidence` / `highest_score` / `trusted_agent` |
-
-### MemoryValidator (`ctx.memoryValidator`)
-
-| Method | Description |
-|---|---|
-| `validateConsistency(newObs, existing)` | Composite duplicate / semantic / low-confidence check |
-| `detectContradictions(entity)` | Delegates to `ContradictionDetector` |
-| `repairWithResolver(entity, competing, resolver, contradiction?, options?)` | Apply `ConflictResolver` strategies |
-| `validateTemporalOrder(observations)` | `[T=ISO]` ordering check |
-| `calculateReliability(entity)` | Confidence × confirmation × age penalty |
-
-### RBAC (`ctx.rbacMiddleware`, `ctx.roleAssignmentStore`)
-
-| Method | Description |
-|---|---|
-| `rbacMiddleware.checkPermission(agentId, action, resourceType, resourceName?, now?)` | Returns `true` / `false`; falls back to `defaultRole` (default `reader`) |
-| `roleAssignmentStore.assign({ agentId, role, resourceType?, scope?, validFrom?, validUntil? })` | Grant a role |
-| `roleAssignmentStore.revoke(agentId, role, resourceType?)` | Remove a grant |
-| `roleAssignmentStore.listActive(agentId, now?)` | Active grants at a point in time |
-
-### PiiRedactor
-
-| Method | Description |
-|---|---|
-| `redact(text)` | Apply patterns; returns redacted string |
-| `redactWithStats(text)` | Returns `{ text, stats: { totalRedactedBytes, countsByPattern } }` |
-| `redactGraph(graph)` | Apply to every observation in a graph-shaped object |
-
-### Role profiles
-
-Role presets are code helpers in `src/agent/RoleProfiles.ts`, exported from the root package. `MEMORY_AGENT_ROLE` is catalogued but reserved: the library does not read it, so setting it has no effect.
-
-```typescript
-import { getRoleProfile, resolveRoleProfile, listRoleProfiles } from '@danielsimonjr/memoryjs';
-
-const planner = getRoleProfile('planner');     // built-in preset for one role
-const fallback = resolveRoleProfile('llm');    // profile for an AgentType
-const all = listRoleProfiles();               // the five built-in profiles
-```
-
-### Specialised memory managers
-
-| Manager | Path | Key methods |
-|---|---|---|
-| Prospective | `ctx.prospectiveMemory` | `scheduleAt()` / `scheduleOnEvent()` / `scheduleConditional()` / `tick()` / `cancel()` / `expireOverdue()` / `getPending()` |
-| Failure | `ctx.failureManager` | `record()` / `lookupForTask()` / `markResolved()` / `getAll()` |
-| Plan | `ctx.plan` | `createPlan()` / `pushSubGoal()` / `transitionNode()` / `markPlanComplete()` / `getCurrentPath()` |
-| Reflection | `ctx.reflectionManager` | `create()` / `list()` / `getRelevantForSession()` / `archive()` |
-| Heuristic | `ctx.heuristicManager` | `add()` / `match()` / `reinforce()` / `recordContradiction()` / `detectConflicts()` |
-| Decision | `ctx.decisionManager` | `propose()` / `accept()` / `reject()` / `supersede()` / `findByContext()` / `getChain()` |
-| Project context | `ctx.projectContextManager` | `upsert()` / `appendFact()` / `appendCommand()` / `forContext()` |
-| Tool affordance | `ctx.toolAffordanceManager` | `recordOutcome()` / `suggestTool()` / `rollingStats()` |
-| Exclusion | `ctx.exclusionManager` | `add()` / `list()` / `remove()` / `check()` / `findMatchingMemories()` |
-| Observation dedup | `ctx.observationDedupManager` | `findDuplicateObservations()` / `findJaccardDuplicates()` |
-| Spell | `ctx.spellChecker` | `suggest()` / `rebuild()` / `vocabularySize()` |
+Errors exported from the root: `EntityNotFoundError`, `ValidationError`, `CycleDetectedError`,
+`InvalidImportanceError`, `FileOperationError`, `InsufficientEntitiesError`, `GovernanceError`, `VersionConflictError`
+(OCC updates with `expectedVersion`) and `AttributionRequiredError` (strict `CollaborationAuditEnforcer`); match them with
+`instanceof`.
 
 ## Configuration
 
-memoryjs is configured almost entirely through environment variables. The
-table below lists the most-used; the full reference (decay / salience /
-context-window / freshness / mmap / segment / SQLite-pool / partial-index
-knobs) lives in [CLAUDE.md](CLAUDE.md#environment-variables). RBAC is wired in code via `ctx.rbacMiddleware` (see [AGENT_INTEGRATION](docs/guides/AGENT_INTEGRATION.md)), not by an env var.
+Configuration is through environment variables. The table lists the most-used. The full reference (decay, salience,
+context window, freshness, mmap, segments, SQLite pool, prospective memory, memory engine and more) is in
+[docs/guides/CONFIGURATION.md](docs/guides/CONFIGURATION.md). RBAC is wired in code, not by an environment variable.
 
 | Variable | Description | Default |
 |---|---|---|
-| `MEMORY_STORAGE_TYPE` | Storage backend: `jsonl` or `sqlite` | `jsonl` |
-| `MEMORY_FILE_PATH` | Override storage file path | (per `ManagerContext` ctor) |
-| `MEMORY_BACKEND` | Pluggable Memory-Engine backend: `sqlite` or `in-memory` | `sqlite` |
-| `MEMORY_EMBEDDING_PROVIDER` | Embedding provider: `openai`, `local`, `llamacpp`, or `none`. `local` needs the optional peer dependency `@huggingface/transformers` | `local` |
-| `MEMORY_OPENAI_API_KEY` | OpenAI API key (required when provider is `openai`) | — |
-| `MEMORY_AUTO_INDEX_EMBEDDINGS` | Auto-build embedding index on entity create | `false` |
-| `MEMORY_AUTO_DECAY` | Enable background memory decay | `false` |
-| `MEMORY_DECAY_HALF_LIFE_HOURS` | Half-life for importance decay | `168` |
-| `MEMORY_GOVERNANCE_ENABLED` | Enable `GovernanceManager` policy enforcement | `false` |
-| `MEMORY_AUDIT_LOG_FILE` | Path for the audit JSONL trail | — |
-| `MEMORY_AGENT_ROLE` | **Reserved, not read by the library** (catalogued only; no effect). Use `getRoleProfile(role)` in code | — |
-| `MEMORY_VALIDATE_ON_STORE` | Run `MemoryValidator` before observation writes | `false` |
-| `MEMORY_AUTO_LINK` | Auto-link entity mentions in observation writes (takes effect once `ctx.autoLinker` is accessed) | `false` |
-| `MEMORY_OBSERVATION_DEDUP` | Observation de-duplication on writes, using default dedup options | `false` |
-| `MEMORY_FUZZY_BLOOM_PRESCREEN` | Enable `ctx.bloomPreScreener`, a Bloom-filter pre-screen for `FuzzySearch` (built lazily, cleared on entity events). Approximate: speed over recall; typo queries can miss matches when another entity holds the literal token | `false` |
-| `MEMORY_AUDIT_ATTRIBUTION_REQUIRED` | `CollaborationAuditEnforcer` strict mode | `false` |
-| `MEMORY_DEFAULT_VISIBILITY` | Default `AgentEntity.visibility` | `private` |
-| `MEMORY_USE_MMAP` | Use mmap for `GraphStorage.loadFromDisk` (strict `'true'` literal match) | `false` |
-| `MEMORY_MMAP_THRESHOLD_BYTES` | Minimum file size to trigger the mmap path; `0` = always | `104857600` |
-| `MEMORY_STORAGE_SEGMENT_COUNT` | FNV-routed JSONL shard count (2–1024; unset = single-file) | unset (single-file) |
-| `MEMORY_SQLITE_READ_POOL_SIZE` | Read-connection pool size for `SQLiteStorage` | `4` |
-| `MEMORY_SQLITE_AUTO_INDEX` | **Deprecated, no effect** on query plans. Setting it logs a warning when a `SQLiteStorage` is constructed. Full indexes already cover the hot filters; scheduled for removal in v5 | `false` |
-| `SKIP_BENCHMARKS` | Skip perf-benchmark tests | `false` |
-| `LOG_LEVEL` | `debug` / `info` / `warn` / `error` | (none) |
+| `MEMORY_STORAGE_TYPE` | `jsonl`, `sqlite`, `postgres` or `postgresql`. Overrides the `storageType` option | `jsonl` |
+| `MEMORY_SQLITE_SYNCHRONOUS` | SQLite `synchronous` pragma: `NORMAL` or `FULL` | `NORMAL` |
+| `MEMORY_BACKEND` | Memory Engine backend: `sqlite` or `in-memory` | `sqlite` |
+| `MEMORY_EMBEDDING_PROVIDER` | `openai`, `local`, `llamacpp` or `none` | `local` |
+| `MEMORY_GOVERNANCE_ENABLED` | `true` (exact) enforces the policy on every mutation | unset |
+| `MEMORY_AUDIT_LOG_FILE` | Audit JSONL path | `<basename>-audit.jsonl` |
+| `MEMORY_AUTO_CONSOLIDATION` | Enables the consolidation scheduler (alias `MEMORY_CONSOLIDATION_SCHEDULER_ENABLED`) | `false` |
+| `MEMORY_AUTO_DECAY` / `MEMORY_DECAY_HALF_LIFE_HOURS` | Background decay; its half-life | `false` / `168` |
+| `MEMORY_LEARNING_LEAF_THRESHOLD` | Task count above which the recursive learner runs | `20` |
+| `MEMORY_INTERACTION_LOG_INLINE_BYTES` | Bytes kept inline per interaction record; larger content spills to a blob | `16384` |
+| `MEMORY_HYBRID_GRAPH_WEIGHT` / `MEMORY_RANKED_GRAPH_BOOST` | Graph-connectivity signal in hybrid and ranked search | `0` / `0` |
+| `MEMORY_STORAGE_SEGMENT_COUNT` | Shard JSONL into 2 to 1024 segments (read at startup) | unset |
+| `MEMORY_USE_MMAP` / `MEMORY_MMAP_THRESHOLD_BYTES` | Range-read loading for large JSONL files | `false` / `104857600` |
+| `MEMORY_VALIDATE_ON_STORE` / `MEMORY_OBSERVATION_DEDUP` / `MEMORY_AUTO_LINK` | Observation-write checks | `false` |
+| `MEMORY_AGENT_ROLE` | **Reserved; not read by the library.** Use `getRoleProfile(role)` | — |
+| `SKIP_BENCHMARKS` / `LOG_LEVEL` | Skip performance tests; logger level | `false` / unset |
+
+## Troubleshooting
+
+- `memory doctor [--json]` checks the Node version, the `better-sqlite3` native build, the worker bundle, the storage
+  file, env-var typos and embedding-provider reachability.
+- `NODE_MODULE_VERSION mismatch` (SQLite tests): run `bun run rebuild:native`.
+- JSONL is single-process. For several processes, use SQLite or PostgreSQL.
+- `ctx.semanticSearch` is `null`: no embedding provider is available. See the optional peer dependencies above.
+
+The full guide is [docs/development/DEBUGGING_GUIDE.md](docs/development/DEBUGGING_GUIDE.md).
 
 ## Development
 
-### Prerequisites
+Bun installs dependencies and drives scripts. The published library targets Node; do not use Bun as the runtime for
+long-lived consumers.
 
-- Bun 1.4.2+ (package manager and script driver; `packageManager: bun@1.4.2`; `bun.lock` is authoritative)
-- Node.js 22.12+ (production runtime for the published package and native addons)
-- TypeScript 7.0+
+| Task | Command |
+|---|---|
+| Install from `bun.lock` | `bun install` (`--frozen-lockfile` in CI) |
+| Build `dist/` (ESM and CJS, CLI and workers) | `bun run build` |
+| Run all tests | `bun run test` (`SKIP_BENCHMARKS=true` skips performance tests) |
+| Run the example gate | `bunx vitest run tests/examples` |
+| Type check | `bun run typecheck`; examples: `bunx tsc --noEmit -p tsconfig.examples.json` |
+| Lint | `bun run lint` (type-aware oxlint plus project lint rules) |
 
-> **Bun installs; Node ships.** CI and local development use Bun to install
-> dependencies and run scripts. The published library still targets Node — do
-> not replace Node with Bun as the runtime for long-lived consumers.
+| Path | Contents |
+|---|---|
+| `src/index.ts`, `src/sqlite.ts` | Root entry point; SQLite subpath entry |
+| `src/core/` | `ManagerContext` (its lazy getters delegate to the facades in `src/core/context/`), entity, relation and observation managers, storage backends, graph traversal, transactions |
+| `src/search/`, `src/features/` | Search managers and indexes; import and export, backups, governance, audit, freshness |
+| `src/agent/` | Agent Memory System; Recursa (`knowledge/`, `learning/`, `bootstrap/`, `evaluation/`, `harness/`); reconstruction; procedural graphs |
+| `src/adapters/`, `src/security/`, `src/cli/` | Adapters; PII, ABAC, row-level filter and API keys; the CLI |
+| `src/types/`, `src/utils/`, `src/workers/` | Shared types; utilities; the worker pool |
+| `examples/`, `tests/` | Runnable examples and the CLI script; test suites, including `tests/examples/` |
 
-### Common commands
-
-```bash
-bun install            # Install dependencies from bun.lock
-bun run build          # Build TypeScript to dist/ (tsup; ESM + CJS dual output)
-bun run build:watch    # Watch mode
-bun run test           # Run all tests
-bun run test:watch     # Watch mode
-bun run test:coverage  # Run with coverage report
-bun run test:ci        # Excludes tests/performance/** (used by prepublishOnly)
-bun run typecheck      # Type checking without emit
-bun run lint           # oxlint (type-aware) + lint-rule check
-bun run benchmark      # Standalone synthetic benchmarks
-bun run bench          # Vitest performance suite
-SKIP_BENCHMARKS=true bun run test  # Skip perf tests in the main suite
-```
-
-### Tooling
-
-`tools/*/` still ship their own npm lockfiles and Node shebangs
-(documented as `Usage: node …`). Prefer the Bun-wrapped root scripts;
-those call the Node entrypoints:
-
-```bash
-bun run tools:install     # npm install inside tools/*/
-bun run tools:build       # npm run build inside tools/*/
-bun run tools:deps        # Refresh DEPENDENCY_GRAPH.md
-bun run tools:deps:full   # Same, including test files
-bun run audit:plans       # Detect plan-doc rot (tsx via bun run)
-```
-
-Tools without a root wrapper are still invoked as Node entrypoints:
-
-```bash
-node tools/chunking-for-files/chunking-for-files.ts split <file>
-node tools/chunking-for-files/chunking-for-files.ts merge <manifest>
-node tools/migrate-from-jsonl-to-sqlite/migrate-from-jsonl-to-sqlite.ts
-```
-
-### Architecture overview
-
-```
-┌──────────────────────────────────────────────────────────────────┐
-│  Layer 1: ManagerContext (Central Facade — lazy init)            │
-└──────────────────────────┬───────────────────────────────────────┘
-                           │
-┌──────────────────────────┴───────────────────────────────────────┐
-│  Layer 2: Domain managers                                        │
-│  Core: Entity / Relation / Observation / Hierarchy / Search /    │
-│        GraphTraversal / Tags / RefIndex                          │
-│  I/O:  IOManager / Archive / Compression / Analytics / Audit /   │
-│        Governance / Freshness / SemanticForget                   │
-│  Search: Ranked / Semantic / Temporal / LLMQueryPlanner /        │
-│        ActiveRetrievalController                                 │
-│  Memory: MemoryEngine / MemoryBackend / ContextWindowManager /   │
-│        AgentMemory(facade)                                       │
-│  Intel: MemoryValidator / TrajectoryCompressor /                 │
-│        ExperienceExtractor / PatternDetector                     │
-│  Theory: ProcedureManager / CausalReasoner / WorldModelManager   │
-│  Auth:  RbacMiddleware / RoleAssignmentStore / AccessTracker     │
-└──────────────────────────┬───────────────────────────────────────┘
-                           │
-┌──────────────────────────┴───────────────────────────────────────┐
-│  Layer 3: Storage                                                │
-│  GraphStorage (JSONL) or SQLiteStorage (better-sqlite3, FTS5)    │
-│  Pluggable IMemoryBackend: in-memory or sqlite-backed engine     │
-└──────────────────────────────────────────────────────────────────┘
-```
-
-### Project layout
-
-```
-src/
-├── index.ts                # Public entry point
-├── agent/                  # Agent Memory System (managers, decay, salience,
-│                           #   multi-agent, specialised memory types)
-├── core/                   # ManagerContext, entity / relation / observation
-│                           #   managers, storage backends, graph traversal
-├── search/                 # Ranked / boolean / fuzzy / semantic / hybrid /
-│                           #   temporal / LLM-planned search + indexes
-├── features/               # IOManager, Archive, Compression, Audit,
-│                           #   Governance, Freshness, SemanticForget
-├── cli/                    # `memory` / `memoryjs` CLI binary
-├── security/               # PII redactor, ABAC, RLS, API keys
-├── types/                  # Shared TypeScript definitions
-├── utils/                  # Caching, schemas, compression adapters, logger
-└── workers/                # Worker pool for CPU-intensive tasks
-
-tests/                      # vitest test suite
-├── unit/                   # Per-module unit tests
-├── integration/            # Cross-module workflows
-├── edge-cases/             # Boundary conditions
-└── performance/            # Benchmarks (gated by SKIP_BENCHMARKS)
-
-tools/                      # Dev utilities (chunker, dep-graph generator,
-                            #   migration, plan-doc audit, etc.)
-```
-
-See [`docs/architecture/DEPENDENCY_GRAPH.md`](docs/architecture/DEPENDENCY_GRAPH.md)
-for the autogenerated dependency graph and module breakdown.
+The autogenerated module graph is in [`docs/architecture/DEPENDENCY_GRAPH.md`](docs/architecture/DEPENDENCY_GRAPH.md).
 
 ## Documentation
 
-Architecture documentation lives under `docs/architecture/`:
+- [docs/README.md](docs/README.md) — index of every document under docs/
+- [docs/guides/QUICK_REFERENCE.md](docs/guides/QUICK_REFERENCE.md): the cheat sheet
+- [docs/guides/CONFIGURATION.md](docs/guides/CONFIGURATION.md): full environment-variable reference
+- [docs/architecture/API.md](docs/architecture/API.md), [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) and [AGENT_MEMORY.md](docs/architecture/AGENT_MEMORY.md)
+- [docs/guides/AGENT_INTEGRATION.md](docs/guides/AGENT_INTEGRATION.md) and [docs/guides/SECURITY_GUIDE.md](docs/guides/SECURITY_GUIDE.md)
+- [docs/development/DEVELOPMENT_SETUP.md](docs/development/DEVELOPMENT_SETUP.md), [ARCHITECTURE_DECISIONS.md](docs/development/ARCHITECTURE_DECISIONS.md), [ROADMAP.md](docs/roadmap/ROADMAP.md) and [CHANGELOG.md](CHANGELOG.md)
+- [examples/](examples/): runnable examples for every area above
 
-- [OVERVIEW.md](docs/architecture/OVERVIEW.md) — high-level project overview
-- [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) — technical design
-- [COMPONENTS.md](docs/architecture/COMPONENTS.md) — module-by-module breakdown
-- [DATAFLOW.md](docs/architecture/DATAFLOW.md) — data-flow patterns
-- [API.md](docs/architecture/API.md) — full API reference
-- [DEPENDENCY_GRAPH.md](docs/architecture/DEPENDENCY_GRAPH.md) — module dependencies (auto-generated)
-- [AGENT_MEMORY.md](docs/architecture/AGENT_MEMORY.md) — Agent Memory System design
-- [TEST_COVERAGE.md](docs/architecture/TEST_COVERAGE.md) — test coverage analysis
+## License and Related
 
-Other:
+MIT, see [LICENSE](LICENSE). The MCP server built on this library is [@danielsimonjr/memory-mcp](https://github.com/danielsimonjr/memory-mcp).
 
-- [ARCHITECTURE_DECISIONS.md](docs/development/ARCHITECTURE_DECISIONS.md) — Architecture Decision Records
-- [ROADMAP.md](docs/roadmap/ROADMAP.md) — feature roadmap
-- [CLAUDE.md](CLAUDE.md) — full environment-variable reference + working notes
-- [CHANGELOG.md](CHANGELOG.md) — version-by-version history
-
-## License
-
-**MIT License** - see [LICENSE](LICENSE)
-
-## Related
-
-- [@danielsimonjr/memory-mcp](https://github.com/danielsimonjr/memory-mcp) - MCP server built on this library
-
-Install and development commands use Bun (`bun add` / `bunx`). The package is published to the npm registry.
-
----
-
-**Repository:** https://github.com/danielsimonjr/memoryjs
-**Package:** https://www.npmjs.com/package/@danielsimonjr/memoryjs
-**Issues:** https://github.com/danielsimonjr/memoryjs/issues
+**Repository:** https://github.com/danielsimonjr/memoryjs · **Package:** https://www.npmjs.com/package/@danielsimonjr/memoryjs · **Issues:** https://github.com/danielsimonjr/memoryjs/issues

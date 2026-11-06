@@ -13,13 +13,16 @@
  *   --dry-run (default)  — report only
  *   --apply              — rewrite plan files, flipping `- [ ]` to `- [x]`
  *                          for tasks where every named symbol is shipped.
+ *   --strict             — with --dry-run, exit 1 when flip-eligible items
+ *                          exist (for CI gates that want the backlog clean).
  *
  * Usage:
- *   npx tsx tools/plan-doc-audit/audit.ts [--apply]
+ *   npx tsx tools/plan-doc-audit/audit.ts [--apply] [--strict]
  *
  * Exit codes:
- *   0 — no flip-eligible items, or --apply succeeded
- *   1 — flip-eligible items found in --dry-run mode (signals work to do)
+ *   0 — dry-run report completed (flip-eligible items are reported, not
+ *       failures), or --apply succeeded
+ *   1 — with --strict: flip-eligible items found in --dry-run mode
  *   2 — execution error
  *
  * @module tools/plan-doc-audit
@@ -29,14 +32,17 @@ import { execSync, spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync, statSync, readdirSync } from 'node:fs';
 import { join, relative, sep, isAbsolute } from 'node:path';
 
+/** Result of checking one code symbol: shipped, stub-only, or absent from `src/`. */
 export type SymbolStatus = 'shipped' | 'stub' | 'absent';
 
+/** One symbol named in a plan task, with its status and first evidence line. */
 export interface SymbolCheck {
   symbol: string;
   status: SymbolStatus;
   evidence?: string;  // First match line for human review
 }
 
+/** One unchecked plan task and whether it can be flipped to done. */
 export interface AuditFinding {
   file: string;       // Plan-doc path (relative)
   line: number;       // 1-indexed line number of the unchecked task
@@ -64,6 +70,10 @@ const STUB_MARKERS = [
   /\/\*\*?\s*@deprecated stub/,
 ];
 
+/**
+ * Extract the code symbols named in backtick-quoted spans of a task line.
+ * Paths, file names and prose words are skipped.
+ */
 export function extractSymbols(taskText: string): string[] {
   const found = new Set<string>();
 
@@ -125,6 +135,10 @@ const FUTURE_WORK_VERBS = [
 /** Check whether a symbol is shipped, a stub, or absent. The optional
  * `cwd` lets tests point at a synthetic repo without changing the
  * process-wide cwd (which is unsafe under vitest workers). */
+/**
+ * Check whether a symbol is shipped, a stub, or absent in `srcRoot`, using `git grep`
+ * and the stub markers in the matched function body.
+ */
 export function checkSymbol(
   symbol: string,
   srcRoot: string,
@@ -192,6 +206,7 @@ function isStubAtLocation(filePath: string, lineNo: number): boolean {
   return STUB_MARKERS.some((re) => re.test(window));
 }
 
+/** Audit every unchecked `- [ ]` task in one plan file and return a finding per task. */
 export function auditFile(
   planFile: string,
   srcRoot: string,
@@ -248,6 +263,7 @@ export function auditFile(
   return findings;
 }
 
+/** Flip the `- [ ]` boxes recommended by `findings` to `- [x]` in place. */
 export function applyFlips(findings: AuditFinding[]): { filesUpdated: number; flipped: number } {
   // Group flip-recommended findings by file
   const flipsByFile = new Map<string, Set<number>>();
@@ -304,6 +320,7 @@ function walkMd(rootDir: string): string[] {
   return out;
 }
 
+/** Run the audit over every plan root, optionally applying the recommended flips. */
 export function runAudit(opts: {
   planRoots?: string[];
   srcRoot?: string;
@@ -333,6 +350,7 @@ export function runAudit(opts: {
 function main(): void {
   const args = new Set(process.argv.slice(2));
   const apply = args.has('--apply');
+  const strict = args.has('--strict');
 
   const { findings, flipsApplied } = runAudit({ apply });
 
@@ -374,8 +392,8 @@ function main(): void {
     }
   }
 
-  // Exit code: 1 if dry-run found work, 0 otherwise
-  if (!apply && flipCount > 0) {
+  // Dry-run reports are informational; only --strict turns pending flips into a failure.
+  if (strict && !apply && flipCount > 0) {
     process.exit(1);
   }
   process.exit(0);

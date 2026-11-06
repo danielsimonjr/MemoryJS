@@ -1,7 +1,7 @@
 # Procedural Graph — Subagent-Driven Implementation Plan
 
 > **Generated:** 2026-09-10 from `master` at `914324c` (source baseline `549ce11`; see the feature plan header).
-> **Design source:** [`docs/PROCEDURAL_GRAPH_FEATURE_PLAN.md`](../../PROCEDURAL_GRAPH_FEATURE_PLAN.md) (the "feature plan"). Every requirement ID (`PG-01`…`PG-16`) and audit finding (`A1`…`A14`) referenced below is defined there. This file is the *how*: four Haiku-class agents, three dependency waves, one dispatchable prompt per agent per wave.
+> **Design source:** [`docs/planning/PROCEDURAL_GRAPH_FEATURE_PLAN.md`](../../planning/PROCEDURAL_GRAPH_FEATURE_PLAN.md) (the "feature plan"). Every requirement ID (`PG-01`…`PG-16`) and audit finding (`A1`…`A14`) referenced below is defined there. This file is the *how*: four Haiku-class agents, three dependency waves, one dispatchable prompt per agent per wave.
 > **Paper:** Lu, Chen, Wu, Arık, *Procedural Graphs: Self-Evolving Execution Structures for LLM Agents*, arXiv:2609.09153v1. Agents do **not** need the PDF; every paper-derived string they must reproduce is quoted verbatim in the feature plan (Sections 2, 8.4, 8.5, 9.7).
 
 ---
@@ -30,7 +30,7 @@ File ownership is exclusive. If an agent needs a change in a file it does not ow
 ## 1. Common preamble (prepend to every agent prompt)
 
 ```text
-You are implementing part of the Procedural Graph (PG) feature in the MemoryJS TypeScript repository at /home/user/MemoryJS. Read docs/PROCEDURAL_GRAPH_FEATURE_PLAN.md Sections 1, 2, 6 and the section(s) named in your task BEFORE writing code. Read docs/superpowers/plans/2026-09-10-procedural-graph-implementation.md Section 1 and Section 2 in full.
+You are implementing part of the Procedural Graph (PG) feature in the MemoryJS TypeScript repository at /home/user/MemoryJS. Read docs/planning/PROCEDURAL_GRAPH_FEATURE_PLAN.md Sections 1, 2, 6 and the section(s) named in your task BEFORE writing code. Read docs/superpowers/plans/2026-09-10-procedural-graph-implementation.md Section 1 and Section 2 in full.
 
 HARD RULES (violating any of these fails the task):
 1. Toolchain: TypeScript 7, Zod v4 (`import { z } from 'zod'`), Vitest 5 with `globals: true`, ESM with NodeNext resolution. Every relative import MUST end in `.js` (e.g. `import { X } from './ProceduralGraph.js'`). Use `import type` for type-only imports.
@@ -41,8 +41,8 @@ HARD RULES (violating any of these fails the task):
 6. Never `throw` for expected validation outcomes; return the `PGResult`/diagnostics unions specified. Throw only for programmer errors (e.g. missing required constructor argument).
 7. Tests: put them at the exact paths given. Use `describe`/`it`/`expect` from 'vitest'. Temp files go under `fs.mkdtempSync(path.join(os.tmpdir(), 'pg-'))` and are removed in `afterEach`. Every test file must run green with `bunx vitest run <path>`.
 8. Before reporting done run, in order: `bun run typecheck`, `bun run lint`, `bunx vitest run tests/unit/agent/procedural/graph`, and (if you touched src/utils/schemas.ts or src/core) `bunx vitest run tests/unit/utils tests/unit/core`. Paste the last 20 lines of each command's output into your report. If any command fails and the failure is in a file you do not own, report it; do not "fix" other agents' files.
-9. Do not modify docs/PROCEDURAL_GRAPH_FEATURE_PLAN.md. Do not modify CHANGELOG.md unless your task says so.
-10. Paper strings (prompt templates, serializer format, relation vocabulary) must be copied character-for-character from docs/PROCEDURAL_GRAPH_FEATURE_PLAN.md Sections 2, 8.4 and 8.5. Do not paraphrase them.
+9. Do not modify docs/planning/PROCEDURAL_GRAPH_FEATURE_PLAN.md. Do not modify CHANGELOG.md unless your task says so.
+10. Paper strings (prompt templates, serializer format, relation vocabulary) must be copied character-for-character from docs/planning/PROCEDURAL_GRAPH_FEATURE_PLAN.md Sections 2, 8.4 and 8.5. Do not paraphrase them.
 11. Commit after each green milestone with the prefix given in your task. Do not push; the orchestrator pushes.
 12. Your final message must contain: files created/modified, test counts, the verification output from rule 8, open questions, and "Requests for other agents".
 ```
@@ -416,7 +416,7 @@ You are Agent B ("pg-store"). Your Wave 1 task is Section 5.2 of docs/superpower
 **Prompt:**
 ```text
 [COMMON PREAMBLE]
-You are Agent C ("pg-guide"). Your Wave 1 task is Section 5.3 of docs/superpowers/plans/2026-09-10-procedural-graph-implementation.md. Copy the prompt templates from docs/PROCEDURAL_GRAPH_FEATURE_PLAN.md Section 8.5 byte-for-byte (read that section with `sed -n` and paste; do not retype). If src/types/proceduralGraph.ts does not exist yet, `git pull` once; if still absent, write prompts.ts and tokenTail.ts first (they need only PGTrajectory, which you may temporarily declare locally with a `// TODO(pg-core): replace with import` comment, then replace once the file lands). Commit prefix: feat(pg-guide).
+You are Agent C ("pg-guide"). Your Wave 1 task is Section 5.3 of docs/superpowers/plans/2026-09-10-procedural-graph-implementation.md. Copy the prompt templates from docs/planning/PROCEDURAL_GRAPH_FEATURE_PLAN.md Section 8.5 byte-for-byte (read that section with `sed -n` and paste; do not retype). If src/types/proceduralGraph.ts does not exist yet, `git pull` once; if still absent, write prompts.ts and tokenTail.ts first (they need only PGTrajectory, which you may temporarily declare locally with a `// TODO(pg-core): replace with import` comment, then replace once the file lands). Commit prefix: feat(pg-guide).
 ```
 
 ### 5.4 Agent D / Wave 1 — refiner (pure) and rejection serialization

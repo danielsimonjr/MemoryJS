@@ -394,6 +394,7 @@ export {
   ProcedureStore,
   StepSequencer,
   decodeProcedure,
+  migrateLegacyProcedures,
   PROCEDURE_ENTITY_TYPE,
   type ProcedureManagerConfig,
 } from './procedural/index.js';

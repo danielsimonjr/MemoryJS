@@ -12,9 +12,9 @@
 - **Dormant files** (runtime code on disk, unreachable from any entry/build root): 0
   - **Orphaned (reachable from nothing — delete/wire candidates)**: 0
   - **Test-only (exercised by a test, ships nothing)**: 0
-- **Potentially unused exports**: 118
+- **Potentially unused exports**: 119
   - **Unreferenced anywhere (deletion candidates)**: 0
-  - **Referenced in-module (type contracts / helpers backing live exports)**: 118
+  - **Referenced in-module (type contracts / helpers backing live exports)**: 119
 
 Seeded reachability roots (4):
 
@@ -84,6 +84,11 @@ support exports that ARE used, so they cannot be deleted in isolation.
 ### `src/adapters/recursaToolSupport.ts`
 
 - `messageOf` (function) — 7 in-file refs
+
+### `src/agent/AgentEnvDefaults.ts`
+
+- `DEFAULT_ENTROPY_THRESHOLD_BITS` (constant) — 1 in-file ref
+- `DEFAULT_COGNITIVE_LOAD_MAX` (constant) — 1 in-file ref
 
 ### `src/agent/CollaborativeSynthesis.ts`
 
@@ -301,7 +306,6 @@ support exports that ARE used, so they cannot be deleted in isolation.
 ### `src/features/IOManager.ts`
 
 - `IngestTokenUsage` (interface) — 2 in-file refs
-- `IngestProduced` (interface) — 1 in-file ref
 - `IngestValidationFeedback` (interface) — 2 in-file refs
 - `IOManagerOptions` (interface) — 1 in-file ref
 - `IngestMode` (type) — 3 in-file refs

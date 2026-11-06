@@ -2,9 +2,9 @@ metadata:
   name: "@danielsimonjr/memoryjs"
   version: 4.5.0
   lastUpdated: "2026-11-06"
-  totalFiles: 398
+  totalFiles: 399
   totalModules: 12
-  totalExports: 2799
+  totalExports: 2815
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -504,6 +504,54 @@ modules:
       interfaces:
         - AccessStats
         - AccessTrackerConfig
+    src/agent/AgentEnvDefaults.ts:
+      description: Environment-derived defaults for agent-memory components.
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../utils/envConfig.js
+          imports:
+            - readEnvLooseFlag
+            - readEnvNumber
+            - EnvNumberBounds
+        - file: ../utils/logger.js
+          imports:
+            - logger
+        - file: ./EntropyFilter.js
+          imports:
+            - EntropyFilterConfig
+          typeOnly: true
+        - file: ./WorkingMemoryManager.js
+          imports:
+            - WorkingMemoryConfig
+          typeOnly: true
+        - file: ./MultiAgentMemoryManager.js
+          imports:
+            - MultiAgentConfig
+          typeOnly: true
+        - file: ../types/agent-memory.js
+          imports:
+            - MemoryVisibility
+          typeOnly: true
+      exports:
+        - DEFAULT_ENTROPY_THRESHOLD_BITS
+        - DEFAULT_COGNITIVE_LOAD_MAX
+        - readEntropyFilterFromEnv
+        - readDefaultVisibilityFromEnv
+        - readCognitiveLoadMaxFromEnv
+        - readConsolidationSchedulerEnabled
+        - withEnvWorkingMemory
+        - withEnvMultiAgent
+      functions:
+        - readEntropyFilterFromEnv
+        - readDefaultVisibilityFromEnv
+        - readCognitiveLoadMaxFromEnv
+        - readConsolidationSchedulerEnabled
+        - withEnvWorkingMemory
+        - withEnvMultiAgent
+      constants:
+        - DEFAULT_ENTROPY_THRESHOLD_BITS
+        - DEFAULT_COGNITIVE_LOAD_MAX
     src/agent/AgentMemoryConfig.ts:
       description: Agent Memory Configuration - env var and programmatic config for all agent memory components.
       externalDependencies: []
@@ -587,6 +635,16 @@ modules:
           imports:
             - EventEmitter
       internalDependencies:
+        - file: ./CollaborativeSynthesis.js
+          imports:
+            - CollaborativeSynthesis
+        - file: ../core/GraphTraversal.js
+          imports:
+            - GraphTraversal
+        - file: ./AgentEnvDefaults.js
+          imports:
+            - withEnvWorkingMemory
+            - withEnvMultiAgent
         - file: ../utils/logger.js
           imports:
             - logger
@@ -813,6 +871,9 @@ modules:
       externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ./AgentEnvDefaults.js
+          imports:
+            - readCognitiveLoadMaxFromEnv
         - file: ../utils/textSimilarity.js
           imports:
             - jaccard
@@ -4424,6 +4485,7 @@ modules:
             - ProcedureStore
             - StepSequencer
             - decodeProcedure
+            - migrateLegacyProcedures
             - PROCEDURE_ENTITY_TYPE
             - ProcedureManagerConfig
           reExport: true
@@ -4875,6 +4937,7 @@ modules:
         - ProcedureStore
         - StepSequencer
         - decodeProcedure
+        - migrateLegacyProcedures
         - PROCEDURE_ENTITY_TYPE
         - ProcedureManagerConfig
         - ProceduralGraph
@@ -5287,6 +5350,7 @@ modules:
         - ProcedureStore
         - StepSequencer
         - decodeProcedure
+        - migrateLegacyProcedures
         - PROCEDURE_ENTITY_TYPE
         - ProcedureManagerConfig
         - ProceduralGraph
@@ -6130,6 +6194,9 @@ modules:
           imports:
             - LearningDeps
           typeOnly: true
+        - file: ../../utils/envConfig.js
+          imports:
+            - readEnvStrictInt
       exports:
         - DEFAULT_CHILD_CONCURRENCY
         - createInProcessLearnHandler
@@ -11447,6 +11514,10 @@ modules:
           imports:
             - GraphStorage
           typeOnly: true
+        - file: ../types/types.js
+          imports:
+            - IGraphStorage
+          typeOnly: true
         - file: ../agent/AccessTracker.js
           imports:
             - AccessTracker
@@ -11508,6 +11579,13 @@ modules:
       externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../features/StreamingExporter.js
+          imports:
+            - StreamingExporter
+        - file: ../features/AuditLog.js
+          imports:
+            - AuditLog
+          typeOnly: true
         - file: ../utils/logger.js
           imports:
             - logger
@@ -11529,6 +11607,8 @@ modules:
         - file: ../utils/index.js
           imports:
             - validateFilePath
+        - file: ../utils/sidecarPath.js
+          imports:
             - sidecarPath
         - file: ../types/index.js
           imports:
@@ -11628,6 +11708,14 @@ modules:
         - file: ../search/RankedSearch.js
           imports:
             - RankedSearch
+          typeOnly: true
+        - file: ../search/TemporalSearch.js
+          imports:
+            - TemporalSearch
+          typeOnly: true
+        - file: ../features/FreshnessManager.js
+          imports:
+            - FreshnessManager
           typeOnly: true
         - file: ../search/GraphRankPrior.js
           imports:
@@ -12308,6 +12396,9 @@ modules:
       externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../../features/FreshnessManager.js
+          imports:
+            - FreshnessManager
         - file: ../GraphStorage.js
           imports:
             - GraphStorage
@@ -12458,6 +12549,9 @@ modules:
       externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../../agent/AgentEnvDefaults.js
+          imports:
+            - readConsolidationSchedulerEnabled
         - file: ../GraphStorage.js
           imports:
             - GraphStorage
@@ -12839,6 +12933,9 @@ modules:
         - file: ../../search/LLMSearchExecutor.js
           imports:
             - LLMSearchExecutor
+        - file: ../../search/TemporalSearch.js
+          imports:
+            - TemporalSearch
         - file: ../../search/SemanticSearch.js
           imports:
             - SemanticSearch
@@ -14029,6 +14126,7 @@ modules:
             - IngestInput
             - IngestOptions
             - IngestResult
+            - IngestProduced
             - SplitOptions
             - SplitResult
             - VisualizeOptions
@@ -14141,6 +14239,7 @@ modules:
         - IngestInput
         - IngestOptions
         - IngestResult
+        - IngestProduced
         - SplitOptions
         - SplitResult
         - VisualizeOptions
@@ -14202,6 +14301,7 @@ modules:
         - IngestInput
         - IngestOptions
         - IngestResult
+        - IngestProduced
         - SplitOptions
         - SplitResult
         - VisualizeOptions
@@ -17010,6 +17110,7 @@ modules:
             - AgentObservation
             - SessionEntity
             - ProfileEntity
+            - ProspectiveEntity
             - AccessContext
             - SalienceContext
             - SalienceWeights
@@ -17179,6 +17280,14 @@ modules:
             - LearningTraceEntity
           reExport: true
           typeOnly: true
+        - file: ./procedure.js
+          imports:
+            - ProcedureStep
+            - Procedure
+            - ProcedureMatch
+            - ProcedureFeedback
+          reExport: true
+          typeOnly: true
       exports:
         - QueryTraceBuilder
         - ENTITY_STATUS_TRANSITIONS
@@ -17328,6 +17437,7 @@ modules:
         - AgentObservation
         - SessionEntity
         - ProfileEntity
+        - ProspectiveEntity
         - AccessContext
         - SalienceContext
         - SalienceWeights
@@ -17458,6 +17568,10 @@ modules:
         - LearningTraceAction
         - LearningTraceRecord
         - LearningTraceEntity
+        - ProcedureStep
+        - Procedure
+        - ProcedureMatch
+        - ProcedureFeedback
       reExported:
         - QueryTraceBuilder
         - ENTITY_STATUS_TRANSITIONS
@@ -17607,6 +17721,7 @@ modules:
         - AgentObservation
         - SessionEntity
         - ProfileEntity
+        - ProspectiveEntity
         - AccessContext
         - SalienceContext
         - SalienceWeights
@@ -17737,6 +17852,10 @@ modules:
         - LearningTraceAction
         - LearningTraceRecord
         - LearningTraceEntity
+        - ProcedureStep
+        - Procedure
+        - ProcedureMatch
+        - ProcedureFeedback
     src/types/learning.ts:
       description: Recursa learning-loop, task and evaluation types (data only).
       externalDependencies: []
@@ -18733,6 +18852,8 @@ modules:
             - OperationCancelledError
             - RefConflictError
             - RefNotFoundError
+            - AttributionRequiredError
+            - VersionConflictError
             - ErrorOptions
           reExport: true
         - file: ./errorSuggestions.js
@@ -19122,10 +19243,6 @@ modules:
             - ZlibCompressionAdapter
             - ICompressionAdapter
           reExport: true
-        - file: ./sidecarPath.js
-          imports:
-            - sidecarPath
-          reExport: true
         - file: ./Diagnostics.js
           imports:
             - DiagnosticsOptions
@@ -19155,6 +19272,8 @@ modules:
         - OperationCancelledError
         - RefConflictError
         - RefNotFoundError
+        - AttributionRequiredError
+        - VersionConflictError
         - ErrorOptions
         - generateSuggestions
         - getQuickHint
@@ -19441,7 +19560,6 @@ modules:
         - CompressedMapOptions
         - ZlibCompressionAdapter
         - ICompressionAdapter
-        - sidecarPath
         - cosineSimilarity
         - DiagnosticsOptions
         - DiagnosticsReport
@@ -19464,6 +19582,8 @@ modules:
         - OperationCancelledError
         - RefConflictError
         - RefNotFoundError
+        - AttributionRequiredError
+        - VersionConflictError
         - ErrorOptions
         - generateSuggestions
         - getQuickHint
@@ -19749,7 +19869,6 @@ modules:
         - CompressedMapOptions
         - ZlibCompressionAdapter
         - ICompressionAdapter
-        - sidecarPath
         - DiagnosticsOptions
         - DiagnosticsReport
         - TieredIndexStatsSnapshot
@@ -20357,10 +20476,10 @@ dependencyGraph:
       - - src/features/IOManager.ts
         - src/features/BackupManager.ts
         - src/features/IOManager.ts
-      - - src/agent/ConsolidationPipeline.ts
+      - - src/agent/EntropyFilter.ts
+        - src/agent/ConsolidationPipeline.ts
         - src/agent/WorkingMemoryManager.ts
         - src/agent/EntropyFilter.ts
-        - src/agent/ConsolidationPipeline.ts
       - - src/agent/knowledge/KnowledgeRepository.ts
         - src/agent/knowledge/ScratchKnowledge.ts
         - src/agent/knowledge/KnowledgeRepository.ts
@@ -20415,6 +20534,7 @@ dependencyGraph:
     - name: Agent
       files:
         - src/agent/AccessTracker.ts
+        - src/agent/AgentEnvDefaults.ts
         - src/agent/AgentMemoryConfig.ts
         - src/agent/AgentMemoryManager.ts
         - src/agent/AgentReflectionManager.ts
@@ -20827,29 +20947,29 @@ reachability:
     - src/index.ts
     - src/sqlite.ts
     - src/workers/levenshteinWorker.ts
-  reachableCount: 398
+  reachableCount: 399
   dormantCount: 0
   orphaned: []
   testOnly: []
 statistics:
-  totalTypeScriptFiles: 398
+  totalTypeScriptFiles: 399
   totalModules: 12
-  totalLinesOfCode: 125969
-  totalExports: 2799
+  totalLinesOfCode: 126159
+  totalExports: 2815
   totalClasses: 276
   totalInterfaces: 824
-  totalFunctions: 637
+  totalFunctions: 643
   totalTypeGuards: 43
   totalEnums: 4
-  totalConstants: 178
-  totalReExports: 1705
-  totalTypeOnlyImports: 855
+  totalConstants: 180
+  totalReExports: 1713
+  totalTypeOnlyImports: 864
   runtimeCircularDeps: 0
   typeOnlyCircularDeps: 15
   entryRoots: 4
-  reachableFiles: 398
+  reachableFiles: 399
   dormantFiles: 0
   orphanedFiles: 0
   testOnlyFiles: 0
   unusedFilesCount: 0
-  unusedExportsCount: 118
+  unusedExportsCount: 119

@@ -8,6 +8,9 @@
  * @module agent/AgentMemoryManager
  */
 
+import { CollaborativeSynthesis } from './CollaborativeSynthesis.js';
+import { GraphTraversal } from '../core/GraphTraversal.js';
+import { withEnvWorkingMemory, withEnvMultiAgent } from './AgentEnvDefaults.js';
 import { EventEmitter } from 'events';
 import { logger } from '../utils/logger.js';
 import type { IGraphStorage, Entity } from '../types/types.js';
@@ -96,6 +99,7 @@ export class AgentMemoryManager extends EventEmitter {
   private _accessTracker?: AccessTracker;
   private _decayEngine?: DecayEngine;
   private _decayScheduler?: DecayScheduler;
+  private _collaborativeSynthesis?: CollaborativeSynthesis;
   private _workingMemory?: WorkingMemoryManager;
   private _sessionManager?: SessionManager;
   private _episodicMemory?: EpisodicMemoryManager;
@@ -158,7 +162,7 @@ export class AgentMemoryManager extends EventEmitter {
   }
 
   get workingMemory(): WorkingMemoryManager {
-    return (this._workingMemory ??= new WorkingMemoryManager(this.storage, this.config.workingMemory));
+    return (this._workingMemory ??= new WorkingMemoryManager(this.storage, withEnvWorkingMemory(this.config.workingMemory)));
   }
 
   get episodicMemory(): EpisodicMemoryManager {
@@ -189,6 +193,12 @@ export class AgentMemoryManager extends EventEmitter {
     return (this._ruleEvaluator ??= new RuleEvaluator());
   }
 
+  /** CollaborativeSynthesis over this storage + salience engine; lazy, built once. */
+  get collaborativeSynthesis(): CollaborativeSynthesis {
+    return (this._collaborativeSynthesis ??= new CollaborativeSynthesis(
+      this.storage, new GraphTraversal(this.storage), this.salienceEngine, this.config.collaborativeSynthesis));
+  }
+
   get salienceEngine(): SalienceEngine {
     return (this._salienceEngine ??= new SalienceEngine(
       this.storage, this.accessTracker, this.decayEngine, this.config.salience
@@ -206,7 +216,7 @@ export class AgentMemoryManager extends EventEmitter {
   }
 
   get multiAgentManager(): MultiAgentMemoryManager {
-    return (this._multiAgentManager ??= new MultiAgentMemoryManager(this.storage, this.config.multiAgent));
+    return (this._multiAgentManager ??= new MultiAgentMemoryManager(this.storage, withEnvMultiAgent(this.config.multiAgent)));
   }
 
   get conflictResolver(): ConflictResolver {

@@ -2,7 +2,7 @@
  * Procedural Graph prompt templates (paper Appendix B.5) and binding helpers.
  *
  * Template text outside `{...}` placeholders is copied character-for-character
- * from docs/PROCEDURAL_GRAPH_FEATURE_PLAN.md Section 8.5.
+ * from docs/planning/PROCEDURAL_GRAPH_FEATURE_PLAN.md Section 8.5.
  *
  * @module agent/procedural/graph/prompts
  * @experimental

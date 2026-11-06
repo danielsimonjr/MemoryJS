@@ -108,9 +108,11 @@ model (the paper itself leaves model and harness learning to future work).
    and `repo-tools docs check src` (every exported symbol documented, 0 MUST issues). No new
    dependencies. Env vars are read through `src/utils/envConfig.ts`.
 7. **File-size rule.** New source files < 500 lines, new test files < 400 lines. The four legacy files
-   this plan must touch (`src/types/agent-memory.ts`, `src/features/IOManager.ts`,
-   `src/agent/ContextWindowManager.ts`, `src/core/ManagerContext.ts`) are already over the limit;
-   edits to them are additive and capped per item below; all new types go in new files
+   this plan touched (`src/types/agent-memory.ts`, `src/features/IOManager.ts`,
+   `src/agent/ContextWindowManager.ts`, `src/core/ManagerContext.ts`) were already over the limit when
+   the plan was written; edits to them were additive and capped per item below. The facade split (#278)
+   moved the lazy-getter bodies out of `ManagerContext.ts` into `src/core/context/`, so the
+   `ManagerContext.ts` line caps in §3.7 and §4 apply to the pre-split file (§4.1). All new types went in new files
    (`src/types/skills.ts`, `src/types/learning.ts`) re-exported from `src/types/index.ts`.
 8. **Barrel ownership.** `src/agent/index.ts`, `src/types/index.ts`, `src/utils/index.ts` and each new
    `index.ts` are edited only by the phase lead, after the phase's parallel batches land. Parallel
@@ -685,11 +687,36 @@ These behaviours were decided while checking Phase 5 and are binding on RS-17..R
 
 Team: Planner (Fable, low) owns this document and batch briefs; Builders (Haiku, low) implement
 batches on disjoint files; Challenger (Haiku, low) writes adversarial and differential tests;
-Checker (Opus, low) runs every gate; Fixer (Sonnet, low) closes findings. Each phase ends with
-Challenger + Checker, then Fixer, then one PR squash-merged after all six CI legs are green (the
+Checker (Opus, low) runs every gate; Fixer (Sonnet, low) closes findings. Each phase ended with
+Challenger + Checker, then Fixer, then one PR squash-merged after all six CI legs were green (the
 Windows legs catch open-handle leaks: every test that opens a storage or sidecar closes it before
 temp-dir cleanup, per `tests/helpers/tempStorage.ts`). Barrels (`index.ts`) are edited by the phase
 lead after its batches land (§2.8).
+
+### 4.1 As shipped
+
+Each phase shipped as its own squash-merged PR. The three integration tests are the Phase 6 deliverables:
+`tests/integration/agent/recursa-loop.test.ts` (Phase 2/3 loop), `tests/integration/agent/recursa-leaf-learner.test.ts`
+(Phase 4 leaf learner, resumable driver) and `tests/integration/agent/recursa-end-to-end.test.ts` (6C scenario).
+
+| PR | Batch(es) | RS items | Notes |
+|---|---|---|---|
+| #272 | this document | — | Spec v1 and the implementation plan in §4 |
+| #273 | this document, v3 | — | Owner questions resolved from the harness-integrator lens (§6); §3.8 added |
+| #274 | 1A | RS-1, RS-4, RS-6, RS-24 (plus §3.0 types) | `src/types/{skills,learning}.ts`; eight record memory types; persistence allowlists |
+| #275 | 1B, 1C | RS-2, RS-3, RS-5 | `SkillManager`, SKILL.md format and publisher, `InstructionSetManager`, `KnowledgeRepository` |
+| #276 | 1D | — | Barrels; `ManagerContext` getters for 1B/1C |
+| #277 | 2A, 2B, 2C | RS-7, RS-8, RS-9 | Harness support: `InteractionLog`, `EvictionIndex`, `ConcurrencyLimiter` |
+| #278 | — | — | `ManagerContext` facade split into `src/core/context/*Facade.ts` (no behaviour change) |
+| #279 | 3A, 3B, 3C | RS-25, RS-26, RS-27 | Evaluation; RS-27 `setKnowledgeRepository` and `wakeUp` integration (the §4 batch label 6A) |
+| #280 | 4A–4D | RS-14, RS-15–RS-18, RS-22, RS-23 | Leaf learner (`LeafLearner`, `Diagnoser`, `KnowledgeEditor`, `RevisionValidator`) |
+| #281 | 5A–5D | RS-10–RS-13, RS-19–RS-21 | Recursive learner, split strategies, bootstrapping |
+| #282 | 6A–6C | §3.8 | `RecursaToolAdapter` (14 tools), path confinement for skills publishing, 6C integration test |
+
+Every RS item (RS-1 to RS-27) has a shipped PR above. Phases 2 and 3 shipped as separate PRs (#277, #279),
+and the line caps in §4 were applied per PR. Because of the facade split (#278), `src/core/ManagerContext.ts`
+is no longer the file the 1D, 4D and 5D caps were written against. See the CHANGELOG `[Unreleased]` entries for the
+current counts.
 
 ### Phase 1 — Types, skills, instructions, repository (foundation)
 | Batch | Items | Files | Tests | Challenger attacks |
@@ -714,7 +741,7 @@ Order: 2A ∥ 2B → 2C.
 | 3A | RS-25 | `src/agent/evaluation/{Evaluator,DeterministicJudge,LLMRubricJudge}.ts` | each criterion kind table-driven; metrics equal hand-computed values; split reproducible with a seed; LLM judge malformed JSON → fallback | `set-precision` with duplicates / case; `number` with units and thousands separators; `free` never passes |
 | 3B | RS-26 | `src/agent/evaluation/RubricAudit.ts` | five defect classes with synthetic fixtures | false positives on legitimate bracketed text |
 | 3C (lead) | barrels | `src/agent/evaluation/index.ts`, `src/agent/index.ts` | export test | — |
-Order: 3A ∥ 3B → 3C. Phases 2 and 3 may ship as one PR.
+Order: 3A ∥ 3B → 3C. Phases 2 and 3 shipped as separate PRs (#277, #279).
 
 ### Phase 4 — Leaf learner
 | Batch | Items | Files | Tests | Challenger attacks |
@@ -753,7 +780,8 @@ Order: 6A → (6B ∥ 6C). Finalize: census regen, verification totals, `repo-to
 | 5 | 2–3 (+ lead) | ~1,600 | ~55 |
 | 6 | 2 | ~200 + docs | ~10 |
 
-Six PRs (five if phases 2 and 3 combine), 27 items.
+Shipped as nine implementation PRs (#274 to #282; #278 is the facade split, not a phase), covering all 27 items.
+The spec had said that phases 2 and 3 might combine into one PR; they did not (#277, #279).
 
 ---
 

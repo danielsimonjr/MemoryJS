@@ -3,7 +3,7 @@
  * recovery of an interrupted publish swap and confined, symlink-safe reads.
  *
  * @module agent/skills/skillTreeFs
- * @internal Used by `SkillPublisher` only.
+ * @experimental Used by `SkillPublisher` only.
  */
 
 import { promises as fs } from 'fs';

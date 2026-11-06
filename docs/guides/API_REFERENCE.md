@@ -1,7 +1,9 @@
 # MemoryJS API Reference
 
-**Version**: 2.9.0
-**Last Updated**: 2026-07-24
+> **Code samples.** Samples assume `const ctx = new ManagerContext('./memory.jsonl')` and the placeholders `graph: KnowledgeGraph` (from `await ctx.storage.loadGraph()`), `entities: Entity[]` and `storage: IGraphStorage`. Every other name in a sample is imported or declared in it.
+
+**Version**: 4.5.0 (Unreleased changes noted inline)
+**Last Updated**: 2026-11-06
 
 > **Note:** sections below cover the v1.1-era surface. For the v1.6+ additions
 > (Memory Engine, Memory Validator, Trajectory Compressor, Experience Extractor,
@@ -11,13 +13,13 @@
 > and the architecture map in [docs/architecture/API.md](../architecture/API.md).
 > For the post-v2.9.0 additions (event reification, evidence paths, relation
 > consolidation, ingest provenance, NL-guided traversal) see
-> [Unreleased — added API surface](#unreleased--added-api-surface) at the
+> [API surface added in 3.0.0 and later](#api-surface-added-in-300-and-later) at the
 > bottom of this document.
 
 Complete API documentation for all public classes, methods, and types.
 
-> **Subpath exports (Unreleased):** the package ships `sideEffects: false`
-> plus subpath exports so bundlers can tree-shake unused managers:
+> **Subpath exports (3.0.0):** the package ships subpath exports so bundlers can
+> tree-shake unused managers. A `sideEffects` allowlist of the `sqlite-register` modules is **Unreleased** (see CHANGELOG `[Unreleased]`):
 > `@danielsimonjr/memoryjs` (root), `/core`, `/search`, `/agent`, `/features`,
 > `/utils`, `/types`, `/adapters`, `/security`, and `/sqlite` (isolates the
 > `better-sqlite3` native addon so JSONL-only consumers never load it). Each
@@ -52,7 +54,7 @@ Complete API documentation for all public classes, methods, and types.
 17. [Utility Functions](#utility-functions)
 18. [Types & Interfaces](#types--interfaces)
 19. [Error Classes](#error-classes)
-20. [Unreleased — added API surface](#unreleased--added-api-surface) — EventManager, RelationConsolidator, evidence paths, ingest provenance
+20. [API surface added in 3.0.0 and later](#api-surface-added-in-300-and-later) — EventManager, RelationConsolidator, evidence paths, ingest provenance
 
 ---
 
@@ -62,7 +64,7 @@ Central facade providing access to all managers.
 
 ### Constructor
 
-```typescript
+```text
 new ManagerContext(storagePath: string)
 ```
 
@@ -90,7 +92,7 @@ new ManagerContext(storagePath: string)
 | `semanticSearch` | `SemanticSearch` | Vector search (lazy, requires config) |
 | `graphRankPrior` | `GraphRankPrior` | Cached graph-connectivity ranking signal (lazy, `@experimental`, v2.9.0) |
 | `hybridSearchManager` | `HybridSearchManager` | Semantic + lexical + symbolic (+ optional graph) search (lazy, v2.9.0) |
-| `eventManager` | `EventManager` | Event reification — actions as first-class hub entities (lazy, `@experimental`, Unreleased) |
+| `eventManager` | `EventManager` | Event reification — actions as first-class hub entities (lazy, `@experimental`, 3.0.0) |
 
 ### Example
 
@@ -98,7 +100,7 @@ new ManagerContext(storagePath: string)
 import { ManagerContext } from '@danielsimonjr/memoryjs';
 
 const ctx = new ManagerContext('./memory.jsonl');
-const entities = await ctx.entityManager.getAllEntities();
+const entities = await ctx.entityManager.listEntities();
 ```
 
 ---
@@ -111,7 +113,7 @@ Manages entity CRUD operations.
 
 #### createEntities
 
-```typescript
+```text
 async createEntities(
   entities: CreateEntityInput[],
   options?: LongRunningOperationOptions
@@ -146,7 +148,7 @@ const entities = await ctx.entityManager.createEntities([
 
 #### getEntityByName
 
-```typescript
+```text
 async getEntityByName(name: string): Promise<Entity | null>
 ```
 
@@ -159,7 +161,7 @@ Retrieves a single entity by name.
 **Returns**: `Entity | null` - Entity or null if not found
 
 ```typescript
-const entity = await ctx.entityManager.getEntityByName('TypeScript');
+const entity = await ctx.entityManager.getEntity('TypeScript');
 if (entity) {
   console.log(entity.observations);
 }
@@ -169,7 +171,7 @@ if (entity) {
 
 #### getAllEntities
 
-```typescript
+```text
 async getAllEntities(): Promise<Entity[]>
 ```
 
@@ -181,7 +183,7 @@ Retrieves all entities.
 
 #### deleteEntities
 
-```typescript
+```text
 async deleteEntities(
   entityNames: string[],
   options?: LongRunningOperationOptions
@@ -205,7 +207,7 @@ await ctx.entityManager.deleteEntities(['OldEntity', 'DeprecatedEntity']);
 
 #### updateEntity
 
-```typescript
+```text
 async updateEntity(
   name: string,
   updates: UpdateEntityInput
@@ -232,7 +234,7 @@ await ctx.entityManager.updateEntity('TypeScript', {
 
 #### addTags
 
-```typescript
+```text
 async addTags(entityName: string, tags: string[]): Promise<Entity>
 ```
 
@@ -253,7 +255,7 @@ await ctx.entityManager.addTags('TypeScript', ['frontend', 'backend']);
 
 #### removeTags
 
-```typescript
+```text
 async removeTags(entityName: string, tags: string[]): Promise<Entity>
 ```
 
@@ -272,7 +274,7 @@ await ctx.entityManager.removeTags('TypeScript', ['deprecated']);
 
 #### setImportance
 
-```typescript
+```text
 async setImportance(entityName: string, importance: number): Promise<Entity>
 ```
 
@@ -295,7 +297,7 @@ await ctx.entityManager.setImportance('TypeScript', 8);
 
 #### addTagsToMultipleEntities
 
-```typescript
+```text
 async addTagsToMultipleEntities(
   entityNames: string[],
   tags: string[]
@@ -315,7 +317,7 @@ await ctx.entityManager.addTagsToMultipleEntities(
 
 #### replaceTag
 
-```typescript
+```text
 async replaceTag(oldTag: string, newTag: string): Promise<number>
 ```
 
@@ -332,7 +334,7 @@ console.log(`Updated ${count} entities`);
 
 #### mergeTags
 
-```typescript
+```text
 async mergeTags(
   tag1: string,
   tag2: string,
@@ -358,7 +360,7 @@ Manages relation CRUD operations.
 
 #### createRelations
 
-```typescript
+```text
 async createRelations(
   relations: CreateRelationInput[]
 ): Promise<Relation[]>
@@ -383,7 +385,7 @@ await ctx.relationManager.createRelations([
 
 #### getRelationsForEntity
 
-```typescript
+```text
 async getRelationsForEntity(entityName: string): Promise<{
   incoming: Relation[];
   outgoing: Relation[];
@@ -397,15 +399,15 @@ Gets all relations for an entity.
 | `entityName` | `string` | Yes | Entity name |
 
 ```typescript
-const { incoming, outgoing } = await ctx.relationManager.getRelationsForEntity('TypeScript');
-console.log(`${incoming.length} incoming, ${outgoing.length} outgoing`);
+const relations = await ctx.relationManager.getRelations('TypeScript');
+console.log(`${relations.length} relations`);
 ```
 
 ---
 
 #### getAllRelations
 
-```typescript
+```text
 async getAllRelations(): Promise<Relation[]>
 ```
 
@@ -415,7 +417,7 @@ Gets all relations in the graph.
 
 #### deleteRelations
 
-```typescript
+```text
 async deleteRelations(relations: DeleteRelationInput[]): Promise<void>
 ```
 
@@ -437,7 +439,7 @@ Manages entity observations.
 
 #### addObservations
 
-```typescript
+```text
 async addObservations(
   additions: ObservationAddition[]
 ): Promise<ObservationResult[]>
@@ -466,7 +468,7 @@ const results = await ctx.observationManager.addObservations([
 
 #### deleteObservations
 
-```typescript
+```text
 async deleteObservations(
   deletions: ObservationDeletion[]
 ): Promise<ObservationResult[]>
@@ -495,7 +497,7 @@ Manages parent-child entity relationships.
 
 #### setEntityParent
 
-```typescript
+```text
 async setEntityParent(
   entityName: string,
   parentName: string | null
@@ -522,7 +524,7 @@ await ctx.hierarchyManager.setEntityParent('Orphan', null); // Clear parent
 
 #### getParent
 
-```typescript
+```text
 async getParent(entityName: string): Promise<Entity | null>
 ```
 
@@ -532,7 +534,7 @@ Gets an entity's parent.
 
 #### getChildren
 
-```typescript
+```text
 async getChildren(entityName: string): Promise<Entity[]>
 ```
 
@@ -542,7 +544,7 @@ Gets an entity's direct children.
 
 #### getAncestors
 
-```typescript
+```text
 async getAncestors(entityName: string): Promise<Entity[]>
 ```
 
@@ -552,7 +554,7 @@ Gets all ancestors (parent, grandparent, etc.).
 
 #### getDescendants
 
-```typescript
+```text
 async getDescendants(entityName: string): Promise<Entity[]>
 ```
 
@@ -562,7 +564,7 @@ Gets all descendants recursively.
 
 #### getSubtree
 
-```typescript
+```text
 async getSubtree(entityName: string): Promise<KnowledgeGraph>
 ```
 
@@ -577,7 +579,7 @@ console.log(`${subtree.entities.length} entities, ${subtree.relations.length} re
 
 #### getRootEntities
 
-```typescript
+```text
 async getRootEntities(): Promise<Entity[]>
 ```
 
@@ -587,7 +589,7 @@ Gets all entities without parents.
 
 #### getEntityDepth
 
-```typescript
+```text
 async getEntityDepth(entityName: string): Promise<number>
 ```
 
@@ -597,7 +599,7 @@ Gets depth in hierarchy (root = 0).
 
 #### moveEntity
 
-```typescript
+```text
 async moveEntity(
   entityName: string,
   newParentName: string | null
@@ -616,7 +618,7 @@ Orchestrates all search operations.
 
 #### searchNodes
 
-```typescript
+```text
 async searchNodes(
   query: string,
   options?: SearchOptions
@@ -636,18 +638,14 @@ Basic substring search across entity names, observations, and types.
 | `options.offset` | `number` | No | Skip results |
 
 ```typescript
-const results = await ctx.searchManager.searchNodes('TypeScript', {
-  tags: ['programming'],
-  minImportance: 5,
-  limit: 20
-});
+const results = await ctx.searchManager.searchNodes('TypeScript', ['programming'], 5);
 ```
 
 ---
 
 #### searchNodesRanked
 
-```typescript
+```text
 async searchNodesRanked(
   query: string,
   options?: RankedSearchOptions
@@ -666,10 +664,7 @@ TF-IDF ranked search with relevance scores.
 **Returns**: `SearchResult[]` with score and matchedFields
 
 ```typescript
-const ranked = await ctx.searchManager.searchNodesRanked('programming language', {
-  limit: 10,
-  minScore: 0.3
-});
+const ranked = await ctx.searchManager.searchNodesRanked('programming language', undefined, undefined, undefined, 10);
 
 ranked.forEach(r => {
   console.log(`${r.entity.name}: ${r.score.toFixed(3)}`);
@@ -680,7 +675,7 @@ ranked.forEach(r => {
 
 #### booleanSearch
 
-```typescript
+```text
 async booleanSearch(
   query: string,
   options?: SearchOptions
@@ -706,7 +701,7 @@ const results = await ctx.searchManager.booleanSearch(
 
 #### fuzzySearch
 
-```typescript
+```text
 async fuzzySearch(
   query: string,
   options?: FuzzySearchOptions
@@ -722,9 +717,7 @@ Typo-tolerant search using Levenshtein distance.
 
 ```typescript
 // Finds "TypeScript" even with typo
-const results = await ctx.searchManager.fuzzySearch('Typscript', {
-  threshold: 0.7
-});
+const results = await ctx.searchManager.fuzzySearch('Typscript', 0.7);
 ```
 
 ---
@@ -735,7 +728,7 @@ const results = await ctx.searchManager.fuzzySearch('Typscript', {
 
 #### getSearchSuggestions
 
-```typescript
+```text
 async getSearchSuggestions(
   query: string,
   limit?: number
@@ -753,7 +746,7 @@ const suggestions = await ctx.searchManager.getSearchSuggestions('Type', 5);
 
 #### saveSearch
 
-```typescript
+```text
 async saveSearch(search: SavedSearchInput): Promise<SavedSearch>
 ```
 
@@ -763,7 +756,8 @@ Saves a search for later execution.
 await ctx.searchManager.saveSearch({
   name: 'important-projects',
   query: 'project',
-  options: { tags: ['important'], minImportance: 7 }
+  tags: ['important'],
+  minImportance: 7,
 });
 ```
 
@@ -771,7 +765,7 @@ await ctx.searchManager.saveSearch({
 
 #### executeSavedSearch
 
-```typescript
+```text
 async executeSavedSearch(name: string): Promise<KnowledgeGraph>
 ```
 
@@ -781,7 +775,7 @@ Executes a saved search by name.
 
 #### listSavedSearches
 
-```typescript
+```text
 async listSavedSearches(): Promise<SavedSearch[]>
 ```
 
@@ -797,7 +791,7 @@ Graph algorithms and path finding.
 
 #### findShortestPath
 
-```typescript
+```text
 async findShortestPath(
   source: string,
   target: string,
@@ -818,7 +812,7 @@ const result = await ctx.graphTraversal.findShortestPath('Alice', 'Bob');
 
 #### findAllPaths
 
-```typescript
+```text
 async findAllPaths(
   source: string,
   target: string,
@@ -833,7 +827,7 @@ Finds all paths between entities up to `maxDepth`.
 
 #### Centrality methods
 
-```typescript
+```text
 async calculateDegreeCentrality(
   direction?: 'in' | 'out' | 'both', topN?: number
 ): Promise<CentralityResult>
@@ -858,7 +852,7 @@ pageRank.scores.forEach((score, name) => {
 
 #### findConnectedComponents
 
-```typescript
+```text
 async findConnectedComponents(): Promise<ConnectedComponentsResult>
 ```
 
@@ -870,7 +864,7 @@ Finds connected components (subgraphs).
 
 #### bfs / dfs
 
-```typescript
+```text
 bfs(startEntity: string, options?: TraversalOptions): TraversalResult
 dfs(startEntity: string, options?: TraversalOptions): TraversalResult
 ```
@@ -881,9 +875,9 @@ Breadth-first / depth-first traversal. Both are **synchronous** (no `Promise`) a
 
 ---
 
-#### findPathWithin *(Unreleased — R2 evidence-path support)*
+#### findPathWithin *(3.0.0 — R2 evidence-path support)*
 
-```typescript
+```text
 async findPathWithin(
   source: string,
   target: string,
@@ -900,9 +894,9 @@ const short = await ctx.graphTraversal.findPathWithin('Alice', 'Bob', 3);
 
 ---
 
-#### getNeighborsWithRelations — `lookFor` (NL-guided ranking) *(Unreleased — R7)*
+#### getNeighborsWithRelations — `lookFor` (NL-guided ranking) *(3.0.0, R7)*
 
-```typescript
+```text
 getNeighborsWithRelations(
   entityName: string,
   options?: TraversalOptions
@@ -922,7 +916,7 @@ Overloaded: without `options.lookFor` the method is unchanged (synchronous, unra
 ```typescript
 const ranked = await ctx.graphTraversal.getNeighborsWithRelations('project-x', {
   lookFor: 'who is blocking this release',
-  semanticSearch: ctx.semanticSearch,
+  semanticSearch: ctx.semanticSearch ?? undefined,
 });
 ```
 
@@ -938,7 +932,7 @@ Import, export, and backup operations.
 
 #### exportGraph
 
-```typescript
+```text
 async exportGraph(
   format: ExportFormat,
   options?: ExportOptions
@@ -956,10 +950,11 @@ Exports graph to various formats.
 **Formats**: `'json'`, `'csv'`, `'graphml'`, `'gexf'`, `'dot'`, `'markdown'`, `'mermaid'`
 
 ```typescript
-const json = await ctx.ioManager.exportGraph('json');
-const mermaid = await ctx.ioManager.exportGraph('mermaid');
-const filtered = await ctx.ioManager.exportGraph('json', {
-  filter: { tags: ['important'], minImportance: 7 },
+const graph = await ctx.storage.loadGraph();
+const json = ctx.ioManager.exportGraph(graph, 'json');
+const mermaid = ctx.ioManager.exportGraph(graph, 'mermaid');
+const filtered = await ctx.ioManager.exportGraphWithCompression(graph, 'json', {
+  filter: { tags: ['important'] },
   compress: true
 });
 ```
@@ -968,7 +963,7 @@ const filtered = await ctx.ioManager.exportGraph('json', {
 
 #### importGraph
 
-```typescript
+```text
 async importGraph(
   format: ImportFormat,
   data: string,
@@ -992,18 +987,16 @@ Imports data into the graph.
 - `'fail'` - Error on conflict
 
 ```typescript
-const result = await ctx.ioManager.importGraph('json', jsonData, {
-  mergeStrategy: 'merge',
-  dryRun: true
-});
-console.log(`Would create ${result.entitiesCreated}, update ${result.entitiesUpdated}`);
+declare const jsonData: string;
+const result = await ctx.ioManager.importGraph('json', jsonData, 'merge', true);
+console.log(`Would add ${result.entitiesAdded}, update ${result.entitiesUpdated}`);
 ```
 
 ---
 
 #### createBackup
 
-```typescript
+```text
 async createBackup(options?: BackupOptions | string): Promise<BackupResult>
 ```
 
@@ -1023,7 +1016,7 @@ console.log(`Backup created: ${backup.path}`);
 
 #### restoreFromBackup
 
-```typescript
+```text
 async restoreFromBackup(backupPath: string): Promise<RestoreResult>
 ```
 
@@ -1033,7 +1026,7 @@ Restores the graph from a backup file (by path — since v1.15.0 Phase 5 delegat
 
 #### listBackups
 
-```typescript
+```text
 async listBackups(): Promise<BackupInfo[]>
 ```
 
@@ -1043,7 +1036,7 @@ Lists all available backups, sorted newest first.
 
 #### deleteBackup
 
-```typescript
+```text
 async deleteBackup(backupPath: string): Promise<void>
 ```
 
@@ -1053,7 +1046,7 @@ Deletes a backup by path. Since v1.15.0 Phase 5 delegates to `BackupManager.dele
 
 #### cleanOldBackups
 
-```typescript
+```text
 async cleanOldBackups(keepCount?: number): Promise<number>
 ```
 
@@ -1069,7 +1062,7 @@ Tag alias management.
 
 #### addTagAlias
 
-```typescript
+```text
 async addTagAlias(
   alias: string,
   canonical: string,
@@ -1087,7 +1080,7 @@ await ctx.tagManager.addTagAlias('ml', 'machine-learning', 'Abbreviation');
 
 #### resolveTag
 
-```typescript
+```text
 async resolveTag(tag: string): Promise<string>
 ```
 
@@ -1102,7 +1095,7 @@ const canonical = await ctx.tagManager.resolveTag('ml');
 
 #### listTagAliases
 
-```typescript
+```text
 async listTagAliases(): Promise<TagAlias[]>
 ```
 
@@ -1112,7 +1105,7 @@ Lists all tag aliases.
 
 #### getAliasesForTag
 
-```typescript
+```text
 async getAliasesForTag(canonicalTag: string): Promise<string[]>
 ```
 
@@ -1122,7 +1115,7 @@ Gets all aliases for a canonical tag.
 
 #### removeTagAlias
 
-```typescript
+```text
 async removeTagAlias(alias: string): Promise<boolean>
 ```
 
@@ -1138,7 +1131,7 @@ Duplicate detection and entity merging.
 
 #### findDuplicates
 
-```typescript
+```text
 async findDuplicates(threshold?: number): Promise<string[][]>
 ```
 
@@ -1159,7 +1152,7 @@ const duplicates = await ctx.compressionManager.findDuplicates(0.8);
 
 #### mergeEntities
 
-```typescript
+```text
 async mergeEntities(
   entityNames: string[],
   targetName?: string
@@ -1186,7 +1179,7 @@ const merged = await ctx.compressionManager.mergeEntities(
 
 #### compressGraph
 
-```typescript
+```text
 async compressGraph(
   threshold?: number,
   options?: CompressOptions
@@ -1201,8 +1194,8 @@ Auto-detects and merges duplicates.
 | `options.dryRun` | `boolean` | No | Preview without applying |
 
 ```typescript
-const result = await ctx.compressionManager.compressGraph(0.8, { dryRun: true });
-console.log(`Would merge ${result.mergedGroups.length} groups`);
+const result = await ctx.compressionManager.compressGraph(0.8, true);
+console.log(`Would merge ${result.entitiesMerged} entities (${result.duplicatesFound} duplicates)`);
 ```
 
 ---
@@ -1215,7 +1208,7 @@ Graph statistics and validation.
 
 #### getGraphStats
 
-```typescript
+```text
 async getGraphStats(): Promise<GraphStats>
 ```
 
@@ -1223,7 +1216,7 @@ Gets comprehensive graph statistics.
 
 **Returns**:
 ```typescript
-{
+interface GraphStatsReport {
   entityCount: number;
   relationCount: number;
   entityTypes: Record<string, number>;
@@ -1238,14 +1231,14 @@ Gets comprehensive graph statistics.
 
 #### validateGraph
 
-```typescript
+```text
 async validateGraph(): Promise<ValidationReport>
 ```
 
 Validates graph integrity.
 
 **Returns**:
-```typescript
+```text
 {
   isValid: boolean;
   issues: ValidationIssue[];       // type: 'orphaned_relation' | 'duplicate_entity' | 'invalid_data'
@@ -1269,7 +1262,7 @@ Entity archival operations.
 
 #### archiveEntities
 
-```typescript
+```text
 async archiveEntities(
   criteria: ArchiveCriteria,
   options?: ArchiveOptions
@@ -1289,7 +1282,7 @@ Archives entities matching criteria.
 ```typescript
 const result = await ctx.archiveManager.archiveEntities({
   olderThan: '2024-01-01',
-  maxImportance: 2,
+  importanceLessThan: 2,
   tags: ['deprecated']
 }, { dryRun: false });
 ```
@@ -1304,7 +1297,7 @@ Vector similarity search using embeddings. Note the constructor takes no
 
 ### Constructor
 
-```typescript
+```text
 new SemanticSearch(
   embeddingService: EmbeddingService,
   vectorStore?: IVectorStore   // defaults to a new InMemoryVectorStore
@@ -1315,13 +1308,13 @@ new SemanticSearch(
 
 #### isAvailable
 
-```typescript
+```text
 async isAvailable(): Promise<boolean>
 ```
 
 #### indexAll
 
-```typescript
+```text
 async indexAll(
   graph: ReadonlyKnowledgeGraph,
   options?: SemanticIndexOptions   // { forceReindex?, onProgress?, batchSize?, signal? }
@@ -1331,10 +1324,12 @@ async indexAll(
 Indexes all entities for semantic search. Incremental — entities already indexed are skipped unless `forceReindex` is set.
 
 ```typescript
+import { SemanticSearch, createEmbeddingService } from '@danielsimonjr/memoryjs';
 const embedding = await createEmbeddingService({ provider: 'openai' });
+if (!embedding) throw new Error('No embedding provider configured');
 const semantic = new SemanticSearch(embedding);
 
-const graph = await ctx.entityManager.getAllEntities().then(entities => ({ entities, relations: [] }));
+const graph = await ctx.entityManager.listEntities().then(entities => ({ entities, relations: [] }));
 await semantic.indexAll(graph);
 ```
 
@@ -1342,7 +1337,7 @@ await semantic.indexAll(graph);
 
 #### indexEntity
 
-```typescript
+```text
 async indexEntity(entity: Entity): Promise<boolean>
 ```
 
@@ -1352,7 +1347,7 @@ Indexes a single entity. Returns `false` on embedding failure instead of throwin
 
 #### search
 
-```typescript
+```text
 async search(
   graph: ReadonlyKnowledgeGraph,
   query: string,
@@ -1364,6 +1359,7 @@ async search(
 Searches by semantic similarity.
 
 ```typescript
+declare const semantic: import('@danielsimonjr/memoryjs').SemanticSearch;
 const results = await semantic.search(graph, 'functional programming concepts', 10, 0.7);
 ```
 
@@ -1371,7 +1367,7 @@ const results = await semantic.search(graph, 'functional programming concepts', 
 
 #### findSimilar
 
-```typescript
+```text
 async findSimilar(
   graph: ReadonlyKnowledgeGraph,
   entityName: string,
@@ -1383,6 +1379,7 @@ async findSimilar(
 Finds entities similar to a given entity.
 
 ```typescript
+declare const semantic: import('@danielsimonjr/memoryjs').SemanticSearch;
 const similar = await semantic.findSimilar(graph, 'TypeScript', 5);
 ```
 
@@ -1394,7 +1391,7 @@ const similar = await semantic.findSimilar(graph, 'TypeScript', 5);
 
 ### Constructor
 
-```typescript
+```text
 new GraphRankPrior(
   source: GraphTraversal | GraphStorage,
   options?: {
@@ -1407,7 +1404,7 @@ new GraphRankPrior(
 
 ### Methods
 
-```typescript
+```text
 async getScores(names: string[]): Promise<Map<string, number>>  // normalized [0, 1]
 async getPageRank(entityName: string): Promise<number>
 async getDegree(entityName: string): Promise<number>
@@ -1430,7 +1427,7 @@ Combines semantic, lexical, symbolic, and (optionally) graph-connectivity search
 
 ### Constructor
 
-```typescript
+```text
 new HybridSearchManager(
   semanticSearch: SemanticSearch | null,
   rankedSearch: RankedSearch,
@@ -1453,14 +1450,14 @@ new HybridSearchManager(
 
 #### search
 
-```typescript
+```text
 async search(
   graph: ReadonlyKnowledgeGraph,
   query: string,
   options?: Partial<HybridSearchOptions> & {
     graphWeight?: number;  // graph channel weight, default 0 (off)
     expandNeighbors?: { hops: 1; topK?: number; damping?: number };
-    // Unreleased (R2/R7) — see below
+    // 3.0.0 (R2/R7) — see below
     explain?: boolean;
     explainOptions?: { maxDepth?: number; maxPathsPerResult?: number };
     lookFor?: string;
@@ -1482,7 +1479,7 @@ const results = await ctx.hybridSearchManager.search(graph, 'machine learning', 
 });
 ```
 
-##### `explain: true` — evidence paths *(Unreleased, R2)*
+##### `explain: true` — evidence paths *(3.0.0, R2)*
 
 When `explain: true`, every result gains an `evidencePaths` array — the graph
 paths connecting the query's direct anchor matches (entities that matched a
@@ -1491,6 +1488,7 @@ depth/count cap changed the outcome). Off by default; `explain` omitted or
 `false` is byte-identical to pre-R2 behavior (nothing is computed).
 
 ```typescript
+import { HybridSearchResult } from '@danielsimonjr/memoryjs';
 interface ExplainedHybridSearchResult extends HybridSearchResult {
   evidencePaths?: EvidencePath[];   // anchor → result shortest paths (BFS, undirected)
   evidenceTruncated?: boolean;      // a maxDepth/maxPathsPerResult cap bit
@@ -1532,7 +1530,7 @@ const { paths, truncated } = builder.buildForResult('result-entity', [
 ]);
 ```
 
-##### `lookFor` — NL-guided neighbor expansion *(Unreleased, R7)*
+##### `lookFor` — NL-guided neighbor expansion *(3.0.0, R7)*
 
 When `expandNeighbors` is active, pass `lookFor` (free text) to rank the
 expansion neighbors by similarity to that text instead of expansion order;
@@ -1544,7 +1542,7 @@ underlying primitive.
 
 Alias for `search()`.
 
-```typescript
+```text
 async searchWithEntities(
   graph: ReadonlyKnowledgeGraph,
   query: string,
@@ -1554,7 +1552,7 @@ async searchWithEntities(
 
 #### getSymbolicSearch
 
-```typescript
+```text
 getSymbolicSearch(): SymbolicSearch
 ```
 
@@ -1564,7 +1562,7 @@ getSymbolicSearch(): SymbolicSearch
 
 ### GraphStorage (JSONL)
 
-```typescript
+```text
 new GraphStorage(memoryFilePath: string)
 ```
 
@@ -1576,7 +1574,7 @@ new GraphStorage(memoryFilePath: string)
 
 ### SQLiteStorage
 
-```typescript
+```text
 new SQLiteStorage(dbPath: string)
 ```
 
@@ -1592,12 +1590,14 @@ Since v2.9.0, `SQLiteStorage` also implements `renameEntity(oldName, newName)` (
 ### Factory Functions
 
 ```typescript
+import { createStorage } from '@danielsimonjr/memoryjs';
+import { createStorageFromPath } from '@danielsimonjr/memoryjs';
 // Create from path (auto-detects type)
 const storage = createStorageFromPath('./memory.jsonl');
-const storage = createStorageFromPath('./memory.db');
+// const storage = createStorageFromPath('./memory.db');  // alternative to the line above
 
 // Create with explicit config
-const storage = createStorage({
+const sqliteStorage = createStorage({
   type: 'sqlite',
   path: './memory.db'
 });
@@ -1610,6 +1610,7 @@ const storage = createStorage({
 ### Validation
 
 ```typescript
+import { EntitySchema, validateTags } from '@danielsimonjr/memoryjs';
 import {
   validateWithSchema,
   validateEntity,
@@ -1619,9 +1620,13 @@ import {
 } from '@danielsimonjr/memoryjs';
 
 // Schema validation
-const result = validateWithSchema(EntitySchema, input);
-if (!result.success) {
-  console.error(formatZodErrors(result.error));
+declare const input: unknown;
+
+// Schema validation (throws on invalid input)
+try {
+  validateWithSchema(input, EntitySchema);
+} catch (err) {
+  console.error(err);
 }
 
 // Manual validation
@@ -1661,10 +1666,12 @@ import {
 
 ```typescript
 import { processBatch, chunkArray } from '@danielsimonjr/memoryjs';
+declare const items: string[];
+declare function processItem(item: string): Promise<number>;
 
 const results = await processBatch(items, processItem, {
   batchSize: 100,
-  onProgress: (done, total) => console.log(`${done}/${total}`)
+  onProgress: ({ completed: done, total }) => console.log(`${done}/${total}`)
 });
 ```
 
@@ -1707,6 +1714,7 @@ interface Relation {
 ### KnowledgeGraph
 
 ```typescript
+import { Entity, Relation } from '@danielsimonjr/memoryjs';
 interface KnowledgeGraph {
   entities: Entity[];
   relations: Relation[];
@@ -1716,6 +1724,7 @@ interface KnowledgeGraph {
 ### SearchResult
 
 ```typescript
+import { Entity } from '@danielsimonjr/memoryjs';
 interface SearchResult {
   entity: Entity;
   score: number;
@@ -1728,6 +1737,7 @@ interface SearchResult {
 `HybridSearchManager.search()` resolves to `HybridSearchResult[]` — a flat array, not a wrapper object.
 
 ```typescript
+import { Entity } from '@danielsimonjr/memoryjs';
 interface HybridSearchResult {
   entity: Entity;
   scores: {
@@ -1819,7 +1829,7 @@ try {
   await ctx.entityManager.setImportance('Unknown', 5);
 } catch (e) {
   if (e instanceof EntityNotFoundError) {
-    console.error(`Entity ${e.entityName} not found`);
+    console.error(`Entity not found: ${e.message}`);
   }
 }
 ```
@@ -1827,7 +1837,7 @@ try {
 ---
 
 **Document Version**: 2.0
-**Last Updated**: 2026-07-24
+**Last Updated**: 2026-11-06
 
 ---
 
@@ -1838,7 +1848,7 @@ public surfaces shipped since.
 
 ### EntityManager — new methods
 
-```typescript
+```text
 class EntityManager {
   // η.4.4 — bitemporal validity
   invalidateEntity(name: string, ended?: string): Promise<void>;
@@ -1870,7 +1880,7 @@ class EntityManager {
 
 ### RelationManager — new methods (v1.9)
 
-```typescript
+```text
 class RelationManager {
   invalidateRelation(
     from: string, relationType: string, to: string, ended?: string,
@@ -1888,7 +1898,7 @@ class RelationManager {
 
 ### ObservationManager — new methods (η.4.4)
 
-```typescript
+```text
 class ObservationManager {
   invalidateObservation(
     entityName: string, content: string, ended?: string,
@@ -1899,7 +1909,7 @@ class ObservationManager {
 
 ### IOManager — new export formats (η.5.4 + v1.9)
 
-```typescript
+```text
 type ExportFormat =
   | 'json' | 'csv' | 'graphml' | 'gexf' | 'dot' | 'markdown' | 'mermaid'
   | 'turtle' | 'rdf-xml' | 'json-ld';  // ← new
@@ -1908,7 +1918,7 @@ class IOManager {
   exportGraph(graph: ReadonlyKnowledgeGraph, format: ExportFormat): string;
 
   // v1.9 conversation ingest pipeline (see "ingest provenance" below for
-  // the Unreleased manifest/mode/tokenUsage additions)
+  // the 3.0.0 manifest/mode/tokenUsage additions)
   ingest(input: IngestInput, options?: IngestOptions): Promise<IngestResult>;
   splitSessions(content: string, options?: SplitOptions): Promise<SplitResult>;
 
@@ -1917,7 +1927,7 @@ class IOManager {
 }
 ```
 
-#### `ingest` — provenance + cost/quality dial *(Unreleased, R4b/R5)*
+#### `ingest` — provenance + cost/quality dial *(3.0.0, R4b/R5)*
 
 Every `ingest()` run now writes a per-run **manifest entity**
 (`entityType: 'ingest-manifest'`, name `ingest-<id>`) with one
@@ -1930,6 +1940,8 @@ entity created by the run is linked back to the manifest with a
 evidence paths extend `answer → relation → observation → source chunk`.
 
 ```typescript
+import { LLMProvider } from '@danielsimonjr/memoryjs';
+import type { IngestProduced } from '@danielsimonjr/memoryjs';
 interface IngestOptions {
   // ...existing fields (projectId, entityType, tags, chunkBy, maxChunkSize,
   // deduplicateThreshold, dryRun) unchanged...
@@ -1961,6 +1973,8 @@ interface IngestResult {
 - `'accurate'` — LLM extraction when available, plus the `validate` hook is invoked after the write (the structural seam `RelationConsolidator` plugs into). Without a `validate` callback, `'accurate'` degrades to `'balanced'` with stricter heuristic thresholds.
 
 ```typescript
+declare const conversationMessages: import('@danielsimonjr/memoryjs').IngestInput['messages'];
+declare const myProvider: import('@danielsimonjr/memoryjs').LLMProvider;
 const result = await ctx.ioManager.ingest(
   { messages: conversationMessages, source: 'support-thread-42' },
   { mode: 'accurate', llmProvider: myProvider, validate: async (produced) => ({ valid: true }) }
@@ -1970,7 +1984,7 @@ console.log(result.manifestEntity, result.chunkCount, result.tokenUsage);
 
 ### MemoryEngine (v1.11)
 
-```typescript
+```text
 class MemoryEngine extends EventEmitter {
   addTurn(
     content: string,
@@ -1995,6 +2009,7 @@ class MemoryEngine extends EventEmitter {
 ### IMemoryBackend (v1.12)
 
 ```typescript
+import { GetWeightedOptions, MemoryTurn, WeightedTurn } from '@danielsimonjr/memoryjs';
 interface IMemoryBackend {
   add(turn: MemoryTurn, options?: { dedupOnAdd?: boolean }): Promise<MemoryTurn>;
   get_weighted(sessionId: string, options?: GetWeightedOptions): Promise<WeightedTurn[]>;
@@ -2011,7 +2026,9 @@ ctx.memoryBackend  // selected by MEMORY_BACKEND=sqlite|in-memory
 
 ### MemoryValidator (v1.13)
 
-```typescript
+```text
+import { MemoryValidationResult } from '@danielsimonjr/memoryjs';
+import { ConflictResolver, Contradiction, Entity } from '@danielsimonjr/memoryjs';
 class MemoryValidator {
   validateConsistency(newObs: string, existing: Entity): Promise<MemoryValidationResult>;
   detectContradictions(entity: Entity): Promise<Contradiction[]>;
@@ -2027,7 +2044,7 @@ class MemoryValidator {
 
 ### TrajectoryCompressor (v1.13)
 
-```typescript
+```text
 class TrajectoryCompressor {
   distill(observations: string[], maxLength: number): string;
   abstractAtLevel(observations: string[], level: 'fine' | 'medium' | 'coarse'): string[];
@@ -2042,7 +2059,7 @@ class TrajectoryCompressor {
 
 ### ExperienceExtractor (v1.13)
 
-```typescript
+```text
 class ExperienceExtractor {
   extractFromContrastivePairs(success: Trajectory[], failure: Trajectory[]): Rule[];
   abstractPattern(observations: string[]): Pattern;
@@ -2057,7 +2074,7 @@ class ExperienceExtractor {
 
 ### CollaborativeSynthesis (v1.7 + η.5.5.a)
 
-```typescript
+```text
 class CollaborativeSynthesis {
   // v1.7
   synthesize(seedEntity: string, context?: SalienceContext): Promise<SynthesisResult>;
@@ -2083,7 +2100,7 @@ type ConflictResolutionPolicy =
 
 ### VisibilityResolver (v1.7 + η.5.5.b)
 
-```typescript
+```text
 class VisibilityResolver {
   canAccess(
     memory: AgentEntity,
@@ -2106,7 +2123,8 @@ interface AgentEntity {
 ### CollaborationAuditEnforcer (η.5.5.d)
 
 ```typescript
-class CollaborationAuditEnforcer {
+import { AuditLog, Entity, EntityManager } from '@danielsimonjr/memoryjs';
+declare class CollaborationAuditEnforcer {
   constructor(
     em: EntityManager,
     log: AuditLog,
@@ -2124,7 +2142,7 @@ class CollaborationAuditEnforcer {
 
 ### CausalReasoner (3B.6)
 
-```typescript
+```text
 class CausalReasoner {
   findEffects(
     causeEntityName: string, candidateEffects: string[], maxDepth?: number,
@@ -2149,7 +2167,9 @@ interface CausalChain {
 ### ProcedureManager (3B.4)
 
 ```typescript
-class ProcedureManager {
+import type { Procedure, ProcedureMatch, ProcedureFeedback } from '@danielsimonjr/memoryjs';
+type ProcedureStep = { order: number; action: string; parameters: Record<string, unknown>; fallback?: ProcedureStep };
+declare class ProcedureManager {
   addProcedure(input: Partial<Procedure>): Promise<Procedure>;
   getProcedure(id: string): Promise<Procedure | null>;
   getStep(id: string, order: number): Promise<ProcedureStep | null>;
@@ -2163,7 +2183,7 @@ class ProcedureManager {
   refineProcedure(id: string, feedback: ProcedureFeedback): Promise<Procedure>;
 }
 
-class StepSequencer {
+declare class StepSequencer {
   current(): ProcedureStep | null;
   next(): ProcedureStep | null;
   branchToFallback(): void;       // throws if no fallback
@@ -2176,7 +2196,7 @@ class StepSequencer {
 
 ### ActiveRetrievalController (3B.5)
 
-```typescript
+```text
 class ActiveRetrievalController {
   shouldRetrieve(context: RetrievalContext): RetrievalDecision;
   adaptiveRetrieve(context: RetrievalContext): Promise<AdaptiveResult>;
@@ -2197,7 +2217,8 @@ interface AdaptiveResult {
 
 ### WorldModelManager (3B.7)
 
-```typescript
+```text
+import { CausalChain, MemoryValidationResult, WorldStateChange, WorldStateEntity } from '@danielsimonjr/memoryjs';
 class WorldModelManager {
   getCurrentState(): Promise<WorldStateSnapshot>;
   validateFact(observation: string, entityName: string): Promise<MemoryValidationResult | null>;
@@ -2219,7 +2240,9 @@ class WorldStateSnapshot {
 ### RBAC (η.6.1)
 
 ```typescript
-class RoleAssignmentStore {
+import { Permission } from '@danielsimonjr/memoryjs';
+import { PermissionMatrix, RbacPolicy, ResourcePermissionOverrides, ResourceType, Role, RoleAssignment } from '@danielsimonjr/memoryjs';
+declare class RoleAssignmentStore {
   constructor(options?: { persistencePath?: string });
   hydrate(): Promise<void>;
   assign(assignment: RoleAssignment): Promise<void>;
@@ -2228,7 +2251,7 @@ class RoleAssignmentStore {
   listActive(agentId: string, now?: string): RoleAssignment[];
 }
 
-class RbacMiddleware implements RbacPolicy {
+declare class RbacMiddleware implements RbacPolicy {
   constructor(
     store: RoleAssignmentStore,
     options?: {
@@ -2249,7 +2272,8 @@ class RbacMiddleware implements RbacPolicy {
 
 ### PiiRedactor (η.6.3)
 
-```typescript
+```text
+import { PiiPattern, RedactionResult } from '@danielsimonjr/memoryjs';
 class PiiRedactor {
   constructor(options?: {
     patterns?: ReadonlyArray<PiiPattern>;       // replaces default bank
@@ -2266,54 +2290,310 @@ const DEFAULT_PII_PATTERNS: ReadonlyArray<PiiPattern>;
 
 ### New error types
 
-```typescript
-// η.5.5.c — optimistic concurrency
-class VersionConflictError extends KnowledgeGraphError {
-  readonly entityName: string;
-  readonly expected: number;
-  readonly actual: number;
-  readonly conflictingAgentId?: string;
-}
+Both are exported from the package root and extend `KnowledgeGraphError`:
 
+```typescript
+import { VersionConflictError, AttributionRequiredError } from '@danielsimonjr/memoryjs';
+// η.5.5.c — optimistic concurrency: entityName, expected, actual, conflictingAgentId?
+const conflict = new VersionConflictError('Alice', 3, 4);
 // η.5.5.d — strict-mode attribution enforcement
-class AttributionRequiredError extends KnowledgeGraphError {}
+const missing = new AttributionRequiredError('createEntities');
+console.log(conflict.code, conflict.expected, missing.code);
 ```
 
-### `ManagerContext` — full lazy-getter list (current)
+### `ManagerContext` — lazy-getter list (current)
 
-```typescript
-// Core
-ctx.entityManager / relationManager / observationManager / hierarchyManager
-ctx.searchManager / rankedSearch / graphTraversal / tagManager / refIndex
+Every public getter, method, and factory on `ManagerContext`. Delegates live in `src/core/ManagerContext.ts`; the owning facade is in `src/core/context/`. Lazy getters construct once. Factories (`method`) build a new instance per call.
 
-// I/O + governance
-ctx.ioManager / archiveManager / compressionManager / analyticsManager
-ctx.semanticForget / governanceManager / freshnessManager
+**Core storage and graph**
 
-// Search extensions
-ctx.semanticSearch / temporalSearch / activeRetrieval
-ctx.llmQueryPlanner() / queryNaturalLanguage()
-ctx.graphRankPrior / hybridSearchManager   // v2.9.0 — knowledge-graph-as-core convergence
+| Member | Kind | Notes |
+|---|---|---|
+| `ctx.entityManager` | getter | Entity CRUD and tags; governance hooks wired on first access |
+| `ctx.relationManager` | getter | Relation CRUD |
+| `ctx.observationManager` | getter | Observation CRUD; column store wired on first access when enabled |
+| `ctx.observationColumnStore` | getter | Column sidecar or `null` (`MEMORY_OBSERVATIONS_COLUMNAR`) |
+| `ctx.hierarchyManager` | getter | Parent/child hierarchy operations |
+| `ctx.graphTraversal` | getter | Shortest path, components, centrality |
+| `ctx.refIndex` | getter | Named reference index for O(1) stable lookups |
+| `ctx.tieredPostingsIndex` | getter | Tiered index or `null` (`MEMORY_TIERED_INDEX`, `@internal`) |
+| `ctx.compressedEntityCache` | getter | Compressed cache or `null` (`MEMORY_CACHE_COMPRESS`, `@internal`) |
+| `ctx.bloomPreScreener` | getter | Bloom pre-screener or `null` (`MEMORY_FUZZY_BLOOM_PRESCREEN`) |
+| `ctx.observationStore` | getter | Content-addressable observation store (opt-in) |
+| `ctx.governanceManager` | getter | Policies, transactions, rollback |
+| `ctx.auditLog` | getter | Same `AuditLog` instance as `governanceManager.auditLog` (no new construction) |
 
-// Memory + agent
-ctx.memoryEngine / memoryBackend / contextWindowManager / agentMemory()
+**Search**
 
-// Memory intelligence
-ctx.memoryValidator / trajectoryCompressor / experienceExtractor / patternDetector
+| Member | Kind | Notes |
+|---|---|---|
+| `ctx.searchManager` | getter | All text, boolean, fuzzy, and time search |
+| `ctx.rankedSearch` | getter | TF-IDF / BM25 ranked search |
+| `ctx.graphRankPrior` | getter | Cached normalised PageRank signal |
+| `ctx.hybridSearchManager` | getter | Semantic + lexical + symbolic (+ graph) layered search |
+| `ctx.materializedViews` | getter | Materialised search views |
+| `ctx.semanticSearch` | getter | Vector search or `null` when no embedding provider |
+| `ctx.temporalSearch` | getter | Natural-language time-range search (`TemporalSearch`) |
+| `ctx.autoLinker` | getter | Entity mention auto-linking |
+| `ctx.factExtractor` | getter | Fact extraction from text |
+| `ctx.llmQueryPlanner` | method | `llmQueryPlanner(config?)`: NL to structured query planner |
+| `ctx.queryNaturalLanguage` | method | `queryNaturalLanguage(text)`: LLM-planned query; provider set first |
 
-// Memory theory (3B)
-ctx.procedureManager / causalReasoner / worldModelManager
+**I/O, tags, analytics, archive**
 
-// Auth
-ctx.roleAssignmentStore / rbacMiddleware / accessTracker
+| Member | Kind | Notes |
+|---|---|---|
+| `ctx.ioManager` | getter | Import, export, backup, restore, `ingest()` |
+| `ctx.streamingExporter` | method | `streamingExporter(filePath)`: new `StreamingExporter` per call (bound to one output file, so not lazy) |
+| `ctx.tagManager` | getter | Tag aliases |
+| `ctx.analyticsManager` | getter | Graph statistics and validation |
+| `ctx.compressionManager` | getter | Duplicate detection and merging |
+| `ctx.archiveManager` | getter | Archive to compressed storage |
 
-// Unreleased (brainapi2-inspired features)
-ctx.eventManager   // event reification (R1), @experimental
-```
+**Agent memory**
+
+| Member | Kind | Notes |
+|---|---|---|
+| `ctx.agentMemory` | method | `agentMemory(config?)`: `AgentMemoryManager` facade |
+| `ctx.memoryEngine` | getter | Turn-aware conversation memory |
+| `ctx.memoryBackend` | getter | `IMemoryBackend` selected by `MEMORY_BACKEND` |
+| `ctx.contextWindowManager` | getter | Token-budgeted retrieval |
+| `ctx.memoryFormatter` | getter | Formats memories for prompts |
+| `ctx.salienceEngine` | getter | Context-aware salience scoring |
+| `ctx.accessTracker` | getter | Access statistics |
+| `ctx.decayEngine` | getter | Decay calculations |
+| `ctx.decayScheduler` | getter | Decay timer (`MEMORY_AUTO_DECAY`); `undefined` when off |
+| `ctx.consolidationScheduler` | getter | Consolidation timer; `undefined` unless `MEMORY_AUTO_CONSOLIDATION` or `MEMORY_CONSOLIDATION_SCHEDULER_ENABLED` is `true` |
+| `ctx.dreamEngine` | method | `dreamEngine(config?)`: background maintenance |
+| `ctx.observerPipeline` | getter | Observer pipeline; `undefined` unless `MEMORY_OBSERVER_PIPELINE` |
+| `ctx.artifactManager` | getter | Artifact creation with stable names |
+| `ctx.trajectoryCompressor` | getter | Trajectory compression |
+| `ctx.experienceExtractor` | getter | Experience extraction |
+| `ctx.patternDetector` | getter | Pattern detection |
+| `ctx.observationDedupManager` | getter | Cross-entity duplicate observations |
+| `ctx.exclusionManager` | getter | `do_not_remember` exclusion rules |
+| `ctx.semanticForget` | getter | Two-tier deletion (exact, then semantic) |
+| `ctx.freshnessManager` | getter | TTL and confidence freshness reports (`FreshnessManager`) |
+| `ctx.memoryValidator` | getter | Pre-storage validation |
+| `ctx.heuristicManager` | getter | Condition to action heuristics |
+| `ctx.decisionManager` | getter | Decision records |
+| `ctx.projectContextManager` | getter | Project context |
+| `ctx.spellChecker` | getter | Spelling suggestions |
+| `ctx.toolAffordanceManager` | getter | Tool affordances |
+| `ctx.toolCallObserver` | getter | Tool call observation |
+
+**Cognition (3B and events)**
+
+| Member | Kind | Notes |
+|---|---|---|
+| `ctx.procedureManager` | getter | Procedural memory |
+| `ctx.createProceduralGraph` | method | `createProceduralGraph(config)`: procedural graph factory |
+| `ctx.eventManager` | getter | Event reification (`@experimental`) |
+| `ctx.prospectiveMemory` | getter | Prospective memory triggers |
+| `ctx.failureManager` | getter | Failure records |
+| `ctx.plan` | getter | Plan manager |
+| `ctx.reflectionManager` | getter | Reflections |
+| `ctx.causalReasoner` | getter | `findCauses`, `findEffects`, counterfactuals |
+| `ctx.worldModelManager` | getter | World-model snapshots and diffs |
+| `ctx.activeRetrieval` | getter | Iterative query rewriting |
+| `ctx.reconstructiveMemory` | method | `reconstructiveMemory(config?)`: cue-tag-content memory (`@experimental`) |
+
+**Access control**
+
+| Member | Kind | Notes |
+|---|---|---|
+| `ctx.roleAssignmentStore` | getter | RBAC grants: `assign`, `revoke`, `list`, `listActive`, `hydrate` |
+| `ctx.rbacMiddleware` | getter | `checkPermission(agentId, action, resourceType, resourceName?, now?)`, sync |
+
+**Knowledge and Recursa**
+
+| Member | Kind | Notes |
+|---|---|---|
+| `ctx.skillManager` | getter | Skill registry (`@experimental`) |
+| `ctx.instructionSets` | getter | Role-scoped instruction sets |
+| `ctx.knowledgeRepository` | getter | Snapshots, revisions, `loadForContext()` |
+| `ctx.skillPublisher` | getter | Atomic `SKILL.md` publish and import; confined to `skillPublishRoot` |
+| `ctx.transitionLedger` | getter | Transition history; `null` unless `MEMORY_TRANSITION_LEDGER` |
+| `ctx.learningLoop` | method | `learningLoop(deps)`: leaf or recursive learner; see [Learning](#learning-recursa-rs-14-to-rs-21) |
+| `ctx.bootstrapper` | method | `bootstrapper(deps?)`: corpus bootstrapping; see [Bootstrap](#bootstrap-recursa-rs-10-to-rs-13) |
+
+**Infrastructure and diagnostics**
+
+| Member | Kind | Notes |
+|---|---|---|
+| `ctx.indexHealth` | method | `indexHealth()`: index health snapshot |
+| `ctx.diagnostics` | method | `diagnostics(options?)`: aggregate report over `indexHealth()` |
+| `ctx.close` | method | Release the storage handle and detach listeners |
+
+Count: 80 members, generated from `src/core/ManagerContext.ts`.
 
 ---
 
-## Unreleased — added API surface
+## Recursa and knowledge APIs
+
+Recursa adds skills, instruction sets, a learning loop, bootstrapping,
+evaluation, a harness log, and a tool adapter. Every surface below is
+`@experimental`. Use the root entry point:
+
+```typescript
+import {
+  ManagerContext,
+  DeterministicJudge,
+  createRecursaTools,
+} from '@danielsimonjr/memoryjs';
+```
+
+### Knowledge: SkillPublisher and KnowledgeRepository
+
+`ctx.skillManager` stores skills. `ctx.skillPublisher` writes them to `SKILL.md`
+files, confined to `skillPublishRoot` (see [SECURITY_GUIDE.md](./SECURITY_GUIDE.md#recursa-hardening)).
+`ctx.knowledgeRepository` snapshots skills, instructions, and failure lessons for a prompt.
+
+```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+const ctx = new ManagerContext({ storagePath: './memory.jsonl', skillPublishRoot: process.cwd() });
+
+// Load the knowledge a solver should see for a task (additive options)
+const loaded = await ctx.knowledgeRepository.loadForContext({
+  role: 'solver',
+  taskHint: 'ledger totals',
+  maxSkills: 5,
+});
+// loaded.markdown is ordered instructions -> skills -> failure lessons
+```
+
+### Learning (Recursa RS-14 to RS-21)
+
+`ctx.learningLoop(deps)` returns a fresh loop per call. Runs with more tasks than
+`MEMORY_LEARNING_LEAF_THRESHOLD` (default `20`) use the recursive learner. Pass
+`leafThreshold` to override it. Learned skills are written to `publishDir`.
+
+```typescript
+declare const taskIds: string[];
+import { DeterministicJudge } from '@danielsimonjr/memoryjs';
+declare const tasks: import('@danielsimonjr/memoryjs').TaskRecord[];
+declare const solver: import('@danielsimonjr/memoryjs').LearningSolver;
+const loop = ctx.learningLoop({
+  solver,                      // LearningSolver: solve(task, knowledge, signal?)
+  judge: new DeterministicJudge(),
+  publishDir: './skills',
+});
+
+const result = await loop.learn({
+  taskIds,
+  tasks,
+  budget: { maxRounds: 3 },
+  validationSampleSize: 4,
+  split: 'auto',
+});
+```
+
+**Step-wise protocol (leaf run).** When the harness owns the solver, drive the
+leaf learner one step at a time. `next` returns the next request, and `submit`
+returns the answers or judgements for it.
+
+```typescript
+declare const tasks: import('@danielsimonjr/memoryjs').TaskRecord[];
+declare const loop: ReturnType<typeof ctx.learningLoop>;
+declare const answers: Record<string, import('@danielsimonjr/memoryjs').SolveResult | null>;
+const { traceId } = await loop.start({ taskIds: tasks.map((t) => t.id), tasks, budget: { maxRounds: 3 } });
+for (;;) {
+  const step = await loop.next(traceId);
+  if (step.kind === 'done') break;
+  // solve the requested tasks with step.tasks, then submit
+  await loop.submit(traceId, 'solve', answers);
+}
+```
+
+`loop.status(traceId)` returns the current state and report. A recursive run is
+driven with `plan`, `submitChild`, `merge`, and `reflect` instead of `next` and `submit`.
+
+### Bootstrap (Recursa RS-10 to RS-13)
+
+`ctx.bootstrapper(deps)` maps a corpus, records coverage per region, writes
+exploration notes, generates practice tasks, and optionally runs learning.
+
+```typescript
+declare const corpusSources: import('@danielsimonjr/memoryjs').CorpusSource[];
+const boot = await ctx.bootstrapper({ learning: { publishDir: './skills' } }).run({
+  sources: corpusSources,      // corpus loader inputs
+  budget: { maxRounds: 2 },
+  corpusLabel: 'corpus',
+});
+// boot.taskIds, boot.notesSkillId
+```
+
+### Evaluation (Recursa RS-25/26)
+
+`Evaluator` scores a solver against tasks. `DeterministicJudge` checks `fact`,
+`number`, `set-*`, and `document` criteria. `free` criteria need an LLM judge.
+
+```typescript
+import { Evaluator, DeterministicJudge, stratifiedSplit } from '@danielsimonjr/memoryjs';
+declare const tasks: import('@danielsimonjr/memoryjs').TaskRecord[];
+declare const solver: import('@danielsimonjr/memoryjs').Solver;
+
+const evaluator = new Evaluator();
+const { metrics, feedback } = await evaluator.evaluate(tasks, solver, new DeterministicJudge());
+const { train, test } = stratifiedSplit(tasks, { seed: 7, testFraction: 0.25, by: 'difficulty' });
+```
+
+### Harness support (InteractionLog, EvictionIndex, ConcurrencyLimiter)
+
+`InteractionLog` is an append-only sidecar, `<basename>-interactions.jsonl`, that
+addresses records `e<n>`. Large content spills to blobs. `select` returns excerpts.
+
+```typescript
+import { InteractionLog } from '@danielsimonjr/memoryjs';
+import { runAll } from '@danielsimonjr/memoryjs/agent';
+
+const log = new InteractionLog('./memory.jsonl');
+const addr = await log.append({ kind: 'tool_call', content: 'lookup result', sessionId: 'session-1' });
+const excerpt = await log.select(addr, { regex: 'result', lines: [1, 20] });
+
+declare const items: string[];
+declare function process(item: string): Promise<string>;
+const results = await runAll(items, async (item) => process(item), { concurrency: 4 });
+```
+
+`ctx.toolCallObserver` records tool calls into the log when wired with
+`setInteractionLog(log, sessionId?)`. `ContextWindowManager.setEvictionIndex`
+shows spilled ranges as `[evicted]` lines.
+
+### Reconstructive memory (MRAgent)
+
+`ctx.reconstructiveMemory(config?)` builds a cue-tag-content graph from
+conversation turns and answers queries by reconstructing evidence over several
+steps. It defaults to the context's own managers as its backing store.
+
+```typescript
+const memory = ctx.reconstructiveMemory();
+await memory.ingest([
+  { id: 'D1:1', speaker: 'user', text: 'I moved to Lisbon in March.' },
+]);
+const answer = await memory.reconstruct('Where did the user move?');
+```
+
+### RecursaToolAdapter
+
+`createRecursaTools(ctx, deps?)` exposes the Recursa tools as stateless JSON calls.
+`call` never throws, and results are capped at `maxBytes` (default 64 KiB).
+Skills tools need `deps.publishDir`.
+
+```typescript
+import { createRecursaTools } from '@danielsimonjr/memoryjs';
+const tools = createRecursaTools(ctx, { publishDir: './skills' });
+console.log(tools.list().map((t) => t.name));
+
+const loaded = await tools.call('recursa.knowledge.load', { role: 'solver', taskHint: 'ledger totals' });
+if (loaded.ok) console.log(loaded.result);
+```
+
+Error codes: `invalid_args`, `not_found`, `invalid_state`, `not_configured`,
+`solver_required`, `aborted`, `unknown_tool`, `internal_error`.
+
+
+## API surface added in 3.0.0 and later
 
 Post-v2.9.0 additions. `explain`/`lookFor` on `HybridSearchManager.search`,
 `GraphTraversal.findPathWithin`/`getNeighborsWithRelations(lookFor)`, and the
@@ -2331,7 +2611,9 @@ hub entities — "who did what, to whom, where, when" as one queryable unit —
 instead of flat triples. Pure convention layer; no schema changes.
 
 ```typescript
-class EventManager {
+import { EntityManager } from '@danielsimonjr/memoryjs';
+import { EventRecord, RelationManager } from '@danielsimonjr/memoryjs';
+declare class EventManager {
   constructor(
     entityManager: EntityManager,
     relationManager: RelationManager,
@@ -2393,7 +2675,9 @@ Not wired to `ManagerContext` — construct directly with `ctx.relationManager`
 `LLMProvider`). A three-tier dedup/validation pass for relations
 (`ConsolidationPipeline` had historically been entity/observation-only):
 
-```typescript
+```text
+import { RelationConsolidationReport, RelationConsolidationResult } from '@danielsimonjr/memoryjs';
+import { LLMProvider, Relation } from '@danielsimonjr/memoryjs';
 class RelationConsolidator {
   constructor(
     relationOps: { getRelations, createRelations, deleteRelations },  // RelationManager-compatible
@@ -2433,8 +2717,12 @@ class RelationConsolidator {
 `deleteRelations` + `createRelations` (tier 3 always stays report-only).
 
 ```typescript
+declare const myLlmProvider: import('@danielsimonjr/memoryjs').LLMProvider;
+declare const embedding: import('@danielsimonjr/memoryjs').EmbeddingService;
+import { RelationConsolidator } from '@danielsimonjr/memoryjs';
+declare const freshlyIngested: import('@danielsimonjr/memoryjs').Relation[];
 const janitor = new RelationConsolidator(ctx.relationManager, ctx.entityManager, {
-  embedding: ctx.semanticSearch.getEmbeddingService(),
+  embedding,
   llm: myLlmProvider,
 });
 const report = await janitor.analyze({ newRelations: freshlyIngested });

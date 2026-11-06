@@ -74,7 +74,7 @@ function okOf(out: RecursaToolResult): unknown {
  * @param out - Tool result.
  * @param code - Expected error code.
  */
-function expectCode(out: ToolResult, code: string): void {
+function expectCode(out: RecursaToolResult, code: string): void {
   expect(out.ok).toBe(false);
   if (!out.ok) expect(out.error.code).toBe(code);
 }

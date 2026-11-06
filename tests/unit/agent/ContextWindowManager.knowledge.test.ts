@@ -46,6 +46,8 @@ function build(): ContextWindowManager {
     loadGraph: vi.fn().mockResolvedValue({ entities: [] as Entity[], relations: [] }),
     saveGraph: vi.fn().mockResolvedValue(undefined),
     ensureLoaded: vi.fn().mockResolvedValue(undefined),
+    getEntityByName: vi.fn().mockReturnValue(undefined),
+    getRelationsFor: vi.fn().mockReturnValue([]),
   } as unknown as IGraphStorage;
   const accessTracker = new AccessTracker(storage);
   const decayEngine = new DecayEngine(storage, accessTracker);

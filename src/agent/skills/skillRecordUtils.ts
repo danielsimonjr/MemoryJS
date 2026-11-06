@@ -4,7 +4,7 @@
  * observations and id shape (spec RS-2).
  *
  * @module agent/skills/skillRecordUtils
- * @internal
+ * @experimental
  */
 
 import { createHash, randomUUID } from 'crypto';

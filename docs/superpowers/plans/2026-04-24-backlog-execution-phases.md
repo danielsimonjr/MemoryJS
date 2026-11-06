@@ -231,7 +231,7 @@ Each task below names a default agent type. Use these via the `Agent` tool with 
 - [ ] η.4.6 Graph Visualization (extend `IOManager.visualizeGraph`)
 
 **ROADMAP Phase 5 — Advanced**
-- [ ] η.5.1 Vector Database Integration (beyond γ.B `VectorMemoryBackend`)
+- [x] η.5.1 Vector Database Integration (beyond γ.B `VectorMemoryBackend`)
 - [ ] η.5.2 Graph Embeddings
 - [ ] η.5.3 ML-Powered Features
 - [ ] η.5.4 Standards Compliance

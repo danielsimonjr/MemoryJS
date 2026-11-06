@@ -21,6 +21,7 @@ import { HybridSearchManager } from '../../search/HybridSearchManager.js';
 import { LLMQueryPlanner } from '../../search/LLMQueryPlanner.js';
 import type { LLMQueryPlannerConfig } from '../../search/LLMQueryPlanner.js';
 import { LLMSearchExecutor } from '../../search/LLMSearchExecutor.js';
+import { TemporalSearch } from '../../search/TemporalSearch.js';
 import { SemanticSearch } from '../../search/SemanticSearch.js';
 import { createEmbeddingService } from '../../search/EmbeddingService.js';
 import { EmbeddingCache } from '../../search/EmbeddingCache.js';
@@ -79,6 +80,7 @@ export class SearchFacade {
   private _factExtractor?: FactExtractor;
   private _llmQueryPlanner?: LLMQueryPlanner;
   private _llmSearchExecutor?: LLMSearchExecutor;
+  private _temporalSearch?: TemporalSearch;
 
   /**
    * @param deps Storage, pressure coordinator, sidecar path, and lazy accessors
@@ -107,6 +109,17 @@ export class SearchFacade {
       }
     }
     return this._searchManager;
+  }
+
+  /**
+   * TemporalSearch - natural-language time-range search (chrono-node parser over
+   * entity timestamps). Lazy; constructed on first access.
+   */
+  get temporalSearch(): TemporalSearch {
+    if (!this._temporalSearch) {
+      this._temporalSearch = new TemporalSearch(this.deps.storage);
+    }
+    return this._temporalSearch;
   }
 
   /**

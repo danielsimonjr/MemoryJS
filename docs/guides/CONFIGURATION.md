@@ -1,7 +1,9 @@
 # MemoryJS Configuration Reference
 
-**Version**: 2.9.0
-**Last Updated**: 2026-07-24
+> **Code samples.** Samples assume `const ctx = new ManagerContext('./memory.jsonl')` and the placeholders `graph: KnowledgeGraph` (from `await ctx.storage.loadGraph()`), `entities: Entity[]` and `storage: IGraphStorage`. Every other name in a sample is imported or declared in it.
+
+**Version**: 4.5.0 (Unreleased changes noted inline)
+**Last Updated**: 2026-11-06
 
 Complete reference for all configuration options, environment variables, and customization settings.
 
@@ -116,11 +118,12 @@ MEMORY_EMBEDDING_MODEL=text-embedding-3-small
 Default human-readable storage format.
 
 ```typescript
+import { ManagerContext, GraphStorage } from '@danielsimonjr/memoryjs';
+
 // Automatic selection via file extension
 const ctx = new ManagerContext('./data/memory.jsonl');
 
 // Or explicit configuration
-import { GraphStorage } from '@danielsimonjr/memoryjs';
 const storage = new GraphStorage('./data/memory.jsonl');
 ```
 
@@ -151,11 +154,12 @@ const storage = new GraphStorage('./data/memory.jsonl');
 High-performance storage with FTS5 search.
 
 ```typescript
+import { ManagerContext, SQLiteStorage } from '@danielsimonjr/memoryjs';
+
 // Automatic selection via file extension
 const ctx = new ManagerContext('./data/memory.db');
 
 // Or explicit configuration
-import { SQLiteStorage } from '@danielsimonjr/memoryjs';
 const storage = new SQLiteStorage('./data/memory.db');
 ```
 
@@ -173,14 +177,14 @@ const storage = new SQLiteStorage('./data/memory.db');
 | Setting | Value | Description |
 |---------|-------|-------------|
 | Journal mode | WAL | Write-ahead logging |
-| Synchronous | NORMAL (override: `MEMORY_SQLITE_SYNCHRONOUS`) | Balance of safety/speed — see below (Unreleased, S3) |
+| Synchronous | NORMAL (override: `MEMORY_SQLITE_SYNCHRONOUS`) | Balance of safety/speed — see below (3.0.0, S3) |
 | Busy timeout | 5000ms | Wait on a locked DB instead of failing `SQLITE_BUSY` immediately |
 | Cache size | 64 MB | `-64000` pragma (negative = KiB) |
 | Temp store | MEMORY | Temp tables/indices kept in RAM |
 | FTS5 | Enabled | Full-text search |
 | BM25 | Default ranking | Relevance scoring |
 
-**`MEMORY_SQLITE_SYNCHRONOUS` durability tradeoff (Unreleased, S3):** `NORMAL` is the
+**`MEMORY_SQLITE_SYNCHRONOUS` durability tradeoff (3.0.0, S3):** `NORMAL` is the
 canonical pairing with WAL mode — it fsyncs at checkpoint time rather than on
 every commit (~2–10× commit throughput vs. the old default `FULL`). The
 database can never be corrupted by this setting (WAL commits stay
@@ -276,6 +280,7 @@ interface SearchOptions {
 ### Hybrid Search Configuration
 
 ```typescript
+import { SymbolicFilters } from '@danielsimonjr/memoryjs';
 interface HybridSearchOptions {
   weights?: {
     semantic?: number;   // Vector similarity weight (default: 0.4)
@@ -321,23 +326,20 @@ export const DEFAULT_BM25_CONFIG = {
 import { createEmbeddingService } from '@danielsimonjr/memoryjs';
 
 // OpenAI (production)
-const openai = await createEmbeddingService({
+const openai = createEmbeddingService({
   provider: 'openai',
   apiKey: process.env.OPENAI_API_KEY,
   model: 'text-embedding-3-small',  // or 'text-embedding-3-large'
-  dimensions: 1536
 });
 
 // Local (development/testing)
-const local = await createEmbeddingService({
+const local = createEmbeddingService({
   provider: 'local',
-  dimensions: 384  // Smaller for local
 });
 
-// Mock (testing)
-const mock = await createEmbeddingService({
-  provider: 'mock',
-  dimensions: 1536
+// Disabled (testing without embeddings)
+const none = createEmbeddingService({
+  provider: 'none',
 });
 ```
 
@@ -367,6 +369,7 @@ export const OPENAI_API_CONFIG = {
 
 ```typescript
 import { createVectorStore, InMemoryVectorStore, SQLiteVectorStore } from '@danielsimonjr/memoryjs';
+declare const sqliteStorage: import('@danielsimonjr/memoryjs/sqlite').SQLiteStorage;
 
 // Select by storage type: 'jsonl' (in-memory) or 'sqlite'
 const vectorStore = createVectorStore('sqlite', sqliteStorage, 'model-name');
@@ -405,9 +408,9 @@ const cache = new EmbeddingCache({
 
 The graph cache is managed internally by storage classes.
 
-```typescript
-// GraphStorage cache behavior
-class GraphStorage {
+```text
+// GraphStorage cache behavior (internal sketch, not a public API)
+class GraphStorageCacheSketch {
   private cachedGraph: KnowledgeGraph | null = null;
 
   async loadGraph(): Promise<KnowledgeGraph> {
@@ -415,6 +418,7 @@ class GraphStorage {
       return structuredClone(this.cachedGraph);  // Deep copy
     }
     // Load from disk and cache
+    return this.loadFromDisk();
   }
 
   async saveGraph(graph: KnowledgeGraph): Promise<void> {
@@ -430,7 +434,7 @@ class GraphStorage {
 
 ### Search Cache
 
-```typescript
+```text
 import { SearchCache, searchCaches, clearAllSearchCaches } from '@danielsimonjr/memoryjs';
 
 // Cache is per-storage instance
@@ -453,6 +457,7 @@ uncompressed and zlib-compresses colder entries. (`CompressedCache` is
 
 ```typescript
 import { CompressedMap, type Entity } from '@danielsimonjr/memoryjs';
+declare const entity: import('@danielsimonjr/memoryjs').Entity;
 
 const cache = new CompressedMap<string, Entity>({
   hotThreshold: 1000       // Recent unique keys kept uncompressed (default 1000)
@@ -532,7 +537,7 @@ export const DEFAULT_FILE_NAMES = {
 
 ### Path Utilities
 
-```typescript
+```text
 import { validateFilePath, ensureMemoryFilePath, defaultMemoryPath } from '@danielsimonjr/memoryjs';
 
 // Get default path
@@ -593,15 +598,18 @@ const entityRules = {
 ### Custom Validation
 
 ```typescript
-import { validateWithSchema, validateSafe, formatZodErrors } from '@danielsimonjr/memoryjs';
+import { validateWithSchema, validateSafe } from '@danielsimonjr/memoryjs';
+
+declare const input: unknown;
+declare const EntitySchema: Parameters<typeof validateWithSchema<{ name: string }>>[1];
 
 // Strict validation (throws on error)
-const entity = validateWithSchema(EntitySchema, input);
+const entity = validateWithSchema(input, EntitySchema);
 
 // Safe validation (returns result object)
-const result = validateSafe(EntitySchema, input);
+const result = validateSafe(input, EntitySchema);
 if (!result.success) {
-  console.error(formatZodErrors(result.error));
+  console.error(result.errors);
 }
 ```
 
@@ -626,15 +634,16 @@ logger.error('Error message');
 ### Custom Logging
 
 ```typescript
-// Replace the logger with your own
 import { logger } from '@danielsimonjr/memoryjs';
 
-// Override methods
-const originalInfo = logger.info;
-logger.info = (...args: unknown[]) => {
-  // Custom handling
-  myLoggingService.log('info', args);
-  originalInfo.apply(logger, args);
+// Replace the logger with your own
+declare const myLoggingService: { log(level: string, args: unknown[]): void };
+
+// Wrap the info method
+const originalInfo = logger.info.bind(logger);
+logger.info = (msg: string, ...args: unknown[]) => {
+  myLoggingService.log('info', [msg, ...args]);
+  originalInfo(msg, ...args);
 };
 ```
 
@@ -658,36 +667,13 @@ export const LOG_PREFIXES = {
 ### Worker Pool Settings
 
 ```typescript
-import { getWorkerPoolManager, WorkerPoolManager } from '@danielsimonjr/memoryjs';
+import { getWorkerPoolManager } from '@danielsimonjr/memoryjs';
 
-// Get shared pool instance
+// Get the shared pool instance (the constructor is private)
 const pool = getWorkerPoolManager();
 
-// Pool configuration
-interface WorkerPoolConfig {
-  minWorkers?: number;      // Minimum workers (default: 1)
-  maxWorkers?: number;      // Maximum workers (default: CPU count)
-  workerType?: 'auto' | 'thread' | 'process';  // Worker type
-  idleTimeout?: number;     // Idle worker timeout (ms)
-}
-
-// Create custom pool
-const customPool = new WorkerPoolManager({
-  minWorkers: 2,
-  maxWorkers: 8,
-  workerType: 'thread',
-  idleTimeout: 30000
-});
-
-// Get pool statistics
-const stats = pool.getStats();
-// {
-//   totalWorkers: 4,
-//   busyWorkers: 2,
-//   idleWorkers: 2,
-//   pendingTasks: 0,
-//   completedTasks: 1000
-// }
+// Pool statistics are read through the pool instance
+// (see the WorkerPoolManager section of API.md for the available methods)
 ```
 
 ### Parallel Processing Configuration
@@ -695,15 +681,15 @@ const stats = pool.getStats();
 ```typescript
 import { parallelMap, parallelFilter } from '@danielsimonjr/memoryjs';
 
-// Parallel map with concurrency control
-const results = await parallelMap(items, processItem, {
-  concurrency: 4  // Max parallel operations
-});
+declare const items: number[];
+declare function processItem(n: number): number;
+declare function asyncPredicate(n: number): boolean;
 
-// Parallel filter
-const filtered = await parallelFilter(items, asyncPredicate, {
-  concurrency: 4
-});
+// Parallel map: the third argument is the chunk size
+const results = await parallelMap(items, processItem, 4);
+
+// Parallel filter: the third argument is the chunk size
+const filtered = await parallelFilter(items, asyncPredicate, 4);
 ```
 
 ---
@@ -729,8 +715,11 @@ export type CompressionQuality = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11;
 ```typescript
 import { compress, decompress, compressFile, decompressFile } from '@danielsimonjr/memoryjs';
 
+declare const data: Buffer;
+
 // Compress data
-const compressed = await compress(data, { quality: 6 });
+const result = await compress(data, { quality: 6 });
+const compressed = result.compressed;
 
 // Decompress data
 const original = await decompress(compressed);
@@ -742,7 +731,7 @@ await compressFile('./large-export.json', './large-export.json.br');
 await decompressFile('./large-export.json.br', './large-export.json');
 ```
 
-**Decompression-bomb cap (Unreleased, Sec8):** `decompress()`/`decompressFile()`
+**Decompression-bomb cap (3.0.0, Sec8):** `decompress()`/`decompressFile()`
 and the Brotli/zlib adapters now pass a `maxOutputLength` so a crafted small
 `.br` payload cannot expand to exhaust memory. Precedence: explicit
 `{ maxOutputLength }` option > `MEMORY_MAX_DECOMPRESSED_BYTES` env var (bytes,
@@ -750,6 +739,8 @@ positive integer) > 256 MB default. Exceeding the cap throws rather than
 silently truncating.
 
 ```typescript
+import { decompress } from '@danielsimonjr/memoryjs';
+declare const compressed: Buffer;
 // Raise the cap for a known-large, trusted payload
 const original = await decompress(compressed, { maxOutputLength: 512 * 1024 * 1024 });
 ```
@@ -778,7 +769,7 @@ const backups = await ctx.ioManager.listBackups();
 
 ### Development Configuration
 
-```typescript
+```env
 // .env.development
 MEMORY_STORAGE_TYPE=jsonl
 EMBEDDING_PROVIDER=mock
@@ -791,7 +782,7 @@ const ctx = new ManagerContext('./dev-memory.jsonl');
 
 ### Production Configuration
 
-```typescript
+```env
 // .env.production
 MEMORY_STORAGE_TYPE=sqlite
 EMBEDDING_PROVIDER=openai
@@ -809,15 +800,11 @@ const ctx = new ManagerContext('/var/data/memory/production.db');
 ```typescript
 import { ManagerContext, getWorkerPoolManager } from '@danielsimonjr/memoryjs';
 
-// Configure worker pool for heavy parallel processing
+// Configure worker pool for heavy parallel processing: see the WorkerPoolManager
+// section of API.md. Pool sizing is set through the environment before first use.
 const pool = getWorkerPoolManager();
-pool.configure({
-  minWorkers: 4,
-  maxWorkers: 16,
-  workerType: 'thread'
-});
 
-// Use SQLite for better query performance
+// Use SQLite for better query performance (read at startup)
 process.env.MEMORY_STORAGE_TYPE = 'sqlite';
 
 const ctx = new ManagerContext('/fast-ssd/memory.db');
@@ -844,6 +831,7 @@ import { ManagerContext } from '@danielsimonjr/memoryjs';
 import { mkdtempSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import { afterAll } from 'vitest';
 
 // Create temporary directory for tests
 const testDir = mkdtempSync(join(tmpdir(), 'memoryjs-test-'));
@@ -858,6 +846,8 @@ afterAll(() => {
 ### Multi-Environment Configuration
 
 ```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+
 // config.ts
 interface MemoryConfig {
   storagePath: string;
@@ -893,14 +883,13 @@ function getConfig(): MemoryConfig {
 const config = getConfig();
 process.env.MEMORY_STORAGE_TYPE = config.storageType;
 process.env.EMBEDDING_PROVIDER = config.embeddingProvider;
-
-const ctx = new ManagerContext(config.storagePath);
+const ctxFromConfig = new ManagerContext(config.storagePath);
 ```
 
 ---
 
 **Document Version**: 2.0
-**Last Updated**: 2026-07-24
+**Last Updated**: 2026-11-06
 
 ---
 
@@ -917,7 +906,7 @@ opt-in / require explicit configuration.
 | `MEMORY_STORAGE_TYPE` | `jsonl`, `sqlite` | `jsonl` |
 | `MEMORY_FILE_PATH` | path | (per `ManagerContext` ctor) |
 | `MEMORY_BACKEND` | `sqlite`, `in-memory` | `sqlite` |
-| `MEMORY_SQLITE_SYNCHRONOUS` | `FULL`, `NORMAL`, `OFF` | `NORMAL` (Unreleased, S3 — see [SQLite Storage](#sqlite-storage)) |
+| `MEMORY_SQLITE_SYNCHRONOUS` | `FULL`, `NORMAL`, `OFF` | `NORMAL` (3.0.0, S3 — see [SQLite Storage](#sqlite-storage)) |
 
 ### Embedding / semantic search
 
@@ -975,16 +964,16 @@ opt-in / require explicit configuration.
 | `MEMORY_QUERY_LOG_FILE` | — |
 | `MEMORY_QUERY_LOG_LEVEL` | `info` |
 
-### Governance + freshness (v1.6; enforcement wiring Unreleased, Sec1)
+### Governance + freshness (v1.6; enforcement wiring 3.0.0, Sec1)
 
 | Variable | Values | Default |
 |----------|--------|---------|
 | `MEMORY_GOVERNANCE_ENABLED` | `'true'` (strict literal — `'1'`/`'yes'`/`'TRUE'` are silently ignored) | unset = not enforced |
 | `MEMORY_AUDIT_LOG_FILE` | path | `<basename>-audit.jsonl` sidecar |
-| `MEMORY_FRESHNESS_TTL_DEFAULT_HOURS` | number | `168` |
-| `MEMORY_MAX_DECOMPRESSED_BYTES` | Positive integer (bytes) | `268435456` (256 MB) — decompression-bomb cap (Unreleased, Sec8) |
+| `MEMORY_FRESHNESS_TTL_DEFAULT_HOURS` | Number | `168`. Listed by `memory diag` only; not read by `FreshnessManager`, whose half-life is a `FreshnessManagerConfig` constructor option (default 168) |
+| `MEMORY_MAX_DECOMPRESSED_BYTES` | Positive integer (bytes) | `268435456` (256 MB) — decompression-bomb cap (3.0.0, Sec8) |
 
-**`MEMORY_GOVERNANCE_ENABLED` now actually enforces (Unreleased, Sec1).**
+**`MEMORY_GOVERNANCE_ENABLED` now actually enforces (3.0.0, Sec1).**
 Before this release the env var was read nowhere in `src/` — setting it did
 nothing, and `ctx.governanceManager` had no getter, so an operator who set
 this var and a policy believed writes were being checked when they weren't.
@@ -997,28 +986,33 @@ committed entry to the (now hash-chained, see
 [SECURITY_GUIDE.md](./SECURITY_GUIDE.md)) audit log. With the flag unset,
 `ctx.governanceManager` is still constructible and usable manually
 (`withTransaction`/`rollback`), but plain `EntityManager` writes bypass it —
-zero overhead, matching pre-Unreleased behavior.
+zero overhead, matching behavior before 3.0.0.
 
 ```typescript
+import { ManagerContext, type Entity } from '@danielsimonjr/memoryjs';
+
 process.env.MEMORY_GOVERNANCE_ENABLED = 'true';
 const ctx = new ManagerContext('./memory.jsonl');
 ctx.governanceManager.setPolicy({
-  canDelete: (entity) => entity.importance === undefined || entity.importance < 8,
+  canDelete: (entity: Entity) => entity.importance === undefined || entity.importance < 8,
 });
 await ctx.entityManager.deleteEntities(['critical-record']); // throws GovernanceError
 ```
 
 ### Role profiles + advanced agent (v1.7)
 
+Note: `MEMORY_AGENT_ROLE` is reserved and not read by the library. Use `getRoleProfile(role)` in code.
+`MEMORY_HEURISTIC_AUTO_EXTRACT` is not read either: heuristic extraction is configured through the
+`HeuristicExtractionStage` constructor. Invalid numeric values below log one warning per process.
+
 | Variable | Values | Default |
 |----------|--------|---------|
-| `MEMORY_AGENT_ROLE` | **Reserved, not read by the library** (no effect). Use `getRoleProfile(role)` in code. Values: `researcher`, `planner`, `executor`, `reviewer`, `coordinator` | — |
-| `MEMORY_ENTROPY_FILTER_ENABLED` | `true`, `false` | `false` |
-| `MEMORY_ENTROPY_THRESHOLD` | number 0–1 | `0.3` |
-| `MEMORY_CONSOLIDATION_SCHEDULER_ENABLED` | `true`, `false` | `false` |
+| `MEMORY_ENTROPY_FILTER_ENABLED` | `true`, `false` (loose: case-insensitive) | `false` |
+| `MEMORY_ENTROPY_THRESHOLD` | number ≥ 0, in bits (Shannon entropy) | `1.5`. Used only when `MEMORY_ENTROPY_FILTER_ENABLED=true`; passed as `WorkingMemoryConfig.entropyFilter.minEntropy` |
+| `MEMORY_CONSOLIDATION_SCHEDULER_ENABLED` | `true`, `false` | `false`. Alias of `MEMORY_AUTO_CONSOLIDATION`; either one set to `true` enables `ctx.consolidationScheduler`, and a `false` never overrides a `true`. Read once at first access (on or off is cached); restart to change |
 | `MEMORY_CONSOLIDATION_INTERVAL_MS` | number | `3600000` |
-| `MEMORY_COGNITIVE_LOAD_MAX` | number 0–1 | `0.8` |
-| `MEMORY_DEFAULT_VISIBILITY` | `private`, `team`, `org`, `shared`, `public` | `private` |
+| `MEMORY_COGNITIVE_LOAD_MAX` | number 0–1 | `0.7`. Default `loadThreshold` of a standalone `CognitiveLoadAnalyzer` (code config wins); `ContextWindowManager` does not use the analyzer |
+| `MEMORY_DEFAULT_VISIBILITY` | `private`, `team`, `org`, `shared`, `public` | `private`. An invalid value logs one warning per process and uses `private` |
 
 ### Graph-connectivity signals (v2.9.0 — knowledge-graph-as-core convergence)
 
@@ -1077,9 +1071,50 @@ rationale.
 
 ### Multi-agent collaboration (η.5.5)
 
+Note: `MEMORY_AUDIT_ATTRIBUTION_REQUIRED` is not read by the library. `CollaborationAuditEnforcer` takes `mode: 'strict' | 'lenient'` as a constructor option, and `ManagerContext` does not construct it.
+
+### Learning concurrency (Recursa)
+
 | Variable | Values | Default |
 |----------|--------|---------|
-| `MEMORY_AUDIT_ATTRIBUTION_REQUIRED` | `true`, `false` | `false` |
+| `MEMORY_LEARNING_CONCURRENCY` | Strict integer ≥ 1 | `4`. Child leaf-run concurrency in `createInProcessLearnHandler`; invalid values fall back to `4` |
+
+### Storage, cache, and index (Phases 7–11)
+
+| Variable | Values | Default |
+|----------|--------|---------|
+| `MEMORY_SQLITE_READ_POOL_SIZE` | Integer ≥ 1 | `4`. Set `0` or `1` to route reads through the writer connection |
+| `MEMORY_SQLITE_DRIVER` | `node` | unset (uses `better-sqlite3`). `node` forces the built-in `node:sqlite` fallback |
+| `MEMORY_INDEX_COALESCE_MS` | Integer ≥ 0 | `50`. TF-IDF event-sync coalescing window; `0` applies each change immediately |
+| `MEMORY_STORAGE_SEGMENT_COUNT` | Strict decimal integer in `[2, 1024]` | unset (single-file JSONL). Read at `GraphStorage` construction; restart to change |
+| `MEMORY_USE_MMAP` | `true` (strict) | unset (off). Range-read large JSONL files; ignored in segment mode |
+| `MEMORY_MMAP_THRESHOLD_BYTES` | Non-negative integer | `104857600` (100 MB). `0` means mmap every non-empty file when `MEMORY_USE_MMAP=true` |
+| `MEMORY_OBSERVATIONS_COLUMNAR` | `true` (strict) | unset (off). Mirrors observations to `<basename>-observations.jsonl` |
+| `MEMORY_CACHE_COMPRESS` | `true` (strict) | unset (off). Enables `ctx.compressedEntityCache` (`@internal`) |
+| `MEMORY_CACHE_BUDGET_ENTRIES` | Integer ≥ 1 | unset (disabled). Global entry budget across registered caches |
+| `MEMORY_TIERED_INDEX` | `true` (strict) | unset (off). Enables `ctx.tieredPostingsIndex` (`@internal`) |
+
+### Agent memory tuning (read by `ctx` getters)
+
+| Variable | Values | Default |
+|----------|--------|---------|
+| `MEMORY_AUTO_CONSOLIDATION` | `true`, `false` | `false`. Enables `ctx.consolidationScheduler` (alias of `MEMORY_CONSOLIDATION_SCHEDULER_ENABLED`; read once at first access) |
+| `MEMORY_CONSOLIDATION_MERGE_DUPLICATES` | `true`, `false` | `false` |
+| `MEMORY_CONSOLIDATION_DUPLICATE_THRESHOLD` | Number 0–1 | `0.9` |
+| `MEMORY_CONTEXT_DIVERSITY_THRESHOLD` | Number 0–1 | `0.8` |
+| `MEMORY_CONTEXT_ENFORCE_DIVERSITY` | `true`, `false` | `true` |
+| `MEMORY_DECAY_IMPORTANCE_MOD` | `true`, `false` | `true` |
+| `MEMORY_DECAY_ACCESS_MOD` | `true`, `false` | `true` |
+| `MEMORY_DREAM_INTERVAL_MS` | Integer ≥ 1 | `14400000` (4 hours) |
+| `MEMORY_FAILURE_LOOKUP_LIMIT` | Integer ≥ 1 | `5` |
+| `MEMORY_FORMAT_TIMESTAMPS` | `true`, `false` | `true` |
+| `MEMORY_FORMAT_MEMORY_TYPE` | `true`, `false` | `true` |
+| `MEMORY_OBSERVER_PIPELINE` | `true`, `false` | `false`. Enables `ctx.observerPipeline` |
+| `MEMORY_OBSERVER_MIN_THRESHOLD` | Number | `0.3` |
+| `MEMORY_OBSERVER_AUTO_TAG` | `true`, `false` | `true` |
+| `MEMORY_OBSERVER_AUTO_ROUTE` | `true`, `false` | `false` |
+| `MEMORY_PROSPECTIVE_DEFAULT_EXPIRY_HOURS` | Number ≥ 0 | `168` |
+| `MEMORY_PROSPECTIVE_MAX_PENDING_PER_SESSION` | Integer ≥ 1 | `100` |
 
 ### RBAC (η.6.1)
 
@@ -1091,20 +1126,21 @@ has zero call sites in the library itself. Configure the default role via the
 constructor option instead:
 
 ```typescript
-import { RbacMiddleware } from '@danielsimonjr/memoryjs/agent';
+import { RbacMiddleware, type PermissionMatrix, type RoleAssignmentStore } from '@danielsimonjr/memoryjs';
 
-// Key-presence semantics (Unreleased, Sec2 fix): omitting `defaultRole`
+declare const store: RoleAssignmentStore;
+declare const matrix: PermissionMatrix;
+
+// Key-presence semantics: omitting `defaultRole`
 // entirely still defaults unregistered agents to 'reader'. Passing
-// `defaultRole: undefined` explicitly now denies them instead — the two
-// were previously indistinguishable, which silently granted read access
-// to unregistered agents whenever an options object was passed.
+// `defaultRole: undefined` explicitly denies them instead.
 const readerDefault = new RbacMiddleware(store, { matrix });                          // 'reader' (key omitted)
 const denyByDefault = new RbacMiddleware(store, { matrix, defaultRole: undefined });   // deny unregistered
 ```
 
 `RoleAssignmentStore`'s sidecar file is now written with `{ mode: 0o600 }`
 (was world-readable) and a corrupted grant line is surfaced as a count
-rather than silently dropped (Unreleased, Sec2 sidecar fix).
+rather than silently dropped (3.0.0, Sec2 sidecar fix).
 
 ### Misc
 

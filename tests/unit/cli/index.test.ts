@@ -252,3 +252,18 @@ describe('CLI Integration', () => {
     expect(capturedProgram?.commands).toBeDefined();
   });
 });
+
+describe('CLI process safety nets', () => {
+  it('does not add process listeners on each re-import', async () => {
+    vi.resetModules();
+    await import('../../../src/cli/index.js');
+    const unhandled = process.listenerCount('unhandledRejection');
+    const uncaught = process.listenerCount('uncaughtException');
+    for (let i = 0; i < 20; i++) {
+      vi.resetModules();
+      await import('../../../src/cli/index.js');
+    }
+    expect(process.listenerCount('unhandledRejection')).toBe(unhandled);
+    expect(process.listenerCount('uncaughtException')).toBe(uncaught);
+  });
+});

@@ -1,7 +1,9 @@
 # MemoryJS Migration Guide
 
-**Version**: 2.9.0
-**Last Updated**: 2026-07-24
+> **Code samples.** Samples assume `const ctx = new ManagerContext('./memory.jsonl')` and the placeholders `graph: KnowledgeGraph` (from `await ctx.storage.loadGraph()`), `entities: Entity[]` and `storage: IGraphStorage`. Every other name in a sample is imported or declared in it.
+
+**Version**: 4.5.0 (Unreleased changes noted inline)
+**Last Updated**: 2026-11-06
 
 > **Recent migrations** — all backwards-compatible (additive):
 >
@@ -31,7 +33,7 @@
 >   parity on `SQLiteStorage`; graph-connectivity signals in search/salience/decay
 >   (all default-off); agent-memory blob-to-graph decomposition for
 >   procedures/work-threads/session-checkpoints (auto-migrates on read).
->   See [Storage-Shape & Constructor Changes](#storage-shape--constructor-changes-v1140--unreleased)
+>   See [Storage-Shape & Constructor Changes](#storage-shape--constructor-changes-v1140--v290)
 >   below for details.
 >
 > No breaking changes have been introduced through v2.9.0. SQLite
@@ -48,8 +50,9 @@ Guide for migrating between versions, storage backends, and from other knowledge
 1. [Version Migration](#version-migration)
 2. [Storage Backend Migration](#storage-backend-migration)
 3. [Data Format Migration](#data-format-migration)
-4. [Storage-Shape & Constructor Changes (v1.14.0 → v2.9.0)](#storage-shape--constructor-changes-v1140--unreleased)
-5. [Behavioral Changes (Unreleased — post-v2.9.0)](#behavioral-changes-unreleased--post-v290)
+4. [Storage-Shape & Constructor Changes (v1.14.0 → v2.9.0)](#storage-shape--constructor-changes-v1140--v290)
+5. [4.5 → next](#45--next)
+6. [Behavioral Changes (post-v2.9.0)](#behavioral-changes-post-v290)
 6. [Migrating from Other Solutions](#migrating-from-other-solutions)
 7. [Breaking Changes Reference](#breaking-changes-reference)
 8. [Migration Scripts](#migration-scripts)
@@ -63,8 +66,8 @@ Guide for migrating between versions, storage backends, and from other knowledge
 ### Checking Current Version
 
 ```typescript
-import { version } from '@danielsimonjr/memoryjs/package.json';
-console.log(`Current version: ${version}`);
+import pkg from '@danielsimonjr/memoryjs/package.json' with { type: 'json' };
+console.log(`Current version: ${pkg.version}`);
 ```
 
 ### Version Compatibility
@@ -132,7 +135,7 @@ async function migrateJSONLtoSQLite(jsonlPath: string, sqlitePath: string) {
   const sqliteStorage = new SQLiteStorage(sqlitePath);
 
   // 3. Save to SQLite
-  await sqliteStorage.saveGraph(graph);
+  await sqliteStorage.saveGraph({ ...graph, entities: [...graph.entities], relations: [...graph.relations] });
 
   // 4. Verify migration
   const verifyGraph = await sqliteStorage.loadGraph();
@@ -169,7 +172,7 @@ async function migrateSQLiteToJSONL(sqlitePath: string, jsonlPath: string) {
 
   // 2. Save to JSONL
   const jsonlStorage = new GraphStorage(jsonlPath);
-  await jsonlStorage.saveGraph(graph);
+  await jsonlStorage.saveGraph({ ...graph, entities: [...graph.entities], relations: [...graph.relations] });
 
   // 3. Verify
   const verifyGraph = await jsonlStorage.loadGraph();
@@ -184,6 +187,7 @@ async function migrateSQLiteToJSONL(sqlitePath: string, jsonlPath: string) {
 ### Migration with Progress Tracking
 
 ```typescript
+import { createStorageFromPath } from '@danielsimonjr/memoryjs';
 async function migrateWithProgress(sourcePath: string, targetPath: string) {
   const sourceStorage = createStorageFromPath(sourcePath);
   const targetStorage = createStorageFromPath(targetPath);
@@ -209,7 +213,7 @@ async function migrateWithProgress(sourcePath: string, targetPath: string) {
   }
 
   console.log('Saving to target...');
-  await targetStorage.saveGraph(graph);
+  await targetStorage.saveGraph({ ...graph, entities: [...graph.entities], relations: [...graph.relations] });
 
   console.log('Migration complete!');
 }
@@ -272,7 +276,7 @@ async function addMissingFields(storagePath: string) {
     }
   }
 
-  await ctx.storage.saveGraph(graph);
+  await ctx.storage.saveGraph({ ...graph, entities: [...graph.entities], relations: [...graph.relations] });
 
   console.log(`Updated ${updated} entities with missing fields`);
 }
@@ -283,6 +287,7 @@ async function addMissingFields(storagePath: string) {
 If tags need to be normalized to lowercase:
 
 ```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
 async function normalizeAllTags(storagePath: string) {
   const ctx = new ManagerContext(storagePath);
   const graph = await ctx.storage.loadGraph();
@@ -303,7 +308,7 @@ async function normalizeAllTags(storagePath: string) {
     }
   }
 
-  await ctx.storage.saveGraph(graph);
+  await ctx.storage.saveGraph({ ...graph, entities: [...graph.entities], relations: [...graph.relations] });
 
   console.log(`Normalized tags in ${normalized} entities`);
 }
@@ -314,6 +319,7 @@ async function normalizeAllTags(storagePath: string) {
 Remove duplicate observations:
 
 ```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
 async function deduplicateObservations(storagePath: string) {
   const ctx = new ManagerContext(storagePath);
   const graph = await ctx.storage.loadGraph();
@@ -329,7 +335,7 @@ async function deduplicateObservations(storagePath: string) {
     }
   }
 
-  await ctx.storage.saveGraph(graph);
+  await ctx.storage.saveGraph({ ...graph, entities: [...graph.entities], relations: [...graph.relations] });
 
   console.log(`Removed ${deduped} duplicate observations`);
 }
@@ -374,6 +380,7 @@ or to avoid the one-time per-entity migration cost on first read), each
 manager exports a bulk migrator:
 
 ```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
 import {
   migrateLegacyProcedures,
   migrateLegacyWorkThreads,
@@ -438,8 +445,8 @@ const procedures = new ProcedureManager(
 import { SessionCheckpointManager } from '@danielsimonjr/memoryjs';
 const checkpoints = new SessionCheckpointManager(
   ctx.storage,
-  workingMemoryManager,
-  decayEngine,
+  ctx.agentMemory().workingMemory,
+  ctx.agentMemory().decayEngine,
   ctx.entityManager,
   ctx.relationManager,
 );
@@ -450,7 +457,46 @@ const checkpoints = new SessionCheckpointManager(
 
 ---
 
-## Behavioral Changes (Unreleased — post-v2.9.0)
+## 4.5 → next
+
+These changes apply when you move from 4.5.0 to the next release.
+
+### `skillPublishRoot` defaults to `process.cwd()`
+
+`ctx.skillPublisher` now confines every publish and import directory to a root.
+The default root is `process.cwd()`. If your code publishes skills outside the
+working directory, set the root explicitly:
+
+```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+const ctx = new ManagerContext({
+  storagePath: './memory.jsonl',
+  skillPublishRoot: '/srv/agent-skills',
+});
+```
+
+Publishes outside the root fail with a `ValidationError` (`dir:<reason>`). See
+[SECURITY_GUIDE.md](./SECURITY_GUIDE.md#recursa-hardening).
+
+### Learning loop routes large runs to the recursive learner
+
+`ctx.learningLoop` sends runs with more than `MEMORY_LEARNING_LEAF_THRESHOLD`
+tasks (default `20`) to the recursive learner. Smaller runs stay on the leaf
+learner. This routing is new in the Recursa learning work. Set the variable, or
+pass `opts.leafThreshold`, to change it.
+
+### `loadForContext` has additive options
+
+`KnowledgeRepository.loadForContext` accepts two new optional fields:
+
+- `includeSkillIds`: skill ids that are always loaded for their task.
+- `maxSkills`: cap on loaded skills (default `20`).
+
+Existing calls are unchanged. Ordering is instructions, then skills, then failure lessons.
+
+---
+
+## Behavioral Changes (post-v2.9.0)
 
 The changes in this section are **behavioral**, not purely additive — check
 them if your integration relies on the old shape.
@@ -473,11 +519,12 @@ longer be bypassed by smuggling a field through an unknown key.
 // Before: 'randomField' and the (unintentional) 'isLatest: false' would
 // both have been written onto the entity.
 // After: only 'observations' is applied; the other two keys are dropped.
-await ctx.entityManager.updateEntity('Alice', {
+const update: Partial<import('@danielsimonjr/memoryjs').Entity> & Record<string, unknown> = {
   observations: ['Promoted to Staff Engineer'],
   randomField: 'oops',   // dropped — not in the schema
   isLatest: false,       // dropped unless you intend to touch versioning fields directly
-});
+};
+await ctx.entityManager.updateEntity('Alice', update);
 ```
 
 **If your integration relied on passthrough** (e.g. storing ad-hoc metadata
@@ -505,7 +552,9 @@ fires, but now **only** for genuinely full-graph writes (import/restore),
 not for ordinary CRUD.
 
 ```typescript
-// Before (pre-Unreleased): a batch createEntities([...10 entities]) emitted
+declare const tfidfIndex: import('@danielsimonjr/memoryjs').TFIDFIndexManager;
+declare function rebuildEverythingFromScratch(): void;
+// Before (before 3.0.0): a batch createEntities([...10 entities]) emitted
 // ONE graph:saved and nothing else — listeners had to diff the whole graph
 // to find out what changed.
 // After: it emits TEN entity:created events (one per entity) and no
@@ -514,7 +563,8 @@ not for ordinary CRUD.
 ctx.storage.events.on('entity:created', (event) => {
   // Now fires once per entity in a batch create — was previously silent
   // (only graph:saved fired) unless you were also listening there.
-  tfidfIndex.addDocument(event.entity);
+  // Update the TF-IDF index for event.entity (TFIDFEventSync does this for you)
+  void event;
 });
 
 ctx.storage.events.on('graph:saved', () => {
@@ -559,7 +609,7 @@ vectors of the old and the new runtime was 0.998.
 
 ### From Neo4j
 
-```typescript
+```text
 import { ManagerContext } from '@danielsimonjr/memoryjs';
 import neo4j from 'neo4j-driver';
 
@@ -628,6 +678,7 @@ async function migrateFromNeo4j(
 
 ```typescript
 import { ManagerContext } from '@danielsimonjr/memoryjs';
+import { promises as fs } from 'fs';
 
 interface JsonLdNode {
   '@id': string;
@@ -683,7 +734,7 @@ async function migrateFromJsonLd(jsonLdPath: string, targetPath: string) {
 
 ### From RDF/Turtle
 
-```typescript
+```text
 import { ManagerContext } from '@danielsimonjr/memoryjs';
 import { Parser, Store, Quad } from 'n3';
 
@@ -754,7 +805,7 @@ async function migrateFromRdf(rdfPath: string, targetPath: string) {
 
 ### From Notion
 
-```typescript
+```text
 import { ManagerContext } from '@danielsimonjr/memoryjs';
 import { Client } from '@notionhq/client';
 
@@ -769,7 +820,10 @@ async function migrateFromNotion(
   // Query all pages from database
   let hasMore = true;
   let startCursor: string | undefined;
-  const allPages: any[] = [];
+  // Shape of the Notion page and property fields this script reads
+  type NotionProperty = { type: string; title?: Array<{ plain_text: string }>; multi_select?: Array<{ name: string }> };
+  type NotionPage = { id: string; properties: Record<string, NotionProperty> };
+  const allPages: NotionPage[] = [];
 
   while (hasMore) {
     const response = await notion.databases.query({
@@ -787,12 +841,12 @@ async function migrateFromNotion(
     const properties = page.properties;
 
     // Extract title
-    const titleProp = Object.values(properties).find((p: any) => p.type === 'title') as any;
+    const titleProp = Object.values(properties).find((p) => p.type === 'title');
     const title = titleProp?.title?.[0]?.plain_text || page.id;
 
     // Extract other properties as observations
     const observations: string[] = [];
-    for (const [key, prop] of Object.entries(properties) as [string, any][]) {
+    for (const [key, prop] of Object.entries(properties)) {
       if (prop.type === 'title') continue;
 
       let value: string | null = null;
@@ -808,7 +862,7 @@ async function migrateFromNotion(
           value = prop.select?.name;
           break;
         case 'multi_select':
-          value = prop.multi_select?.map((s: any) => s.name).join(', ');
+          value = prop.multi_select?.map((s) => s.name).join(', ');
           break;
         case 'date':
           value = prop.date?.start;
@@ -827,7 +881,7 @@ async function migrateFromNotion(
     const tags: string[] = [];
     for (const [key, prop] of Object.entries(properties) as [string, any][]) {
       if (prop.type === 'multi_select') {
-        tags.push(...prop.multi_select.map((s: any) => s.name.toLowerCase()));
+        tags.push(...prop.multi_select.map((s) => s.name.toLowerCase()));
       }
     }
 
@@ -953,7 +1007,7 @@ async function migrate(options: MigrationOptions) {
   // Save to target
   console.log(`\nSaving to: ${options.target}`);
   const targetStorage = createStorageFromPath(options.target);
-  await targetStorage.saveGraph(graph);
+  await targetStorage.saveGraph({ ...graph, entities: [...graph.entities], relations: [...graph.relations] });
 
   // Verify
   console.log('Verifying...');
@@ -1002,12 +1056,13 @@ migrate({
 ### Automatic Backup Restore
 
 ```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
 async function rollback(ctx: ManagerContext, backupId: string) {
   console.log(`Rolling back to backup: ${backupId}`);
 
   // List available backups
   const backups = await ctx.ioManager.listBackups();
-  const backup = backups.find(b => b.id === backupId);
+  const backup = backups.find(b => b.filePath === backupId);
 
   if (!backup) {
     throw new Error(`Backup not found: ${backupId}`);
@@ -1018,10 +1073,10 @@ async function rollback(ctx: ManagerContext, backupId: string) {
     description: `Pre-rollback backup before restoring ${backupId}`
   });
 
-  console.log(`Pre-rollback backup created: ${preRollbackBackup.id}`);
+  console.log(`Pre-rollback backup created: ${preRollbackBackup.path}`);
 
   // Restore
-  await ctx.ioManager.restoreBackup(backupId);
+  await ctx.ioManager.restoreFromBackup(backupId);
 
   console.log('Rollback completed');
 }
@@ -1060,6 +1115,8 @@ import { ManagerContext } from '@danielsimonjr/memoryjs';
 import { mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
+declare function migrateJSONLtoSQLite(jsonlPath: string, sqlitePath: string): Promise<void>;
+declare function normalizeAllTags(storagePath: string): Promise<void>;
 
 describe('Migration Tests', () => {
   let testDir: string;
@@ -1091,8 +1148,8 @@ describe('Migration Tests', () => {
 
     // Verify
     const targetCtx = new ManagerContext(sqlitePath);
-    const entities = await targetCtx.entityManager.getAllEntities();
-    const relations = await targetCtx.relationManager.getAllRelations();
+    const entities = await targetCtx.entityManager.listEntities();
+    const relations = (await targetCtx.storage.loadGraph()).relations;
 
     expect(entities).toHaveLength(2);
     expect(relations).toHaveLength(1);
@@ -1108,14 +1165,14 @@ describe('Migration Tests', () => {
 
     // Create with mixed case tags
     const ctx = new ManagerContext(path);
-    const graph = await ctx.storage.loadGraph();
+    const graph = { ...(await ctx.storage.loadGraph()), entities: [] as import('@danielsimonjr/memoryjs').Entity[] };
     graph.entities.push({
       name: 'Test',
       entityType: 'test',
       observations: [],
       tags: ['TAG1', 'Tag2', 'tag1']  // Mixed case, duplicate
     });
-    await ctx.storage.saveGraph(graph);
+    await ctx.storage.saveGraph({ ...graph, entities: [...graph.entities], relations: [...graph.relations] });
 
     // Run normalization
     await normalizeAllTags(path);
@@ -1145,4 +1202,4 @@ After any migration, verify:
 ---
 
 **Document Version**: 1.0
-**Last Updated**: 2026-07-24
+**Last Updated**: 2026-11-06

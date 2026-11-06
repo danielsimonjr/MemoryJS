@@ -1,7 +1,9 @@
 # MemoryJS Security Guide
 
-**Version**: 2.9.0
-**Last Updated**: 2026-07-24
+> **Code samples.** Samples assume `const ctx = new ManagerContext('./memory.jsonl')` and the placeholders `graph: KnowledgeGraph` (from `await ctx.storage.loadGraph()`), `entities: Entity[]` and `storage: IGraphStorage`. Every other name in a sample is imported or declared in it.
+
+**Version**: 4.5.0 (Unreleased changes noted inline)
+**Last Updated**: 2026-11-06
 
 > **Security-relevant additions since v1.1:**
 >
@@ -26,7 +28,7 @@
 > - **RBAC** (η.6.1) — `RbacMiddleware.checkPermission()`; construct it and
 >   plug it into `GovernancePolicy` yourself (there is no
 >   `MEMORY_RBAC_ENABLED` env var — see
->   [Governance is now enforced](#governance-is-now-enforced-unreleased-sec1)
+>   [Governance is now enforced](#governance-is-now-enforced-300-sec1)
 >   below for the real wiring).
 > - **Audit attribution enforcer** (η.5.5.d) — `CollaborationAuditEnforcer`
 >   strict mode requires `agentId` on every mutation; throws
@@ -37,18 +39,18 @@
 > - **PII redactor** (η.6.3) — `PiiRedactor` with bundled patterns (email
 >   / SSN / CC / phone / IP) for export-time scrubbing; `redactWithStats`
 >   returns counts for compliance audit trails. **Now actually wired**
->   (Unreleased, Sec6) — see below.
+>   (3.0.0, Sec6) — see below.
 >
 > Encryption-at-rest (SQLCipher) and full input-validation (Zod schema)
 > are **gated** pending dep approval — see η.6.3 plan.
 >
-> **Security hardening pass (Unreleased):** governance enforcement is now a
+> **Security hardening pass (3.0.0):** governance enforcement is now a
 > real chokepoint (was documentation-only), the audit log is hash-chained
 > and tamper-evident, PII redaction is wired into exports/backups and audit
 > snapshots, `UpdateEntitySchema` closed a mass-assignment gap, the REST
 > adapter gained an auth middleware, and Brotli/zlib decompression is
 > capped against decompression bombs. See
-> [Governance is now enforced](#governance-is-now-enforced-unreleased-sec1)
+> [Governance is now enforced](#governance-is-now-enforced-300-sec1)
 > for the full rundown.
 
 Production security hardening and best practices for MemoryJS deployments.
@@ -67,7 +69,7 @@ Production security hardening and best practices for MemoryJS deployments.
 8. [File System Security](#file-system-security)
 9. [Network Security](#network-security)
 10. [Audit Logging](#audit-logging)
-11. [Security Hardening Pass (Unreleased)](#security-hardening-pass-unreleased)
+11. [Security Hardening Pass (3.0.0)](#security-hardening-pass-300)
 12. [Security Checklist](#security-checklist)
 13. [Vulnerability Reporting](#vulnerability-reporting)
 
@@ -115,14 +117,16 @@ Production security hardening and best practices for MemoryJS deployments.
 All inputs are validated using Zod schemas:
 
 ```typescript
-import { validateWithSchema, EntitySchema, CreateEntitySchema } from '@danielsimonjr/memoryjs';
+import { validateSafe, CreateEntitySchema, formatZodErrors } from '@danielsimonjr/memoryjs';
 
-// Validate entity input
-const result = validateWithSchema(CreateEntitySchema, userInput);
+declare const userInput: unknown;
+
+// Validate entity input (validateSafe returns a result object instead of throwing)
+const result = validateSafe(userInput, CreateEntitySchema);
 
 if (!result.success) {
   // Handle validation error
-  throw new Error(`Validation failed: ${formatZodErrors(result.error)}`);
+  throw new Error(`Validation failed: ${result.errors.join('; ')}`);
 }
 
 // Use validated data
@@ -132,6 +136,7 @@ const entity = result.data;
 ### Schema Definitions
 
 ```typescript
+import { z } from 'zod';
 // Entity constraints
 const EntitySchema = z.object({
   name: z.string()
@@ -169,7 +174,11 @@ const EntitySchema = z.object({
 ### Custom Validation
 
 ```typescript
+import { ValidationError } from '@danielsimonjr/memoryjs';
+import { validateTags } from '@danielsimonjr/memoryjs';
 import { validateEntity, validateRelation, validateImportance } from '@danielsimonjr/memoryjs';
+declare const userImportance: number;
+declare const userTags: string[];
 
 // Validate individual fields
 try {
@@ -185,10 +194,12 @@ try {
 ### Safe Parsing
 
 ```typescript
-import { validateSafe } from '@danielsimonjr/memoryjs';
+import { validateSafe, EntitySchema } from '@danielsimonjr/memoryjs';
+
+declare const untrustedInput: unknown;
 
 // Returns result object instead of throwing
-const result = validateSafe(EntitySchema, untrustedInput);
+const result = validateSafe(untrustedInput, EntitySchema);
 
 if (result.success) {
   // Safe to use
@@ -207,6 +218,7 @@ if (result.success) {
 
 ```typescript
 import { validateFilePath } from '@danielsimonjr/memoryjs';
+declare const userInput: { path: string };
 
 // Validate path is within allowed directory
 const allowedDir = '/var/data/memory';
@@ -225,6 +237,8 @@ try {
 ### How Path Validation Works
 
 ```typescript
+import path from 'path';
+import { FileOperationError } from '@danielsimonjr/memoryjs';
 export function validateFilePath(filePath: string, baseDir: string): void {
   const resolvedPath = path.resolve(filePath);
   const resolvedBase = path.resolve(baseDir);
@@ -232,12 +246,12 @@ export function validateFilePath(filePath: string, baseDir: string): void {
   // Check if resolved path starts with base directory
   if (!resolvedPath.startsWith(resolvedBase + path.sep) &&
       resolvedPath !== resolvedBase) {
-    throw new SecurityError(`Path traversal detected: ${filePath}`);
+    throw new FileOperationError(`Path traversal detected: ${filePath}`, filePath);
   }
 
   // Check for null bytes
   if (filePath.includes('\0')) {
-    throw new SecurityError('Null byte in path');
+    throw new FileOperationError('Null byte in path', filePath);
   }
 }
 ```
@@ -245,6 +259,7 @@ export function validateFilePath(filePath: string, baseDir: string): void {
 ### Examples
 
 ```typescript
+import { validateFilePath } from '@danielsimonjr/memoryjs';
 // ✅ Valid paths
 validateFilePath('./memory.jsonl', './data');
 validateFilePath('/var/data/memory/user1.jsonl', '/var/data/memory');
@@ -265,6 +280,8 @@ validateFilePath('file.txt\0.jsonl', './data');
 All SQL queries use parameterized statements:
 
 ```typescript
+declare const db: import('better-sqlite3').Database;
+declare const entityName: string;
 // ✅ SAFE: Parameterized query
 const stmt = db.prepare('SELECT * FROM entities WHERE name = ?');
 const entity = stmt.get(entityName);
@@ -275,7 +292,8 @@ const entity = stmt.get(entityName);
 
 ### SQLite Storage Implementation
 
-```typescript
+```text
+import { Entity } from '@danielsimonjr/memoryjs';
 class SQLiteStorage {
   // All queries are parameterized
   private getEntityByName(name: string): Entity | null {
@@ -313,7 +331,9 @@ class SQLiteStorage {
 
 Boolean search queries are parsed and validated:
 
-```typescript
+```text
+import { ValidationError } from '@danielsimonjr/memoryjs';
+import { KnowledgeGraph, QUERY_LIMITS } from '@danielsimonjr/memoryjs';
 class BooleanSearch {
   async search(query: string): Promise<KnowledgeGraph> {
     // Validate query structure
@@ -343,6 +363,7 @@ class BooleanSearch {
 
 ```typescript
 import { sanitizeObject } from '@danielsimonjr/memoryjs';
+declare const userInput: Record<string, unknown>;
 
 // Sanitize user input
 const sanitized = sanitizeObject(userInput);
@@ -396,6 +417,7 @@ export function sanitizeObject<T extends Record<string, unknown>>(obj: T): T {
 
 ```typescript
 import { escapeCsvFormula } from '@danielsimonjr/memoryjs';
+declare const userContent: string;
 
 // Escape CSV formula injection
 const safeCsv = escapeCsvFormula(userContent);
@@ -424,6 +446,9 @@ export function escapeCsvFormula(value: string): string {
 ### User Isolation Pattern
 
 ```typescript
+import { validateFilePath } from '@danielsimonjr/memoryjs';
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+declare const authenticatedUserId: string;
 class IsolatedMemory {
   private getStoragePath(userId: string): string {
     // Validate userId (alphanumeric only)
@@ -453,6 +478,10 @@ const ctx = await userMemory.getUserContext(authenticatedUserId);
 ### Role-Based Access
 
 ```typescript
+import type { ExportFormat } from '@danielsimonjr/memoryjs';
+const graph = await ctx.storage.loadGraph();
+import { Entity } from '@danielsimonjr/memoryjs';
+import { ManagerContext } from '@danielsimonjr/memoryjs';
 interface AccessPolicy {
   canRead: boolean;
   canWrite: boolean;
@@ -481,7 +510,7 @@ class SecureMemory {
 
   async getEntity(name: string): Promise<Entity | null> {
     this.checkPermission('canRead');
-    return this.ctx.entityManager.getEntityByName(name);
+    return this.ctx.entityManager.getEntity(name);
   }
 
   async createEntity(entity: Entity): Promise<Entity[]> {
@@ -494,9 +523,9 @@ class SecureMemory {
     return this.ctx.entityManager.deleteEntities([name]);
   }
 
-  async exportGraph(format: string): Promise<string> {
+  async exportGraph(format: ExportFormat): Promise<string> {
     this.checkPermission('canExport');
-    return this.ctx.ioManager.exportGraph(format as any);
+    return this.ctx.ioManager.exportGraph(await this.ctx.storage.loadGraph(), format);
   }
 }
 ```
@@ -504,6 +533,7 @@ class SecureMemory {
 ### Entity-Level Access Control
 
 ```typescript
+import { Entity } from '@danielsimonjr/memoryjs';
 class EntityAccessControl {
   constructor(private userId: string) {}
 
@@ -538,7 +568,7 @@ class EntityAccessControl {
 
 ### API Key Handling
 
-```typescript
+```text
 // ❌ BAD: Hardcoded secrets
 const apiKey = 'sk-xxxxxxxxxxxx';
 
@@ -575,7 +605,7 @@ OPENAI_API_KEY=sk-xxxxxxxxxxxx
 *.env
 ```
 
-```typescript
+```text
 // Load environment with validation
 import dotenv from 'dotenv';
 import { z } from 'zod';
@@ -643,7 +673,7 @@ chmod 600 /var/data/memory/*.db
 
 JSONL storage uses atomic writes:
 
-```typescript
+```text
 async saveGraph(graph: KnowledgeGraph): Promise<void> {
   const tempPath = `${this.path}.tmp.${Date.now()}`;
 
@@ -664,14 +694,14 @@ async saveGraph(graph: KnowledgeGraph): Promise<void> {
 ### Backup Security
 
 ```typescript
+import { promises as fs } from 'fs';
 // Secure backup creation
 const backup = await ctx.ioManager.createBackup({
   compress: true,
-  encrypt: process.env.BACKUP_ENCRYPTION_KEY  // If supported
 });
 
 // Secure backup storage
-const backupPath = `/var/backups/memory/${backup.id}`;
+const backupPath = backup.path;
 await fs.chmod(backupPath, 0o600);
 ```
 
@@ -682,6 +712,8 @@ await fs.chmod(backupPath, 0o600);
 ### HTTPS for API Keys
 
 ```typescript
+// `OpenAI` is the `openai` package client (not a MemoryJS dependency); minimal shape:
+declare class OpenAI { constructor(options: { apiKey?: string; baseURL: string }); }
 // Always use HTTPS for API calls
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -693,11 +725,12 @@ const client = new OpenAI({
 
 ```typescript
 import { throttle } from '@danielsimonjr/memoryjs';
+declare const embeddingService: import('@danielsimonjr/memoryjs').EmbeddingService;
 
 // Rate limit API calls
 const throttledEmbed = throttle(
   async (text: string) => embeddingService.embed(text),
-  { interval: 100 }  // Max 10 calls per second
+  100  // Max 10 calls per second (minimum ms between calls)
 );
 ```
 
@@ -727,6 +760,7 @@ function validateRequest(req: Request): void {
 ### Audit Log Implementation
 
 ```typescript
+import { promises as fs } from 'fs';
 interface AuditEvent {
   timestamp: string;
   userId: string;
@@ -770,10 +804,12 @@ await audit.log({
 ### Wrapper with Audit Logging
 
 ```typescript
+import { Entity } from '@danielsimonjr/memoryjs';
+import { ManagerContext } from '@danielsimonjr/memoryjs';
 class AuditedMemory {
   constructor(
     private ctx: ManagerContext,
-    private audit: AuditLogger,
+    private audit: { log(entry: Record<string, unknown>): Promise<void> },
     private userId: string
   ) {}
 
@@ -822,13 +858,13 @@ class AuditedMemory {
 
 ---
 
-## Security Hardening Pass (Unreleased)
+## Security Hardening Pass (3.0.0)
 
 Findings and fixes from a defensive review of the library itself
 (`docs/development/OPTIMIZATION_OPPORTUNITIES.md`, "Security" section).
 Every item below is verified against source, not aspirational.
 
-### Governance is now enforced (Unreleased, Sec1)
+### Governance is now enforced (3.0.0, Sec1)
 
 **Before this pass:** `MEMORY_GOVERNANCE_ENABLED` was documented in
 CLAUDE.md but read nowhere in `src/`. There was no `ctx.governanceManager`
@@ -845,12 +881,13 @@ got nothing.
 policy + audit log into every `EntityManager` mutation:
 
 ```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
 process.env.MEMORY_GOVERNANCE_ENABLED = 'true';
 const ctx = new ManagerContext('./memory.jsonl');
 
 ctx.governanceManager.setPolicy({
   canCreate: (entity) => true,
-  canUpdate: (entity, updates) => updates.entityType === undefined, // block type changes
+  canUpdate: (entity, updates) => updates?.entityType === undefined, // block type changes
   canDelete: (entity) => (entity.importance ?? 0) < 8,               // protect high-importance
 });
 
@@ -865,12 +902,12 @@ With the flag unset, `ctx.governanceManager` is still constructible and
 usable manually (`withTransaction` groups audit entries; it is not an atomic
 transaction and does not revert storage on throw; `rollback(auditEntryId)`
 reverses that one recorded operation with a full graph save and appends a `rolled_back` audit entry), but ordinary `EntityManager` writes bypass it entirely — zero overhead, unchanged from
-pre-Unreleased behavior. A related bug is also fixed: `rollback()` used to
+behavior before 3.0.0. A related bug is also fixed: `rollback()` used to
 spread the raw audit snapshot **before** the field whitelist, so any field
 present in the (writable) audit file could land back on a restored entity;
 it now builds exclusively from the whitelisted fields.
 
-### Audit log tamper-evidence: hash chaining + `verifyChain()` (Unreleased, Sec5)
+### Audit log tamper-evidence: hash chaining + `verifyChain()` (3.0.0, Sec5)
 
 **Before:** `AuditLog.append()` was a plain `fs.appendFile` with no file
 mode, no hash chain, no sequence numbers — any writer with file access
@@ -908,7 +945,7 @@ audit log **tamper-evident** (you can detect rewrites), not
 whole file or start a new fork from any point) — ship it to write-once
 storage or a separate host if you need the stronger guarantee.
 
-### PII redaction wired into exports, backups, and audit snapshots (Unreleased, Sec6)
+### PII redaction wired into exports, backups, and audit snapshots (3.0.0, Sec6)
 
 **Before:** `PiiRedactor` self-described as "applied on export only" but had
 zero call sites — `IOManager` export/backup and `GovernanceManager` audit
@@ -917,14 +954,24 @@ snapshots all emitted raw observation text.
 **Now:** both are opt-in:
 
 ```typescript
-// Export/backup: redact PII in observation strings
-const json = await ctx.ioManager.exportGraph('json', { redactPii: true });
+import {
+  ManagerContext,
+  GovernanceManager,
+  AuditLog,
+  PiiRedactor,
+} from '@danielsimonjr/memoryjs';
+
+const ctx = new ManagerContext('./memory.jsonl');
+
+// Export and backup: redact PII in observation strings
+const graph = await ctx.storage.loadGraph();
+const json = ctx.ioManager.exportGraph(graph, 'json', { redactPii: true });
 const backup = await ctx.ioManager.createBackup({ redactPii: true, compress: true });
 
 // Audit snapshots (before/after entity state written to the audit log)
-const gov = new GovernanceManager(storage, auditLog, {
+const gov = new GovernanceManager(ctx.storage, new AuditLog('./memory-audit.jsonl'), {
   redactAuditSnapshots: true,       // default false — opt in explicitly
-  redactor: new PiiRedactor({ additionalPatterns: [...] }), // optional custom bank
+  redactor: new PiiRedactor({ additionalPatterns: [] }), // optional custom bank
 });
 ```
 
@@ -932,7 +979,7 @@ Both default to `false`/off — existing behavior (raw text) is unchanged
 unless you opt in. `MemoryEngine.addTurn`'s write-side `ExclusionManager`
 filter is unrelated and unaffected — it was already wired before this pass.
 
-### Mass assignment closed: `UpdateEntitySchema` strips unknown keys (Unreleased, Sec7)
+### Mass assignment closed: `UpdateEntitySchema` strips unknown keys (3.0.0, Sec7)
 
 **Before:** `UpdateEntitySchema` ended in `.passthrough()`, so
 `updateEntity(name, updates)` admitted arbitrary extra keys past the known
@@ -945,13 +992,13 @@ not veto.
 **Now:** the schema ends in `.strip()` — an explicit allow-list. Unknown
 keys are silently dropped before validation succeeds; only fields in the
 schema ever reach `Object.assign`. See
-[MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md#behavioral-changes-unreleased--post-v290)
+[MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md#behavioral-changes-post-v290)
 if your integration relied on the old passthrough behavior. A parity fix
 also wraps `GovernanceManager.updateEntity`/`createEntity` with
 `sanitizeObject` — previously the "hardened" governance path skipped the
 same prototype-pollution guard every other write path uses.
 
-### REST API-key auth middleware (Unreleased, Sec9)
+### REST API-key auth middleware (3.0.0, Sec9)
 
 **Before:** `src/adapters/RestRouter.ts` had zero auth wiring. Mounting
 `RestRouter.withDefaults(ctx)` exposed an unauthenticated read/write HTTP
@@ -965,6 +1012,9 @@ router:
 ```typescript
 import { APIKeyStore } from '@danielsimonjr/memoryjs/security';
 import { ApiKeyAuthMiddleware, RestRouter } from '@danielsimonjr/memoryjs/adapters';
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+
+const ctx = new ManagerContext('./memory.jsonl');
 
 const store = new APIKeyStore();
 const { plaintext } = store.issue({ scopes: ['entities:write'] }); // show plaintext to the caller once
@@ -985,11 +1035,12 @@ the client, only to your `onReject` callback for server-side logging) or
 `issue()`/`revoke()` — a crash between the call and your persistence step
 can resurrect a revoked key on the next `load()`.
 
-### REST tenancy and request budgets (Unreleased)
+### REST tenancy and request budgets (4.2.0)
 
 **Project-scoped keys.** Give a key a list of projects to isolate tenants:
 
 ```typescript
+declare const store: import('@danielsimonjr/memoryjs').APIKeyStore;
 const { plaintext } = store.issue({
   scopes: ['entities:read', 'entities:write'],
   projectIds: ['project-a'],
@@ -1032,7 +1083,7 @@ shared store (for example Redis) for multi-process deployments.
 **Error bodies.** A 4xx response carries a fixed message for its status. The
 router does not return thrown error text or echo the request path.
 
-### Decompression-bomb caps (Unreleased, Sec8)
+### Decompression-bomb caps (3.0.0, Sec8)
 
 **Before:** `decompress()`/`decompressFile()` (Brotli) and the zlib
 adapter called into Node's decompression with no output-size cap — a
@@ -1046,7 +1097,7 @@ Exceeding the cap throws instead of silently truncating. See
 for known-large trusted payloads (e.g. bulk restore of an intentionally
 large backup).
 
-### RBAC fixes: default-role semantics + sidecar file mode (Unreleased, Sec2)
+### RBAC fixes: default-role semantics + sidecar file mode (3.0.0, Sec2)
 
 **Before:** `RbacMiddleware`'s `defaultRole` ternary flipped on an
 unrelated condition — passing `{ matrix }` without `defaultRole` and
@@ -1064,11 +1115,11 @@ file is written with `{ mode: 0o600 }`, and corrupt lines are surfaced as a
 count instead of disappearing. There is still no `MEMORY_RBAC_ENABLED` /
 `MEMORY_RBAC_DEFAULT_ROLE` env var — configure `RbacMiddleware` in code and
 route it through `GovernancePolicy` yourself (see
-[Governance is now enforced](#governance-is-now-enforced-unreleased-sec1)
+[Governance is now enforced](#governance-is-now-enforced-300-sec1)
 above, and the RBAC section of [CONFIGURATION.md](./CONFIGURATION.md) for
 the corrected reference).
 
-### `memory env` now masks secrets (Unreleased, Sec3)
+### `memory env` now masks secrets (3.0.0, Sec3)
 
 **Before:** the `memory env` diagnostic command printed
 `MEMORY_OPENAI_API_KEY` in plaintext — exactly the output users paste into
@@ -1155,4 +1206,66 @@ npm update @danielsimonjr/memoryjs
 ---
 
 **Document Version**: 1.0
-**Last Updated**: 2026-07-24
+**Last Updated**: 2026-11-06
+
+## Recursa Hardening
+
+The Recursa harness (skills, knowledge, learning, and the MCP-style tool adapter)
+adds write and file surfaces. These controls apply to them.
+
+### SkillPublisher confinement and `skillPublishRoot`
+
+`ctx.skillPublisher` writes `SKILL.md` files only inside a root directory.
+The root defaults to `process.cwd()`. Set `ManagerContextOptions.skillPublishRoot`
+to choose another root; `IOManager` uses the storage directory.
+
+For every `dir` argument, the publisher:
+
+- resolves the path with `path.resolve`, then `realpath`s the deepest existing ancestor;
+- refuses `..` segments, the root itself, symlinks that escape the root, and `/proc`, `/sys`, `/dev`;
+- reports refusals as a `ValidationError` whose `errors[0]` is `dir:<reason>`.
+
+A learning-loop `publishDir` outside the root fails the publish step, which is
+recorded as a `publish-failed` note.
+
+```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+const ctx = new ManagerContext({
+  storagePath: './memory.jsonl',
+  skillPublishRoot: '/srv/agent-skills',   // publishes outside cwd
+});
+```
+
+### Recursa tool adapter
+
+`createRecursaTools(ctx, deps)` exposes the Recursa tools as stateless JSON calls.
+
+- **Strict schemas.** Unknown keys are rejected with `invalid_args`. Keys named
+  `__proto__`, `constructor`, or `prototype` are refused.
+- **Byte bounds.** Each result is capped at `maxBytes` (default 64 KiB).
+- **`publishDir` is required** for the `recursa.skills.publish` and
+  `recursa.skills.import` tools. It must be a relative `dir` below that folder.
+- **Never throws.** Failures return an error code: `invalid_args`, `not_found`,
+  `invalid_state`, `not_configured`, `solver_required`, `aborted`, `unknown_tool`,
+  `internal_error`.
+
+### Interaction log
+
+`InteractionLog` writes `<basename>-interactions.jsonl`. Content larger than
+`MEMORY_INTERACTION_LOG_INLINE_BYTES` (default 16384) spills to a blob file under
+`<basename>-interactions-blobs/e<n>`. The `select` regex is validated before use:
+an over-long pattern or a nested-quantifier pattern is rejected with
+`InteractionLogError`, and a regex only ever runs against the bounded blob text.
+
+### Untrusted SKILL.md front matter
+
+Front matter in imported `SKILL.md` files is untrusted input and is parsed as
+data, never evaluated. The optional `yaml` peer parses it when installed;
+otherwise the built-in reader is used. Either way, the content is data.
+
+### Prompt-injection fencing in KnowledgeEditor
+
+`KnowledgeEditor` places the task input and answer excerpts in fenced `text`
+blocks before they reach the model. Triple backticks and `---` outside those
+fences are escaped, so text in a failure record or skill body cannot close the
+fence and pose as instructions.

@@ -86,19 +86,6 @@ export interface RecursaToolDescriptor {
 
 export type { RecursaToolResult };
 
-/**
- * Former name of {@link RecursaToolDescriptor}, exported from this module only (not the barrel).
- *
- * @deprecated Use {@link RecursaToolDescriptor}.
- */
-export type ToolDescriptor = RecursaToolDescriptor;
-/**
- * Former name of {@link RecursaToolResult}, exported from this module only (not the barrel).
- *
- * @deprecated Use {@link RecursaToolResult}.
- */
-export type ToolResult = RecursaToolResult;
-
 /** The tool set a downstream server wraps. Stateless: `call` may run concurrently. */
 export interface RecursaToolSet {
   /** Descriptors of every tool, in the section 3.8 order. */

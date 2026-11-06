@@ -20,12 +20,22 @@ import { logger } from '../utils/logger.js';
 // registered handlers, e.g. WorkerPoolManager's worker shutdown) decide what
 // to do with the process. Calling process.exit(1) here would race with
 // WorkerPool's shutdownAllSync and skip worker teardown.
-process.on('unhandledRejection', (reason) => {
-  logger.error('Unhandled promise rejection:', reason);
-});
-process.on('uncaughtException', (err) => {
-  logger.error('Uncaught exception:', err);
-});
+// Registered once per process: this module can be evaluated many times in one
+// process (test runners re-import it under resetModules), and each evaluation
+// previously added another pair of listeners.
+const SAFETY_NETS_INSTALLED = Symbol.for('memoryjs.cli.safetyNetsInstalled');
+function installProcessSafetyNets(): void {
+  const proc = process as NodeJS.Process & { [SAFETY_NETS_INSTALLED]?: boolean };
+  if (proc[SAFETY_NETS_INSTALLED]) return;
+  proc[SAFETY_NETS_INSTALLED] = true;
+  process.on('unhandledRejection', (reason) => {
+    logger.error('Unhandled promise rejection:', reason);
+  });
+  process.on('uncaughtException', (err) => {
+    logger.error('Uncaught exception:', err);
+  });
+}
+installProcessSafetyNets();
 
 // Get package version
 function getVersion(): string {

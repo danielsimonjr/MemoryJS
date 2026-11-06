@@ -16,6 +16,7 @@
  * @internal
  */
 
+import { FreshnessManager } from '../../features/FreshnessManager.js';
 import type { GraphStorage } from '../GraphStorage.js';
 import type { EntityManager } from '../EntityManager.js';
 import type { ObservationManager } from '../ObservationManager.js';
@@ -63,6 +64,7 @@ export class AgentBookkeepingFacade {
   private _toolCallObserver?: ToolCallObserver;
   private _memoryValidator?: MemoryValidator;
   private _semanticForget?: SemanticForget;
+  private _freshnessManager?: FreshnessManager;
 
   /**
    * @param deps Storage and lazy accessors for the sibling managers this
@@ -70,6 +72,17 @@ export class AgentBookkeepingFacade {
    */
   constructor(deps: AgentBookkeepingFacadeDeps) {
     this.deps = deps;
+  }
+
+  /**
+   * FreshnessManager - TTL and confidence based freshness reporting over
+   * `Entity.ttl` / `Entity.confidence`. Lazy; constructed on first access.
+   */
+  get freshnessManager(): FreshnessManager {
+    if (!this._freshnessManager) {
+      this._freshnessManager = new FreshnessManager(this.deps.storage);
+    }
+    return this._freshnessManager;
   }
 
   /**

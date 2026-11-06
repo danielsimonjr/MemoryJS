@@ -1,2287 +1,1362 @@
 # MemoryJS Use Cases & Examples
 
-**Version**: 2.9.0
-**Last Updated**: 2026-07-24
+> **Code samples.** Samples assume `const ctx = new ManagerContext('./memory.jsonl')` and the placeholders `graph: KnowledgeGraph` (from `await ctx.storage.loadGraph()`), `entities: Entity[]` and `storage: IGraphStorage`. Every other name in a sample is imported or declared in it.
 
-> **Note:** examples below cover the v1.1-era surface. The library has
-> grown significantly — for examples covering Memory Engine, Memory
-> Validator, Causal Reasoner, Procedure Manager, Active Retrieval, World
-> Model, RBAC, conflict view, audit enforcer, optimistic concurrency,
-> bitemporal versioning, and RDF export, see the Quick-Start sections of
-> [README.md](../../README.md) and the recipes in [RECIPES.md](./RECIPES.md).
+**Verified against 4.5.0**
 
-Real-world examples and implementation patterns for common MemoryJS use cases.
+Complete applications built from MemoryJS. Each use case states the problem,
+the design, and a working core. Every code block is type-checked against the
+4.5.0 source, and each call was checked against its implementation. Import from `@danielsimonjr/memoryjs`. Snippets are short on
+purpose; the runnable versions are in `examples/` (see the notes at the end of
+each use case). For single-purpose patterns, see [RECIPES.md](./RECIPES.md).
 
 ---
 
 ## Table of Contents
 
+**Core knowledge work**
+
 1. [Personal Knowledge Base](#1-personal-knowledge-base)
 2. [AI Chatbot Memory](#2-ai-chatbot-memory)
-3. [RAG (Retrieval-Augmented Generation)](#3-rag-retrieval-augmented-generation)
+3. [Retrieval-Augmented Generation (RAG)](#3-retrieval-augmented-generation-rag)
 4. [Research Note System](#4-research-note-system)
 5. [Project Documentation Hub](#5-project-documentation-hub)
 6. [Contact Relationship Manager](#6-contact-relationship-manager)
 7. [Learning Progress Tracker](#7-learning-progress-tracker)
 8. [Content Recommendation Engine](#8-content-recommendation-engine)
 9. [Codebase Knowledge Graph](#9-codebase-knowledge-graph)
-10. [Meeting Notes & Action Items](#10-meeting-notes--action-items)
+10. [Meeting Notes and Action Items](#10-meeting-notes-and-action-items)
+
+**Agents, governance and advanced memory**
+
+11. [Multi-Agent Collaborative Knowledge Base](#11-multi-agent-collaborative-knowledge-base)
+12. [Time-Travel Knowledge Graph (Bitemporal)](#12-time-travel-knowledge-graph-bitemporal)
+13. [Linked-Data Export to a Triplestore](#13-linked-data-export-to-a-triplestore)
+14. [Causal Reasoning Engine](#14-causal-reasoning-engine)
+15. [Procedural Memory for Agent Workflows](#15-procedural-memory-for-agent-workflows)
+16. [Adaptive Retrieval](#16-adaptive-retrieval)
+17. [PII-Aware Export](#17-pii-aware-export)
+18. [Graph-Connectivity-Aware Retrieval](#18-graph-connectivity-aware-retrieval)
+19. [Governed and Audited Agent Deployment](#19-governed-and-audited-agent-deployment)
+
+**Self-improvement and harnesses (Recursa, `@experimental`)**
+
+20. [Self-Improving Coding Agent](#20-self-improving-coding-agent)
+21. [Harness Integration: Interaction Log and Tool Adapter](#21-harness-integration-interaction-log-and-tool-adapter)
+22. [Evidence-Based QA over a Corpus](#22-evidence-based-qa-over-a-corpus)
+
+[Summary table](#summary-table)
 
 ---
 
 ## 1. Personal Knowledge Base
 
-A Zettelkasten-style personal knowledge management system.
+A Zettelkasten-style notebook: notes are entities, links are relations.
+
+### Setup and note creation
+
+```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+
+async function createNote(
+  kb: ManagerContext,
+  title: string,
+  body: string,
+  links: string[],
+  tags: string[],
+) {
+  await kb.entityManager.createEntities([
+    {
+      name: title,
+      entityType: 'note',
+      observations: body.split('\n').map((l) => l.trim()).filter(Boolean),
+      tags: ['note', ...tags],
+      importance: 5,
+    },
+  ]);
+
+  // Only link to notes that exist; a link to a missing name would dangle.
+  const existing: string[] = [];
+  for (const target of links) {
+    if (await kb.entityManager.getEntity(target)) existing.push(target);
+  }
+  if (existing.length > 0) {
+    await kb.relationManager.createRelations(
+      existing.flatMap((target) => [
+        { from: title, to: target, relationType: 'links_to' },
+        { from: target, to: title, relationType: 'linked_from' },
+      ]),
+    );
+  }
+  return title;
+}
+
+// Usage
+const kb = new ManagerContext('./knowledge-base.jsonl');
+await createNote(
+  kb,
+  'TypeScript Generics',
+  'Generics give type safety with flexibility.\nUse <T> to declare type parameters.',
+  ['TypeScript Basics'],
+  ['programming', 'typescript'],
+);
+```
+
+### Finding related notes
+
+```typescript
+import { ManagerContext, type Entity } from '@danielsimonjr/memoryjs';
+
+async function relatedNotes(kb: ManagerContext, title: string): Promise<Entity[]> {
+  const rels = await kb.relationManager.getRelations(title);
+  const names = new Set(rels.map((r) => (r.from === title ? r.to : r.from)));
+  const out: Entity[] = [];
+  for (const name of names) {
+    const note = await kb.entityManager.getEntity(name);
+    if (note) out.push(note);
+  }
+  return out;
+}
+
+// Notes similar to a query, restricted to the 'note' type.
+async function similarNotes(kb: ManagerContext, query: string) {
+  const results = await kb.searchManager.searchNodesRanked(query, ['note'], undefined, undefined, 10);
+  return results.filter((r) => r.score >= 0.3);
+}
+```
+
+### Visualising the link graph
+
+```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+
+async function linkDiagram(kb: ManagerContext): Promise<string> {
+  const graph = await kb.storage.loadGraph();
+  const notes = {
+    entities: graph.entities.filter((e) => e.tags?.includes('note')),
+    relations: graph.relations.filter((r) => r.relationType === 'links_to'),
+  };
+  return kb.ioManager.exportGraph(notes, 'mermaid');
+}
+```
+
+**Notes.** `exportGraph` is synchronous and takes a graph. Paste the Mermaid
+output into any Mermaid renderer. Example: `examples/01-quick-start.ts` covers the
+basic entity and relation calls used here.
+
+---
+
+## 2. AI Chatbot Memory
+
+Persistent memory for a conversational assistant: a profile per user, topics and
+preferences as linked entities, and a recall step that feeds the prompt.
+
+### Memory class
+
+```typescript
+import { ManagerContext, type Entity } from '@danielsimonjr/memoryjs';
+
+export class ChatbotMemory {
+  constructor(private readonly ctx: ManagerContext) {}
+
+  private userName(userId: string) {
+    return `user_${userId}`;
+  }
+
+  /** Create or extend the user's profile. */
+  async rememberUser(userId: string, facts: string[]) {
+    const name = this.userName(userId);
+    const existing = await this.ctx.entityManager.getEntity(name);
+    if (!existing) {
+      await this.ctx.entityManager.createEntities([
+        { name, entityType: 'user', observations: facts, tags: ['user', 'profile'], importance: 9 },
+      ]);
+      return;
+    }
+    const fresh = facts.filter((f) => !existing.observations.includes(f));
+    if (fresh.length > 0) {
+      await this.ctx.observationManager.addObservations([{ entityName: name, contents: fresh }]);
+    }
+  }
+
+  /** Record a topic the user discussed and link it to them. */
+  async rememberTopic(userId: string, topic: string, details: string[]) {
+    const name = `topic_${userId}_${topic.replace(/\s+/g, '_')}`;
+    await this.ctx.entityManager.createEntities([
+      { name, entityType: 'conversation_topic', observations: details, tags: ['topic'], importance: 6 },
+    ]);
+    await this.ctx.relationManager.createRelations([
+      { from: this.userName(userId), to: name, relationType: 'discussed' },
+    ]);
+  }
+
+  /** Store one preference as its own entity, linked to the user. */
+  async setPreference(userId: string, key: string, value: string) {
+    const name = `pref_${userId}_${key}`;
+    const existing = await this.ctx.entityManager.getEntity(name);
+    if (existing) {
+      // Replace the old value: drop it, then add the new one.
+      await this.ctx.observationManager.deleteObservations([
+        { entityName: name, observations: existing.observations },
+      ]);
+      await this.ctx.observationManager.addObservations([
+        { entityName: name, contents: [`${key}: ${value}`] },
+      ]);
+      return;
+    }
+    await this.ctx.entityManager.createEntities([
+      { name, entityType: 'preference', observations: [`${key}: ${value}`], tags: ['preference'], importance: 8 },
+    ]);
+    await this.ctx.relationManager.createRelations([
+      { from: this.userName(userId), to: name, relationType: 'prefers' },
+    ]);
+  }
+
+  /** Read preferences back as a key/value map. */
+  async getPreferences(userId: string): Promise<Map<string, string>> {
+    const prefs = new Map<string, string>();
+    const rels = await this.ctx.relationManager.getRelations(this.userName(userId));
+    for (const rel of rels.filter((r) => r.relationType === 'prefers' && r.from === this.userName(userId))) {
+      const pref = await this.ctx.entityManager.getEntity(rel.to);
+      const line = pref?.observations[0];
+      if (line) {
+        const idx = line.indexOf(': ');
+        prefs.set(line.slice(0, idx), line.slice(idx + 2));
+      }
+    }
+    return prefs;
+  }
+
+  /** Build the context block for the next model call. */
+  async recall(userId: string, query: string): Promise<string> {
+    const user: Entity | null = await this.ctx.entityManager.getEntity(this.userName(userId));
+    const hits = await this.ctx.searchManager.searchNodesRanked(query, undefined, undefined, undefined, 5);
+
+    const parts: string[] = [];
+    if (user) parts.push(`User profile:\n${user.observations.map((o) => `- ${o}`).join('\n')}`);
+    if (hits.length > 0) {
+      parts.push(
+        'Relevant memories:\n' +
+          hits.map((h) => `[${h.entity.entityType}] ${h.entity.name}: ${h.entity.observations.join('; ')}`).join('\n'),
+      );
+    }
+    return parts.join('\n\n');
+  }
+}
+
+// Usage
+const memory = new ChatbotMemory(new ManagerContext('./chatbot-memory.jsonl'));
+await memory.rememberUser('alice123', ['Name: Alice', 'Software engineer', 'Prefers concise answers']);
+await memory.setPreference('alice123', 'response_style', 'technical');
+await memory.rememberTopic('alice123', 'React Hooks', ['Asked about useEffect cleanup']);
+const context = await memory.recall('alice123', 'How do I use React hooks?');
+```
+
+**Notes.** For turn-level storage with deduplication and session turns, use
+`ctx.memoryEngine.addTurn` (see [RECIPES.md](./RECIPES.md#turn-level-memory-with-deduplication)).
+For a token-budgeted prefix across sessions, use `ctx.agentMemory().wakeUp()`.
+Example: `examples/05-agent-memory.ts`.
+
+---
+
+## 3. Retrieval-Augmented Generation (RAG)
+
+Chunk documents into entities, index them for semantic search, and answer with
+the best chunks plus their source.
+
+### Ingestion
+
+```typescript
+import { ManagerContext, type Entity } from '@danielsimonjr/memoryjs';
+
+function chunk(text: string, size = 800, overlap = 100): string[] {
+  const out: string[] = [];
+  for (let start = 0; start < text.length; start += size - overlap) {
+    out.push(text.slice(start, start + size));
+    if (start + size >= text.length) break;
+  }
+  return out;
+}
+
+async function ingestDocument(ctx: ManagerContext, docId: string, text: string) {
+  const chunks = chunk(text);
+  const entities: Entity[] = chunks.map((c, i) => ({
+    name: `${docId}#${String(i).padStart(3, '0')}`,
+    entityType: 'chunk',
+    observations: [c],
+    tags: [docId],
+    importance: 5,
+  }));
+  await ctx.entityManager.createEntities(entities);
+  await ctx.relationManager.createRelations(
+    entities.map((e) => ({ from: e.name, to: docId, relationType: 'part_of' })),
+  );
+  return entities.length;
+}
+```
+
+Create the parent `docId` entity first (`entityType: 'document'`) so the
+`part_of` relations point at something real.
+
+### Retrieval
+
+```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+
+async function answerContext(ctx: ManagerContext, question: string) {
+  // Semantic channel when embeddings are configured; lexical otherwise.
+  const graph = await ctx.storage.loadGraph();
+  if (ctx.semanticSearch) {
+    const hits = await ctx.semanticSearch.search(graph, question, 5, 0.3);
+    return hits.map((h) => ({ source: h.entity.name, score: h.similarity, text: h.entity.observations.join(' ') }));
+  }
+  const ranked = await ctx.searchManager.searchNodesRanked(question, ['chunk'], undefined, undefined, 5);
+  return ranked.map((r) => ({ source: r.entity.name, score: r.score, text: r.entity.observations.join(' ') }));
+}
+
+function promptFor(question: string, hits: Array<{ source: string; text: string }>): string {
+  const context = hits.map((h, i) => `[${i + 1}] (${h.source}) ${h.text}`).join('\n');
+  return `Answer using only the sources below and cite them as [n].\n\n${context}\n\nQuestion: ${question}`;
+}
+```
+
+### Configuring embeddings
+
+`ctx.semanticSearch` is `null` when no embedding provider is available. Choose the
+provider with `MEMORY_EMBEDDING_PROVIDER` (`local` by default, `openai`, `llamacpp`,
+or `none`). The OpenAI key is read from `MEMORY_OPENAI_API_KEY`; `OPENAI_API_KEY`
+is not used. To build the pieces yourself:
+
+```typescript
+import { createEmbeddingService, createVectorStore, SemanticSearch } from '@danielsimonjr/memoryjs';
+
+// Returns null for provider 'none'; throws for 'openai' without MEMORY_OPENAI_API_KEY.
+const embeddings = createEmbeddingService();
+if (embeddings) {
+  const semantic = new SemanticSearch(embeddings, createVectorStore('jsonl'));
+  // indexAll(graph) / search(graph, query, limit, minSimilarity)
+}
+```
+
+**Notes.** `search(graph, query, limit?, minSimilarity?)` takes the graph as its
+first argument. Without embeddings, the lexical path above still works, and
+`hybridSearchManager.search` blends both. Example: `examples/02-search.ts`.
+
+---
+
+## 4. Research Note System
+
+Papers, authors and concepts as entities; citation and authorship as relations.
+Find central papers and near-duplicate notes.
 
 ### Setup
 
 ```typescript
 import { ManagerContext } from '@danielsimonjr/memoryjs';
 
-const kb = new ManagerContext('./knowledge-base.jsonl');
-```
-
-### Creating Notes with Connections
-
-```typescript
-// Create interconnected notes
-async function createNote(
-  title: string,
-  content: string,
-  linkedNotes: string[],
-  tags: string[]
+async function addPaper(
+  ctx: ManagerContext,
+  p: { id: string; title: string; year: number; authors: string[]; cites?: string[] },
 ) {
-  // Create the note entity
-  await kb.entityManager.createEntities([{
-    name: title,
-    entityType: 'note',
-    observations: content.split('\n').filter(l => l.trim()),
-    tags: ['note', ...tags],
-    importance: 5
-  }]);
-
-  // Create bidirectional links
-  for (const linked of linkedNotes) {
-    const existing = await kb.entityManager.getEntityByName(linked);
-    if (existing) {
-      await kb.relationManager.createRelations([
-        { from: title, to: linked, relationType: 'links_to' },
-        { from: linked, to: title, relationType: 'linked_from' }
-      ]);
-    }
-  }
-
-  return title;
-}
-
-// Example usage
-await createNote(
-  'TypeScript Generics',
-  `Generics provide type safety with flexibility.
-Use <T> syntax to define type parameters.
-Common patterns: Array<T>, Promise<T>, Map<K,V>
-Constraints: <T extends SomeType>`,
-  ['TypeScript Basics', 'Type Safety'],
-  ['programming', 'typescript', 'types']
-);
-```
-
-### Finding Related Notes
-
-```typescript
-async function findRelatedNotes(noteName: string): Promise<Entity[]> {
-  // Get direct links
-  const { incoming, outgoing } = await kb.relationManager.getRelationsForEntity(noteName);
-
-  const relatedNames = new Set([
-    ...incoming.map(r => r.from),
-    ...outgoing.map(r => r.to)
+  await ctx.entityManager.createEntities([
+    {
+      name: p.id,
+      entityType: 'paper',
+      observations: [p.title, `Year: ${p.year}`],
+      tags: ['paper'],
+      importance: 6,
+    },
   ]);
-
-  // Get entities
-  const related: Entity[] = [];
-  for (const name of relatedNames) {
-    const entity = await kb.entityManager.getEntityByName(name);
-    if (entity) related.push(entity);
+  const rels = p.authors.map((a) => ({ from: a, to: p.id, relationType: 'authored' }));
+  for (const c of p.cites ?? []) rels.push({ from: p.id, to: c, relationType: 'cites' });
+  // Authors must exist before the relation is written.
+  for (const a of p.authors) {
+    if (!(await ctx.entityManager.getEntity(a))) {
+      await ctx.entityManager.createEntities([{ name: a, entityType: 'author', observations: [] }]);
+    }
   }
-
-  return related;
-}
-
-// Find notes by similarity
-async function findSimilarNotes(query: string): Promise<SearchResult[]> {
-  return kb.searchManager.searchRanked(query, {
-    tags: ['note'],
-    limit: 10,
-    minScore: 0.3
-  });
+  await ctx.relationManager.createRelations(rels);
 }
 ```
 
-### Building a Knowledge Graph Visualization
-
-```typescript
-async function exportForVisualization(): Promise<string> {
-  // Export as Mermaid diagram
-  const mermaid = await kb.ioManager.exportGraph('mermaid', {
-    filter: { tags: ['note'] }
-  });
-
-  return mermaid;
-}
-
-// Output:
-// graph TD
-//   TypeScript_Generics --> TypeScript_Basics
-//   TypeScript_Generics --> Type_Safety
-//   ...
-```
-
----
-
-## 2. AI Chatbot Memory
-
-Persistent memory for a conversational AI assistant.
-
-### Memory System Class
-
-```typescript
-import { ManagerContext, Entity } from '@danielsimonjr/memoryjs';
-
-class ChatbotMemory {
-  private ctx: ManagerContext;
-
-  constructor(memoryPath: string) {
-    this.ctx = new ManagerContext(memoryPath);
-  }
-
-  // Remember user information
-  async rememberUser(userId: string, facts: string[]) {
-    const userName = `user_${userId}`;
-    const existing = await this.ctx.entityManager.getEntityByName(userName);
-
-    if (existing) {
-      // Add new facts
-      const newFacts = facts.filter(f => !existing.observations.includes(f));
-      if (newFacts.length > 0) {
-        await this.ctx.observationManager.addObservations([{
-          entityName: userName,
-          contents: newFacts
-        }]);
-      }
-    } else {
-      // Create new user profile
-      await this.ctx.entityManager.createEntities([{
-        name: userName,
-        entityType: 'user',
-        observations: facts,
-        tags: ['user', 'profile'],
-        importance: 9
-      }]);
-    }
-  }
-
-  // Remember conversation topic
-  async rememberTopic(userId: string, topic: string, details: string[]) {
-    const topicName = `topic_${userId}_${topic.replace(/\s+/g, '_')}`;
-
-    await this.ctx.entityManager.createEntities([{
-      name: topicName,
-      entityType: 'conversation_topic',
-      observations: details,
-      tags: ['topic', 'conversation'],
-      importance: 6
-    }]);
-
-    // Link to user
-    await this.ctx.relationManager.createRelations([{
-      from: `user_${userId}`,
-      to: topicName,
-      relationType: 'discussed'
-    }]);
-  }
-
-  // Recall relevant context for a query
-  async recallContext(userId: string, query: string): Promise<string> {
-    // Get user profile
-    const user = await this.ctx.entityManager.getEntityByName(`user_${userId}`);
-
-    // Search relevant memories
-    const results = await this.ctx.searchManager.hybridSearch(query, {
-      weights: { semantic: 0.5, lexical: 0.3, symbolic: 0.2 },
-      limit: 5
-    });
-
-    // Format context
-    let context = '';
-
-    if (user) {
-      context += `User Profile:\n${user.observations.map(o => `- ${o}`).join('\n')}\n\n`;
-    }
-
-    if (results.results.length > 0) {
-      context += `Relevant Memories:\n`;
-      for (const r of results.results) {
-        context += `[${r.entity.entityType}] ${r.entity.name}:\n`;
-        context += r.entity.observations.map(o => `  - ${o}`).join('\n');
-        context += '\n';
-      }
-    }
-
-    return context;
-  }
-
-  // Store user preference
-  async setPreference(userId: string, preference: string, value: string) {
-    const prefName = `pref_${userId}_${preference}`;
-
-    await this.ctx.entityManager.createEntities([{
-      name: prefName,
-      entityType: 'preference',
-      observations: [`${preference}: ${value}`],
-      tags: ['preference'],
-      importance: 8
-    }]);
-
-    await this.ctx.relationManager.createRelations([{
-      from: `user_${userId}`,
-      to: prefName,
-      relationType: 'prefers'
-    }]);
-  }
-
-  // Get user preferences
-  async getPreferences(userId: string): Promise<Map<string, string>> {
-    const { outgoing } = await this.ctx.relationManager.getRelationsForEntity(`user_${userId}`);
-
-    const prefs = new Map<string, string>();
-
-    for (const rel of outgoing.filter(r => r.relationType === 'prefers')) {
-      const pref = await this.ctx.entityManager.getEntityByName(rel.to);
-      if (pref && pref.observations[0]) {
-        const [key, value] = pref.observations[0].split(': ');
-        prefs.set(key, value);
-      }
-    }
-
-    return prefs;
-  }
-}
-
-// Usage
-const memory = new ChatbotMemory('./chatbot-memory.jsonl');
-
-// During conversation
-await memory.rememberUser('alice123', [
-  'Name: Alice',
-  'Works as a software engineer',
-  'Prefers concise answers'
-]);
-
-await memory.setPreference('alice123', 'response_style', 'technical');
-await memory.rememberTopic('alice123', 'React Hooks', [
-  'Asked about useEffect cleanup',
-  'Explained dependency arrays',
-  'Showed useState examples'
-]);
-
-// When responding
-const context = await memory.recallContext('alice123', 'How do I use React hooks?');
-console.log(context);
-```
-
----
-
-## 3. RAG (Retrieval-Augmented Generation)
-
-Document-based question answering with semantic search.
-
-### Document Ingestion
-
-```typescript
-import { ManagerContext, createEmbeddingService, createVectorStore, SemanticSearch } from '@danielsimonjr/memoryjs';
-
-class RAGSystem {
-  private ctx: ManagerContext;
-  private semantic: SemanticSearch;
-
-  async initialize(storagePath: string) {
-    this.ctx = new ManagerContext(storagePath);
-
-    // Initialize semantic search
-    const embeddingService = await createEmbeddingService({
-      provider: 'openai',
-      apiKey: process.env.OPENAI_API_KEY
-    });
-
-    const vectorStore = createVectorStore('rag', this.ctx.storage);
-    this.semantic = new SemanticSearch(this.ctx.storage, embeddingService, vectorStore);
-  }
-
-  // Ingest a document
-  async ingestDocument(
-    documentId: string,
-    title: string,
-    chunks: string[],
-    metadata: { source: string; author?: string; date?: string }
-  ) {
-    // Create document entity
-    await this.ctx.entityManager.createEntities([{
-      name: documentId,
-      entityType: 'document',
-      observations: [
-        `Title: ${title}`,
-        `Source: ${metadata.source}`,
-        metadata.author ? `Author: ${metadata.author}` : '',
-        metadata.date ? `Date: ${metadata.date}` : '',
-        `Chunks: ${chunks.length}`
-      ].filter(Boolean),
-      tags: ['document', 'source'],
-      importance: 7
-    }]);
-
-    // Create chunk entities
-    for (let i = 0; i < chunks.length; i++) {
-      const chunkName = `${documentId}_chunk_${i}`;
-      await this.ctx.entityManager.createEntities([{
-        name: chunkName,
-        entityType: 'chunk',
-        observations: [chunks[i]],
-        tags: ['chunk', 'searchable'],
-        importance: 5
-      }]);
-
-      // Link chunk to document
-      await this.ctx.relationManager.createRelations([{
-        from: chunkName,
-        to: documentId,
-        relationType: 'part_of'
-      }]);
-
-      // Index for semantic search
-      await this.semantic.indexEntity({
-        name: chunkName,
-        entityType: 'chunk',
-        observations: [chunks[i]]
-      });
-    }
-  }
-
-  // Retrieve relevant context for a query
-  async retrieve(query: string, topK: number = 5): Promise<RetrievalResult[]> {
-    // Semantic search for relevant chunks
-    const semanticResults = await this.semantic.search(query, {
-      limit: topK * 2,
-      minScore: 0.5
-    });
-
-    // Also do lexical search for keyword matching
-    const lexicalResults = await this.ctx.searchManager.searchRanked(query, {
-      tags: ['chunk'],
-      limit: topK * 2
-    });
-
-    // Combine and deduplicate
-    const seen = new Set<string>();
-    const combined: RetrievalResult[] = [];
-
-    for (const r of semanticResults) {
-      if (!seen.has(r.entity.name)) {
-        seen.add(r.entity.name);
-        combined.push({
-          chunk: r.entity.observations[0],
-          score: r.score,
-          source: await this.getDocumentSource(r.entity.name)
-        });
-      }
-    }
-
-    for (const r of lexicalResults) {
-      if (!seen.has(r.entity.name)) {
-        seen.add(r.entity.name);
-        combined.push({
-          chunk: r.entity.observations[0],
-          score: r.score * 0.8,  // Weight lexical slightly lower
-          source: await this.getDocumentSource(r.entity.name)
-        });
-      }
-    }
-
-    // Sort by score and return top K
-    return combined
-      .sort((a, b) => b.score - a.score)
-      .slice(0, topK);
-  }
-
-  private async getDocumentSource(chunkName: string): Promise<string> {
-    const { outgoing } = await this.ctx.relationManager.getRelationsForEntity(chunkName);
-    const docRel = outgoing.find(r => r.relationType === 'part_of');
-    return docRel?.to || 'unknown';
-  }
-
-  // Generate context string for LLM
-  async generateContext(query: string): Promise<string> {
-    const results = await this.retrieve(query, 5);
-
-    let context = `Relevant information for: "${query}"\n\n`;
-
-    for (let i = 0; i < results.length; i++) {
-      context += `[${i + 1}] Source: ${results[i].source}\n`;
-      context += `${results[i].chunk}\n\n`;
-    }
-
-    return context;
-  }
-}
-
-interface RetrievalResult {
-  chunk: string;
-  score: number;
-  source: string;
-}
-
-// Usage
-const rag = new RAGSystem();
-await rag.initialize('./rag-store.db');
-
-// Ingest documents
-await rag.ingestDocument('doc1', 'TypeScript Handbook', [
-  'TypeScript is a typed superset of JavaScript that compiles to plain JavaScript.',
-  'Interfaces in TypeScript describe the shape of an object.',
-  'Generics provide a way to create reusable components.'
-], { source: 'typescript-handbook.md', author: 'Microsoft' });
-
-// Query
-const context = await rag.generateContext('How do TypeScript interfaces work?');
-console.log(context);
-```
-
----
-
-## 4. Research Note System
-
-Academic research organization with papers, concepts, and citations.
-
-### Research Graph Setup
+### Influence ranking and duplicates
 
 ```typescript
 import { ManagerContext } from '@danielsimonjr/memoryjs';
 
-class ResearchGraph {
-  private ctx: ManagerContext;
-
-  constructor(path: string) {
-    this.ctx = new ManagerContext(path);
-  }
-
-  // Add a research paper
-  async addPaper(paper: {
-    title: string;
-    authors: string[];
-    abstract: string;
-    keywords: string[];
-    year: number;
-    doi?: string;
-  }) {
-    const paperId = paper.title.toLowerCase().replace(/\s+/g, '_').substring(0, 50);
-
-    await this.ctx.entityManager.createEntities([{
-      name: paperId,
-      entityType: 'paper',
-      observations: [
-        `Title: ${paper.title}`,
-        `Authors: ${paper.authors.join(', ')}`,
-        `Year: ${paper.year}`,
-        paper.doi ? `DOI: ${paper.doi}` : '',
-        `Abstract: ${paper.abstract}`
-      ].filter(Boolean),
-      tags: ['paper', ...paper.keywords],
-      importance: 7
-    }]);
-
-    // Create author entities and links
-    for (const author of paper.authors) {
-      const authorId = `author_${author.toLowerCase().replace(/\s+/g, '_')}`;
-
-      const existing = await this.ctx.entityManager.getEntityByName(authorId);
-      if (!existing) {
-        await this.ctx.entityManager.createEntities([{
-          name: authorId,
-          entityType: 'author',
-          observations: [`Name: ${author}`],
-          tags: ['author'],
-          importance: 5
-        }]);
-      }
-
-      await this.ctx.relationManager.createRelations([{
-        from: authorId,
-        to: paperId,
-        relationType: 'authored'
-      }]);
-    }
-
-    return paperId;
-  }
-
-  // Add citation relationship
-  async addCitation(citingPaper: string, citedPaper: string) {
-    await this.ctx.relationManager.createRelations([{
-      from: citingPaper,
-      to: citedPaper,
-      relationType: 'cites'
-    }]);
-  }
-
-  // Add research note
-  async addNote(note: {
-    title: string;
-    content: string;
-    relatedPapers: string[];
-    concepts: string[];
-  }) {
-    const noteId = `note_${Date.now()}`;
-
-    await this.ctx.entityManager.createEntities([{
-      name: noteId,
-      entityType: 'note',
-      observations: note.content.split('\n').filter(l => l.trim()),
-      tags: ['note', ...note.concepts],
-      importance: 6
-    }]);
-
-    // Link to papers
-    for (const paper of note.relatedPapers) {
-      await this.ctx.relationManager.createRelations([{
-        from: noteId,
-        to: paper,
-        relationType: 'references'
-      }]);
-    }
-
-    return noteId;
-  }
-
-  // Find papers by author
-  async findPapersByAuthor(authorName: string): Promise<Entity[]> {
-    const authorId = `author_${authorName.toLowerCase().replace(/\s+/g, '_')}`;
-    const { outgoing } = await this.ctx.relationManager.getRelationsForEntity(authorId);
-
-    const papers: Entity[] = [];
-    for (const rel of outgoing.filter(r => r.relationType === 'authored')) {
-      const paper = await this.ctx.entityManager.getEntityByName(rel.to);
-      if (paper) papers.push(paper);
-    }
-
-    return papers;
-  }
-
-  // Find citation network
-  async getCitationNetwork(paperId: string, depth: number = 2): Promise<KnowledgeGraph> {
-    const visited = new Set<string>();
-    const entities: Entity[] = [];
-    const relations: Relation[] = [];
-
-    async function traverse(id: string, currentDepth: number) {
-      if (currentDepth > depth || visited.has(id)) return;
-      visited.add(id);
-
-      const entity = await this.ctx.entityManager.getEntityByName(id);
-      if (entity) entities.push(entity);
-
-      const { incoming, outgoing } = await this.ctx.relationManager.getRelationsForEntity(id);
-
-      for (const rel of [...incoming, ...outgoing].filter(r => r.relationType === 'cites')) {
-        relations.push(rel);
-        const nextId = rel.from === id ? rel.to : rel.from;
-        await traverse.call(this, nextId, currentDepth + 1);
-      }
-    }
-
-    await traverse.call(this, paperId, 0);
-    return { entities, relations };
-  }
-
-  // Find related concepts
-  async findRelatedConcepts(query: string): Promise<SearchResult[]> {
-    return this.ctx.searchManager.searchRanked(query, {
-      tags: ['paper', 'note'],
-      limit: 20
-    });
-  }
+async function influentialPapers(ctx: ManagerContext) {
+  // PageRank over the whole graph; citations flow influence.
+  const pr = await ctx.graphTraversal.calculatePageRank(0.85, 100, 1e-6, 10);
+  return pr.topEntities.filter((e) => e.name.startsWith('paper-'));
 }
 
-// Usage
-const research = new ResearchGraph('./research.jsonl');
-
-const paperId = await research.addPaper({
-  title: 'Attention Is All You Need',
-  authors: ['Ashish Vaswani', 'Noam Shazeer', 'Niki Parmar'],
-  abstract: 'We propose a new simple network architecture, the Transformer...',
-  keywords: ['transformers', 'attention', 'deep-learning', 'nlp'],
-  year: 2017,
-  doi: '10.48550/arXiv.1706.03762'
-});
-
-await research.addNote({
-  title: 'Transformer Architecture Notes',
-  content: `Key insight: Self-attention allows parallelization.
-Multi-head attention captures different relationships.
-Positional encoding needed since no recurrence.`,
-  relatedPapers: [paperId],
-  concepts: ['attention', 'architecture']
-});
+async function possibleDuplicates(ctx: ManagerContext) {
+  // Groups of paper names whose similarity is at least 0.9.
+  return ctx.compressionManager.findDuplicates(0.9);
+}
 ```
+
+### Literature search
+
+```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+
+async function search(ctx: ManagerContext, query: string) {
+  // Ranked over all entities; restrict to papers with the tag filter.
+  const results = await ctx.searchManager.searchNodesRanked(query, ['paper'], undefined, undefined, 20);
+  return results.map((r) => ({ id: r.entity.name, title: r.entity.observations[0], score: r.score }));
+}
+```
+
+**Notes.** Keep paper ids stable (for example a DOI). `calculatePageRank` returns a
+`CentralityResult`; `topEntities` is the ranked list. Example: `examples/03-graph-algorithms.ts`.
 
 ---
 
 ## 5. Project Documentation Hub
 
-Centralized documentation with cross-references.
+Documentation pages arranged in a hierarchy, with freshness tracking and a
+Markdown export for publishing.
 
-### Documentation System
+### Pages as a tree
 
 ```typescript
 import { ManagerContext } from '@danielsimonjr/memoryjs';
 
-class DocumentationHub {
-  private ctx: ManagerContext;
-
-  constructor(path: string) {
-    this.ctx = new ManagerContext(path);
-  }
-
-  // Create documentation category hierarchy
-  async createCategory(name: string, parent?: string, description?: string) {
-    await this.ctx.entityManager.createEntities([{
+async function createPage(ctx: ManagerContext, name: string, parent: string | null, body: string) {
+  await ctx.entityManager.createEntities([
+    {
       name,
-      entityType: 'category',
-      observations: description ? [description] : [],
-      tags: ['category'],
-      importance: 8
-    }]);
-
-    if (parent) {
-      await this.ctx.hierarchyManager.setEntityParent(name, parent);
-    }
-  }
-
-  // Add documentation page
-  async addPage(page: {
-    slug: string;
-    title: string;
-    content: string;
-    category: string;
-    keywords: string[];
-  }) {
-    await this.ctx.entityManager.createEntities([{
-      name: page.slug,
-      entityType: 'page',
-      observations: [
-        `# ${page.title}`,
-        '',
-        ...page.content.split('\n')
-      ],
-      tags: ['page', ...page.keywords],
-      importance: 6
-    }]);
-
-    // Set category as parent
-    await this.ctx.hierarchyManager.setEntityParent(page.slug, page.category);
-  }
-
-  // Add cross-reference
-  async addReference(fromPage: string, toPage: string) {
-    await this.ctx.relationManager.createRelations([{
-      from: fromPage,
-      to: toPage,
-      relationType: 'references'
-    }]);
-  }
-
-  // Get table of contents
-  async getTableOfContents(): Promise<TOCNode[]> {
-    const roots = await this.ctx.hierarchyManager.getRootEntities();
-    const categories = roots.filter(e => e.entityType === 'category');
-
-    const toc: TOCNode[] = [];
-    for (const cat of categories) {
-      toc.push(await this.buildTOCNode(cat.name));
-    }
-
-    return toc;
-  }
-
-  private async buildTOCNode(name: string): Promise<TOCNode> {
-    const entity = await this.ctx.entityManager.getEntityByName(name);
-    const children = await this.ctx.hierarchyManager.getChildren(name);
-
-    return {
-      name,
-      title: entity?.observations[0]?.replace('# ', '') || name,
-      type: entity?.entityType || 'unknown',
-      children: await Promise.all(children.map(c => this.buildTOCNode(c.name)))
-    };
-  }
-
-  // Search documentation
-  async search(query: string): Promise<SearchResult[]> {
-    return this.ctx.searchManager.searchRanked(query, {
-      tags: ['page'],
-      limit: 20
-    });
-  }
-
-  // Get page with related pages
-  async getPage(slug: string): Promise<PageWithRelated | null> {
-    const page = await this.ctx.entityManager.getEntityByName(slug);
-    if (!page) return null;
-
-    const { incoming, outgoing } = await this.ctx.relationManager.getRelationsForEntity(slug);
-
-    const relatedPages: Entity[] = [];
-    for (const rel of [...incoming, ...outgoing].filter(r => r.relationType === 'references')) {
-      const relatedName = rel.from === slug ? rel.to : rel.from;
-      const related = await this.ctx.entityManager.getEntityByName(relatedName);
-      if (related) relatedPages.push(related);
-    }
-
-    return {
-      page,
-      related: relatedPages,
-      breadcrumbs: await this.getBreadcrumbs(slug)
-    };
-  }
-
-  private async getBreadcrumbs(slug: string): Promise<string[]> {
-    const ancestors = await this.ctx.hierarchyManager.getAncestors(slug);
-    return [...ancestors.map(a => a.name).reverse(), slug];
-  }
+      entityType: 'doc',
+      observations: [body],
+      tags: ['docs'],
+      ttl: 90 * 24 * 60 * 60 * 1000, // milliseconds; the freshness report uses this
+      confidence: 0.9,
+    },
+  ]);
+  if (parent) await ctx.hierarchyManager.setEntityParent(name, parent);
 }
 
-interface TOCNode {
-  name: string;
-  title: string;
-  type: string;
-  children: TOCNode[];
+async function setupDocs(ctx: ManagerContext) {
+  await createPage(ctx, 'Guides', null, 'All guides');
+  await createPage(ctx, 'Install', 'Guides', 'Install with bun install');
+  await createPage(ctx, 'Configure', 'Guides', 'Set MEMORY_STORAGE_TYPE');
 }
-
-interface PageWithRelated {
-  page: Entity;
-  related: Entity[];
-  breadcrumbs: string[];
-}
-
-// Usage
-const docs = new DocumentationHub('./docs.jsonl');
-
-// Create hierarchy
-await docs.createCategory('getting-started', undefined, 'Getting Started Guide');
-await docs.createCategory('api', undefined, 'API Reference');
-await docs.createCategory('core-api', 'api', 'Core API');
-
-// Add pages
-await docs.addPage({
-  slug: 'installation',
-  title: 'Installation',
-  content: `Install using npm:\n\`\`\`bash\nnpm install memoryjs\n\`\`\``,
-  category: 'getting-started',
-  keywords: ['install', 'setup', 'npm']
-});
-
-await docs.addPage({
-  slug: 'entity-manager',
-  title: 'EntityManager API',
-  content: `The EntityManager handles all entity CRUD operations...`,
-  category: 'core-api',
-  keywords: ['entity', 'crud', 'api']
-});
-
-// Cross-reference
-await docs.addReference('installation', 'entity-manager');
-
-// Get TOC
-const toc = await docs.getTableOfContents();
-console.log(JSON.stringify(toc, null, 2));
 ```
+
+### Stale-doc report
+
+```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+
+async function staleDocs(ctx: ManagerContext) {
+  const stale = await ctx.freshnessManager.getStaleEntities(ctx.storage);
+  const expired = await ctx.freshnessManager.getExpiredEntities(ctx.storage);
+  return {
+    stale: stale.map((e) => e.name),
+    expired: expired.map((e) => e.name),
+  };
+}
+
+// Mark a page as reviewed: refresh its freshness clock.
+async function markReviewed(ctx: ManagerContext, name: string) {
+  return ctx.freshnessManager.refreshEntity(name, ctx.storage);
+}
+```
+
+### Publish as Markdown
+
+```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+import { writeFileSync } from 'node:fs';
+
+async function publish(ctx: ManagerContext, outPath: string) {
+  const graph = await ctx.storage.loadGraph();
+  const docs = {
+    entities: graph.entities.filter((e) => e.entityType === 'doc'),
+    relations: graph.relations,
+  };
+  writeFileSync(outPath, ctx.ioManager.exportGraph(docs, 'markdown'), 'utf8');
+}
+```
+
+**Notes.** `refreshEntity` returns the updated entity. `getSubtree('Guides')`
+returns the whole section as a `KnowledgeGraph`. Example: `examples/04-import-export.ts`.
 
 ---
 
 ## 6. Contact Relationship Manager
 
-Personal CRM for managing contacts and relationships.
+People and organisations with relations that change over time. Ending a role keeps
+its history, so "who was their employer in March?" still has an answer.
 
-### Contact Manager Implementation
+### Contacts and roles
 
 ```typescript
 import { ManagerContext } from '@danielsimonjr/memoryjs';
 
-class ContactManager {
-  private ctx: ManagerContext;
-
-  constructor(path: string) {
-    this.ctx = new ManagerContext(path);
-  }
-
-  // Add a contact
-  async addContact(contact: {
-    name: string;
-    email?: string;
-    phone?: string;
-    company?: string;
-    role?: string;
-    notes?: string[];
-    tags?: string[];
-  }) {
-    const contactId = `contact_${contact.name.toLowerCase().replace(/\s+/g, '_')}`;
-
-    const observations = [
-      contact.email ? `Email: ${contact.email}` : '',
-      contact.phone ? `Phone: ${contact.phone}` : '',
-      contact.company ? `Company: ${contact.company}` : '',
-      contact.role ? `Role: ${contact.role}` : '',
-      ...(contact.notes || [])
-    ].filter(Boolean);
-
-    await this.ctx.entityManager.createEntities([{
-      name: contactId,
-      entityType: 'contact',
-      observations,
-      tags: ['contact', ...(contact.tags || [])],
-      importance: 5
-    }]);
-
-    // Create company entity if specified
-    if (contact.company) {
-      const companyId = `company_${contact.company.toLowerCase().replace(/\s+/g, '_')}`;
-      const existingCompany = await this.ctx.entityManager.getEntityByName(companyId);
-
-      if (!existingCompany) {
-        await this.ctx.entityManager.createEntities([{
-          name: companyId,
-          entityType: 'company',
-          observations: [`Name: ${contact.company}`],
-          tags: ['company'],
-          importance: 6
-        }]);
-      }
-
-      await this.ctx.relationManager.createRelations([{
-        from: contactId,
-        to: companyId,
-        relationType: 'works_at'
-      }]);
-    }
-
-    return contactId;
-  }
-
-  // Add relationship between contacts
-  async addRelationship(
-    contact1: string,
-    contact2: string,
-    relationship: string
-  ) {
-    await this.ctx.relationManager.createRelations([
-      { from: contact1, to: contact2, relationType: relationship }
-    ]);
-  }
-
-  // Log interaction
-  async logInteraction(contactId: string, interaction: {
-    type: 'meeting' | 'call' | 'email' | 'message';
-    summary: string;
-    date?: string;
-  }) {
-    const date = interaction.date || new Date().toISOString();
-
-    await this.ctx.observationManager.addObservations([{
-      entityName: contactId,
-      contents: [`[${interaction.type.toUpperCase()}] ${date}: ${interaction.summary}`]
-    }]);
-
-    // Update last modified (touch)
-    const contact = await this.ctx.entityManager.getEntityByName(contactId);
-    if (contact) {
-      await this.ctx.entityManager.updateEntity(contactId, {});
-    }
-  }
-
-  // Find contacts at company
-  async findContactsAtCompany(companyName: string): Promise<Entity[]> {
-    const companyId = `company_${companyName.toLowerCase().replace(/\s+/g, '_')}`;
-    const { incoming } = await this.ctx.relationManager.getRelationsForEntity(companyId);
-
-    const contacts: Entity[] = [];
-    for (const rel of incoming.filter(r => r.relationType === 'works_at')) {
-      const contact = await this.ctx.entityManager.getEntityByName(rel.from);
-      if (contact) contacts.push(contact);
-    }
-
-    return contacts;
-  }
-
-  // Get contact network
-  async getNetwork(contactId: string, depth: number = 2): Promise<KnowledgeGraph> {
-    return this.ctx.graphTraversal.findAllPaths(contactId, contactId, { maxDepth: depth })
-      .then(async () => {
-        // Get connected component
-        const visited = new Set<string>();
-        const entities: Entity[] = [];
-        const relations: Relation[] = [];
-
-        async function traverse(id: string, d: number) {
-          if (d > depth || visited.has(id)) return;
-          visited.add(id);
-
-          const entity = await this.ctx.entityManager.getEntityByName(id);
-          if (entity && entity.entityType === 'contact') {
-            entities.push(entity);
-          }
-
-          const { incoming, outgoing } = await this.ctx.relationManager.getRelationsForEntity(id);
-          for (const rel of [...incoming, ...outgoing]) {
-            if (!relations.find(r =>
-              r.from === rel.from && r.to === rel.to && r.relationType === rel.relationType
-            )) {
-              relations.push(rel);
-            }
-            const nextId = rel.from === id ? rel.to : rel.from;
-            await traverse.call(this, nextId, d + 1);
-          }
-        }
-
-        await traverse.call(this, contactId, 0);
-        return { entities, relations };
-      });
-  }
-
-  // Search contacts
-  async searchContacts(query: string, filters?: {
-    company?: string;
-    tags?: string[];
-  }): Promise<Entity[]> {
-    const results = await this.ctx.searchManager.search(query, {
-      tags: filters?.tags ? ['contact', ...filters.tags] : ['contact'],
-      limit: 50
-    });
-
-    let contacts = results.entities;
-
-    if (filters?.company) {
-      contacts = contacts.filter(c =>
-        c.observations.some(o => o.includes(`Company: ${filters.company}`))
-      );
-    }
-
-    return contacts;
-  }
+async function addContact(ctx: ManagerContext, name: string, email: string) {
+  await ctx.entityManager.createEntities([
+    { name, entityType: 'person', observations: [`Email: ${email}`], tags: ['contact'], importance: 5 },
+  ]);
 }
 
-// Usage
-const crm = new ContactManager('./contacts.jsonl');
+async function addRole(ctx: ManagerContext, person: string, org: string, startedAt: string) {
+  // Create the org if needed, then link the person to it.
+  if (!(await ctx.entityManager.getEntity(org))) {
+    await ctx.entityManager.createEntities([{ name: org, entityType: 'org', observations: [] }]);
+  }
+  await ctx.relationManager.createRelations([
+    { from: person, to: org, relationType: 'works_at', createdAt: startedAt },
+  ]);
+}
 
-await crm.addContact({
-  name: 'Alice Chen',
-  email: 'alice@acme.com',
-  company: 'Acme Corp',
-  role: 'Engineering Manager',
-  tags: ['engineering', 'decision-maker']
-});
-
-await crm.addContact({
-  name: 'Bob Smith',
-  email: 'bob@acme.com',
-  company: 'Acme Corp',
-  role: 'Senior Engineer',
-  tags: ['engineering', 'technical']
-});
-
-await crm.addRelationship(
-  'contact_alice_chen',
-  'contact_bob_smith',
-  'manages'
-);
-
-await crm.logInteraction('contact_alice_chen', {
-  type: 'meeting',
-  summary: 'Discussed Q4 project roadmap'
-});
-
-const acmeContacts = await crm.findContactsAtCompany('Acme Corp');
-console.log(acmeContacts);
+async function endRole(ctx: ManagerContext, person: string, org: string, endedAt: string) {
+  await ctx.relationManager.invalidateRelation(person, 'works_at', org, endedAt);
+}
 ```
+
+### Querying history
+
+```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+
+async function employerOn(ctx: ManagerContext, person: string, date: string) {
+  // Relations valid on the given date (outgoing from the person).
+  const rels = await ctx.relationManager.queryAsOf(person, date, { direction: 'outgoing' });
+  return rels.filter((r) => r.relationType === 'works_at').map((r) => r.to);
+}
+
+async function careerTimeline(ctx: ManagerContext, person: string) {
+  return ctx.relationManager.timeline(person, { direction: 'outgoing' });
+}
+```
+
+### Finding people
+
+```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+
+async function findContacts(ctx: ManagerContext, query: string) {
+  // Fuzzy matching tolerates typos in names. The second argument is the threshold.
+  const graph = await ctx.searchManager.fuzzySearch(query, 0.6, ['contact']);
+  return graph.entities.map((e) => e.name);
+}
+```
+
+**Notes.** `invalidateRelation(from, relationType, to, ended?)` takes the triple, not
+a relation object. Example: `examples/08-versioning-causal.ts` covers the same
+time-travel calls in more depth.
 
 ---
 
 ## 7. Learning Progress Tracker
 
-Track learning progress across topics and resources.
-
-### Learning Tracker Implementation
+Skills as entities, practice as observations, mastery as importance.
 
 ```typescript
 import { ManagerContext } from '@danielsimonjr/memoryjs';
 
-class LearningTracker {
-  private ctx: ManagerContext;
-
-  constructor(path: string) {
-    this.ctx = new ManagerContext(path);
-  }
-
-  // Add learning topic
-  async addTopic(topic: {
-    name: string;
-    description: string;
-    parent?: string;
-    prerequisites?: string[];
-    importance?: number;
-  }) {
-    const topicId = topic.name.toLowerCase().replace(/\s+/g, '_');
-
-    await this.ctx.entityManager.createEntities([{
-      name: topicId,
-      entityType: 'topic',
-      observations: [
-        topic.description,
-        'Status: Not Started',
-        'Progress: 0%'
-      ],
-      tags: ['topic', 'learning'],
-      importance: topic.importance || 5
-    }]);
-
-    if (topic.parent) {
-      await this.ctx.hierarchyManager.setEntityParent(topicId, topic.parent);
-    }
-
-    if (topic.prerequisites) {
-      for (const prereq of topic.prerequisites) {
-        await this.ctx.relationManager.createRelations([{
-          from: topicId,
-          to: prereq,
-          relationType: 'requires'
-        }]);
-      }
-    }
-
-    return topicId;
-  }
-
-  // Add learning resource
-  async addResource(resource: {
-    title: string;
-    type: 'book' | 'course' | 'video' | 'article' | 'tutorial';
-    url?: string;
-    topics: string[];
-    estimatedHours?: number;
-  }) {
-    const resourceId = `resource_${Date.now()}`;
-
-    await this.ctx.entityManager.createEntities([{
-      name: resourceId,
-      entityType: 'resource',
-      observations: [
-        `Title: ${resource.title}`,
-        `Type: ${resource.type}`,
-        resource.url ? `URL: ${resource.url}` : '',
-        resource.estimatedHours ? `Estimated: ${resource.estimatedHours}h` : '',
-        'Status: Not Started'
-      ].filter(Boolean),
-      tags: ['resource', resource.type],
-      importance: 5
-    }]);
-
-    for (const topic of resource.topics) {
-      await this.ctx.relationManager.createRelations([{
-        from: resourceId,
-        to: topic,
-        relationType: 'covers'
-      }]);
-    }
-
-    return resourceId;
-  }
-
-  // Update progress
-  async updateProgress(
-    entityId: string,
-    progress: number,
-    notes?: string
-  ) {
-    const entity = await this.ctx.entityManager.getEntityByName(entityId);
-    if (!entity) throw new Error('Entity not found');
-
-    // Update progress observation
-    const observations = entity.observations.filter(o =>
-      !o.startsWith('Progress:') && !o.startsWith('Status:')
+async function addSkill(ctx: ManagerContext, skill: string, prerequisites: string[] = []) {
+  await ctx.entityManager.createEntities([
+    { name: skill, entityType: 'skill', observations: [], importance: 1, tags: ['learning'] },
+  ]);
+  if (prerequisites.length > 0) {
+    await ctx.relationManager.createRelations(
+      prerequisites.map((p) => ({ from: skill, to: p, relationType: 'requires' })),
     );
-
-    const status = progress === 0 ? 'Not Started' :
-                   progress === 100 ? 'Completed' : 'In Progress';
-
-    observations.push(`Status: ${status}`);
-    observations.push(`Progress: ${progress}%`);
-
-    if (notes) {
-      observations.push(`[${new Date().toISOString()}] ${notes}`);
-    }
-
-    await this.ctx.entityManager.updateEntity(entityId, { observations });
-  }
-
-  // Log learning session
-  async logSession(session: {
-    topic: string;
-    duration: number; // minutes
-    notes: string[];
-    resources?: string[];
-  }) {
-    const sessionId = `session_${Date.now()}`;
-
-    await this.ctx.entityManager.createEntities([{
-      name: sessionId,
-      entityType: 'session',
-      observations: [
-        `Duration: ${session.duration} minutes`,
-        `Date: ${new Date().toISOString()}`,
-        ...session.notes
-      ],
-      tags: ['session', 'learning'],
-      importance: 3
-    }]);
-
-    await this.ctx.relationManager.createRelations([{
-      from: sessionId,
-      to: session.topic,
-      relationType: 'studied'
-    }]);
-
-    if (session.resources) {
-      for (const resource of session.resources) {
-        await this.ctx.relationManager.createRelations([{
-          from: sessionId,
-          to: resource,
-          relationType: 'used'
-        }]);
-      }
-    }
-
-    return sessionId;
-  }
-
-  // Get learning path
-  async getLearningPath(targetTopic: string): Promise<string[]> {
-    const path: string[] = [];
-    const visited = new Set<string>();
-
-    async function findPrerequisites(topicId: string): Promise<void> {
-      if (visited.has(topicId)) return;
-      visited.add(topicId);
-
-      const { outgoing } = await this.ctx.relationManager.getRelationsForEntity(topicId);
-      const prereqs = outgoing.filter(r => r.relationType === 'requires');
-
-      for (const prereq of prereqs) {
-        await findPrerequisites.call(this, prereq.to);
-      }
-
-      path.push(topicId);
-    }
-
-    await findPrerequisites.call(this, targetTopic);
-    return path;
-  }
-
-  // Get learning statistics
-  async getStats(): Promise<LearningStats> {
-    const topics = await this.ctx.searchManager.search('', { tags: ['topic'] });
-    const resources = await this.ctx.searchManager.search('', { tags: ['resource'] });
-    const sessions = await this.ctx.searchManager.search('', { tags: ['session'] });
-
-    const completed = topics.entities.filter(t =>
-      t.observations.some(o => o.includes('Status: Completed'))
-    );
-
-    const inProgress = topics.entities.filter(t =>
-      t.observations.some(o => o.includes('Status: In Progress'))
-    );
-
-    let totalMinutes = 0;
-    for (const session of sessions.entities) {
-      const durationObs = session.observations.find(o => o.startsWith('Duration:'));
-      if (durationObs) {
-        const match = durationObs.match(/Duration: (\d+)/);
-        if (match) totalMinutes += parseInt(match[1]);
-      }
-    }
-
-    return {
-      totalTopics: topics.entities.length,
-      completedTopics: completed.length,
-      inProgressTopics: inProgress.length,
-      totalResources: resources.entities.length,
-      totalSessions: sessions.entities.length,
-      totalLearningMinutes: totalMinutes
-    };
   }
 }
 
-interface LearningStats {
-  totalTopics: number;
-  completedTopics: number;
-  inProgressTopics: number;
-  totalResources: number;
-  totalSessions: number;
-  totalLearningMinutes: number;
+async function logPractice(ctx: ManagerContext, skill: string, minutes: number, note: string) {
+  const day = new Date().toISOString().slice(0, 10);
+  await ctx.observationManager.addObservations([
+    { entityName: skill, contents: [`${day}: ${minutes} min - ${note}`] },
+  ]);
+  // Mastery rises with practice, capped at 10.
+  const current = (await ctx.entityManager.getEntity(skill))?.importance ?? 1;
+  await ctx.entityManager.setImportance(skill, Math.min(10, current + minutes / 60));
 }
 
-// Usage
-const tracker = new LearningTracker('./learning.jsonl');
-
-// Set up learning topics
-await tracker.addTopic({
-  name: 'javascript_basics',
-  description: 'Fundamental JavaScript concepts'
-});
-
-await tracker.addTopic({
-  name: 'typescript',
-  description: 'TypeScript language and type system',
-  prerequisites: ['javascript_basics']
-});
-
-await tracker.addTopic({
-  name: 'react',
-  description: 'React library for building UIs',
-  prerequisites: ['javascript_basics']
-});
-
-await tracker.addTopic({
-  name: 'nextjs',
-  description: 'Next.js framework',
-  prerequisites: ['react', 'typescript']
-});
-
-// Add resource
-const resource = await tracker.addResource({
-  title: 'TypeScript Handbook',
-  type: 'tutorial',
-  url: 'https://www.typescriptlang.org/docs/',
-  topics: ['typescript'],
-  estimatedHours: 10
-});
-
-// Log learning session
-await tracker.logSession({
-  topic: 'typescript',
-  duration: 45,
-  notes: [
-    'Learned about generics',
-    'Practiced with utility types'
-  ],
-  resources: [resource]
-});
-
-// Update progress
-await tracker.updateProgress('typescript', 30, 'Completed generics section');
-
-// Get path to learn Next.js
-const path = await tracker.getLearningPath('nextjs');
-console.log('Learning path:', path);
-// ['javascript_basics', 'typescript', 'react', 'nextjs']
-
-// Get stats
-const stats = await tracker.getStats();
-console.log(stats);
+async function readyToLearn(ctx: ManagerContext): Promise<string[]> {
+  // A skill is ready when every prerequisite has importance >= 5.
+  const graph = await ctx.storage.loadGraph();
+  const ready: string[] = [];
+  for (const e of graph.entities.filter((x) => x.tags?.includes('learning'))) {
+    const reqs = graph.relations.filter((r) => r.from === e.name && r.relationType === 'requires');
+    const done = reqs.every((r) => (graph.entities.find((x) => x.name === r.to)?.importance ?? 0) >= 5);
+    if (done && (e.importance ?? 0) < 5) ready.push(e.name);
+  }
+  return ready;
+}
 ```
+
+**Notes.** `setImportance(name, value)` validates the 0-10 range. For a weekly
+summary, combine `searchByTime('practice last week')` with the observations.
 
 ---
 
 ## 8. Content Recommendation Engine
 
-Tag-based content recommendation system.
-
-### Recommendation Engine
+Recommend items that match a user's interests, boosted by how central they are in
+the graph.
 
 ```typescript
 import { ManagerContext } from '@danielsimonjr/memoryjs';
 
-class RecommendationEngine {
-  private ctx: ManagerContext;
-
-  constructor(path: string) {
-    this.ctx = new ManagerContext(path);
-  }
-
-  // Add content item
-  async addContent(content: {
-    id: string;
-    title: string;
-    description: string;
-    tags: string[];
-    category: string;
-    metadata?: Record<string, string>;
-  }) {
-    await this.ctx.entityManager.createEntities([{
-      name: content.id,
-      entityType: 'content',
-      observations: [
-        `Title: ${content.title}`,
-        `Description: ${content.description}`,
-        `Category: ${content.category}`,
-        ...Object.entries(content.metadata || {}).map(([k, v]) => `${k}: ${v}`)
-      ],
-      tags: ['content', content.category, ...content.tags],
-      importance: 5
-    }]);
-  }
-
-  // Record user interaction
-  async recordInteraction(userId: string, contentId: string, type: 'view' | 'like' | 'save' | 'share') {
-    const userEntity = `user_${userId}`;
-
-    // Ensure user exists
-    const existing = await this.ctx.entityManager.getEntityByName(userEntity);
-    if (!existing) {
-      await this.ctx.entityManager.createEntities([{
-        name: userEntity,
-        entityType: 'user',
-        observations: [],
-        tags: ['user'],
-        importance: 5
-      }]);
-    }
-
-    // Create interaction relation
-    await this.ctx.relationManager.createRelations([{
-      from: userEntity,
-      to: contentId,
-      relationType: type
-    }]);
-
-    // Increase content importance based on interaction
-    const content = await this.ctx.entityManager.getEntityByName(contentId);
-    if (content) {
-      const boost = { view: 0, like: 1, save: 1, share: 2 }[type];
-      const newImportance = Math.min(10, (content.importance || 5) + boost);
-      await this.ctx.entityManager.setImportance(contentId, newImportance);
-    }
-  }
-
-  // Get user preferences from interactions
-  async getUserPreferences(userId: string): Promise<Map<string, number>> {
-    const userEntity = `user_${userId}`;
-    const { outgoing } = await this.ctx.relationManager.getRelationsForEntity(userEntity);
-
-    const tagScores = new Map<string, number>();
-
-    for (const rel of outgoing) {
-      const content = await this.ctx.entityManager.getEntityByName(rel.to);
-      if (!content || content.entityType !== 'content') continue;
-
-      // Weight by interaction type
-      const weight = { view: 1, like: 3, save: 4, share: 5 }[rel.relationType] || 1;
-
-      for (const tag of content.tags || []) {
-        if (tag === 'content') continue;
-        tagScores.set(tag, (tagScores.get(tag) || 0) + weight);
-      }
-    }
-
-    return tagScores;
-  }
-
-  // Get recommendations
-  async getRecommendations(userId: string, limit: number = 10): Promise<Entity[]> {
-    const preferences = await this.getUserPreferences(userId);
-    const userEntity = `user_${userId}`;
-
-    // Get content user has interacted with
-    const { outgoing } = await this.ctx.relationManager.getRelationsForEntity(userEntity);
-    const interactedContent = new Set(outgoing.map(r => r.to));
-
-    // Get all content
-    const allContent = await this.ctx.searchManager.search('', { tags: ['content'] });
-
-    // Score content by preference match
-    const scored: Array<{ entity: Entity; score: number }> = [];
-
-    for (const entity of allContent.entities) {
-      // Skip already interacted
-      if (interactedContent.has(entity.name)) continue;
-
-      // Calculate preference score
-      let score = 0;
-      for (const tag of entity.tags || []) {
-        score += preferences.get(tag) || 0;
-      }
-
-      // Boost by importance
-      score += (entity.importance || 5) / 2;
-
-      scored.push({ entity, score });
-    }
-
-    // Sort by score and return top N
-    return scored
-      .sort((a, b) => b.score - a.score)
-      .slice(0, limit)
-      .map(s => s.entity);
-  }
-
-  // Get similar content
-  async getSimilarContent(contentId: string, limit: number = 5): Promise<Entity[]> {
-    const content = await this.ctx.entityManager.getEntityByName(contentId);
-    if (!content) return [];
-
-    const tags = content.tags || [];
-
-    // Search for content with overlapping tags
-    const results = await this.ctx.searchManager.search(tags.join(' '), {
-      tags: ['content'],
-      limit: limit + 1
-    });
-
-    // Filter out the source content
-    return results.entities.filter(e => e.name !== contentId).slice(0, limit);
-  }
+async function recommend(ctx: ManagerContext, userInterests: string, limit = 5) {
+  // Lexical/TF-IDF ranking with a PageRank boost for hub items.
+  ctx.rankedSearch.setGraphPrior(ctx.graphRankPrior, 0.3);
+  const ranked = await ctx.searchManager.searchNodesRanked(userInterests, ['article'], undefined, undefined, limit);
+  return ranked.map((r) => ({ id: r.entity.name, score: r.score }));
 }
 
-// Usage
-const recommender = new RecommendationEngine('./recommendations.db');
-
-// Add content
-await recommender.addContent({
-  id: 'article_1',
-  title: 'Introduction to TypeScript',
-  description: 'Learn the basics of TypeScript',
-  tags: ['typescript', 'programming', 'beginner'],
-  category: 'tutorial'
-});
-
-await recommender.addContent({
-  id: 'article_2',
-  title: 'Advanced TypeScript Patterns',
-  description: 'Deep dive into TypeScript patterns',
-  tags: ['typescript', 'programming', 'advanced'],
-  category: 'tutorial'
-});
-
-await recommender.addContent({
-  id: 'video_1',
-  title: 'React with TypeScript',
-  description: 'Building React apps with TypeScript',
-  tags: ['react', 'typescript', 'frontend'],
-  category: 'video'
-});
-
-// Record user interactions
-await recommender.recordInteraction('user123', 'article_1', 'view');
-await recommender.recordInteraction('user123', 'article_1', 'like');
-
-// Get recommendations
-const recommendations = await recommender.getRecommendations('user123', 5);
-console.log('Recommendations:', recommendations.map(r => r.name));
-
-// Get similar content
-const similar = await recommender.getSimilarContent('article_1');
-console.log('Similar:', similar.map(s => s.name));
+async function recordClick(ctx: ManagerContext, userId: string, articleId: string) {
+  // Clicks become relations; the graph then carries the signal for ranking.
+  await ctx.relationManager.createRelations([
+    { from: `user_${userId}`, to: articleId, relationType: 'read', createdAt: new Date().toISOString() },
+  ]);
+}
 ```
+
+**Notes.** `setGraphPrior` is the code form of `MEMORY_RANKED_GRAPH_BOOST`. The
+prior is cached and invalidated on graph changes. For semantic recommendations, use
+`hybridSearchManager.search` with an embedding provider (see
+[RECIPES.md](./RECIPES.md#hybrid-search-semantic--lexical--symbolic)).
 
 ---
 
 ## 9. Codebase Knowledge Graph
 
-Map and navigate a codebase structure.
+Modules, functions and their calls as a graph, built from a JSON export of your
+own analysis tool, then queried for dependency paths.
 
-### Codebase Graph
+### Loading the graph
+
+```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+import { readFileSync } from 'node:fs';
+
+async function loadCodeGraph(ctx: ManagerContext, jsonPath: string) {
+  // The file is a MemoryJS JSON export: { entities: [...], relations: [...] }.
+  const data = readFileSync(jsonPath, 'utf8');
+  const preview = await ctx.ioManager.importGraph('json', data, 'merge', true);
+  if (preview.errors.length > 0) throw new Error(preview.errors.join('; '));
+  return ctx.ioManager.importGraph('json', data, 'merge', false);
+}
+```
+
+### Dependency questions
 
 ```typescript
 import { ManagerContext } from '@danielsimonjr/memoryjs';
 
-class CodebaseGraph {
-  private ctx: ManagerContext;
-
-  constructor(path: string) {
-    this.ctx = new ManagerContext(path);
-  }
-
-  // Add module
-  async addModule(module: {
-    name: string;
-    path: string;
-    description: string;
-    exports: string[];
-  }) {
-    await this.ctx.entityManager.createEntities([{
-      name: module.name,
-      entityType: 'module',
-      observations: [
-        `Path: ${module.path}`,
-        `Description: ${module.description}`,
-        `Exports: ${module.exports.join(', ')}`
-      ],
-      tags: ['module', 'code'],
-      importance: 7
-    }]);
-  }
-
-  // Add function/class
-  async addSymbol(symbol: {
-    name: string;
-    type: 'function' | 'class' | 'interface' | 'type' | 'const';
-    module: string;
-    signature: string;
-    description: string;
-    examples?: string[];
-  }) {
-    await this.ctx.entityManager.createEntities([{
-      name: symbol.name,
-      entityType: symbol.type,
-      observations: [
-        `Signature: ${symbol.signature}`,
-        `Description: ${symbol.description}`,
-        ...(symbol.examples || []).map(e => `Example: ${e}`)
-      ],
-      tags: ['symbol', symbol.type],
-      importance: 5
-    }]);
-
-    // Link to module
-    await this.ctx.hierarchyManager.setEntityParent(symbol.name, symbol.module);
-  }
-
-  // Add dependency
-  async addDependency(from: string, to: string, type: 'imports' | 'extends' | 'implements' | 'uses') {
-    await this.ctx.relationManager.createRelations([{
-      from,
-      to,
-      relationType: type
-    }]);
-  }
-
-  // Find all usages of a symbol
-  async findUsages(symbolName: string): Promise<Entity[]> {
-    const { incoming } = await this.ctx.relationManager.getRelationsForEntity(symbolName);
-
-    const usages: Entity[] = [];
-    for (const rel of incoming.filter(r => r.relationType === 'uses' || r.relationType === 'imports')) {
-      const entity = await this.ctx.entityManager.getEntityByName(rel.from);
-      if (entity) usages.push(entity);
-    }
-
-    return usages;
-  }
-
-  // Get module structure
-  async getModuleStructure(moduleName: string): Promise<KnowledgeGraph> {
-    return this.ctx.hierarchyManager.getSubtree(moduleName);
-  }
-
-  // Search code
-  async searchCode(query: string): Promise<SearchResult[]> {
-    return this.ctx.searchManager.searchRanked(query, {
-      tags: ['symbol'],
-      limit: 20
-    });
-  }
-
-  // Get dependency graph
-  async getDependencyGraph(): Promise<string> {
-    return this.ctx.ioManager.exportGraph('mermaid', {
-      filter: { tags: ['module'] }
-    });
-  }
+async function dependencyPath(ctx: ManagerContext, from: string, to: string) {
+  const path = await ctx.graphTraversal.findShortestPath(from, to);
+  return path?.path ?? null;
 }
 
-// Usage
-const codebase = new CodebaseGraph('./codebase.jsonl');
+async function hubModules(ctx: ManagerContext) {
+  // Degree centrality over 'in' edges: the most depended-upon modules.
+  const c = await ctx.graphTraversal.calculateDegreeCentrality('in', 10);
+  return c.topEntities;
+}
 
-// Add modules
-await codebase.addModule({
-  name: 'core',
-  path: 'src/core',
-  description: 'Core storage and managers',
-  exports: ['EntityManager', 'RelationManager', 'GraphStorage']
-});
-
-await codebase.addModule({
-  name: 'search',
-  path: 'src/search',
-  description: 'Search implementations',
-  exports: ['SearchManager', 'BasicSearch', 'RankedSearch']
-});
-
-// Add symbols
-await codebase.addSymbol({
-  name: 'EntityManager',
-  type: 'class',
-  module: 'core',
-  signature: 'class EntityManager',
-  description: 'Manages entity CRUD operations',
-  examples: ['const em = new EntityManager(storage)']
-});
-
-await codebase.addSymbol({
-  name: 'createEntities',
-  type: 'function',
-  module: 'core',
-  signature: 'async createEntities(entities: Entity[]): Promise<Entity[]>',
-  description: 'Creates multiple entities'
-});
-
-// Add dependencies
-await codebase.addDependency('search', 'core', 'imports');
-await codebase.addDependency('SearchManager', 'EntityManager', 'uses');
-
-// Find usages
-const usages = await codebase.findUsages('EntityManager');
-console.log('EntityManager usages:', usages.map(u => u.name));
-
-// Get dependency visualization
-const diagram = await codebase.getDependencyGraph();
-console.log(diagram);
+async function clusters(ctx: ManagerContext) {
+  const cc = await ctx.graphTraversal.findConnectedComponents();
+  return { count: cc.count, largest: cc.largestComponentSize };
+}
 ```
+
+### Impact of a change
+
+```typescript
+import { ManagerContext, type Entity } from '@danielsimonjr/memoryjs';
+
+async function impactOf(ctx: ManagerContext, moduleName: string): Promise<Entity[]> {
+  // Everything that transitively depends on the module.
+  const dependents = await ctx.hierarchyManager.getDescendants(moduleName);
+  return dependents;
+}
+```
+
+**Notes.** `getDescendants` follows `parentId`. For call graphs that are not a tree,
+walk `getRelations` instead (see the relation recipes). Example:
+`examples/03-graph-algorithms.ts`.
 
 ---
 
-## 10. Meeting Notes & Action Items
+## 10. Meeting Notes and Action Items
 
-Track meetings, decisions, and action items.
+Turn a transcript into a summary entity, decisions and action items as events, and
+a per-person view of what each person committed to.
 
-### Meeting Tracker
+### Ingesting a transcript
 
 ```typescript
 import { ManagerContext } from '@danielsimonjr/memoryjs';
 
-class MeetingTracker {
-  private ctx: ManagerContext;
-
-  constructor(path: string) {
-    this.ctx = new ManagerContext(path);
-  }
-
-  // Create meeting
-  async createMeeting(meeting: {
-    title: string;
-    date: string;
-    attendees: string[];
-    agenda: string[];
-    notes?: string[];
-  }) {
-    const meetingId = `meeting_${Date.now()}`;
-
-    await this.ctx.entityManager.createEntities([{
-      name: meetingId,
-      entityType: 'meeting',
-      observations: [
-        `Title: ${meeting.title}`,
-        `Date: ${meeting.date}`,
-        `Attendees: ${meeting.attendees.join(', ')}`,
-        '---',
-        'Agenda:',
-        ...meeting.agenda.map(a => `- ${a}`),
-        ...(meeting.notes ? ['---', 'Notes:', ...meeting.notes] : [])
-      ],
-      tags: ['meeting'],
-      importance: 6
-    }]);
-
-    // Create attendee entities and relationships
-    for (const attendee of meeting.attendees) {
-      const attendeeId = `person_${attendee.toLowerCase().replace(/\s+/g, '_')}`;
-
-      const existing = await this.ctx.entityManager.getEntityByName(attendeeId);
-      if (!existing) {
-        await this.ctx.entityManager.createEntities([{
-          name: attendeeId,
-          entityType: 'person',
-          observations: [`Name: ${attendee}`],
-          tags: ['person'],
-          importance: 5
-        }]);
-      }
-
-      await this.ctx.relationManager.createRelations([{
-        from: attendeeId,
-        to: meetingId,
-        relationType: 'attended'
-      }]);
-    }
-
-    return meetingId;
-  }
-
-  // Add decision
-  async addDecision(meetingId: string, decision: {
-    description: string;
-    rationale?: string;
-    owner?: string;
-  }) {
-    const decisionId = `decision_${Date.now()}`;
-
-    await this.ctx.entityManager.createEntities([{
-      name: decisionId,
-      entityType: 'decision',
-      observations: [
-        decision.description,
-        decision.rationale ? `Rationale: ${decision.rationale}` : '',
-        decision.owner ? `Owner: ${decision.owner}` : ''
-      ].filter(Boolean),
-      tags: ['decision'],
-      importance: 7
-    }]);
-
-    await this.ctx.relationManager.createRelations([{
-      from: decisionId,
-      to: meetingId,
-      relationType: 'decided_in'
-    }]);
-
-    return decisionId;
-  }
-
-  // Add action item
-  async addActionItem(meetingId: string, action: {
-    description: string;
-    assignee: string;
-    dueDate?: string;
-    priority?: 'high' | 'medium' | 'low';
-  }) {
-    const actionId = `action_${Date.now()}`;
-
-    await this.ctx.entityManager.createEntities([{
-      name: actionId,
-      entityType: 'action_item',
-      observations: [
-        action.description,
-        `Assignee: ${action.assignee}`,
-        action.dueDate ? `Due: ${action.dueDate}` : '',
-        `Priority: ${action.priority || 'medium'}`,
-        'Status: Open'
-      ].filter(Boolean),
-      tags: ['action', 'open', action.priority || 'medium'],
-      importance: action.priority === 'high' ? 9 : action.priority === 'low' ? 4 : 6
-    }]);
-
-    await this.ctx.relationManager.createRelations([
-      { from: actionId, to: meetingId, relationType: 'created_in' }
-    ]);
-
-    // Link to assignee
-    const assigneeId = `person_${action.assignee.toLowerCase().replace(/\s+/g, '_')}`;
-    await this.ctx.relationManager.createRelations([{
-      from: actionId,
-      to: assigneeId,
-      relationType: 'assigned_to'
-    }]);
-
-    return actionId;
-  }
-
-  // Update action item status
-  async updateActionStatus(actionId: string, status: 'open' | 'in-progress' | 'completed' | 'blocked') {
-    const action = await this.ctx.entityManager.getEntityByName(actionId);
-    if (!action) throw new Error('Action not found');
-
-    // Update status observation
-    const observations = action.observations.filter(o => !o.startsWith('Status:'));
-    observations.push(`Status: ${status}`);
-
-    await this.ctx.entityManager.updateEntity(actionId, { observations });
-
-    // Update tags
-    await this.ctx.entityManager.removeTags(actionId, ['open', 'in-progress', 'completed', 'blocked']);
-    await this.ctx.entityManager.addTags(actionId, [status]);
-  }
-
-  // Get open actions for person
-  async getOpenActions(personName: string): Promise<Entity[]> {
-    const personId = `person_${personName.toLowerCase().replace(/\s+/g, '_')}`;
-    const { incoming } = await this.ctx.relationManager.getRelationsForEntity(personId);
-
-    const actions: Entity[] = [];
-    for (const rel of incoming.filter(r => r.relationType === 'assigned_to')) {
-      const action = await this.ctx.entityManager.getEntityByName(rel.from);
-      if (action && action.tags?.includes('open')) {
-        actions.push(action);
-      }
-    }
-
-    return actions;
-  }
-
-  // Get meeting history for person
-  async getMeetingHistory(personName: string): Promise<Entity[]> {
-    const personId = `person_${personName.toLowerCase().replace(/\s+/g, '_')}`;
-    const { outgoing } = await this.ctx.relationManager.getRelationsForEntity(personId);
-
-    const meetings: Entity[] = [];
-    for (const rel of outgoing.filter(r => r.relationType === 'attended')) {
-      const meeting = await this.ctx.entityManager.getEntityByName(rel.to);
-      if (meeting) meetings.push(meeting);
-    }
-
-    return meetings.sort((a, b) => {
-      const dateA = a.observations.find(o => o.startsWith('Date:'))?.replace('Date: ', '') || '';
-      const dateB = b.observations.find(o => o.startsWith('Date:'))?.replace('Date: ', '') || '';
-      return dateB.localeCompare(dateA);
-    });
-  }
-
-  // Search across meetings and decisions
-  async search(query: string): Promise<SearchResult[]> {
-    return this.ctx.searchManager.searchRanked(query, {
-      tags: ['meeting', 'decision', 'action'],
-      limit: 20
-    });
-  }
+async function ingestMeeting(ctx: ManagerContext, meetingId: string, transcript: string) {
+  // ingest() splits a conversation into chunks and writes entities and a manifest.
+  return ctx.ioManager.ingest(
+    {
+      messages: transcript.split('\n').map((line) => {
+        const [speaker, ...rest] = line.split(':');
+        return { role: 'user' as const, content: rest.join(':').trim(), metadata: { speaker: speaker?.trim() } };
+      }),
+      source: meetingId,
+    },
+    { entityType: 'meeting_note', tags: ['meeting', meetingId], chunkBy: 'exchange' },
+  );
 }
-
-// Usage
-const meetings = new MeetingTracker('./meetings.jsonl');
-
-const meetingId = await meetings.createMeeting({
-  title: 'Q1 Planning',
-  date: '2024-01-15',
-  attendees: ['Alice Chen', 'Bob Smith', 'Carol Davis'],
-  agenda: [
-    'Review Q4 results',
-    'Set Q1 OKRs',
-    'Assign project leads'
-  ],
-  notes: [
-    'Q4 exceeded targets by 15%',
-    'Focus on mobile app this quarter'
-  ]
-});
-
-await meetings.addDecision(meetingId, {
-  description: 'Prioritize mobile app development',
-  rationale: 'Mobile traffic up 40% YoY',
-  owner: 'Alice Chen'
-});
-
-await meetings.addActionItem(meetingId, {
-  description: 'Create mobile app RFC',
-  assignee: 'Bob Smith',
-  dueDate: '2024-01-22',
-  priority: 'high'
-});
-
-// Get open actions for Bob
-const bobActions = await meetings.getOpenActions('Bob Smith');
-console.log('Bob\'s open actions:', bobActions.map(a => a.observations[0]));
-
-// Search for mobile-related items
-const mobileItems = await meetings.search('mobile app');
-console.log('Mobile-related items:', mobileItems.map(r => r.entity.name));
 ```
 
+### Action items as events
+
+```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+
+async function recordActionItem(
+  ctx: ManagerContext,
+  meetingId: string,
+  owner: string,
+  task: string,
+  due: string,
+) {
+  await ctx.eventManager.recordEvent({
+    action: 'committed',
+    actor: owner,
+    target: task,
+    context: meetingId,
+    flowKey: meetingId,
+    occurredAt: due,
+    detail: `Due ${due}`,
+  });
+}
+
+async function whatDidOwnerCommit(ctx: ManagerContext, owner: string) {
+  // Events recorded with this person as the actor.
+  return ctx.eventManager.queryEvents({ actor: owner, action: 'committed' });
+}
+```
+
+**Notes.** `ingest` returns `{ entitiesCreated, observationsAdded, skippedDuplicates,
+ingestId, manifestEntity, chunkCount, ... }`. Pass `dryRun: true` to preview the
+counts first. The event API is covered in
+[RECIPES.md](./RECIPES.md#event-timeline-experimental).
+
 ---
 
-## Summary
+## 11. Multi-Agent Collaborative Knowledge Base
 
-These use cases demonstrate the flexibility of MemoryJS for building various knowledge management applications:
-
-| Use Case | Key Features Used |
-|----------|------------------|
-| Personal Knowledge Base | Hierarchy, Relations, Search |
-| AI Chatbot Memory | Entity CRUD, Hybrid Search, Relations |
-| RAG System | Semantic Search, Vector Store, Relations |
-| Research Notes | Hierarchy, Relations, Graph Traversal |
-| Documentation Hub | Hierarchy, Search, Export |
-| Contact CRM | Relations, Search, Tags |
-| Learning Tracker | Hierarchy, Relations, Analytics |
-| Recommendations | Tags, Relations, Search |
-| Codebase Graph | Hierarchy, Relations, Export |
-| Meeting Tracker | Relations, Search, Tags |
-
-Each implementation can be adapted and combined based on your specific requirements.
-
----
-
-**Document Version**: 2.0
-**Last Updated**: 2026-07-24
-
----
-
-## v1.7 → v2.9.0 — additional use cases
-
-### 11. Multi-Agent Collaborative Knowledge Base
-
-Multiple agents writing to the same graph; conflicts surfaced at synthesis time.
+Several agents write to one graph. Every write names the agent that made it, and
+updates use optimistic concurrency so a stale write fails instead of overwriting.
 
 ```typescript
 import {
   ManagerContext,
   CollaborationAuditEnforcer,
   AuditLog,
+  VersionConflictError,
 } from '@danielsimonjr/memoryjs';
 
-const ctx = new ManagerContext({ storagePath: './shared-kb.jsonl' });
-
-// Force every mutation to name the agent that made it
+const ctx = new ManagerContext('./shared-kb.jsonl');
 const enforcer = new CollaborationAuditEnforcer(
   ctx.entityManager,
-  new AuditLog('./audit.jsonl'),
-  { mode: 'strict' },
+  new AuditLog('./shared-kb-audit.jsonl'),
+  { mode: 'strict' }, // a missing agentId throws AttributionRequiredError
 );
 
-// Each agent writes via the enforcer
-await enforcer.createEntities(
-  [{ name: 'Alice', entityType: 'person', observations: ['engineer'] }],
-  'agent-research',
-);
-await enforcer.updateEntity('Alice',
-  { observations: [...existing, 'recently promoted to manager'] },
-  'agent-hr',
-  // Optional OCC: refuse stale writes
-  { expectedVersion: 1 },
-);
-
-// At synthesis time, conflicts between agents are surfaced
-const result = await ctx.agentMemory().collaborativeSynthesis.synthesize('Alice');
-if (result.conflicts.length > 0) {
-  // Pick winners by most-recent / highest-confidence / trusted-agent
-  const winners = ctx.agentMemory().collaborativeSynthesis.resolveConflicts(
-    result, { strategy: 'most_recent' },
+export async function addFact(name: string, fact: string, agentId: string) {
+  const existing = await ctx.entityManager.getEntity(name);
+  if (!existing) {
+    await enforcer.createEntities([{ name, entityType: 'person', observations: [fact] }], agentId);
+    return;
+  }
+  await enforcer.updateEntity(
+    name,
+    { observations: [...existing.observations, fact] },
+    agentId,
+    { expectedVersion: existing.version ?? 1 },
   );
-  for (const [name, winner] of winners) {
-    await enforcer.updateEntity(name, { ...winner }, 'agent-arbiter');
-  }
 }
-```
 
-**Key features:** η.5.5.a-d — `CollaborationAuditEnforcer` (strict
-attribution) + OCC (`expectedVersion`) + `CollaborativeSynthesis.resolveConflicts`.
-
-### 12. Time-Travel Knowledge Graph (Bitemporal)
-
-For domains where facts change over time and you need to query historical
-state — legal records, employment history, configuration history.
-
-```typescript
-const ctx = new ManagerContext({ storagePath: './history.jsonl' });
-
-// Set validity windows on entities
-await ctx.entityManager.createEntities([
-  {
-    name: 'Acme-Headquarters',
-    entityType: 'location',
-    observations: ['100 Main St, San Francisco'],
-  },
-]);
-await ctx.entityManager.updateEntity('Acme-Headquarters', {
-  validFrom: '2020-01-01T00:00:00Z',
-  validUntil: '2024-12-31T00:00:00Z',
-});
-
-// Per-observation validity windows
-await ctx.observationManager.invalidateObservation(
-  'Bob', 'employed at Acme', '2024-12-31T00:00:00Z',
-);
-
-// Time-travel queries
-const past = await ctx.entityManager.entityAsOf(
-  'Acme-Headquarters', '2022-06-15T00:00:00Z',
-);  // → entity (within window)
-
-const future = await ctx.entityManager.entityAsOf(
-  'Acme-Headquarters', '2025-06-15T00:00:00Z',
-);  // → null (outside window)
-
-const historicalFacts = await ctx.observationManager.observationsAsOf(
-  'Bob', '2024-06-15T00:00:00Z',
-);  // → ['employed at Acme', ...] (still valid then)
-
-// Full timeline
-const timeline = await ctx.entityManager.entityTimeline('Acme-Headquarters');
-```
-
-**Key features:** η.4.4 — `validFrom` / `validUntil` / `observationMeta[]`,
-`entityAsOf` / `entityTimeline` / `observationsAsOf`.
-
-### 13. Linked-Data Export to Triplestore
-
-Export the graph to W3C-standard formats for ingestion into Apache
-Jena, Blazegraph, GraphDB, etc.
-
-```typescript
-const graph = await ctx.storage.loadGraph();
-
-// Three new export formats — each is a complete RDF document
-await fs.writeFile('export.ttl',
-  ctx.ioManager.exportGraph(graph, 'turtle'));
-await fs.writeFile('export.rdf',
-  ctx.ioManager.exportGraph(graph, 'rdf-xml'));
-await fs.writeFile('export.jsonld',
-  ctx.ioManager.exportGraph(graph, 'json-ld'));
-
-// IRIs use urn:memoryjs:entity:<percent-encoded-name>
-// Relations with NCName-valid types emit as direct property triples;
-// arbitrary relation types (with spaces, etc.) use rdf:Statement
-//   reification + a synthetic mjsRel:link assertion
-```
-
-**Key features:** η.5.4.1+2 — RDF/Turtle / RDF-XML / JSON-LD export.
-
-### 14. Causal Reasoning Engine
-
-Build domain knowledge as a causal subgraph; ask forward/backward/counterfactual questions.
-
-```typescript
-// Build the graph with causal relations
-await ctx.entityManager.createEntities([
-  { name: 'high-disk-io', entityType: 'metric', observations: [] },
-  { name: 'page-faults', entityType: 'symptom', observations: [] },
-  { name: 'app-slowness', entityType: 'symptom', observations: [] },
-]);
-await ctx.relationManager.createRelations([
-  {
-    from: 'high-disk-io', to: 'page-faults', relationType: 'causes',
-    metadata: { causalStrength: 0.85 },
-  },
-  {
-    from: 'page-faults', to: 'app-slowness', relationType: 'causes',
-    metadata: { causalStrength: 0.7 },
-  },
-]);
-
-// "What causes app slowness?"
-const causes = await ctx.causalReasoner.findCauses(
-  'app-slowness', ['high-disk-io', 'memory-pressure', 'network-congestion'],
-);
-// → causes[0].path: ['high-disk-io', 'page-faults', 'app-slowness']
-// → causes[0].score: 0.85 × 0.7 = 0.595
-
-// "What if we eliminate the high-disk-io → page-faults link?"
-const counterfactual = await ctx.causalReasoner.counterfactual({
-  seed: 'high-disk-io',
-  removeFrom: 'high-disk-io',
-  removeTo: 'page-faults',
-  predict: 'app-slowness',
-});
-// → [] if no surviving path; or alternative chains if they exist
-```
-
-**Key features:** 3B.6 — `CausalReasoner.findCauses` /
-`findEffects` / `counterfactual` / `detectCycles`; `Relation.metadata.causalStrength`.
-
-### 15. Procedural Memory for Agentic Workflows
-
-Agents that learn and replay multi-step procedures with EWMA-tracked
-success rate.
-
-```typescript
-const ctx = new ManagerContext({ storagePath: './procedures.jsonl' });
-
-// Learn a procedure
-const onboarding = await ctx.procedureManager.addProcedure({
-  name: 'employee-onboarding',
-  description: 'Send welcome packet, create accounts, schedule intro meeting',
-  steps: [
-    { order: 1, action: 'send-email', parameters: { template: 'welcome' } },
-    { order: 2, action: 'create-account', parameters: { system: 'sso' } },
-    { order: 3, action: 'create-account', parameters: { system: 'jira' } },
-    { order: 4, action: 'schedule-meeting', parameters: { type: 'intro' } },
-  ],
-  triggers: ['new hire', 'employee onboarding', 'onboard'],
-});
-
-// Find the right procedure for a context
-const matches = await ctx.procedureManager.matchProcedure(
-  'we need to onboard a new engineer starting Monday',
-  [onboarding],
-);
-
-// Execute step-by-step with fallback handling
-const seq = await ctx.procedureManager.openSequencer(onboarding.id);
-while (seq && !seq.isComplete()) {
-  const step = seq.current();
-  if (!step) break;
+// Two agents read version 1; the second writer gets a conflict and re-reads.
+export async function safeAddFact(name: string, fact: string, agentId: string) {
   try {
-    await yourActionExecutor(step);
-    seq.next();
-  } catch (e) {
-    if (step.fallback) seq.branchToFallback();
-    else throw e;
+    await addFact(name, fact, agentId);
+    return 'written';
+  } catch (err) {
+    if (err instanceof VersionConflictError) return 'retry';
+    throw err;
   }
 }
-
-// Refine — successRate converges toward observed reality via EWMA
-await ctx.procedureManager.refineProcedure(onboarding.id, { succeeded: true });
 ```
 
-**Key features:** 3B.4 — `ProcedureManager` + `StepSequencer` + EWMA refinement.
+**Notes.** `VersionConflictError` is exported from the package root; match it with
+`instanceof` as shown (see [RECIPES.md](./RECIPES.md#catch-the-typed-errors)). `AuditLog`
+records every attributed operation in the file you pass. Example:
+`examples/07-governance-rbac.ts` shows attribution and the enforcer in context.
 
-### 16. Active Retrieval (Adaptive Search)
+---
 
-When a single search call returns insufficient coverage, run multiple
-rounds with token-overlap query expansion until a coverage threshold is met.
+## 12. Time-Travel Knowledge Graph (Bitemporal)
+
+For facts that change over time: legal records, employment, configuration. Entities
+and observations can be ended and queried as of a date; relations too (see
+[use case 6](#6-contact-relationship-manager)).
 
 ```typescript
-const result = await ctx.activeRetrieval.adaptiveRetrieve({
-  query: 'memory leak in worker pool',
-  budgetTokens: 2000,  // optional cost cap
-});
+import { ManagerContext } from '@danielsimonjr/memoryjs';
 
-console.log(`Best coverage: ${result.bestCoverage}`);
-console.log(`Rounds run: ${result.rounds.length}`);
-for (const round of result.rounds) {
-  console.log(`  query: "${round.query}" (coverage: ${round.coverage})`);
-  console.log(`  expansion tokens: ${round.expansionTokens}`);
-}
+async function history(ctx: ManagerContext) {
+  await ctx.entityManager.createEntities([
+    { name: 'Acme-HQ', entityType: 'location', observations: ['100 Main St, San Francisco'] },
+  ]);
 
-// Use the best results
-for (const r of result.bestResults) {
-  console.log(r.entity.name, r.score);
+  // Replace the address: add the new fact, end the old one at the change date.
+  await ctx.observationManager.addObservations([
+    { entityName: 'Acme-HQ', contents: ['500 Market St, San Francisco'] },
+  ]);
+  await ctx.observationManager.invalidateObservation(
+    'Acme-HQ',
+    '100 Main St, San Francisco',
+    '2024-01-01T00:00:00Z',
+  );
+
+  // As-of queries: observations valid at the given instant.
+  const in2022 = await ctx.observationManager.observationsAsOf('Acme-HQ', '2022-06-15T00:00:00Z');
+  const in2025 = await ctx.observationManager.observationsAsOf('Acme-HQ', '2025-06-15T00:00:00Z');
+
+  // Entity-level: end the entity and read its timeline.
+  const timeline = await ctx.entityManager.entityTimeline('Acme-HQ');
+  return { in2022, in2025, timeline };
 }
 ```
 
-**Key features:** 3B.5 — `ActiveRetrievalController.adaptiveRetrieve`,
-`QueryRewriter` (pure symbolic, no LLM).
+**Notes.** `invalidateEntity(name, ended?)` ends an entity; `entityAsOf` returns it as
+it stood on a date, or `null` after it ended. The check that `asOf` is an ISO date
+applies to the relation API. Example: `examples/08-versioning-causal.ts`.
 
-### 17. Compliant Knowledge Graph (PII-Aware Export)
+---
 
-For GDPR / HIPAA-adjacent scenarios where exports must be PII-scrubbed.
+## 13. Linked-Data Export to a Triplestore
+
+Export the graph to W3C formats for Apache Jena, Blazegraph, GraphDB and similar.
 
 ```typescript
-import { PiiRedactor } from '@danielsimonjr/memoryjs';
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+import { writeFileSync } from 'node:fs';
 
-const redactor = new PiiRedactor({
-  // Bundled patterns (email/SSN/CC/phone/IPv4) plus your own
-  additionalPatterns: [
-    { name: 'license', regex: /\bDL\d{8}\b/g, replacement: '<DL>' },
-  ],
-});
+async function exportLinkedData(ctx: ManagerContext) {
+  const graph = await ctx.storage.loadGraph();
+  writeFileSync('export.ttl', ctx.ioManager.exportGraph(graph, 'turtle'), 'utf8');
+  writeFileSync('export.rdf', ctx.ioManager.exportGraph(graph, 'rdf-xml'), 'utf8');
+  writeFileSync('export.jsonld', ctx.ioManager.exportGraph(graph, 'json-ld'), 'utf8');
+}
+```
 
-const graph = await ctx.storage.loadGraph();
-const cleanGraph = redactor.redactGraph(graph);
+**Notes.** IRIs use `urn:memoryjs:entity:<percent-encoded-name>`. Relation types
+that are valid NCNames become direct property triples; other relation types are
+reified with `rdf:Statement`. Example: `examples/04-import-export.ts`.
 
-// Audit trail showing what was scrubbed (without surfacing values)
-for (const obs of someObservations) {
-  const { text, stats } = redactor.redactWithStats(obs);
-  await ctx.governanceManager.logAudit({
-    operation: 'export-redact',
-    entityName: 'system',
-    after: { redactedBytes: stats.totalRedactedBytes,
-             counts: Object.fromEntries(stats.countsByPattern) },
-    status: 'committed',
+---
+
+## 14. Causal Reasoning Engine
+
+Model cause and effect as relations with a strength, then ask "what causes this?"
+and "what if this link were gone?".
+
+```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+
+async function buildCausalModel(ctx: ManagerContext) {
+  await ctx.entityManager.createEntities([
+    { name: 'high-disk-io', entityType: 'metric', observations: [] },
+    { name: 'page-faults', entityType: 'symptom', observations: [] },
+    { name: 'app-slowness', entityType: 'symptom', observations: [] },
+  ]);
+  await ctx.relationManager.createRelations([
+    { from: 'high-disk-io', to: 'page-faults', relationType: 'causes', metadata: { causalStrength: 0.85 } },
+    { from: 'page-faults', to: 'app-slowness', relationType: 'causes', metadata: { causalStrength: 0.7 } },
+  ]);
+}
+
+async function explain(ctx: ManagerContext) {
+  // Which candidates lead to the effect? Each chain has a path and a score.
+  const causes = await ctx.causalReasoner.findCauses(
+    'app-slowness',
+    ['high-disk-io', 'memory-pressure', 'network-congestion'],
+  );
+  // Counterfactual: drop one link and see which chains survive.
+  const without = await ctx.causalReasoner.counterfactual({
+    seed: 'high-disk-io',
+    removeFrom: 'high-disk-io',
+    removeTo: 'page-faults',
+    predict: 'app-slowness',
   });
+  return {
+    best: causes[0]?.path,
+    bestScore: causes[0]?.score,
+    survivingAfterRemoval: without.length,
+  };
 }
-
-// Export the clean graph
-const json = ctx.ioManager.exportGraph(cleanGraph, 'json');
 ```
 
-**Key features:** η.6.3 — `PiiRedactor` (export-only; never mutates storage).
+**Notes.** `findEffects` runs the other direction. `detectCycles(seed)` finds feedback
+loops, which matter for causal claims. Example: `examples/08-versioning-causal.ts`.
 
-### 18. Graph-Connectivity-Aware Retrieval
+---
 
-Bias search results toward well-connected ("hub") entities and pull in
-their close neighbors, without abandoning text relevance — useful when
-the most-cited or most-linked-to entities are usually the ones worth
-surfacing first (e.g. a "canonical docs page" vs. a passing mention).
+## 15. Procedural Memory for Agent Workflows
+
+Agents store multi-step procedures, match them to a request, step through them, and
+refine each procedure's success rate from outcomes.
 
 ```typescript
-const ctx = new ManagerContext({ storagePath: './kb.jsonl' });
+import { ManagerContext } from '@danielsimonjr/memoryjs';
 
-// Off by default; enable with MEMORY_HYBRID_GRAPH_WEIGHT, or per-call below.
-const graph = await ctx.storage.loadGraph();
-const results = await ctx.hybridSearchManager.search(graph, 'authentication flow', {
-  semanticWeight: 0.4,
-  lexicalWeight: 0.4,
-  symbolicWeight: 0.2,
-  graphWeight: 0.15,                       // normalized-PageRank channel
-  expandNeighbors: { hops: 1, topK: 10 },  // pull in top results' neighbors
-});
+async function onboardingFlow(ctx: ManagerContext) {
+  const onboarding = await ctx.procedureManager.addProcedure({
+    name: 'employee-onboarding',
+    description: 'Send welcome packet, create accounts, schedule intro meeting',
+    steps: [
+      { order: 1, action: 'send-email', parameters: { template: 'welcome' } },
+      { order: 2, action: 'create-account', parameters: { system: 'sso' } },
+      { order: 3, action: 'create-account', parameters: { system: 'jira' } },
+      { order: 4, action: 'schedule-meeting', parameters: { type: 'intro' } },
+    ],
+    triggers: ['new hire', 'onboard'],
+  });
 
-for (const r of results) {
-  console.log(r.entity.name, r.scores.combined.toFixed(3), r.matchedLayers);
+  // Which stored procedures fit this request?
+  const matches = await ctx.procedureManager.matchProcedure(
+    'we need to onboard a new engineer starting Monday',
+    [onboarding],
+  );
+
+  // Walk the steps, falling back when a step fails.
+  const seq = await ctx.procedureManager.openSequencer(onboarding.id);
+  let failed = false;
+  while (seq && !seq.isComplete()) {
+    const step = seq.current();
+    if (!step) break;
+    try {
+      await runStep(step.action, step.parameters); // your executor
+      seq.next();
+    } catch {
+      if (step.fallback) seq.branchToFallback();
+      else { failed = true; break; }
+    }
+  }
+
+  // Feed the outcome back; the success rate moves by an exponentially weighted average.
+  await ctx.procedureManager.refineProcedure(onboarding.id, { succeeded: !failed });
+  return matches;
 }
 
-// GraphRankPrior invalidates itself on entity/relation/rename events and
-// on graph:saved — no manual cache-busting needed as the graph changes.
+async function runStep(action: string, parameters: Record<string, string>): Promise<void> {
+  void action;
+  void parameters;
+}
 ```
 
-**Key features:** knowledge-graph-as-core convergence — `GraphRankPrior`
-(cached, event-invalidated PageRank), `HybridSearchManager`'s `graph`
-channel + `expandNeighbors`, `RankedSearch.setGraphPrior` (a simpler
-single-channel alternative via `MEMORY_RANKED_GRAPH_BOOST`).
+**Notes.** `getNextStep(id, order)` reads a step without advancing a sequencer.
+Example: `examples/14-procedural-graph.ts` builds the procedural graph that powers
+the same flow.
 
-### 19. Governed & Audited Agent Deployment (Unreleased)
+---
 
-Before this release, `MEMORY_GOVERNANCE_ENABLED` was a documented no-op —
-no mutation path actually consulted a policy or produced a tamper-evident
-audit trail. This use case is now real: a multi-tenant agent deployment
-where every write is policy-checked, every allowed write is hash-chained
-into an auditable log, and a compliance reviewer can verify the chain and
-query provenance without touching application code.
+## 16. Adaptive Retrieval
+
+When one search leaves gaps, run more rounds with query expansion until coverage is
+good enough or the token budget is spent.
 
 ```typescript
-import { ManagerContext, GovernanceError } from '@danielsimonjr/memoryjs';
-import { RoleAssignmentStore, RbacMiddleware } from '@danielsimonjr/memoryjs/agent';
+import { ManagerContext } from '@danielsimonjr/memoryjs';
 
-process.env.MEMORY_GOVERNANCE_ENABLED = 'true'; // strict literal 'true'
-const ctx = new ManagerContext('./tenant-acme.jsonl');
+async function retrieveUntilCovered(ctx: ManagerContext, query: string, task?: string) {
+  const decision = ctx.activeRetrieval.shouldRetrieve({ query, task });
+  if (!decision.retrieve) return { skipped: true as const };
 
-// Route policy decisions through RBAC instead of hand-rolled checks.
-const roles = new RoleAssignmentStore({ persistencePath: './tenant-acme-roles.jsonl' });
-await roles.hydrate();
-const rbac = new RbacMiddleware(roles); // 'reader' default for unregistered agents
-await roles.assign({ agentId: 'agent-alice', role: 'writer' });
+  const result = await ctx.activeRetrieval.adaptiveRetrieve({
+    query,
+    task,
+    budgetTokens: 2000,
+  });
 
-ctx.governanceManager.setPolicy({
-  canCreate: () => true,
-  canUpdate: (entity) => rbac.checkPermission('agent-alice', 'write', 'entity', entity.name),
-  canDelete: (entity) =>
-    rbac.checkPermission('agent-alice', 'delete', 'entity', entity.name) &&
-    (entity.importance ?? 0) < 8, // even admins can't delete high-importance memories
-});
+  return {
+    skipped: false as const,
+    bestCoverage: result.bestCoverage,
+    rounds: result.rounds.map((r) => ({ query: r.query, coverage: r.coverage })),
+    results: result.bestResults.map((r) => ({ name: r.entity.name, score: r.score })),
+  };
+}
+```
 
-// Every EntityManager mutation is now policy-checked + audited.
-await ctx.entityManager.createEntities([
-  { name: 'customer-ticket-9821', entityType: 'ticket', observations: ['Refund requested'] },
-]);
-try {
-  await ctx.entityManager.deleteEntities(['customer-ticket-9821']);
-} catch (e) {
-  if (e instanceof GovernanceError) {
-    // policy denied it — nothing was written, nothing audited as committed
+**Notes.** The expansion is symbolic (token overlap), with no LLM call. Use
+`shouldRetrieve` to skip the loop for queries that already match well.
+
+---
+
+## 17. PII-Aware Export
+
+For exports that leave your trust boundary: scrub personal data from the output
+without changing what is stored.
+
+```typescript
+import { ManagerContext, PiiRedactor } from '@danielsimonjr/memoryjs';
+
+async function cleanExport(ctx: ManagerContext) {
+  const redactor = new PiiRedactor({
+    additionalPatterns: [{ name: 'license', regex: /\bDL\d{8}\b/g, replacement: '<DL>' }],
+  });
+
+  const graph = await ctx.storage.loadGraph();
+  const clean = redactor.redactGraph(graph); // returns a copy; storage is unchanged
+
+  // Counts per pattern, without the values.
+  const sample = redactor.redactWithStats('Contact alice@example.com about DL12345678');
+  return {
+    json: ctx.ioManager.exportGraph(clean, 'json'),
+    redactedBytes: sample.stats.totalRedactedBytes,
+  };
+}
+```
+
+**Notes.** The bundled patterns cover common email, SSN, card, phone and IPv4 shapes.
+`exportGraph(graph, format, { redactPii: true })` applies the same redaction for you.
+Example: `examples/07-governance-rbac.ts` shows the redactor alongside governance.
+
+---
+
+## 18. Graph-Connectivity-Aware Retrieval
+
+Bias results toward well-connected entities (the canonical page, not a passing
+mention) and pull in their close neighbours.
+
+```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+
+async function authSearch(ctx: ManagerContext) {
+  const graph = await ctx.storage.loadGraph();
+  const results = await ctx.hybridSearchManager.search(graph, 'authentication flow', {
+    semanticWeight: 0.4,
+    lexicalWeight: 0.4,
+    symbolicWeight: 0.2,
+    graphWeight: 0.15,                      // normalised-PageRank channel
+    expandNeighbors: { hops: 1, topK: 10 }, // add neighbours of the top results
+  });
+  return results.map((r) => ({ name: r.entity.name, combined: r.scores.combined }));
+}
+```
+
+**Notes.** Both knobs are off by default. Set `MEMORY_HYBRID_GRAPH_WEIGHT` to make
+the channel the default. The prior invalidates itself when the graph changes, so you do not clear it by hand. Simpler option:
+`ctx.rankedSearch.setGraphPrior(ctx.graphRankPrior, boost)` for ranked search only.
+
+---
+
+## 19. Governed and Audited Agent Deployment
+
+A multi-tenant deployment where every write is policy-checked, every allowed write is
+audited, and a compliance reviewer can verify the trail from the command line.
+
+```typescript
+import { ManagerContext, GovernanceError, RoleAssignmentStore, RbacMiddleware } from '@danielsimonjr/memoryjs';
+
+// Governance is wired into EntityManager only when this is the strict literal 'true'.
+process.env.MEMORY_GOVERNANCE_ENABLED = 'true';
+
+export async function tenantContext() {
+  const ctx = new ManagerContext('./tenant-acme.jsonl');
+
+  const roles = new RoleAssignmentStore({ persistencePath: './tenant-acme-roles.jsonl' });
+  await roles.hydrate();
+  await roles.assign({ agentId: 'agent-alice', role: 'writer' });
+  const rbac = new RbacMiddleware(roles);
+
+  ctx.governanceManager.setPolicy({
+    canCreate: () => rbac.checkPermission('agent-alice', 'write', 'entity'),
+    canUpdate: (entity) => rbac.checkPermission('agent-alice', 'write', 'entity', entity.name),
+    canDelete: (entity) =>
+      rbac.checkPermission('agent-alice', 'delete', 'entity', entity.name) && (entity.importance ?? 0) < 8,
+  });
+
+  return ctx;
+}
+
+export async function demo(ctx: ManagerContext) {
+  await ctx.entityManager.createEntities([
+    { name: 'customer-ticket-9821', entityType: 'ticket', observations: ['Refund requested'] },
+  ]);
+  try {
+    await ctx.entityManager.deleteEntities(['customer-ticket-9821']);
+  } catch (err) {
+    if (err instanceof GovernanceError) {
+      // Denied: nothing was written and no committed audit entry was made.
+    } else {
+      throw err;
+    }
   }
 }
 ```
+
+A compliance reviewer checks the trail without application code:
 
 ```bash
-# A compliance reviewer verifies the trail from the CLI, without any
-# application code — the audit log is hash-chained (seq + SHA-256 prevHash).
-memory audit verify --file ./tenant-acme-audit.jsonl        # exit 1 if tampered
-memory audit log --entity customer-ticket-9821 --json       # full provenance
-memory audit stats                                          # entry counts by operation
+memory audit verify --file ./tenant-acme-audit.jsonl   # non-zero exit if the chain is broken
+memory audit log --entity customer-ticket-9821 --json  # full provenance for one entity
+memory audit stats                                     # entry counts by operation
 ```
 
-**Key features:** Sec1 (governance enforcement chokepoint — `GovernanceError`
-on denial, fire-and-forget committed audit), Sec5 (hash-chained
-`AuditLog.verifyChain()`), Sec2 (RBAC default-role key-presence fix + 0600
-sidecar), `memory audit` CLI (R4a). Optional: `redactAuditSnapshots` on
-`GovernanceManager` to PII-scrub audit snapshots (Sec6), and
-`MEMORY_AUDIT_LOG_FILE` to route the trail to write-once/shipped storage
-for a stronger tamper-evidence guarantee than a local sidecar file.
+**Notes.** `GovernanceError` marks a denied write; the policy runs before the
+storage change. Audit entries form a hash chain (`seq` plus `prevHash`), so an edited
+or removed line breaks verification. Point `MEMORY_AUDIT_LOG_FILE` at write-once
+storage for a stronger guarantee than a local sidecar. Example:
+`examples/07-governance-rbac.ts`.
 
-### Summary table — new use cases (v1.7 → v2.9.0)
+---
 
-| Use Case | Key Features Used |
-|----------|------------------|
-| Multi-Agent Collaborative KB | η.5.5.a-d (conflict view, OCC, audit, visibility) |
-| Time-Travel Knowledge Graph | η.4.4 (bitemporal versioning) |
-| Linked-Data Export to Triplestore | η.5.4 (RDF/Turtle/JSON-LD) |
-| Causal Reasoning Engine | 3B.6 (CausalReasoner) |
-| Procedural Memory | 3B.4 (ProcedureManager + Sequencer) |
-| Active Retrieval | 3B.5 (ActiveRetrievalController) |
-| Compliant PII-Aware Export | η.6.3 (PiiRedactor) |
-| RBAC-Gated Multi-Tenant KB | η.6.1 (RbacMiddleware + RoleAssignmentStore) |
-| Graph-Connectivity-Aware Retrieval | GraphRankPrior + HybridSearchManager graph channel |
-| Governed & Audited Agent Deployment | Sec1 (governance enforcement) + Sec5 (hash-chained audit) + `memory audit` CLI |
+## 20. Self-Improving Coding Agent
+
+*`@experimental`.* An agent that learns from its own failures. Each task has a rubric.
+When the agent fails a task, the learning loop diagnoses why, writes a skill that
+addresses it, republishes the skill as `SKILL.md`, and re-checks the tasks. Skills
+learned in one run are loaded into the solver's context in the next.
+
+```typescript
+import { ManagerContext, DeterministicJudge, type LearningSolver, type TaskRecord } from '@danielsimonjr/memoryjs';
+
+const tasks: TaskRecord[] = [
+  {
+    id: 'pagination-default-size',
+    input: 'What is the default page size for list endpoints?',
+    category: 'api',
+    rubric: [{ id: 'size', text: 'states 50', kind: 'fact', expected: '50' }],
+  },
+  {
+    id: 'retry-limit',
+    input: 'How many times does the client retry a 503 response?',
+    category: 'api',
+    rubric: [{ id: 'retries', text: 'states 3', kind: 'number', expected: 3 }],
+  },
+];
+
+// The solver is your model call. It receives the knowledge loaded for each task.
+const solver: LearningSolver = {
+  async solve(task, knowledge) {
+    // Replace with: model.complete({ system: knowledge.markdown, user: task.input })
+    const expected = String(task.rubric[0]?.expected ?? '');
+    const answer = knowledge.markdown.includes(expected) ? expected : 'unknown';
+    return { answer, traceAddrs: [] };
+  },
+};
+
+export async function improve(ctx: ManagerContext, publishDir: string) {
+  const loop = ctx.learningLoop({
+    solver,
+    judge: new DeterministicJudge(),
+    publishDir,
+    sessionId: 'coding-agent-2026-11',
+  });
+
+  const result = await loop.learn({
+    taskIds: tasks.map((t) => t.id),
+    tasks,
+    budget: { maxRounds: 3 },
+  });
+
+  return {
+    traceId: result.traceId,
+    stoppedBecause: result.stoppedBecause,
+    passedBefore: result.before.allPass,
+    passedAfter: result.after.allPass,
+  };
+}
+
+// Next session: load what was learned for the current task.
+export async function nextSession(ctx: ManagerContext, task: string) {
+  const knowledge = await ctx.knowledgeRepository.loadForContext({ role: 'solver', taskHint: task });
+  return knowledge.markdown;
+}
+```
+
+**How it works.**
+
+- The **judge** scores each answer against the rubric. `DeterministicJudge` handles
+  `fact`, `number` and `set-*` criteria; use `LLMRubricJudge` for `free` criteria.
+- **Diagnosis** classifies each failure (for example missing knowledge) and writes it
+  to the failure store. **Editing** turns diagnoses into one revision, which is
+  validated on a scratch copy before it is applied. A revision that fixes nothing or
+  breaks a passing task is rejected.
+- Accepted skills are published under `publishDir` as `SKILL.md`, which other tools
+  and reviewers can read.
+- `result.before` and `result.after` are the metrics before and after the run.
+  `result.report` carries the accounting for the run when it is present.
+
+**Notes.** Small task sets run the leaf learner. Above
+`MEMORY_LEARNING_LEAF_THRESHOLD` (default 20) the recursive learner splits the tasks by
+category, learns each part, and merges the revisions. To see why a solver failed,
+pass an `interactionLog` (use case 21). Example:
+`examples/09-recursa-skills-knowledge.ts` and `examples/10-recursa-learning.ts`.
+
+---
+
+## 21. Harness Integration: Interaction Log and Tool Adapter
+
+*`@experimental`.* An agent harness that records every model call and tool call to
+an append-only log, and exposes the Recursa operations to the model as tools.
+
+### Recording the session
+
+```typescript
+import { ManagerContext, InteractionLog } from '@danielsimonjr/memoryjs';
+
+export async function openSession(ctx: ManagerContext, sessionId: string) {
+  // Sidecar file: <basename>-interactions.jsonl next to the path you pass.
+  const log = new InteractionLog('./agent.jsonl');
+
+  // Tool calls made through the observer are appended automatically.
+  ctx.toolCallObserver.setInteractionLog(log, sessionId);
+
+  // Model turns and notes are written explicitly.
+  const addr = await log.append({
+    sessionId,
+    kind: 'model',
+    content: 'Planned: read the config, then run the migration.',
+  });
+  return { log, firstAddr: addr };
+}
+```
+
+Each record gets an address (`e<n>`). Large content spills to a blob file, so the
+log stays small. `log.select(addr, { regex })` returns a bounded excerpt around
+matches, and `log.search(query)` ranks records by similarity.
+
+### Exposing the Recursa tools
+
+```typescript
+import { ManagerContext, createRecursaTools, InteractionLog } from '@danielsimonjr/memoryjs';
+
+export function harnessTools(ctx: ManagerContext, log: InteractionLog) {
+  const tools = createRecursaTools(ctx, {
+    publishDir: './published-skills',
+    interactionLog: log,
+    maxBytes: 64 * 1024, // results are bounded; long outputs are truncated
+  });
+
+  // Descriptors for the model's tool list, and a single entry point.
+  return {
+    descriptors: tools.list(),
+    run: (name: string, args: unknown) => tools.call(name, args),
+  };
+}
+```
+
+`call` never throws. It returns `{ ok: true, result }` or
+`{ ok: false, error: { code, message } }`. Codes include `invalid_args`,
+`not_found`, `not_configured` (a dependency such as `publishDir` is missing) and
+`aborted`. See [RECIPES.md](./RECIPES.md#wire-the-recursa-tools-into-an-mcp-server-shape-only)
+for the MCP registration shape. Example: `examples/12-harness-tools.ts`.
+
+**Notes.** The log is single-process: one writer per file. Address the solver's
+trace from the learning loop by passing the same `interactionLog` to
+`ctx.learningLoop` (use case 20), so diagnosis reads the real steps.
+
+---
+
+## 22. Evidence-Based QA over a Corpus
+
+*`@experimental`.* Answer questions over a document folder with citations. The
+bootstrapper maps the corpus, writes exploration notes, and creates practice
+questions. Reconstructive memory answers questions by rebuilding the relevant
+evidence from the conversation graph.
+
+### Mapping the corpus
+
+```typescript
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { ManagerContext, type CorpusSource } from '@danielsimonjr/memoryjs';
+
+function corpusFrom(dir: string): CorpusSource[] {
+  return readdirSync(dir)
+    .filter((f) => f.endsWith('.md'))
+    .map((f) => ({ ref: f, title: f, text: readFileSync(join(dir, f), 'utf8') }));
+}
+
+export async function mapCorpus(ctx: ManagerContext, dir: string) {
+  const boot = await ctx.bootstrapper({ learning: { publishDir: './published-skills' } }).run({
+    sources: corpusFrom(dir),
+    corpusLabel: 'handbook',
+    budget: { maxRounds: 1 },
+  });
+  return { practiceQuestions: boot.taskIds.length, notesSkillId: boot.notesSkillId };
+}
+```
+
+### Answering with citations
+
+```typescript
+import { ManagerContext, type DialogueTurn } from '@danielsimonjr/memoryjs';
+
+export async function ask(ctx: ManagerContext, question: string, turns: DialogueTurn[]) {
+  const memory = ctx.reconstructiveMemory();
+  await memory.ingest(turns); // turns from the conversation or from the corpus sections
+
+  const result = await memory.reconstruct(question, { maxSteps: 4, evidenceTarget: 3 });
+  return {
+    answer: result.answer ?? 'No answer found in the corpus.',
+    confidence: result.confidence ?? 0,
+    // Citations: the evidence node ids and the text that supports the answer.
+    citations: result.evidence.map((e) => ({ id: e.id, layer: e.layer, text: e.text })),
+    stoppedEarly: result.stoppedEarly,
+  };
+}
+```
+
+**How it works.**
+
+- The bootstrapper's **notes** give the solver a map of the corpus; its **practice
+  questions** are tasks with rubrics, so the same learning loop from use case 20 can
+  check answer quality over time.
+- **Reconstruction** links episodes, facts and topics in a cue-tag-content graph and
+  walks it step by step, collecting evidence until `evidenceTarget` is reached or
+  `maxSteps` runs out. An empty answer means the evidence did not reach the question;
+  treat it as "not in the corpus", not as a failure to retrieve.
+- Without an `llmProvider`, extraction and answering use deterministic heuristics.
+  Add one in the config to use the paper's prompts.
+
+**Notes.** Both stages are `@experimental`, so pin the version when you depend on the
+exact answer text. Example: `examples/11-recursa-bootstrap.ts` and
+`examples/13-reconstructive-memory.ts`.
+
+---
+
+## Summary table
+
+| # | Use case | Main surface | Stability |
+|---|----------|--------------|-----------|
+| 1 | Personal knowledge base | entities, relations, mermaid export | stable |
+| 2 | Chatbot memory | entities, observations, ranked search | stable |
+| 3 | RAG | chunk entities, `semanticSearch` or ranked search | stable (embeddings optional) |
+| 4 | Research notes | PageRank, `findDuplicates` | stable |
+| 5 | Documentation hub | hierarchy, freshness, markdown export | stable |
+| 6 | Contact manager | relations, `invalidateRelation`, `queryAsOf` | stable |
+| 7 | Learning tracker | importance, prerequisite relations | stable |
+| 8 | Recommendations | ranked search with graph prior | stable |
+| 9 | Codebase graph | JSON import, shortest path, centrality | stable |
+| 10 | Meeting notes | `ingest`, `eventManager` | stable |
+| 11 | Multi-agent KB | `CollaborationAuditEnforcer`, OCC | stable |
+| 12 | Bitemporal history | `invalidateObservation`, `entityAsOf` | stable |
+| 13 | Linked-data export | turtle, rdf-xml, json-ld | stable |
+| 14 | Causal reasoning | `causalReasoner` | stable |
+| 15 | Procedural memory | `procedureManager`, `StepSequencer` | stable |
+| 16 | Adaptive retrieval | `activeRetrieval` | stable |
+| 17 | PII-aware export | `PiiRedactor`, `redactPii` | stable |
+| 18 | Graph-aware retrieval | hybrid `graphWeight`, `expandNeighbors` | opt-in |
+| 19 | Governed deployment | governance policy, RBAC, `memory audit` | stable |
+| 20 | Self-improving agent | `learningLoop`, `skillPublisher` | `@experimental` |
+| 21 | Harness integration | `InteractionLog`, `createRecursaTools` | `@experimental` |
+| 22 | Evidence-based QA | `bootstrapper`, `reconstructiveMemory` | `@experimental` |

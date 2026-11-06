@@ -65,6 +65,7 @@ describe('ProspectiveMemoryManager conditional triggers (DES-13)', () => {
         String(c[0]).includes('scheduleConditional'),
       );
       expect(conditionalWarnings).toHaveLength(1);
+      expect(String(conditionalWarnings[0]![0])).toContain('prospectivePredicateEvaluator');
     });
 
     it('never fires a conditional intention on tick', async () => {

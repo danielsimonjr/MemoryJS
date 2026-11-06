@@ -1,7 +1,9 @@
 # AI Agent Integration Guide
 
-**Version**: 2.9.0
-**Last Updated**: 2026-07-24
+> **Code samples.** Samples assume `const ctx = new ManagerContext('./memory.jsonl')` and the placeholders `graph: KnowledgeGraph` (from `await ctx.storage.loadGraph()`), `entities: Entity[]` and `storage: IGraphStorage`. Every other name in a sample is imported or declared in it.
+
+**Version**: 4.5.0 (Unreleased changes noted inline)
+**Last Updated**: 2026-11-06
 
 > **Updated agent-memory surface (v1.7+):**
 > - **Role profiles** — built-in presets (`researcher` / `planner` /
@@ -268,7 +270,7 @@ await ctx.entityManager.createEntities([{
 
 ### Observation Templates
 
-```typescript
+```text
 // Fact observation
 `${fact}. Source: ${source}. Confidence: ${confidence}. Learned: ${date}`
 
@@ -342,6 +344,8 @@ await ctx.relationManager.createRelations([
 ### RAG Retrieval Pattern
 
 ```typescript
+import { Entity } from '@danielsimonjr/memoryjs';
+declare function getEntitiesByNames(names: string[]): Promise<import('@danielsimonjr/memoryjs').Entity[]>;
 async function retrieveContext(userQuery: string): Promise<string> {
   // 1. Hybrid search for comprehensive retrieval
   // ctx.hybridSearchManager (lazy getter) takes the loaded graph + query;
@@ -356,17 +360,15 @@ async function retrieveContext(userQuery: string): Promise<string> {
   });
 
   // 2. Always include high-importance entities
-  const criticalEntities = await ctx.searchManager.search('', {
-    minImportance: 9,
-    limit: 5
-  });
+  const criticalEntities = (await ctx.searchManager.searchNodes('')).entities
+    .filter((e) => (e.importance ?? 0) >= 9)
+    .slice(0, 5);
 
   // 3. Get related entities via graph traversal
   const relatedNames = new Set<string>();
   for (const result of hybridResults.slice(0, 3)) {
-    const { incoming, outgoing } = await ctx.relationManager
-      .getRelationsForEntity(result.entity.name);
-    [...incoming, ...outgoing].forEach(r => {
+    const relations = await ctx.relationManager.getRelations(result.entity.name);
+    relations.forEach(r => {
       relatedNames.add(r.from);
       relatedNames.add(r.to);
     });
@@ -374,7 +376,7 @@ async function retrieveContext(userQuery: string): Promise<string> {
 
   // 4. Format for LLM context
   return formatForContext([
-    ...criticalEntities.entities,
+    ...criticalEntities,
     ...hybridResults.map(r => r.entity),
     ...await getEntitiesByNames([...relatedNames])
   ]);
@@ -393,9 +395,10 @@ Importance: ${e.importance || 'unset'}
 ### Query-Specific Retrieval
 
 ```typescript
+import { Entity, KnowledgeGraph } from '@danielsimonjr/memoryjs';
 // For "What do you know about me?"
 async function getUserProfile(): Promise<Entity[]> {
-  return ctx.searchManager.search('', {
+  return ctx.searchManager.searchNodes('', {
     tags: ['user', 'profile', 'preference'],
     minImportance: 5
   }).then(r => r.entities);
@@ -403,7 +406,7 @@ async function getUserProfile(): Promise<Entity[]> {
 
 // For "Remind me about project X"
 async function getProjectContext(projectName: string): Promise<KnowledgeGraph> {
-  const project = await ctx.entityManager.getEntityByName(projectName);
+  const project = await ctx.entityManager.getEntity(projectName);
   if (!project) return { entities: [], relations: [] };
 
   // Get full subtree if hierarchical
@@ -438,6 +441,15 @@ async function getConversationHistory(topic: string): Promise<Entity[]> {
 ### Memory Creation Flow
 
 ```typescript
+type Intent =
+  | { type: 'statement_of_fact'; fact: string; confidence: number }
+  | { type: 'preference_expression'; preference: string; value: string }
+  | { type: 'correction'; original: string; corrected: string }
+  | { type: 'project_reference'; projectName: string };
+declare function createFactEntity(fact: string, confidence: number): Promise<void>;
+declare function updatePreference(preference: string, value: string): Promise<void>;
+declare function ensureProjectExists(projectName: string): Promise<void>;
+
 async function processUserMessage(message: string, intent: Intent) {
   switch (intent.type) {
     case 'statement_of_fact':
@@ -491,7 +503,7 @@ async function decayOldMemories(daysThreshold: number = 30) {
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - daysThreshold);
 
-  const allEntities = await ctx.entityManager.getAllEntities();
+  const allEntities = await ctx.entityManager.listEntities();
 
   for (const entity of allEntities) {
     // Skip high-importance and user entities
@@ -562,6 +574,9 @@ async function endSession(sessionId: string, summary: string) {
 ### Multi-Turn Context Tracking
 
 ```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+declare function summarize(text: string): string;
+declare function formatContext(session: import('@danielsimonjr/memoryjs').Entity | null, results: import('@danielsimonjr/memoryjs').HybridSearchResult[]): string;
 class ConversationMemory {
   private sessionId: string;
   private ctx: ManagerContext;
@@ -599,7 +614,7 @@ class ConversationMemory {
 
   async getRelevantContext(currentQuery: string): Promise<string> {
     // Get session history
-    const session = await this.ctx.entityManager.getEntityByName(`session_${this.sessionId}`);
+    const session = await this.ctx.entityManager.getEntity(`session_${this.sessionId}`);
 
     // Search for relevant memories
     const graph = await this.ctx.storage.loadGraph();
@@ -667,7 +682,7 @@ async function storePreference(type: string, match: RegExpMatchArray) {
 
 ```typescript
 async function getActivePreferences(): Promise<Map<string, string>> {
-  const prefs = await ctx.searchManager.search('', {
+  const prefs = await ctx.searchManager.searchNodes('', {
     tags: ['preference'],
     minImportance: 5
   });
@@ -715,7 +730,7 @@ async function learnConcept(
   relatedTo: string[]
 ) {
   // Check if concept exists
-  const existing = await ctx.entityManager.getEntityByName(name);
+  const existing = await ctx.entityManager.getEntity(name);
 
   if (existing) {
     // Add new observations
@@ -739,7 +754,7 @@ async function learnConcept(
 
   // Create relations to related concepts
   for (const related of relatedTo) {
-    const relatedEntity = await ctx.entityManager.getEntityByName(related);
+    const relatedEntity = await ctx.entityManager.getEntity(related);
     if (relatedEntity) {
       await ctx.relationManager.createRelations([{
         from: name,
@@ -754,6 +769,7 @@ async function learnConcept(
 ### Knowledge Hierarchy
 
 ```typescript
+import { Entity } from '@danielsimonjr/memoryjs';
 // Build taxonomic knowledge structure
 async function buildKnowledgeHierarchy() {
   // Create category entities
@@ -792,7 +808,7 @@ MemoryJS is designed to power MCP (Model Context Protocol) servers. Here's how t
 ```typescript
 import { ManagerContext } from '@danielsimonjr/memoryjs';
 
-const ctx = new ManagerContext(process.env.MEMORY_PATH || './memory.jsonl');
+const ctx = new ManagerContext(process.env.MEMORY_FILE_PATH || './memory.jsonl');
 
 // Tool: Remember a fact
 const rememberTool = {
@@ -807,7 +823,7 @@ const rememberTool = {
     },
     required: ['fact']
   },
-  handler: async ({ fact, category = 'fact', importance = 5 }) => {
+  handler: async ({ fact, category = 'fact', importance = 5 }: { fact: string; category?: string; importance?: number }) => {
     const entity = await ctx.entityManager.createEntities([{
       name: `${category}_${Date.now()}`,
       entityType: category,
@@ -831,7 +847,7 @@ const recallTool = {
     },
     required: ['query']
   },
-  handler: async ({ query, limit = 10 }) => {
+  handler: async ({ query, limit = 10 }: { query: string; limit?: number }) => {
     const graph = await ctx.storage.loadGraph();
     const results = await ctx.hybridSearchManager.search(graph, query, {
       limit,
@@ -861,7 +877,7 @@ const connectTool = {
     },
     required: ['from', 'to', 'relationship']
   },
-  handler: async ({ from, to, relationship }) => {
+  handler: async ({ from, to, relationship }: { from: string; to: string; relationship: string }) => {
     await ctx.relationManager.createRelations([{
       from, to, relationType: relationship
     }]);
@@ -872,7 +888,7 @@ const connectTool = {
 
 ### Complete MCP Server Example
 
-```typescript
+```text
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { ManagerContext } from '@danielsimonjr/memoryjs';
@@ -981,24 +997,26 @@ await server.connect(transport);
 ### Optimization Tips
 
 ```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+declare const query: string;
 // 1. Batch operations
-await ctx.entityManager.createEntities(manyEntities);  // Single I/O
+await ctx.entityManager.createEntities(entities);  // Single I/O
 
 // 2. Use importance filtering
-await ctx.searchManager.search(query, { minImportance: 5 });  // Reduce results
+await ctx.searchManager.searchNodes(query, { minImportance: 5 });  // Reduce results
 
 // 3. Limit results
 await ctx.hybridSearchManager.search(await ctx.storage.loadGraph(), query, { limit: 10 });  // Cap processing
 
 // 4. Use specific searches for specific needs
-await ctx.searchManager.search('exact term');      // Fast, exact
+await ctx.searchManager.searchNodes('exact term');      // Fast, exact
 await ctx.searchManager.fuzzySearch('typo toelrant');  // Slower, flexible
 
 // 5. Pre-filter with tags
-await ctx.searchManager.search(query, { tags: ['user-stated'] });
+await ctx.searchManager.searchNodes(query, { tags: ['user-stated'] });
 
 // 6. Use SQLite for large memory stores
-const ctx = new ManagerContext('./memory.db');  // FTS5 indexing
+// Use SQLite for large memory stores: new ManagerContext('./memory.db')  // FTS5 indexing
 ```
 
 ### Memory Cleanup
@@ -1009,7 +1027,7 @@ async function cleanupMemory() {
   // Archive old sessions
   await ctx.archiveManager.archiveEntities({
     olderThan: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
-    maxImportance: 3,
+    importanceLessThan: 3,
     tags: ['session', 'completed']
   });
 
@@ -1041,7 +1059,7 @@ class AgentMemory {
 
   // Initialize user profile if not exists
   async initialize() {
-    const profile = await this.ctx.entityManager.getEntityByName('user_profile');
+    const profile = await this.ctx.entityManager.getEntity('user_profile');
     if (!profile) {
       await this.ctx.entityManager.createEntities([{
         name: 'user_profile',
@@ -1069,7 +1087,7 @@ class AgentMemory {
   // Update or create preference
   async setPreference(category: string, value: string) {
     const prefName = `pref_${category}`;
-    const existing = await this.ctx.entityManager.getEntityByName(prefName);
+    const existing = await this.ctx.entityManager.getEntity(prefName);
 
     if (existing) {
       await this.ctx.observationManager.addObservations([{
@@ -1096,7 +1114,7 @@ class AgentMemory {
   // Get context for RAG
   async getContext(query: string): Promise<string> {
     // Get user profile
-    const profile = await this.ctx.entityManager.getEntityByName('user_profile');
+    const profile = await this.ctx.entityManager.getEntity('user_profile');
 
     // Get relevant memories
     const graph = await this.ctx.storage.loadGraph();
@@ -1109,7 +1127,7 @@ class AgentMemory {
     });
 
     // Get active preferences
-    const prefs = await this.ctx.searchManager.search('', {
+    const prefs = await this.ctx.searchManager.searchNodes('', {
       tags: ['preference'],
       minImportance: 5
     });
@@ -1156,7 +1174,7 @@ console.log(context);
 ---
 
 **Document Version**: 2.0
-**Last Updated**: 2026-07-24
+**Last Updated**: 2026-11-06
 
 ---
 
@@ -1172,6 +1190,7 @@ chain (exact SHA-256 / 50% prefix overlap / Jaccard ≥ 0.72 / optional
 semantic cosine ≥ 0.92) before persisting:
 
 ```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
 const ctx = new ManagerContext({ storagePath: './memory.jsonl' });
 
 // Adding a turn — dedup runs automatically.
@@ -1180,11 +1199,11 @@ const result = await ctx.memoryEngine.addTurn(
   { sessionId: 'session_123', role: 'user' },
 );
 
-if (result.deduped) {
-  console.log(`Dropped as duplicate of: ${result.existingTurn.id}`);
-  console.log(`Tier hit: ${result.tier}`); // 'exact' | 'prefix' | 'jaccard' | 'semantic'
+if (result.duplicateDetected) {
+  console.log(`Dropped as duplicate of: ${result.duplicateOf}`);
+  console.log(`Tier hit: ${result.duplicateTier}`); // 'exact' | 'prefix' | 'jaccard' | 'semantic'
 } else {
-  console.log(`Stored as turn: ${result.turn.id}`);
+  console.log(`Stored as entity: ${result.entity?.name}`);
 }
 
 // Replay session
@@ -1215,18 +1234,19 @@ const proc = await ctx.procedureManager.addProcedure({
   triggers: ['forgot password', 'password reset'],
 });
 
-// Match a context to a stored procedure
-const all = await Promise.all(
-  (await ctx.entityManager.listProjects()).map(...) // load candidates
-);
+// Match a context to the stored procedure
 const matches = await ctx.procedureManager.matchProcedure(
   'user wants to reset their forgotten password',
   [proc],
 );
-const top = matches[0]; // { procedure, score }
+const top = matches[0]; // ProcedureMatch
 
-// Execute step-by-step
-const seq = await ctx.procedureManager.openSequencer(proc.id)!;
+// Execute step-by-step. `yourExecutor` is your own code that performs one step.
+async function yourExecutor(step: { order: number; action: string }): Promise<void> {
+  void step; // perform the action here; throw on failure
+}
+const seq = await ctx.procedureManager.openSequencer(proc.id);
+if (!seq) throw new Error('procedure not found');
 while (!seq.isComplete()) {
   const step = seq.current();
   if (!step) break;
@@ -1326,13 +1346,16 @@ const chains = await ctx.worldModelManager.predictOutcome(
 ### Multi-Agent Collaboration — visibility, OCC, conflict view, attribution (η.5.5)
 
 ```typescript
+import { AgentEntity } from '@danielsimonjr/memoryjs';
+import { VersionConflictError } from '@danielsimonjr/memoryjs';
 // 1. Visibility — set who can see what (η.5.5.b)
-await ctx.entityManager.updateEntity('SharedDraft', {
+const sharedDraftUpdate: Partial<AgentEntity> = {
   visibility: 'shared',
   allowedRoles: ['reviewer', 'admin'],   // role gate (AND-combined)
   visibleFrom: '2025-01-01T00:00:00Z',   // time-window gate
   visibleUntil: '2025-12-31T23:59:59Z',
-});
+};
+await ctx.entityManager.updateEntity('SharedDraft', sharedDraftUpdate);
 
 // 2. Optimistic Concurrency Control (η.5.5.c)
 const entity = await ctx.entityManager.getEntity('Alice');
@@ -1376,18 +1399,22 @@ await enforcer.createEntities(
 ### RBAC — role-based access (η.6.1)
 
 ```typescript
-// Grant a role
+import type { Permission, ResourceType } from '@danielsimonjr/memoryjs';
+
+// Grant a role (async). `scope` matches the exact resource name or a
+// slash-delimited descendant; `project-x` covers `project-x/member-a`
+// but not `project-xylophone`.
 await ctx.roleAssignmentStore.assign({
   agentId: 'agent-alice',
   role: 'writer',
-  resourceType: 'entity',  // optional: narrow to a type
-  scope: 'project-x:',     // optional: prefix match on resource name
+  resourceType: 'entity',          // optional: narrow to a type
+  scope: 'project-x',              // optional
   validUntil: '2026-12-31T23:59:59Z',
 });
 
-// Check a permission
-const allowed = ctx.rbacMiddleware.checkPermission(
-  'agent-alice', 'write', 'entity', 'project-x:Alice',
+// Check a permission (synchronous, returns boolean)
+const allowed: boolean = ctx.rbacMiddleware.checkPermission(
+  'agent-alice', 'write', 'entity', 'project-x/Alice',
 );
 // reader → ['read']; writer → ['read', 'write']; admin → +'delete'; owner → +'manage'
 ```
@@ -1398,6 +1425,7 @@ const allowed = ctx.rbacMiddleware.checkPermission(
 `GovernancePolicy.canCreate/canUpdate/canDelete` yourself:
 
 ```typescript
+declare const currentAgentId: string;
 ctx.governanceManager.setPolicy({
   canCreate: () => true,
   canUpdate: (entity) => ctx.rbacMiddleware.checkPermission(currentAgentId, 'write', 'entity', entity.name),
@@ -1414,6 +1442,7 @@ routes through.
 
 ```typescript
 import { PiiRedactor } from '@danielsimonjr/memoryjs';
+declare const observation: string;
 
 const redactor = new PiiRedactor({
   // Optional: extend the bundled patterns (email/SSN/CC/phone/IPv4)
@@ -1429,7 +1458,8 @@ const clean = redactor.redact(observation);
 const cleanGraph = redactor.redactGraph(graph);
 
 // With audit-trail-friendly stats
-const { text, stats } = redactor.redactWithStats(text);
+const observationText = 'Contact jane@example.com';
+const { text, stats } = redactor.redactWithStats(observationText);
 console.log(`Redacted ${stats.totalRedactedBytes} bytes`);
 console.log(stats.countsByPattern); // Map { 'email' → 3, 'ssn' → 1 }
 ```
@@ -1499,6 +1529,8 @@ knob below defaults to 0 = off, with scores bit-identical to prior
 behavior until explicitly enabled.
 
 ```typescript
+import { DecayEngine, SalienceEngine } from '@danielsimonjr/memoryjs';
+const accessTracker = ctx.accessTracker;
 // 1. Graph channel in hybrid search — set MEMORY_HYBRID_GRAPH_WEIGHT
 // (or pass graphWeight per-call) to blend normalized PageRank into
 // hybrid results. ctx.hybridSearchManager wires ctx.graphRankPrior in
@@ -1512,14 +1544,14 @@ const results = await ctx.hybridSearchManager.search(graph, 'auth flow', {
 ctx.rankedSearch.setGraphPrior(ctx.graphRankPrior, /* boost */ 0.5);
 // score × (1 + boost × normalizedPageRank)
 
-// 3. Salience: reward well-connected entities during retrieval ranking
-const salienceEngine = new SalienceEngine(storage, accessTracker, decayEngine, {
-  connectivityWeight: 0.1, // adds components.connectivityBoost to the weighted sum
-});
-
-// 4. Decay: protect well-connected entities from decaying as fast
+// 3. Decay: protect well-connected entities from decaying as fast
 const decayEngine = new DecayEngine(storage, accessTracker, {
   connectivityProtection: 0.5, // [0, 1]; legacy calculateEffectiveImportance path only
+});
+
+// 4. Salience: reward well-connected entities during retrieval ranking
+const salienceEngine = new SalienceEngine(storage, accessTracker, decayEngine, {
+  connectivityWeight: 0.1, // adds components.connectivityBoost to the weighted sum
 });
 // calculateEffectiveImportance is synchronous, so the degree snapshot must
 // be refreshed before ad-hoc single-entity scoring if relations changed
@@ -1567,9 +1599,9 @@ const renamed = await ctx.entityManager.renameEntity('Alice', 'Alice Chen');
 | `ctx.rbacMiddleware` | η.6.1 | RbacPolicy.checkPermission |
 | `ctx.graphRankPrior` | v2.9.0 | Cached normalized PageRank (`@experimental`) |
 | `ctx.hybridSearchManager` | v2.9.0 | Semantic + lexical + symbolic + graph layered search |
-| `ctx.eventManager` | Unreleased | Event reification — actions as first-class hub entities (`@experimental`) |
+| `ctx.eventManager` | 3.0.0 | Event reification — actions as first-class hub entities (`@experimental`) |
 
-## Unreleased — agent-memory features added since v2.9.0
+## Agent-memory features added since v2.9.0 (3.0.0 to 4.5.0)
 
 ### Governance is now enforced (Sec1)
 
@@ -1587,12 +1619,14 @@ a committed, hash-chained audit entry (fire-and-forget — an audit-append
 failure never fails the write itself).
 
 ```typescript
+import { GovernanceError } from '@danielsimonjr/memoryjs';
+import { ManagerContext } from '@danielsimonjr/memoryjs';
 process.env.MEMORY_GOVERNANCE_ENABLED = 'true';
 const ctx = new ManagerContext('./memory.jsonl');
 
 ctx.governanceManager.setPolicy({
   canDelete: (entity) => (entity.importance ?? 0) < 8, // protect high-importance memories
-  canUpdate: (entity, updates) => updates.entityType === undefined, // block type changes
+  canUpdate: (entity, updates) => updates?.entityType === undefined, // block type changes
 });
 
 try {
@@ -1610,7 +1644,7 @@ try {
 
 With the flag unset, `ctx.governanceManager` still works for manual
 `withTransaction`/`rollback` use, but ordinary `EntityManager` writes bypass
-it entirely — zero overhead, unchanged from pre-Unreleased behavior. Full
+it entirely — zero overhead, unchanged from behavior before 3.0.0. Full
 details in [SECURITY_GUIDE.md](./SECURITY_GUIDE.md).
 
 ### Event reification + evidence-path-driven retrieval (R1 + R2)

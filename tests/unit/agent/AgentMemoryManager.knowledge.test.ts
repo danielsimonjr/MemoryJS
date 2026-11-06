@@ -26,6 +26,8 @@ function manager(): AgentMemoryManager {
     loadGraph: vi.fn().mockResolvedValue({ entities: [] as Entity[], relations: [] }),
     saveGraph: vi.fn().mockResolvedValue(undefined),
     ensureLoaded: vi.fn().mockResolvedValue(undefined),
+    getEntityByName: vi.fn().mockReturnValue(undefined),
+    getRelationsFor: vi.fn().mockReturnValue([]),
   } as unknown as IGraphStorage;
   return new AgentMemoryManager(storage);
 }

@@ -20,6 +20,8 @@ function createMockStorage(entities: Entity[] = []): IGraphStorage {
     loadGraph: vi.fn().mockResolvedValue(graph),
     saveGraph: vi.fn().mockResolvedValue(undefined),
     getEntityByName: vi.fn((name: string) => entities.find((e) => e.name === name)),
+    ensureLoaded: vi.fn().mockResolvedValue(undefined),
+    getRelationsFor: vi.fn().mockReturnValue([]),
     updateEntity: vi.fn().mockResolvedValue(undefined),
     deleteEntity: vi.fn().mockResolvedValue(undefined),
     createEntity: vi.fn().mockResolvedValue(undefined),

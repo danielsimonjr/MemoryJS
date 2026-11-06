@@ -18,6 +18,7 @@ import type {
   AccessContext,
 } from '../types/index.js';
 import type { GraphStorage } from './GraphStorage.js';
+import type { IGraphStorage } from '../types/types.js';
 import type { AccessTracker } from '../agent/AccessTracker.js';
 import { checkCancellation } from '../utils/index.js';
 import { jaccard, tokenizeToSet } from '../utils/textSimilarity.js';
@@ -114,7 +115,7 @@ const DEFAULT_OPTIONS: Required<TraversalOptions> = {
 export class GraphTraversal {
   private accessTracker?: AccessTracker;
 
-  constructor(private storage: GraphStorage) {}
+  constructor(private storage: GraphStorage | IGraphStorage) {}
 
   /**
    * Set the AccessTracker for optional access tracking.
