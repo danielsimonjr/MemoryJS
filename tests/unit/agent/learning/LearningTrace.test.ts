@@ -120,7 +120,12 @@ describe.each(BACKENDS)('LearningTrace persistence [$name]', (backend) => {
     const entities = new EntityManager(storage as never);
     const traces = new LearningTrace(storage, { entityManager: entities });
     const id = await traces.create(baseRecord());
-    for (let i = 0; i < 1200; i += 1) await traces.appendAction(id, action(i));
+    // Batched: one committed write per 100 actions. The single-append path
+    // is covered by the concurrent test above; Windows CI cannot afford 1,200
+    // full-graph saves inside the 30 s test timeout.
+    for (let i = 0; i < 1200; i += 100) {
+      await traces.appendActions(id, Array.from({ length: 100 }, (_, j) => action(i + j)));
+    }
     const entity = storage.getEntityByName(id);
     expect(JSON.stringify(entity).length).toBeLessThan(16384);
     const record = await traces.get(id);

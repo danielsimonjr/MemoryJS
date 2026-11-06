@@ -178,8 +178,22 @@ export class LearningTrace {
    * @throws Error when the trace does not exist.
    */
   async appendAction(id: string, action: LearningTraceAction): Promise<LearningTraceRecord> {
+    return this.appendActions(id, [action]);
+  }
+
+  /**
+   * Append several actions in one committed write (one OCC round trip instead
+   * of one per action). Folding applies to the combined list exactly as if
+   * the actions had been appended one at a time.
+   *
+   * @param id - Trace id.
+   * @param actions - Actions to append, in order (addresses only, never solver output).
+   * @returns The committed record.
+   * @throws Error when the trace does not exist.
+   */
+  async appendActions(id: string, actions: readonly LearningTraceAction[]): Promise<LearningTraceRecord> {
     return this.mutate(id, (record) =>
-      foldTraceActions({ ...record, actions: [...record.actions, action] }, this.maxActions),
+      foldTraceActions({ ...record, actions: [...record.actions, ...actions] }, this.maxActions),
     );
   }
 

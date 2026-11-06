@@ -119,7 +119,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/learning/LeafRound.ts` | src | reachable | 292 |
 | `src/agent/learning/LeafValidation.ts` | src | reachable | 231 |
 | `src/agent/learning/LearningAccountant.ts` | src | reachable | 329 |
-| `src/agent/learning/LearningTrace.ts` | src | reachable | 474 |
+| `src/agent/learning/LearningTrace.ts` | src | reachable | 488 |
 | `src/agent/learning/llmJson.ts` | src | reachable | 142 |
 | `src/agent/learning/observationChunks.ts` | src | reachable | 85 |
 | `src/agent/learning/RevisionValidator.ts` | src | reachable | 275 |
@@ -554,7 +554,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/learning/LeafLearnerResume.test.ts` | tests | test | 138 |
 | `tests/unit/agent/learning/LeafValidationPlan.test.ts` | tests | test | 112 |
 | `tests/unit/agent/learning/LearningAccountant.test.ts` | tests | test | 193 |
-| `tests/unit/agent/learning/LearningTrace.test.ts` | tests | test | 184 |
+| `tests/unit/agent/learning/LearningTrace.test.ts` | tests | test | 189 |
 | `tests/unit/agent/learning/RevisionValidator.test.ts` | tests | test | 167 |
 | `tests/unit/agent/memoryBackend-wiring.test.ts` | tests | test | 71 |
 | `tests/unit/agent/MemoryEngine.test.ts` | tests | test | 858 |

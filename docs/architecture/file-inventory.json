@@ -571,7 +571,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 474
+      "loc": 488
     },
     {
       "file": "src/agent/learning/llmJson.ts",
@@ -3616,7 +3616,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 184
+      "loc": 189
     },
     {
       "file": "tests/unit/agent/learning/RevisionValidator.test.ts",
