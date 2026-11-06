@@ -106,14 +106,17 @@ describe('S1 / N1 / N2', () => {
     const abs = makeTempJsonlPath();
     const rel = join('..', basename(dirname(abs)), basename(abs));
     const cwd = process.cwd();
+    // macOS temp dirs live under /var -> /private/var, and process.cwd()
+    // reports the real path, so compare real paths on both sides.
+    const realDir = await fs.realpath(dirname(abs));
     process.chdir(join(dirname(abs), '..', basename(dirname(abs))));
     try {
-      expect(relative(process.cwd(), dirname(abs))).toBe('');
+      expect(relative(process.cwd(), realDir)).toBe('');
       const log = track(new InteractionLog(rel, { maxInlineBytes: 4 }));
       const addr = await log.append({ sessionId: 's', kind: 'note', content: 'y'.repeat(30) });
       process.chdir(cwd);
       expect((await log.select(addr)).lines[0].text).toBe('yyyy');
-      expect(log.logPath.startsWith(dirname(abs))).toBe(true);
+      expect((await fs.realpath(log.logPath)).startsWith(realDir)).toBe(true);
     } finally {
       process.chdir(cwd);
     }
