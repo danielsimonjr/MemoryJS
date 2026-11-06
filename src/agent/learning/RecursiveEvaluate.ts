@@ -10,7 +10,7 @@
  * @experimental Spec RS-21. Internal to the recursive learner.
  */
 
-import type { TaskRecord, TokenTotals } from '../../types/learning.js';
+import type { CriterionResult, TaskRecord, TokenTotals } from '../../types/learning.js';
 import type { RubricJudge } from '../evaluation/DeterministicJudge.js';
 import { runAll } from '../harness/ConcurrencyLimiter.js';
 import type { KnowledgeRepository } from '../knowledge/KnowledgeRepository.js';
@@ -21,6 +21,8 @@ import type { LearningSolver } from './types.js';
 export interface LiveEvaluation {
   /** Pass per task id (solver or judge failures count as failing). */
   pass: Record<string, boolean>;
+  /** Judged criteria per task id (a failed call has none). */
+  criteria: Record<string, CriterionResult[]>;
   /** Solver tokens reported by the solve calls. */
   tokens: TokenTotals;
 }
@@ -32,7 +34,7 @@ export interface LiveEvaluation {
  * @param tasks - Tasks to evaluate.
  * @param deps - Solver, judge and optional abort signal.
  * @param concurrency - Maximum parallel calls.
- * @returns Pass per task and solver tokens.
+ * @returns Pass and judged criteria per task, and solver tokens.
  */
 export async function evaluateLive(
   repository: KnowledgeRepository,
@@ -52,16 +54,18 @@ export async function evaluateLive(
         tokens.input += solved.tokens.input;
         tokens.output += solved.tokens.output;
       }
-      return feedbackFromCriteria(task, await deps.judge.judge(task, solved.answer, signal)).allPass;
+      return feedbackFromCriteria(task, await deps.judge.judge(task, solved.answer, signal));
     },
     { concurrency, ...(deps.signal ? { signal: deps.signal } : {}) },
   );
   const pass: Record<string, boolean> = {};
+  const criteria: Record<string, CriterionResult[]> = {};
   tasks.forEach((task, i) => {
     const r = results[i];
-    pass[task.id] = r !== undefined && r.ok && r.value === true;
+    pass[task.id] = r !== undefined && r.ok && r.value.allPass;
+    if (r !== undefined && r.ok) criteria[task.id] = r.value.criteria;
   });
-  return { pass, tokens };
+  return { pass, criteria, tokens };
 }
 
 /**

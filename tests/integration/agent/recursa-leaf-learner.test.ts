@@ -6,6 +6,7 @@
  * only when the knowledge names the skill that teaches it (`Learned: <taskId>`), and never when the
  * knowledge carries a `BROKEN:<taskId>` marker. The judge is the production `DeterministicJudge`.
  */
+import { tmpdir } from 'node:os';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { readdirSync } from 'node:fs';
 import { ManagerContext } from '../../../src/core/ManagerContext.js';
@@ -100,7 +101,7 @@ describe('Recursa Phase 4: leaf learner over real components (JSONL)', () => {
    * @returns The context, the trace store and the real editor.
    */
   function setup() {
-    const ctx = new ManagerContext({ storagePath: makeTempJsonlPath(), storageType: 'jsonl' });
+    const ctx = new ManagerContext({ storagePath: makeTempJsonlPath(), storageType: 'jsonl', skillPublishRoot: tmpdir() });
     contexts.push(ctx);
     const traces = new LearningTrace(ctx.storage, { entityManager: ctx.entityManager, relationManager: ctx.relationManager });
     const editor = new KnowledgeEditor({ skills: ctx.skillManager });

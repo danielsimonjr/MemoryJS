@@ -46,5 +46,14 @@ export {
   extractToolName,
 } from './MCPToolObserverAdapter.js';
 
+// Recursa harness tool surface (spec 3.8), stateless JSON-in/JSON-out adapter
+export {
+  createRecursaTools,
+  type RecursaToolSet,
+  type RecursaToolDeps,
+  type RecursaToolDescriptor,
+  type RecursaToolResult,
+} from './RecursaToolAdapter.js';
+
 // LangChain adapter (pre-existing)
 export { LangChainMemoryAdapter } from './LangChainMemoryAdapter.js';

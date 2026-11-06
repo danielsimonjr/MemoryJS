@@ -15,7 +15,7 @@ import { AbortError, runAll, runAllWithStats } from '../harness/ConcurrencyLimit
 import { describeError } from './llmJson.js';
 import { LeafLearner } from './LeafLearner.js';
 import type { LearningTrace } from './LearningTrace.js';
-import type { SubsetRecord, ChildSummary, RecursiveState, RecursiveOptions } from './RecursiveLearnerState.js';
+import type { SubsetRecord, ChildSummary, CriteriaMap, RecursiveState, RecursiveOptions } from './RecursiveLearnerState.js';
 import { childResultOf, pick } from './RecursiveLearnerState.js';
 import { loadRecursive } from './RecursiveLearnerState.js';
 import { loadRun } from './LeafLearnerStore.js';
@@ -415,12 +415,25 @@ export function summarizeChild(
     learnerKind: result.learnerKind,
     beforePass,
     afterPass,
+    beforeCriteria: pickCriteria(result.beforeCriteria, subset.taskIds),
+    afterCriteria: pickCriteria(result.afterCriteria, subset.taskIds),
     fixed,
     regressed,
     improved: fixed.length > 0,
     ...(result.stop ? { stop: result.stop } : {}),
     tokens: result.tokens,
   };
+}
+
+/**
+ * Restrict a criteria map to some task ids.
+ *
+ * @param criteria - Criteria per task id.
+ * @param ids - Ids to keep.
+ * @returns The entries present for those ids.
+ */
+function pickCriteria(criteria: CriteriaMap, ids: readonly string[]): CriteriaMap {
+  return Object.fromEntries(ids.filter((id) => criteria[id] !== undefined).map((id) => [id, criteria[id]!]));
 }
 
 /**

@@ -24,12 +24,12 @@
 
 import { promises as fs } from 'fs';
 import { randomBytes } from 'crypto';
-import { dirname, join, resolve } from 'path';
+import { dirname, join } from 'path';
 import type { IGraphStorage } from '../../types/types.js';
 import { isSkillEntity, toIsoDateTime } from '../../types/agent-memory.js';
 import type { SkillId } from '../../types/skills.js';
 import { durableWriteFile, renameOver } from '../../utils/durableWriteFile.js';
-import { pathExists, readConfinedSkillFile, recoverPublishedTree, removeBestEffort } from './skillTreeFs.js';
+import { pathExists, readConfinedSkillFile, recoverPublishedTree, removeBestEffort, resolveConfinedTreeDir } from './skillTreeFs.js';
 import { SkillManager, type SkillPatch } from './SkillManager.js';
 import {
   loadOptionalYaml,
@@ -104,31 +104,49 @@ export interface PublishOptions {
   snapshotId?: string;
 }
 
-/** Publishes and imports the SKILL.md tree for a storage. */
+/** Options of the {@link SkillPublisher} constructor. */
+export interface SkillPublisherOptions {
+  /**
+   * Confinement root: every `publish`/`importSkills` directory must resolve strictly below it
+   * (after `path.resolve` and after `realpath` of its deepest existing ancestor). Default `process.cwd()`.
+   */
+  root?: string;
+}
+
+/**
+ * Publishes and imports the SKILL.md tree for a storage. Directories are confined to the
+ * publisher's root: `..`, absolute paths outside the root, the root itself, symlink escapes and
+ * `/proc`, `/sys`, `/dev` are refused with a `ValidationError` (`errors[0]` is `dir:<reason>`)
+ * before anything is created.
+ */
 export class SkillPublisher {
   private readonly storage: IGraphStorage;
   private readonly skills: SkillManager;
+  private readonly root: string;
 
   /**
    * Create a publisher over the storage and skill manager.
    *
    * @param storage - Graph storage holding the skill entities.
    * @param skills - Skill manager used for reads and edits.
+   * @param options - Optional confinement root (default `process.cwd()`).
    */
-  constructor(storage: IGraphStorage, skills: SkillManager) {
+  constructor(storage: IGraphStorage, skills: SkillManager, options: SkillPublisherOptions = {}) {
     this.storage = storage;
     this.skills = skills;
+    this.root = options.root ?? process.cwd();
   }
 
   /**
    * Publish every non-retired skill to `dir` atomically.
    *
-   * @param dir - Target directory. Replaced as a whole on success.
+   * @param dir - Target directory, relative to the root or absolute inside it. Replaced as a whole on success.
    * @param options - Optional snapshot id for the marker.
    * @returns The published location and marker.
+   * @throws ValidationError when `dir` is not confined to the root.
    */
   async publish(dir: string, options: PublishOptions = {}): Promise<PublishResult> {
-    const target = resolve(dir);
+    const target = await resolveConfinedTreeDir(dir, this.root);
     const hex = randomBytes(6).toString('hex');
     const tmp = `${target}.tmp-${hex}`;
     const old = `${target}.old-${hex}`;
@@ -177,11 +195,12 @@ export class SkillPublisher {
    * Compare the tree at `dir` with the entities and absorb or report each skill.
    * Never overwrites a file and an entity that both changed.
    *
-   * @param dir - Published tree directory.
+   * @param dir - Published tree directory, confined to the root like {@link publish}.
    * @returns What was absorbed, left alone, conflicting or unparseable.
+   * @throws ValidationError when `dir` is not confined to the root.
    */
   async importSkills(dir: string): Promise<ImportReport> {
-    const root = resolve(dir);
+    const root = await resolveConfinedTreeDir(dir, this.root);
     const report: ImportReport = { absorbed: [], unchanged: [], conflicts: [], parseErrors: [], unmatched: [] };
     await recoverPublishedTree(root);
     const baseline = await readMarkerHashes(join(root, SKILL_MARKER_FILE));

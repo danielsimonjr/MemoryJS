@@ -28,27 +28,10 @@ import { RevisionMerger } from './RevisionMerger.js';
 import { split as defaultSplit } from './SplitStrategies.js';
 import { absorbEvidence, childBudgetOf, planSubsets } from './RecursivePlan.js';
 import type { LearningDeps, LearningSolver } from './types.js';
-import {
-  type MergeRecord,
-  type RecursiveState,
-  type SubsetRecord,
-  childResultOf,
-  copyRecursive,
-  loadRecursive,
-  metricsOf,
-  saveRecursive,
-} from './RecursiveLearnerState.js';
-import {
-  KeyedMutex,
-  checkStartOptions,
-  resetForNextRound,
-  summarizeChild,
-  assertChildDone,
-  driveRun,
-  failedSummary,
-  initialRecursiveState,
-  wallClockStop,
-} from './RecursiveDrive.js';
+import { type MergeRecord, type RecursiveState, type SubsetRecord, absorbChildCriteria } from './RecursiveLearnerState.js';
+import { childResultOf, copyRecursive, loadRecursive, metricsOf, saveRecursive } from './RecursiveLearnerState.js';
+import { KeyedMutex, checkStartOptions, resetForNextRound, summarizeChild, assertChildDone } from './RecursiveDrive.js';
+import { driveRun, failedSummary, initialRecursiveState, wallClockStop } from './RecursiveDrive.js';
 import { buildChildOutcomes, mergeOutcomeOf, publishAccepted, reflectChildrenOf, settleRound, validateAndApplyMerge } from './RecursiveMerge.js';
 import { evaluateLive } from './RecursiveEvaluate.js';
 import { type ChildFactoryContext, createChildRun, leafOver, recursiveOver } from './RecursiveChildren.js';
@@ -298,6 +281,7 @@ export class RecursiveLearner {
         absorbEvidence(state, childResult);
         const summary = summarizeChild(childTraceId, subset, childResult);
         state.children[childTraceId] = summary;
+        absorbChildCriteria(state, subset.taskIds, summary);
         acct.addTokens('solve', summary.tokens.input, summary.tokens.output);
         for (const id of subset.taskIds) {
           state.baseline[id] ??= summary.beforePass[id] === true;
@@ -331,7 +315,7 @@ export class RecursiveLearner {
       state.phase = 'merge';
       await saveRecursive(this.opts.traces, state);
 
-      const { notes, outcomes, roundBefore } = await buildChildOutcomes(this.opts.storage, state, tasks);
+      const { notes, outcomes, roundBefore, roundBeforeCriteria } = await buildChildOutcomes(this.opts.storage, state, tasks);
       const now = toIsoDateTime(new Date());
 
       let record: MergeRecord = { applied: false, verdict: 'none', fixed: [], regressed: [], notes };
@@ -349,15 +333,17 @@ export class RecursiveLearner {
           tasks,
           revision: merged.revision,
           roundBefore,
+          roundBeforeCriteria,
           deps,
           record: { ...record, notes: [...notes, ...merged.notes] },
         });
         if (record.applied) record = await publishAccepted(this.opts.publisher, this.opts.publishDir, record, state.snapshotId);
       }
-      record = { ...record, roundBefore };
+      record = { ...record, roundBefore, roundBeforeCriteria };
       if (record.applied && deps.solver && deps.judge) {
         const live = await evaluateLive(this.opts.repository, tasks, { solver: deps.solver, judge: deps.judge, ...(deps.signal ? { signal: deps.signal } : {}) }, state.options.concurrency);
         record.evaluation = live.pass;
+        record.evaluationCriteria = live.criteria;
         const acct = LearningAccountant.fromState(state.accounting);
         acct.addTokens('solve', live.tokens.input, live.tokens.output);
         state.accounting = acct.toState();
@@ -412,7 +398,7 @@ export class RecursiveLearner {
       }
       state.accounting = acct.toState();
       await saveRecursive(this.opts.traces, state);
-      if (stop) await this.opts.traces.setMetrics(traceId, metricsOf(tasks, state.current));
+      if (stop) await this.opts.traces.setMetrics(traceId, metricsOf(tasks, state.current, state.criteria?.current));
       return {
         decision: stop ? 'done' : 'continue',
         ...(stop ? { stop } : {}),
@@ -434,8 +420,8 @@ export class RecursiveLearner {
     return {
       snapshotId: state.snapshotId || state.baseSnapshotId,
       traceId,
-      before: metricsOf(tasks, state.baseline),
-      after: metricsOf(tasks, state.current),
+      before: metricsOf(tasks, state.baseline, state.criteria?.baseline),
+      after: metricsOf(tasks, state.current, state.criteria?.current),
       stoppedBecause: state.stop ?? 'aborted',
       report: LearningAccountant.fromState(state.accounting).report(),
     };
@@ -453,11 +439,14 @@ export class RecursiveLearner {
     return this.mutex.run(traceId, async () => {
       const { state, tasks } = await loadRecursive(this.opts.traces, traceId);
       if (state.phase !== 'done') {
-        for (const id of state.completedChildIds) Object.assign(state.current, state.children[id]?.beforePass ?? {});
+        for (const id of state.completedChildIds) {
+          Object.assign(state.current, state.children[id]?.beforePass ?? {});
+          if (state.criteria) Object.assign(state.criteria.current, state.children[id]?.beforeCriteria ?? {});
+        }
         state.phase = 'done';
         state.stop = reason;
         await saveRecursive(this.opts.traces, state);
-        await this.opts.traces.setMetrics(traceId, metricsOf(tasks, state.current));
+        await this.opts.traces.setMetrics(traceId, metricsOf(tasks, state.current, state.criteria?.current));
       }
       return copyRecursive(state);
     });

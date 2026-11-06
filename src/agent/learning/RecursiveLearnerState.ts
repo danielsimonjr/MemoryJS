@@ -10,6 +10,7 @@
  */
 
 import type {
+  CriterionResult,
   Diagnosis,
   EvalMetrics,
   Feedback,
@@ -30,6 +31,9 @@ import { loadRun, summarize } from './LeafLearnerStore.js';
 export const DEFAULT_MAX_DEPTH = 2;
 /** Default subset size at or below which a child is a leaf learner. */
 export const DEFAULT_LEAF_THRESHOLD = 4;
+
+/** Judged criteria per task id (the rubric results behind a pass map). */
+export type CriteriaMap = Record<string, CriterionResult[]>;
 
 /** Phases of the recursive state machine. `merge` is persisted while a merge runs. */
 export type RecursivePhase = 'plan' | 'children' | 'merge' | 'reflect' | 'done';
@@ -68,6 +72,10 @@ export interface ChildSummary {
   beforePass: Record<string, boolean>;
   /** Pass per task at the end of the child's run. */
   afterPass: Record<string, boolean>;
+  /** Judged criteria per task at the start of the child's run. */
+  beforeCriteria?: CriteriaMap;
+  /** Judged criteria per task at the end of the child's run. */
+  afterCriteria?: CriteriaMap;
   /** Tasks failing before and passing after. */
   fixed: string[];
   /** Tasks passing before and failing after. */
@@ -114,6 +122,10 @@ export interface MergeRecord {
   roundBefore?: Record<string, boolean>;
   /** Pass per task from one evaluation of all tasks against live `K` after an applied merge. */
   evaluation?: Record<string, boolean>;
+  /** Judged criteria at the start of the round (parallel to `roundBefore`). */
+  roundBeforeCriteria?: CriteriaMap;
+  /** Judged criteria of the live evaluation (parallel to `evaluation`). */
+  evaluationCriteria?: CriteriaMap;
   /** True when the accepted revision lost the OCC race (`apply-conflict`): the next round rebases. */
   conflict?: boolean;
 }
@@ -162,6 +174,8 @@ export interface RecursiveState {
   baseline: Record<string, boolean>;
   /** Pass per task after the latest completed child that covered it. */
   current: Record<string, boolean>;
+  /** Judged criteria behind `baseline` and `current` (absent in runs persisted before it existed). */
+  criteria?: { baseline: CriteriaMap; current: CriteriaMap };
   /** Options captured at start. */
   options: RecursiveOptions;
   /** Accountant state (rounds, token spend, phase timing). */
@@ -192,6 +206,10 @@ export interface ChildResult {
   beforePass: Record<string, boolean>;
   /** Pass per task after the child's run. */
   afterPass: Record<string, boolean>;
+  /** Judged criteria per task before the child's run. */
+  beforeCriteria: CriteriaMap;
+  /** Judged criteria per task after the child's run. */
+  afterCriteria: CriteriaMap;
   /** Stop reason, when the child stopped. */
   stop?: LearnStopReason;
   /** Tokens spent, summed over phases. */
@@ -249,17 +267,71 @@ export async function saveRecursive(traces: LearningTrace, state: RecursiveState
 }
 
 /**
- * Evaluation metrics of a pass map over tasks.
+ * Judged criteria of one task for a pass value: the recorded criteria when present, else every
+ * rubric criterion passing (for a passing task) or none (for a failing one), so `meanCriteria`
+ * never contradicts `allPass`.
+ *
+ * @param task - Task.
+ * @param pass - Whether the task passes.
+ * @param criteria - Recorded criteria, if any.
+ * @returns Criteria for the task's feedback.
+ */
+function criteriaFor(task: TaskRecord, pass: boolean, criteria: readonly CriterionResult[] | undefined): CriterionResult[] {
+  if (criteria && criteria.length > 0) return [...criteria];
+  return pass ? task.rubric.map((c) => ({ criterionId: c.id, pass: true })) : [];
+}
+
+/**
+ * Evaluation metrics of a pass map over tasks, with the judged criteria behind it.
  *
  * @param tasks - Tasks counted.
  * @param pass - Pass per task id; a missing id counts as failing.
+ * @param criteria - Judged criteria per task id (see {@link criteriaFor} for missing entries).
  * @returns Metrics in the leaf learner's format.
  */
-export function metricsOf(tasks: readonly TaskRecord[], pass: Readonly<Record<string, boolean>>): EvalMetrics {
-  const feedback: Record<string, Feedback> = Object.fromEntries(
-    tasks.map((t) => [t.id, { taskId: t.id, criteria: [], allPass: pass[t.id] === true, source: 'test' as const }]),
+export function metricsOf(
+  tasks: readonly TaskRecord[],
+  pass: Readonly<Record<string, boolean>>,
+  criteria: Readonly<CriteriaMap> = {},
+): EvalMetrics {
+  return summarize(tasks, feedbackOf(tasks, pass, criteria));
+}
+
+/**
+ * Feedback per task from a pass map and its judged criteria.
+ *
+ * @param tasks - Tasks.
+ * @param pass - Pass per task id.
+ * @param criteria - Judged criteria per task id.
+ * @returns Feedback keyed by task id (`source: 'test'`).
+ */
+export function feedbackOf(
+  tasks: readonly TaskRecord[],
+  pass: Readonly<Record<string, boolean>>,
+  criteria: Readonly<CriteriaMap>,
+): Record<string, Feedback> {
+  return Object.fromEntries(
+    tasks.map((t) => {
+      const allPass = pass[t.id] === true;
+      return [t.id, { taskId: t.id, criteria: criteriaFor(t, allPass, criteria[t.id]), allPass, source: 'test' as const }];
+    }),
   );
-  return summarize(tasks, feedback);
+}
+
+/**
+ * Record a completed child's criteria on the run: `baseline` keeps the first value per task,
+ * `current` takes the child's latest.
+ *
+ * @param state - Run record (mutated).
+ * @param taskIds - The child's subset.
+ * @param child - The child's summary.
+ */
+export function absorbChildCriteria(state: RecursiveState, taskIds: readonly string[], child: ChildSummary): void {
+  const criteria = (state.criteria ??= { baseline: {}, current: {} });
+  for (const id of taskIds) {
+    if (!(id in criteria.baseline) && child.beforeCriteria?.[id]) criteria.baseline[id] = child.beforeCriteria[id]!;
+    if (child.afterCriteria?.[id]) criteria.current[id] = child.afterCriteria[id]!;
+  }
 }
 
 /**
@@ -304,6 +376,8 @@ export async function childResultOf(traces: LearningTrace, childTraceId: string)
       learnerKind: 'leaf',
       beforePass: run.beforePass ?? {},
       afterPass,
+      beforeCriteria: run.beforeCriteria ?? {},
+      afterCriteria: Object.fromEntries(run.tasks.map((t) => [t.id, [...(run.state.feedback[t.id]?.criteria ?? [])]])),
       ...(run.state.stop ? { stop: run.state.stop } : {}),
       tokens: sumTokens(run.accounting.phaseTokens),
       evidence: { diagnoses: Object.fromEntries(run.diagnoses.map((d) => [d.taskId, d])), feedback: { ...run.state.feedback } },
@@ -314,6 +388,8 @@ export async function childResultOf(traces: LearningTrace, childTraceId: string)
     learnerKind: 'recursive',
     beforePass: state.baseline,
     afterPass: state.current,
+    beforeCriteria: state.criteria?.baseline ?? {},
+    afterCriteria: state.criteria?.current ?? {},
     ...(state.stop ? { stop: state.stop } : {}),
     tokens: sumTokens(state.accounting.phaseTokens),
     evidence: state.evidence ?? { diagnoses: {}, feedback: {} },

@@ -147,6 +147,8 @@ export interface LeafRun {
   snapshotId: string;
   /** Per-task pass of the first full evaluation (the baseline the recursive learner compares against). */
   beforePass?: Record<string, boolean>;
+  /** Per-task judged criteria of the first full evaluation (parallel to `beforePass`). */
+  beforeCriteria?: Record<string, CriterionResult[]>;
   /** Metrics of the first full evaluation. */
   before?: EvalMetrics;
   /** Metrics of the most recent full evaluation. */

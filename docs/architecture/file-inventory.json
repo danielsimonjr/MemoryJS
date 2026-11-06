@@ -1,12 +1,12 @@
 {
   "generated": "2026-11-06",
-  "totalFiles": 950,
+  "totalFiles": 959,
   "byDisposition": {
-    "reachable": 390,
+    "reachable": 394,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 540,
+    "test": 545,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -14,8 +14,8 @@
   },
   "byArea": {
     "benchmarks": 4,
-    "src": 394,
-    "tests": 540,
+    "src": 398,
+    "tests": 545,
     "tools": 10,
     "config": 2
   },
@@ -60,7 +60,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 51
+      "loc": 60
     },
     {
       "file": "src/adapters/LangChainMemoryAdapter.ts",
@@ -89,6 +89,34 @@
       "area": "src",
       "disposition": "reachable",
       "loc": 206
+    },
+    {
+      "file": "src/adapters/RecursaToolAdapter.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 388
+    },
+    {
+      "file": "src/adapters/recursaToolBounds.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 109
+    },
+    {
+      "file": "src/adapters/recursaToolSchemas.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 143
+    },
+    {
+      "file": "src/adapters/recursaToolSupport.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 169
     },
     {
       "file": "src/adapters/RestRouter.ts",
@@ -585,7 +613,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 365
+      "loc": 380
     },
     {
       "file": "src/agent/learning/LeafLearnerContext.ts",
@@ -613,14 +641,14 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 328
+      "loc": 330
     },
     {
       "file": "src/agent/learning/LeafRound.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 293
+      "loc": 294
     },
     {
       "file": "src/agent/learning/LeafValidation.ts",
@@ -676,35 +704,35 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 441
+      "loc": 454
     },
     {
       "file": "src/agent/learning/RecursiveEvaluate.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 78
+      "loc": 82
     },
     {
       "file": "src/agent/learning/RecursiveLearner.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 496
+      "loc": 485
     },
     {
       "file": "src/agent/learning/RecursiveLearnerState.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 358
+      "loc": 434
     },
     {
       "file": "src/agent/learning/RecursiveMerge.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 225
+      "loc": 231
     },
     {
       "file": "src/agent/learning/RecursivePlan.ts",
@@ -1222,7 +1250,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 299
+      "loc": 318
     },
     {
       "file": "src/agent/skills/skillRecordUtils.ts",
@@ -1236,7 +1264,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 83
+      "loc": 165
     },
     {
       "file": "src/agent/SQLiteBackend.ts",
@@ -1600,7 +1628,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 258
+      "loc": 262
     },
     {
       "file": "src/core/context/LearningFacade.ts",
@@ -1677,7 +1705,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 755
+      "loc": 758
     },
     {
       "file": "src/core/mmap/FsReadMmapBackend.ts",
@@ -2867,7 +2895,14 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 215
+      "loc": 216
+    },
+    {
+      "file": "tests/integration/agent/recursa-loop.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 173
     },
     {
       "file": "tests/integration/backup-compression.test.ts",
@@ -3211,6 +3246,20 @@
       "area": "tests",
       "disposition": "test",
       "loc": 92
+    },
+    {
+      "file": "tests/unit/adapters/RecursaToolAdapter.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 277
+    },
+    {
+      "file": "tests/unit/adapters/RecursaToolAdapterSafety.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 210
     },
     {
       "file": "tests/unit/adapters/rest-input-security.test.ts",
@@ -3857,6 +3906,13 @@
       "loc": 189
     },
     {
+      "file": "tests/unit/agent/learning/RecursiveCriteria.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 46
+    },
+    {
       "file": "tests/unit/agent/learning/recursiveFixtures.ts",
       "package": "(root)",
       "area": "tests",
@@ -4368,11 +4424,18 @@
       "loc": 216
     },
     {
+      "file": "tests/unit/agent/skills/SkillPublisherConfinement.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 109
+    },
+    {
       "file": "tests/unit/agent/skills/SkillWritePath.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 123
+      "loc": 124
     },
     {
       "file": "tests/unit/agent/SQLiteBackend.test.ts",

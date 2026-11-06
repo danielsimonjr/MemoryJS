@@ -33,8 +33,8 @@ withBothBackends('Skill hardening', (backend) => {
   beforeEach(() => {
     storage = backend.create();
     skills = new SkillManager(storage);
-    publisher = new SkillPublisher(storage, skills);
     root = makeTempDir('skill-harden-');
+    publisher = new SkillPublisher(storage, skills, { root });
     tree = join(root, 'tree');
   });
 

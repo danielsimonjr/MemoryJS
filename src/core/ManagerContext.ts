@@ -135,6 +135,8 @@ export interface ManagerContextOptions {
   enableContradictionDetection?: boolean;
   /** Similarity threshold for contradiction detection. Default 0.85. */
   contradictionThreshold?: number;
+  /** Confinement root of `ctx.skillPublisher` (publish/import directories must lie below it). Default `process.cwd()`. */
+  skillPublishRoot?: string;
 }
 
 /**
@@ -243,6 +245,7 @@ export class ManagerContext {
       getEntityManager: () => this.entityManager,
       getFailureManager: () => this.failureManager,
       peekSemanticSearch: () => this.searchFacade.peekSemanticSearch(),
+      ...(opts.skillPublishRoot !== undefined ? { skillPublishRoot: opts.skillPublishRoot } : {}),
     });
     this.bookkeepingFacade = new AgentBookkeepingFacade({
       storage: this.storage,

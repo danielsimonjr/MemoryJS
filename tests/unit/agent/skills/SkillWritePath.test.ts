@@ -84,9 +84,10 @@ withBothBackends('Recursa write path', (backend) => {
 
   it('stores publishedHash on publish and marks an absorbed edit producedBy manual', async () => {
     const skills = new SkillManager(storage, entityManager);
-    const publisher = new SkillPublisher(storage, skills);
+    const base = makeTempDir('skill-write-path-');
+    const publisher = new SkillPublisher(storage, skills, { root: base });
     const id = await skills.add(SKILL);
-    const dir = join(makeTempDir('skill-write-path-'), 'tree');
+    const dir = join(base, 'tree');
     const result = await publisher.publish(dir);
     expect(skills.get(id)?.publishedHash).toBe(result.marker.skills[id]);
     expect(skills.get(id)?.lineage.producedBy).toBeUndefined();

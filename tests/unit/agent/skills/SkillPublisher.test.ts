@@ -37,8 +37,8 @@ withBothBackends('SkillPublisher', (backend) => {
   beforeEach(() => {
     storage = backend.create();
     skills = new SkillManager(storage);
-    publisher = new SkillPublisher(storage, skills);
     root = makeTempDir('skill-publish-');
+    publisher = new SkillPublisher(storage, skills, { root });
     treeDir = join(root, 'published');
   });
 

@@ -584,19 +584,36 @@ README and CONFIGURATION.md):
 MemoryJS used from Claude Code (as an MCP server or plugin) sees only stateless tool calls, reads
 skills from disk, and owns subagents and tool execution. The library therefore exposes the learner as
 steps, publishes skills to disk, and ingests the harness's own transcript. A reference MCP tool list
-(implemented by the downstream server, not by this library; listed here so the library API is shaped
-for it):
+(the MCP server stays downstream, not in this library; the reference adapter now ships as
+`src/adapters/RecursaToolAdapter.ts` (`createRecursaTools(ctx, deps)`, `@experimental`), a stateless JSON-in/JSON-out
+set that the downstream server wraps one-to-one; listed here so the library API is shaped for it):
 
 | Tool | Library call | Notes |
 |---|---|---|
 | `recursa.knowledge.load` | `knowledgeRepository.loadForContext({ role, taskHint, budgetTokens })` | returns Markdown + ids; the harness pastes it into the solver prompt |
-| `recursa.skills.publish` | `skillPublisher.publish(dir)` | atomic; returns the change marker |
-| `recursa.skills.import` | `skillPublisher.importSkills(dir)` | returns `ImportConflict[]` |
+| `recursa.skills.publish` | `skillPublisher.publish(dir)` | atomic; returns the change marker; `dir` optional, confined to `deps.publishDir` |
+| `recursa.skills.import` | `skillPublisher.importSkills(dir)` | returns `ImportConflict[]`; `dir` as for publish |
 | `recursa.learn.start` / `.next` / `.submit` | RS-18 | one `StepRequest` per call; the harness runs solves with its own model and subagents |
 | `recursa.learn.plan` / `.submitChild` / `.merge` / `.reflect` / `.status` | RS-21 | the harness fans children out with its Agent tool |
 | `recursa.log.append` | `interactionLog.append(rec)` | fed from `PostToolUse` / turn hooks; `tokens` caller-reported (Q4) |
 | `recursa.log.select` | `interactionLog.select(addr, …)` | only the excerpt returns to the context |
 | `recursa.eval.run` | `evaluator.evaluate(…)` with harness-supplied answers | metrics for before/after |
+
+Phase 6 amendments (Checker/Fixer):
+
+- **Confinement.** `SkillPublisher` takes a `root` (default `process.cwd()`); `publish` / `importSkills`
+  re-validate `dir` against it after `path.resolve` and after `realpath` of the deepest existing ancestor,
+  and refuse `..`, the root itself, absolute paths outside it, symlink escapes and `/proc` / `/sys` / `/dev`
+  (`ValidationError`, `errors[0] = 'dir:<reason>'`) before creating anything. The adapter's skills tools need
+  `deps.publishDir` (else `not_configured`); `dir` is optional and must be a relative subpath below it
+  (else `invalid_args`).
+- **Error codes.** `invalid_args` (strict schemas, reserved `__proto__` / `constructor` / `prototype` keys,
+  library validation, unknown `criterionId`, unknown `eval.run` answer ids), `not_found` (unknown trace),
+  `invalid_state` (leaf/recursive mismatch, out-of-phase or duplicate submit, non-pending task id),
+  `not_configured`, `solver_required`, `aborted`, `unknown_tool`, `internal_error` (real bugs only).
+- **eval.run.** Tasks without an answer fail with the note `no answer` and are listed in `missing`.
+- **Metrics.** Recursive metrics and the merge validator's prior feedback use the judged criteria of the
+  children and the live evaluation, never empty placeholders.
 
 Decisions recorded: **Q1** entities authoritative, SKILL.md the published view with atomic publish and
 hash-based conflict detection; **Q2** `yaml` optional peer dependency, subset parser fallback;

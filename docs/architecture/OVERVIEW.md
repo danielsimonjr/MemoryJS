@@ -281,13 +281,13 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 
 | Claim | Value | Source |
 |---|---|---|
-| totalSourceFiles | 961 | repo-tools map |
-| totalLinesOfCode | 295404 | repo-tools map |
-| totalExports | 3915 | repo-tools map |
-| totalTypeOnlyImports | 1319 | repo-tools map |
+| totalSourceFiles | 970 | repo-tools map |
+| totalLinesOfCode | 297244 | repo-tools map |
+| totalExports | 3955 | repo-tools map |
+| totalTypeOnlyImports | 1334 | repo-tools map |
 | totalModules | 6 | repo-tools map |
 | entryRoots | 12 | repo-tools map |
-| reachableFiles | 394 | repo-tools map |
+| reachableFiles | 398 | repo-tools map |
 | dormantFiles | 0 | repo-tools map |
 | runtimeCircularDeps | 0 | repo-tools map |
 | typeOnlyCircularDeps | 39 | repo-tools map |

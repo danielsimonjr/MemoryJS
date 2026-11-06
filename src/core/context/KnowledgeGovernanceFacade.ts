@@ -45,6 +45,8 @@ export interface KnowledgeGovernanceFacadeDeps {
    * has not been resolved, so that reading it never forces construction.
    */
   peekSemanticSearch: () => SemanticSearch | null | undefined;
+  /** Confinement root of the skill publisher. Default `process.cwd()`. */
+  skillPublishRoot?: string;
 }
 
 /**
@@ -197,7 +199,9 @@ export class KnowledgeGovernanceFacade {
 
   /** SkillPublisher (Recursa RS-3), lazy: atomic SKILL.md publish and import. */
   get skillPublisher(): SkillPublisher {
-    return (this._skillPublisher ??= new SkillPublisher(this.deps.storage, this.skillManager));
+    return (this._skillPublisher ??= new SkillPublisher(this.deps.storage, this.skillManager, {
+      ...(this.deps.skillPublishRoot !== undefined ? { root: this.deps.skillPublishRoot } : {}),
+    }));
   }
 
   /**
