@@ -6,11 +6,12 @@
 
 import { describe, it, expect, afterEach } from 'vitest';
 import { promises as fs } from 'fs';
-import { basename, dirname, join, relative } from 'path';
+import { basename, dirname, join } from 'path';
 import { InteractionLog, InteractionLogError } from '../../../../src/agent/harness/InteractionLog.js';
 import { compileSelectRegex, matchSelectLines } from '../../../../src/agent/harness/InteractionLogRegex.js';
 import { ErrorCode } from '../../../../src/utils/errors.js';
 import { makeTempJsonlPath, cleanupTempDirs } from '../../../helpers/tempStorage.js';
+import { sidecarPath } from '../../../../src/utils/sidecarPath.js';
 
 const logs: InteractionLog[] = [];
 function track(log: InteractionLog): InteractionLog {
@@ -106,17 +107,16 @@ describe('S1 / N1 / N2', () => {
     const abs = makeTempJsonlPath();
     const rel = join('..', basename(dirname(abs)), basename(abs));
     const cwd = process.cwd();
-    // macOS temp dirs live under /var -> /private/var, and process.cwd()
-    // reports the real path, so compare real paths on both sides.
-    const realDir = await fs.realpath(dirname(abs));
+    // process.cwd() may report a different spelling of the temp dir than
+    // the helper returned (macOS /var -> /private/var, Windows 8.3 short
+    // names), so assert on real paths only once the log file exists.
     process.chdir(join(dirname(abs), '..', basename(dirname(abs))));
     try {
-      expect(relative(process.cwd(), realDir)).toBe('');
       const log = track(new InteractionLog(rel, { maxInlineBytes: 4 }));
       const addr = await log.append({ sessionId: 's', kind: 'note', content: 'y'.repeat(30) });
       process.chdir(cwd);
       expect((await log.select(addr)).lines[0].text).toBe('yyyy');
-      expect((await fs.realpath(log.logPath)).startsWith(realDir)).toBe(true);
+      expect(await fs.realpath(log.logPath)).toBe(await fs.realpath(sidecarPath(abs, '-interactions')));
     } finally {
       process.chdir(cwd);
     }
