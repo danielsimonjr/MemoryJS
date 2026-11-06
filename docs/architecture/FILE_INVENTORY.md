@@ -10,22 +10,22 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 856
+**Total files**: 873
 
 ## Disposition counts
 
 | Disposition | Count | Meaning |
 | --- | --: | --- |
-| `reachable` | 341 | A `src/` file in the module graph, reachable from a root. |
+| `reachable` | 347 | A `src/` file in the module graph, reachable from a root. |
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 495 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 506 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 4 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 0 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **856** | |
+| **Total** | **873** | |
 
 ## Per-area counts
 
@@ -33,8 +33,8 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | --- | --: |
 | `benchmarks` | 4 |
 | `config` | 2 |
-| `src` | 345 |
-| `tests` | 495 |
+| `src` | 351 |
+| `tests` | 506 |
 | `tools` | 10 |
 
 ## All files
@@ -54,7 +54,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/adapters/RestRouter.ts` | src | reachable | 751 |
 | `src/agent/AccessTracker.ts` | src | reachable | 479 |
 | `src/agent/AgentMemoryConfig.ts` | src | reachable | 265 |
-| `src/agent/AgentMemoryManager.ts` | src | reachable | 705 |
+| `src/agent/AgentMemoryManager.ts` | src | reachable | 718 |
 | `src/agent/AgentReflectionManager.ts` | src | reachable | 306 |
 | `src/agent/ArtifactManager.ts` | src | reachable | 241 |
 | `src/agent/causal/CausalReasoner.ts` | src | reachable | 254 |
@@ -67,7 +67,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/ConsolidationPipeline.ts` | src | reachable | 2140 |
 | `src/agent/ConsolidationScheduler.ts` | src | reachable | 230 |
 | `src/agent/ContextProfileManager.ts` | src | reachable | 301 |
-| `src/agent/ContextWindowManager.ts` | src | reachable | 1984 |
+| `src/agent/ContextWindowManager.ts` | src | reachable | 2000 |
 | `src/agent/DecayEngine.ts` | src | reachable | 831 |
 | `src/agent/DecayScheduler.ts` | src | reachable | 233 |
 | `src/agent/DecisionManager.ts` | src | reachable | 442 |
@@ -76,6 +76,11 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/DreamEngine.ts` | src | reachable | 646 |
 | `src/agent/EntropyFilter.ts` | src | reachable | 179 |
 | `src/agent/EpisodicMemoryManager.ts` | src | reachable | 531 |
+| `src/agent/evaluation/DeterministicJudge.ts` | src | reachable | 227 |
+| `src/agent/evaluation/Evaluator.ts` | src | reachable | 404 |
+| `src/agent/evaluation/index.ts` | src | reachable | 10 |
+| `src/agent/evaluation/LLMRubricJudge.ts` | src | reachable | 261 |
+| `src/agent/evaluation/RubricAudit.ts` | src | reachable | 224 |
 | `src/agent/events/EventManager.ts` | src | reachable | 513 |
 | `src/agent/events/index.ts` | src | reachable | 20 |
 | `src/agent/ExclusionManager.ts` | src | reachable | 210 |
@@ -92,14 +97,15 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/harness/InteractionLogRegex.ts` | src | reachable | 180 |
 | `src/agent/HeuristicManager.ts` | src | reachable | 342 |
 | `src/agent/ImportanceScorer.ts` | src | reachable | 91 |
-| `src/agent/index.ts` | src | reachable | 629 |
+| `src/agent/index.ts` | src | reachable | 633 |
 | `src/agent/InMemoryBackend.ts` | src | reachable | 115 |
 | `src/agent/keyValueLine.ts` | src | reachable | 63 |
 | `src/agent/knowledge/index.ts` | src | reachable | 49 |
 | `src/agent/knowledge/InstructionSetManager.ts` | src | reachable | 309 |
 | `src/agent/knowledge/knowledgeDigest.ts` | src | reachable | 254 |
-| `src/agent/knowledge/KnowledgeRepository.ts` | src | reachable | 500 |
+| `src/agent/knowledge/KnowledgeRepository.ts` | src | reachable | 498 |
 | `src/agent/knowledge/knowledgeRevision.ts` | src | reachable | 342 |
+| `src/agent/knowledgeContext.ts` | src | reachable | 116 |
 | `src/agent/MemoryBackend.ts` | src | reachable | 156 |
 | `src/agent/MemoryEngine.ts` | src | reachable | 596 |
 | `src/agent/MemoryFormatter.ts` | src | reachable | 518 |
@@ -454,6 +460,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/AccessTracker.test.ts` | tests | test | 744 |
 | `tests/unit/agent/ActiveRetrieval.test.ts` | tests | test | 194 |
 | `tests/unit/agent/agent-memory-manager-diary.test.ts` | tests | test | 70 |
+| `tests/unit/agent/AgentMemoryManager.knowledge.test.ts` | tests | test | 65 |
 | `tests/unit/agent/AgentMemoryManager.test.ts` | tests | test | 720 |
 | `tests/unit/agent/AgentReflectionManager.test.ts` | tests | test | 578 |
 | `tests/unit/agent/ArtifactManager.test.ts` | tests | test | 659 |
@@ -473,6 +480,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/context-window-manager-wakeup.test.ts` | tests | test | 226 |
 | `tests/unit/agent/ContextProfileManager.test.ts` | tests | test | 526 |
 | `tests/unit/agent/ContextWindowManager.eviction.test.ts` | tests | test | 231 |
+| `tests/unit/agent/ContextWindowManager.knowledge.test.ts` | tests | test | 104 |
 | `tests/unit/agent/ContextWindowManager.test.ts` | tests | test | 1753 |
 | `tests/unit/agent/DecayEngine.reinforceBatch.test.ts` | tests | test | 150 |
 | `tests/unit/agent/DecayEngine.test.ts` | tests | test | 1318 |
@@ -484,6 +492,14 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/DreamEngine.test.ts` | tests | test | 965 |
 | `tests/unit/agent/EntropyFilter.test.ts` | tests | test | 318 |
 | `tests/unit/agent/EpisodicMemoryManager.test.ts` | tests | test | 727 |
+| `tests/unit/agent/evaluation/DeterministicJudge.hardening.test.ts` | tests | test | 67 |
+| `tests/unit/agent/evaluation/DeterministicJudge.test.ts` | tests | test | 131 |
+| `tests/unit/agent/evaluation/Evaluator.hardening.test.ts` | tests | test | 94 |
+| `tests/unit/agent/evaluation/Evaluator.test.ts` | tests | test | 197 |
+| `tests/unit/agent/evaluation/LLMRubricJudge.hardening.test.ts` | tests | test | 71 |
+| `tests/unit/agent/evaluation/LLMRubricJudge.test.ts` | tests | test | 129 |
+| `tests/unit/agent/evaluation/RubricAudit.hardening.test.ts` | tests | test | 53 |
+| `tests/unit/agent/evaluation/RubricAudit.test.ts` | tests | test | 160 |
 | `tests/unit/agent/EventManager.candidatesVia.test.ts` | tests | test | 74 |
 | `tests/unit/agent/EventManager.test.ts` | tests | test | 512 |
 | `tests/unit/agent/ExclusionManager.test.ts` | tests | test | 237 |
@@ -507,6 +523,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/knowledge/KnowledgeHardening.test.ts` | tests | test | 139 |
 | `tests/unit/agent/knowledge/KnowledgeRepository.rollback.test.ts` | tests | test | 135 |
 | `tests/unit/agent/knowledge/KnowledgeRepository.test.ts` | tests | test | 220 |
+| `tests/unit/agent/knowledgeContext.sections.test.ts` | tests | test | 63 |
 | `tests/unit/agent/memoryBackend-wiring.test.ts` | tests | test | 71 |
 | `tests/unit/agent/MemoryEngine.test.ts` | tests | test | 858 |
 | `tests/unit/agent/MemoryFormatter.test.ts` | tests | test | 313 |

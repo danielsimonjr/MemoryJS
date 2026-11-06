@@ -157,6 +157,8 @@ export interface LoadForContextOptions {
   budgetTokens?: number;
   /** Tokens per word (default 1.3). */
   multiplier?: number;
+  /** Sections to load (default all). Omitted sections are not queried; skills are matched only when listed. */
+  sections?: ReadonlyArray<'instructions' | 'skills' | 'failures'>;
 }
 
 /** Result of {@link KnowledgeRepository.loadForContext}. */
@@ -338,9 +340,10 @@ export class KnowledgeRepository {
   async loadForContext(options: LoadForContextOptions): Promise<LoadedKnowledge> {
     const budget = assertBudgetTokens(options.budgetTokens ?? DEFAULT_BUDGET_TOKENS, 'loadForContext');
     const multiplier = options.multiplier ?? readEnvNumber('MEMORY_CONTEXT_TOKEN_MULTIPLIER', 1.3);
-    const instructions = instructionItemsFor(await this.instructionSets.list(), options.role);
-    const matches = await this.skills.match(options.taskHint, { limit: LOOKUP_LIMIT });
-    const failures = await this.failures.lookupForTask(options.taskHint, { limit: LOOKUP_LIMIT });
+    const want = new Set(options.sections ?? ['instructions', 'skills', 'failures']);
+    const instructions = want.has('instructions') ? instructionItemsFor(await this.instructionSets.list(), options.role) : [];
+    const matches = want.has('skills') ? await this.skills.match(options.taskHint, { limit: LOOKUP_LIMIT }) : [];
+    const failures = want.has('failures') ? await this.failures.lookupForTask(options.taskHint, { limit: LOOKUP_LIMIT }) : [];
     const candidates: LoadItem[] = [
       ...instructions.map((item): LoadItem => ({ kind: 'instruction', item })),
       ...matches.map((match): LoadItem => ({ kind: 'skill', match })),
@@ -445,10 +448,7 @@ function latestSnapshotId(entities: readonly Entity[]): string {
     const match = /^K-(\d+)$/.exec(entity.name);
     if (!match || !isKnowledgeSnapshotEntity(entity)) continue;
     const n = Number(match[1]);
-    if (n > bestN) {
-      bestN = n;
-      best = entity.name;
-    }
+    if (n > bestN) [bestN, best] = [n, entity.name];
   }
   return best;
 }
@@ -477,9 +477,7 @@ function memoryRefsOf(entities: readonly Entity[]): KnowledgeSnapshotRecord['mem
 function renderLoaded(role: InstructionSetRole, items: readonly LoadItem[]): string {
   const groups: string[] = [];
   const instructions = items.flatMap((x) => (x.kind === 'instruction' ? [x.item] : []));
-  if (instructions.length > 0) {
-    groups.push(`## Instructions (${role})\n\n${renderInstructionItems(instructions)}`);
-  }
+  if (instructions.length > 0) groups.push(`## Instructions (${role})\n\n${renderInstructionItems(instructions)}`);
   const skills = items.flatMap((x) => (x.kind === 'skill' ? [x.match.skill] : []));
   if (skills.length > 0) {
     const blocks = skills.map((skill) => {

@@ -35,6 +35,7 @@ import type { ContextWindowManagerConfig } from '../types/agent-memory.js';
 import { fillDefaults } from '../utils/fillDefaults.js';
 import { estimateTokensFromText } from '../utils/tokenEstimate.js';
 import { formatEvictionLine, type EvictionIndex } from './harness/EvictionIndex.js';
+import { knowledgeLayersForWakeUp, type KnowledgeRepositoryLike } from './knowledgeContext.js';
 export type { ContextWindowManagerConfig };
 
 /** Compression intensity level for compressForContext. */
@@ -57,6 +58,10 @@ export interface ContextCompressionResult {
  */
 export interface WakeUpOptions {
   projectId?: string;
+  /** Shared knowledge (RS-27): instructions extend L0, matched skills extend L1. */
+  knowledge?: KnowledgeRepositoryLike;
+  /** Task description used to match skills for `knowledge`. Default ''. */
+  taskHint?: string;
   maxL0Tokens?: number;
   maxL1Tokens?: number;
   /** Token budget for L1.5 pending-intentions block. Default 200. */
@@ -1590,6 +1595,17 @@ export class ContextWindowManager {
         logger.error('[ContextWindowManager.wakeUp] Compression failed, using uncompressed:', err);
         // Fall through with uncompressed l1
       }
+    }
+
+    // RS-27: shared instructions extend L0 and matched skills extend L1, each within the budget left after existing content.
+    if (options.knowledge) {
+      const k = await knowledgeLayersForWakeUp(options.knowledge, options.taskHint ?? '', {
+        maxL0Tokens: maxL0 - this.estimateStringTokens(l0),
+        maxL1Tokens: maxL1 - this.estimateStringTokens(l1),
+        multiplier: this.config.tokenMultiplier,
+      });
+      l0 = [l0, k.l0].filter(Boolean).join('\n\n');
+      l1 = [l1, k.l1].filter(Boolean).join('\n');
     }
 
     // Eviction lines go last in L1, within the L1 budget.

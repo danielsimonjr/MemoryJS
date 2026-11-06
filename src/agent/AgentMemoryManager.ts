@@ -28,6 +28,8 @@ import type {
   ContextPackage,
 } from '../types/agent-memory.js';
 import { AccessTracker, type AccessContext } from './AccessTracker.js';
+import type { WakeUpOptions, WakeUpResult } from './ContextWindowManager.js';
+import type { KnowledgeRepositoryLike } from './knowledgeContext.js';
 import { DecayEngine, type ForgetOptions } from './DecayEngine.js';
 import { DecayScheduler, type DecayCycleResult } from './DecayScheduler.js';
 import { WorkingMemoryManager, type PromotionResult, type ConfirmationResult } from './WorkingMemoryManager.js';
@@ -103,6 +105,7 @@ export class AgentMemoryManager extends EventEmitter {
   private _ruleEvaluator?: RuleEvaluator;
   private _salienceEngine?: SalienceEngine;
   private _contextWindowManager?: ContextWindowManager;
+  private _knowledgeRepository?: KnowledgeRepositoryLike;
   private _memoryFormatter?: MemoryFormatter;
   private _multiAgentManager?: MultiAgentMemoryManager;
   private _conflictResolver?: ConflictResolver;
@@ -259,6 +262,16 @@ export class AgentMemoryManager extends EventEmitter {
    */
   setDistillationPolicy(policy: IDistillationPolicy | undefined): void {
     this.contextWindowManager.setDistillationPolicy(policy);
+  }
+
+  /** Repository `wakeUp` uses when `options.knowledge` is absent; undefined clears it. */
+  setKnowledgeRepository(repo?: KnowledgeRepositoryLike): void {
+    this._knowledgeRepository = repo;
+  }
+
+  /** Wake-up context; uses the set knowledge repository unless `options.knowledge` is given. */
+  wakeUp(options: WakeUpOptions = {}): Promise<WakeUpResult> {
+    return this.contextWindowManager.wakeUp({ ...options, knowledge: options.knowledge ?? this._knowledgeRepository });
   }
 
 

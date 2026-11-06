@@ -1,12 +1,12 @@
 {
   "generated": "2026-11-06",
-  "totalFiles": 856,
+  "totalFiles": 873,
   "byDisposition": {
-    "reachable": 341,
+    "reachable": 347,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 495,
+    "test": 506,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -14,8 +14,8 @@
   },
   "byArea": {
     "benchmarks": 4,
-    "src": 345,
-    "tests": 495,
+    "src": 351,
+    "tests": 506,
     "tools": 10,
     "config": 2
   },
@@ -116,7 +116,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 705
+      "loc": 718
     },
     {
       "file": "src/agent/AgentReflectionManager.ts",
@@ -207,7 +207,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1984
+      "loc": 2000
     },
     {
       "file": "src/agent/DecayEngine.ts",
@@ -264,6 +264,41 @@
       "area": "src",
       "disposition": "reachable",
       "loc": 531
+    },
+    {
+      "file": "src/agent/evaluation/DeterministicJudge.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 227
+    },
+    {
+      "file": "src/agent/evaluation/Evaluator.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 404
+    },
+    {
+      "file": "src/agent/evaluation/index.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 10
+    },
+    {
+      "file": "src/agent/evaluation/LLMRubricJudge.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 261
+    },
+    {
+      "file": "src/agent/evaluation/RubricAudit.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 224
     },
     {
       "file": "src/agent/events/EventManager.ts",
@@ -382,7 +417,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 629
+      "loc": 633
     },
     {
       "file": "src/agent/InMemoryBackend.ts",
@@ -424,7 +459,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 500
+      "loc": 498
     },
     {
       "file": "src/agent/knowledge/knowledgeRevision.ts",
@@ -432,6 +467,13 @@
       "area": "src",
       "disposition": "reachable",
       "loc": 342
+    },
+    {
+      "file": "src/agent/knowledgeContext.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 116
     },
     {
       "file": "src/agent/MemoryBackend.ts",
@@ -2912,6 +2954,13 @@
       "loc": 70
     },
     {
+      "file": "tests/unit/agent/AgentMemoryManager.knowledge.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 65
+    },
+    {
       "file": "tests/unit/agent/AgentMemoryManager.test.ts",
       "package": "(root)",
       "area": "tests",
@@ -3045,6 +3094,13 @@
       "loc": 231
     },
     {
+      "file": "tests/unit/agent/ContextWindowManager.knowledge.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 104
+    },
+    {
       "file": "tests/unit/agent/ContextWindowManager.test.ts",
       "package": "(root)",
       "area": "tests",
@@ -3120,6 +3176,62 @@
       "area": "tests",
       "disposition": "test",
       "loc": 727
+    },
+    {
+      "file": "tests/unit/agent/evaluation/DeterministicJudge.hardening.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 67
+    },
+    {
+      "file": "tests/unit/agent/evaluation/DeterministicJudge.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 131
+    },
+    {
+      "file": "tests/unit/agent/evaluation/Evaluator.hardening.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 94
+    },
+    {
+      "file": "tests/unit/agent/evaluation/Evaluator.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 197
+    },
+    {
+      "file": "tests/unit/agent/evaluation/LLMRubricJudge.hardening.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 71
+    },
+    {
+      "file": "tests/unit/agent/evaluation/LLMRubricJudge.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 129
+    },
+    {
+      "file": "tests/unit/agent/evaluation/RubricAudit.hardening.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 53
+    },
+    {
+      "file": "tests/unit/agent/evaluation/RubricAudit.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 160
     },
     {
       "file": "tests/unit/agent/EventManager.candidatesVia.test.ts",
@@ -3281,6 +3393,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 220
+    },
+    {
+      "file": "tests/unit/agent/knowledgeContext.sections.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 63
     },
     {
       "file": "tests/unit/agent/memoryBackend-wiring.test.ts",
