@@ -94,10 +94,6 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 - `BatchReinforcementOptions` (interface) — 1 in-file ref
 
-### `src/agent/PatternDetector.ts`
-
-- `PatternDetectorOptions` (interface) — 1 in-file ref
-
 ### `src/agent/knowledge/InstructionSetManager.ts`
 
 - `InstructionHistorySource` (interface) — 2 in-file refs
@@ -119,6 +115,10 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 - `applyOp` (function) — 2 in-file refs
 - `WorkState` (interface) — 4 in-file refs
+
+### `src/agent/PatternDetector.ts`
+
+- `PatternDetectorOptions` (interface) — 1 in-file ref
 
 ### `src/agent/procedural/graph/backing/ProceduralGraphState.ts`
 
@@ -175,6 +175,10 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 - `OutputFormat` (type) — 8 in-file refs
 
+### `src/core/context/StorageInfraFacade.ts`
+
+- `StorageInfraDeps` (interface) — 1 in-file ref
+
 ### `src/core/EntityManager.ts`
 
 - `GetEntityOptions` (interface) — 1 in-file ref
@@ -189,14 +193,6 @@ support exports that ARE used, so they cannot be deleted in isolation.
 - `DEFAULT_ALL_PATHS_MAX_PATHS` (constant) — 1 in-file ref
 - `DEFAULT_ALL_PATHS_MAX_EXPANSIONS` (constant) — 1 in-file ref
 
-### `src/core/SQLiteStorage.ts`
-
-- `DatabaseCtor` (type) — 6 in-file refs
-
-### `src/core/context/StorageInfraFacade.ts`
-
-- `StorageInfraDeps` (interface) — 1 in-file ref
-
 ### `src/core/mmap/FsReadMmapBackend.ts`
 
 - `FsReadMmapBackendOptions` (interface) — 1 in-file ref
@@ -204,6 +200,10 @@ support exports that ARE used, so they cannot be deleted in isolation.
 ### `src/core/segments/FileSegmentStorage.ts`
 
 - `SegmentCommitIncompleteError` (class) — 3 in-file refs
+
+### `src/core/SQLiteStorage.ts`
+
+- `DatabaseCtor` (type) — 6 in-file refs
 
 ### `src/features/ContradictionDetector.ts`
 
@@ -250,14 +250,6 @@ support exports that ARE used, so they cannot be deleted in isolation.
 - `AtLeastOne` (type) — 1 in-file ref
 - `DEFAULT_TRUST_THRESHOLDS` (constant) — 4 in-file refs
 
-### `src/utils/Diagnostics.ts`
-
-- `EntityCounts` (interface) — 2 in-file refs
-
-### `src/utils/WorkerPoolManager.ts`
-
-- `WorkerPoolRuntimeStats` (interface) — 1 in-file ref
-
 ### `src/utils/compressionUtil.ts`
 
 - `DecompressionOptions` (interface) — 3 in-file refs
@@ -265,6 +257,10 @@ support exports that ARE used, so they cannot be deleted in isolation.
 ### `src/utils/constants.ts`
 
 - `EMBEDDING_ENV_VARS` (constant) — 7 in-file refs
+
+### `src/utils/Diagnostics.ts`
+
+- `EntityCounts` (interface) — 2 in-file refs
 
 ### `src/utils/durableWriteFile.ts`
 
@@ -278,4 +274,8 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 - `GraphGenerationDependency` (type) — 2 in-file refs
 - `SearchCacheName` (type) — 3 in-file refs
+
+### `src/utils/WorkerPoolManager.ts`
+
+- `WorkerPoolRuntimeStats` (interface) — 1 in-file ref
 

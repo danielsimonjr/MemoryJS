@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Recursa Phase 1B/1C (`docs/development/RECURSA_SPEC_2026-11-06.md`): `SkillManager`, the SKILL.md format and publisher (`SkillFormat`, `SkillPublisher`, `skillTreeFs`), `InstructionSetManager` and `KnowledgeRepository` with digest and revision helpers, plus the storage and schema support they need. Skill lineage gains `producedBy`, and a skill record gains `publishedHash`.
+
 ### Fixed
 
 - `tools/create-dependency-graph` is an ES module package (`"type": "module"`, tsc `NodeNext`). Node no longer re-parses the generator on each `tools:deps` and `tools:check-census` run, and prints no `MODULE_TYPELESS_PACKAGE_JSON` warning. The built `dist/` output is ESM and runs the same.
