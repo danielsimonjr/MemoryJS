@@ -66,7 +66,8 @@ import {
   CompressedMap,
   ZlibCompressionAdapter,
 } from '../../src/utils/index.js';
-import type { ObservationStoreStats } from '../../src/core/index.js';
+import type { ObservationStoreStats, ProceduralGraphConfig } from '../../src/core/index.js';
+import type { ProceduralGraphConfig as RootProceduralGraphConfig } from '../../src/index.js';
 import type {
   ViewDefinition,
   ViewSnapshot,
@@ -100,6 +101,8 @@ import type {
 // Compile-time proof that the type-only names resolve from their barrels.
 type ExportedTypeProbes = [
   ObservationStoreStats,
+  ProceduralGraphConfig,
+  RootProceduralGraphConfig,
   ViewDefinition,
   ViewSnapshot,
   BloomPreScreenerOptions,

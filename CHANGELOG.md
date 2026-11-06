@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Recursa Phase 1D: `src/agent/skills` and `src/agent/knowledge` are exported from the `src/agent` barrel, and `ManagerContext` gains lazy `skillManager`, `instructionSets`, `knowledgeRepository` and `skillPublisher` getters. `skillManager` reuses an already-initialised `semanticSearch` and never constructs it; `SkillManager.match` falls back to lexical scoring when the embedding provider rejects or throws. `bun run typecheck` now also type-checks the export-barrel probes via `tsconfig.probes.json`.
 - Recursa Phase 2 (harness support, RS-7..RS-9, `@experimental`): `src/agent/harness/` adds `InteractionLog` (append-only JSONL sidecar of model turns, tool calls and outputs addressed `e<n>`, blob spill over `MEMORY_INTERACTION_LOG_INLINE_BYTES`, excerpt-only `select` with a bounded regex, Jaccard `search`), `EvictionIndex` (wired through `ContextWindowManager.setEvictionIndex`, which appends `[evicted]` lines to `retrieveForContext` and `wakeUp`; new `maxEvictionLines` config and `AgentEntity.interactionAddr` field) and `ConcurrencyLimiter` (`runAll`, `runAllWithStats`, `InProcessSubagentRunner`). `ToolCallObserver.setInteractionLog` records tool calls and results.
 
+### Changed
+
+- `ManagerContext` (1764 → 718 lines) now delegates its lazy getters to `src/core/context/{Search,AgentMemory,AgentCognition,AgentBookkeeping,KnowledgeGovernance}Facade.ts` next to `StorageInfraFacade`. Internal refactor with no behaviour change; the only surface changes are the new `ProceduralGraphConfig` type export (from `ManagerContext` and the package root) and the protected test probes `_skillManager` / `_instructionSets` / `_knowledgeRepository` / `_skillPublisher` / `_prospectiveMemory`, now typed as their managers instead of `unknown`.
+
 ### Fixed
 
 - `tools/create-dependency-graph` is an ES module package (`"type": "module"`, tsc `NodeNext`). Node no longer re-parses the generator on each `tools:deps` and `tools:check-census` run, and prints no `MODULE_TYPELESS_PACKAGE_JSON` warning. The built `dist/` output is ESM and runs the same.

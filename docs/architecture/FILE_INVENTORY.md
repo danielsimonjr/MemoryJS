@@ -10,22 +10,22 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 844
+**Total files**: 856
 
 ## Disposition counts
 
 | Disposition | Count | Meaning |
 | --- | --: | --- |
-| `reachable` | 335 | A `src/` file in the module graph, reachable from a root. |
+| `reachable` | 341 | A `src/` file in the module graph, reachable from a root. |
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 489 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 495 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 4 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 0 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **844** | |
+| **Total** | **856** | |
 
 ## Per-area counts
 
@@ -33,8 +33,8 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | --- | --: |
 | `benchmarks` | 4 |
 | `config` | 2 |
-| `src` | 339 |
-| `tests` | 489 |
+| `src` | 345 |
+| `tests` | 495 |
 | `tools` | 10 |
 
 ## All files
@@ -214,6 +214,12 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/cli/options.ts` | src | reachable | 58 |
 | `src/core/columns/IColumnStore.ts` | src | reachable | 177 |
 | `src/core/columns/JsonlColumnStore.ts` | src | reachable | 227 |
+| `src/core/context/AgentBookkeepingFacade.ts` | src | reachable | 204 |
+| `src/core/context/AgentCognitionFacade.ts` | src | reachable | 380 |
+| `src/core/context/AgentMemoryFacade.ts` | src | reachable | 488 |
+| `src/core/context/envBounds.ts` | src | reachable | 12 |
+| `src/core/context/KnowledgeGovernanceFacade.ts` | src | reachable | 258 |
+| `src/core/context/SearchFacade.ts` | src | reachable | 310 |
 | `src/core/context/StorageInfraFacade.ts` | src | reachable | 277 |
 | `src/core/EntityManager.ts` | src | reachable | 1607 |
 | `src/core/EntityStateMachine.ts` | src | reachable | 104 |
@@ -222,7 +228,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/core/GraphTraversal.ts` | src | reachable | 1406 |
 | `src/core/HierarchyManager.ts` | src | reachable | 314 |
 | `src/core/index.ts` | src | reachable | 60 |
-| `src/core/ManagerContext.ts` | src | reachable | 1765 |
+| `src/core/ManagerContext.ts` | src | reachable | 719 |
 | `src/core/mmap/FsReadMmapBackend.ts` | src | reachable | 239 |
 | `src/core/mmap/IMmapBackend.ts` | src | reachable | 169 |
 | `src/core/nodeSqliteAdapter.ts` | src | reachable | 181 |
@@ -614,6 +620,12 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/columns/ObservationColumnStore-wiring.test.ts` | tests | test | 266 |
 | `tests/unit/core/columns/shadow-write-drain.test.ts` | tests | test | 109 |
 | `tests/unit/core/ConcurrencyControl.test.ts` | tests | test | 459 |
+| `tests/unit/core/context/AgentBookkeepingFacade.test.ts` | tests | test | 69 |
+| `tests/unit/core/context/AgentCognitionFacade.test.ts` | tests | test | 94 |
+| `tests/unit/core/context/AgentMemoryFacade.test.ts` | tests | test | 116 |
+| `tests/unit/core/context/KnowledgeGovernanceFacade.test.ts` | tests | test | 99 |
+| `tests/unit/core/context/ManagerContext.close.test.ts` | tests | test | 45 |
+| `tests/unit/core/context/SearchFacade.test.ts` | tests | test | 118 |
 | `tests/unit/core/context/StorageInfraFacade.test.ts` | tests | test | 184 |
 | `tests/unit/core/entity-id.test.ts` | tests | test | 197 |
 | `tests/unit/core/entity-manager-list-projects.test.ts` | tests | test | 36 |
@@ -684,7 +696,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/TransactionManager.test.ts` | tests | test | 769 |
 | `tests/unit/core/TransitionLedger.test.ts` | tests | test | 521 |
 | `tests/unit/core/write-path-delta.test.ts` | tests | test | 745 |
-| `tests/unit/exports-barrels.test.ts` | tests | test | 294 |
+| `tests/unit/exports-barrels.test.ts` | tests | test | 297 |
 | `tests/unit/features/AnalyticsManager.test.ts` | tests | test | 400 |
 | `tests/unit/features/ArchiveManager.test.ts` | tests | test | 774 |
 | `tests/unit/features/AuditLog.test.ts` | tests | test | 477 |
