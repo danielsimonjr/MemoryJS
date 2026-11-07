@@ -1,67 +1,61 @@
 # MemoryJS - Data Flow Documentation
 
-**Version**: Unreleased (post v2.9.0 — brainapi2-inspired features R1–R5/R7/R9 + S1–S10/Sec1–Sec10 speed & security optimization program; Phases 0–11 performance & scale track via PR #34; Phase 2 memory-types expansion Sprints 4–6 + 8; v2.0.0 seven-theme function/API-call consistency & efficiency audit; knowledge-graph-as-core convergence)
-**Last Updated**: 2026-09-10
-
-> **Unreleased — the single biggest data-flow change since the last review**:
-> manager mutations no longer read-modify-write the whole graph. The
+> **Manager mutations apply deltas.** Manager mutations do not read-modify-write the whole graph. The
 > per-operation flow diagrams below (Create/Delete Entities, Add
 > Observations, Create Relations, Import) still show the pre-optimization
 > `storage.saveGraph(graph)` PERSIST step for illustrative simplicity — the
 > semantics of *what* gets persisted and *which* events fire have changed;
-> see [Batch Mutation Delta Flow](#batch-mutation-delta-flow-s2) for the
-> current, accurate mechanics. Three more flows added in this pass:
-> [Governance-Enforced Mutation Flow](#governance-enforced-mutation-flow-sec1),
-> [Ingest-with-Provenance Flow](#ingest-with-provenance-flow-r4br5), and
-> [Explain Evidence-Path Flow](#explain-evidence-path-flow-r2).
-> Procedural Graph (Wave 1–3, 2026-09) added create/session/evolve/commit
+> see [Batch Mutation Delta Flow](#batch-mutation-delta-flow) for the
+> current, accurate mechanics. Three more flows:
+> [Governance-Enforced Mutation Flow](#governance-enforced-mutation-flow),
+> [Ingest-with-Provenance Flow](#ingest-with-provenance-flow), and
+> [Explain Evidence-Path Flow](#explain-evidence-path-flow).
+> The Procedural Graph has create/session/evolve/commit
 > flows via `IProceduralGraphBacking` — see
 > [Procedural Graph Flow](#procedural-graph-flow).
 
-> Most data-flow patterns documented here remain accurate. New flows added
-> in v1.9–v1.15: temporal-validity invalidation cascade (η.4.4),
-> conversation ingestion pipeline (`IOManager.ingest`, v1.9.0), four-tier
-> dedup chain in `MemoryEngine` (v1.11.0), pluggable backend selection
-> (`MEMORY_BACKEND`, v1.12.0), iterative active-retrieval round-robin
-> (3B.5), causal-chain traversal (3B.6), world-state snapshot diff (3B.7),
-> mmap-branched JSONL load via `IMmapBackend.streamLines` (v1.15.0 Phase 11),
-> FNV-routed segment-shard reads (v1.15.0 Phase 7), columnar observation
-> reads via `JsonlColumnStore` (v1.15.0 Phase 8), tiered-index lookups
-> (`LRUHotTier` → `DiskWarmTier` → `BrotliColdTier`, v1.15.0 Phase 9),
-> compressed entity-cache hits via `CompressedMap` (v1.15.0 Phase 10),
-> write-ahead log commit-then-apply (v1.15.0 Phase 6), and `BackupManager`'s
+> Other flows covered below: temporal-validity invalidation cascade,
+> conversation ingestion pipeline (`IOManager.ingest`), four-tier
+> dedup chain in `MemoryEngine`, pluggable backend selection
+> (`MEMORY_BACKEND`), iterative active-retrieval round-robin
+> causal-chain traversal, world-state snapshot diff,
+> mmap-branched JSONL load via `IMmapBackend.streamLines`,
+> FNV-routed segment-shard reads, columnar observation
+> reads via `JsonlColumnStore`, tiered-index lookups
+> (`LRUHotTier` → `DiskWarmTier` → `BrotliColdTier`),
+> compressed entity-cache hits via `CompressedMap`,
+> write-ahead log commit-then-apply, and `BackupManager`'s
 > three-step delete (path-validate → symlink-check → unlink-then-cleanup-meta).
 > See the relevant per-manager sections below.
 >
-> **Phase 2 memory-types expansion (2026-05)** added five new flows:
-> - **Failure lookup (Sprint 4):** Pre-task `FailureManager.lookupForTask`
+> **Memory-type flows:**
+> - **Failure lookup:** Pre-task `FailureManager.lookupForTask`
 >   substring-scores `applicability_hint` (3×), `context` (2×), `attempted`
 >   (1×). `markResolved` branches on `storage.updateEntity` boolean to
 >   surface `'vanished-mid-update'` vs. `'already-resolved'`.
-> - **Plan-tree mutation (Sprint 5):** `loadPlanMutable` → deep-clone →
+> - **Plan-tree mutation:** `loadPlanMutable` → deep-clone →
 >   tree mutation → `validatePlanInvariants` (uniqueness, currentNodeId ∈
 >   tree, no cycles) → `persistPlan`. The deep clone IS the rollback —
 >   invariant failure throws without touching storage. Read paths skip the
 >   clone (`Readonly<T>` is type-only).
-> - **Trust-level resolution (Sprint 6):** `ConflictResolver` with
+> - **Trust-level resolution:** `ConflictResolver` with
 >   `'trust_level'` strategy calls `inferTrustLevel(source)` per memory
 >   (explicit `source.trustLevel` wins; otherwise NaN-guard then method-
 >   based mapping); `compareTrustLevel` orders results; recency tiebreak
 >   on equal tier.
-> - **Reflection emission (Sprint 8):** `ReflectionStage.runOnSessionEnd(sessionId)`
+> - **Reflection emission:** `ReflectionStage.runOnSessionEnd(sessionId)`
 >   → load `episodic + semantic` candidates filtered by `sessionId` →
 >   collect observations (max-per-run circuit breaker) → `PatternDetector`
 >   → early-return-with-`[info]`-error when below `minConfidence` →
 >   `TrajectoryCompressor.distill` → clamp confidence to `[0, 1]` →
 >   `ReflectionManager.create` with content-hash dedup (`sha256(scope|sorted(evidence))`).
-> - **Prospective promotion (Phase 1, integrated 2026-04):**
+> - **Prospective promotion:**
 >   `ProspectivePromotionStage` scans storage for fired `inject-context`
 >   intentions, promotes them to `'episodic'` with `prospective-fulfilled`
 >   tag, branches on `storage.updateEntity` boolean to surface
 >   vanished-mid-batch as errors.
 >
-> **Knowledge-graph-as-core convergence (2026-07)** added two more flows,
-> both documented in full below:
+> **Knowledge-graph flows**, documented in full below:
 > - **Entity rename** (`EntityManager.renameEntity`): atomic rewrite of
 >   every stored `name` reference, followed by a fixed three-event emission
 >   sequence (`entity:renamed` → `entity:deleted` → `entity:created`) — see
@@ -72,7 +66,7 @@
 >   `SalienceEngine` connectivity weight, `DecayEngine` connectivity
 >   protection) — see
 >   [Graph-Connectivity Signal Flow](#graph-connectivity-signal-flow).
-> Also: `SQLiteStorage` now emits the same `GraphEventEmitter` events as
+> Also: `SQLiteStorage` emits the same `GraphEventEmitter` events as
 > JSONL `GraphStorage` (see the updated
 > [TF-IDF Event Sync Flow](#tf-idf-event-sync-flow)), so every event-driven
 > derived view works on both backends.
@@ -95,10 +89,10 @@
 12. [Caching Strategy](#caching-strategy)
 13. [Index Architecture](#index-architecture)
 14. [Error Handling Flow](#error-handling-flow)
-15. [Batch Mutation Delta Flow (S2)](#batch-mutation-delta-flow-s2)
-16. [Governance-Enforced Mutation Flow (Sec1)](#governance-enforced-mutation-flow-sec1)
-17. [Ingest-with-Provenance Flow (R4b/R5)](#ingest-with-provenance-flow-r4br5)
-18. [Explain Evidence-Path Flow (R2)](#explain-evidence-path-flow-r2)
+15. [Batch Mutation Delta Flow](#batch-mutation-delta-flow)
+16. [Governance-Enforced Mutation Flow](#governance-enforced-mutation-flow)
+17. [Ingest-with-Provenance Flow](#ingest-with-provenance-flow)
+18. [Explain Evidence-Path Flow](#explain-evidence-path-flow)
 
 ---
 
@@ -1487,9 +1481,9 @@ Indexes are rebuilt on `loadGraph()` and incrementally updated on mutations via 
 
 ## Error Handling Flow
 
-### Error-Signalling Contract (v2.0.0)
+### Error-Signalling Contract
 
-As of v2.0.0 the codebase has one documented error-signalling policy
+The codebase has one documented error-signalling policy
 (`CONTRIBUTING.md` > Error Handling); the flows below should be read
 against it:
 
@@ -1571,7 +1565,7 @@ KnowledgeGraphError (base)
 
 ---
 
-## Batch Mutation Delta Flow (S2)
+## Batch Mutation Delta Flow
 
 Manager mutations (`EntityManager.createEntities`/`updateEntity`/`batchUpdate`/`deleteEntities`, `RelationManager.createRelations`/`deleteRelations`) persist via targeted delta primitives instead of `loadGraph()` + mutate-in-memory + `saveGraph()` of the entire graph:
 
@@ -1630,9 +1624,9 @@ createEntities(entities)  [example — same shape for update/delete/relation pat
 
 ---
 
-## Governance-Enforced Mutation Flow (Sec1)
+## Governance-Enforced Mutation Flow
 
-Applies only when `MEMORY_GOVERNANCE_ENABLED === 'true'` (strict literal, checked once at first `ctx.entityManager` access). Unset = this flow does not run at all — zero overhead, identical to pre-Sec1 behavior.
+Applies only when `MEMORY_GOVERNANCE_ENABLED === 'true'` (strict literal, checked once at first `ctx.entityManager` access). Unset = this flow does not run at all — zero overhead, identical to the behavior without governance.
 
 ```
 ctx.entityManager (first access, env var == 'true')
@@ -1669,7 +1663,7 @@ ctx.entityManager (first access, env var == 'true')
 ┌─────────────────────────────────────────────────────────────┐
 │ 4. FIRE-AND-FORGET AUDIT                                        │
 │    audit(event) → GovernanceManager.appendAudit → AuditLog.append│
-│    Applies redactAuditSnapshots (Sec6, opt-in) to before/after   │
+│    Applies redactAuditSnapshots (opt-in) to before/after         │
 │    snapshots if configured. Failure here is logged as a          │
 │    warning and NEVER rolls back or fails the write that already  │
 │    succeeded — the write and the audit are decoupled.            │
@@ -1683,7 +1677,7 @@ Contrast with `GovernanceManager.withTransaction()` (unchanged, still available)
 
 ---
 
-## Ingest-with-Provenance Flow (R4b/R5)
+## Ingest-with-Provenance Flow
 
 ```
 ctx.ioManager.ingest(input, options)
@@ -1705,9 +1699,9 @@ ctx.ioManager.ingest(input, options)
       │ (new chunk)
       ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ 3. R5 MODE DIAL (only if options.llmProvider is set)            │
+│ 3. MODE DIAL (only if options.llmProvider is set)                │
 │    'lightweight' → heuristic-only (LLM never called)             │
-│    'balanced'    → auto (default, = pre-R5 behaviour)            │
+│    'balanced'    → auto (default)                                │
 │    'accurate'    → llm-preferred; heuristicStrictness: 'strict'  │
 │                    when no options.validate hook is supplied     │
 │    MemoryDistiller.distill(turns) → extra [distilled] … lines    │
@@ -1752,13 +1746,13 @@ ctx.ioManager.ingest(input, options)
      chunkCount, tokenUsage?, validation? }
 ```
 
-The manifest + `derived_from` relations + per-observation `sourceRef` together let evidence paths extend `answer → relation → observation → source chunk` — see [Explain Evidence-Path Flow](#explain-evidence-path-flow-r2) below for how a search result traces back to its anchors.
+The manifest + `derived_from` relations + per-observation `sourceRef` together let evidence paths extend `answer → relation → observation → source chunk` — see [Explain Evidence-Path Flow](#explain-evidence-path-flow) below for how a search result traces back to its anchors.
 
 ---
 
-## Explain Evidence-Path Flow (R2)
+## Explain Evidence-Path Flow
 
-Applies only when a caller passes `explain: true` to `HybridSearchManager.search` or `LLMSearchExecutor.execute`. Omitting it is byte-identical to pre-R2 output — `EvidencePathBuilder` is never constructed.
+Applies only when a caller passes `explain: true` to `HybridSearchManager.search` or `LLMSearchExecutor.execute`. Omitting it is byte-identical to output without `explain` — `EvidencePathBuilder` is never constructed.
 
 ```
 search(query, { explain: true })

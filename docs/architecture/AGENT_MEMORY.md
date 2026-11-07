@@ -1,230 +1,6 @@
 # Agent Memory System Design
 
-**Last reviewed**: 2026-07-24 (v2.0.x + Phase 2 memory-types expansion Sprints 4–6 + 8 + Phase 3B.8 Heuristic Guidelines Manager + v2.9.0 knowledge-graph-as-core convergence + Unreleased brainapi2-inspired features R1/R3/R4b/R5)
-
 This document specifies the architectural design for transforming MemoryJS into a comprehensive memory system for AI agents, supporting both short-term (working memory) and long-term (persistent knowledge) memory patterns.
-
-> **What's shipped on top of the original design** — the per-component
-> sections below predate v1.9; this banner is the source of truth for
-> what's in `src/agent/` today:
->
-> - **v1.7.0** — Role profiles (`RoleProfiles`, 5 built-ins), entropy filter,
->   consolidation scheduler, collaborative synthesis, failure distillation,
->   cognitive load analyzer, visibility resolver (5-tier).
-> - **v1.8.0** — Memory versioning (supersession), project scoping,
->   contradiction detector + semantic forget.
-> - **v1.9.0** — Temporal relations (`invalidateRelation`/`queryAsOf`/`timeline`),
->   `ContextWindowManager.wakeUp` 4-layer memory stack, conversation ingest
->   (`IOManager.ingest`), per-agent diary, local-embeddings default.
->   **Unreleased addition (R4b/R5)**: `ingest` now writes an `ingest-<id>`
->   provenance manifest (per-chunk hash/offset, `derived_from` relations,
->   per-observation `sourceRef`) and accepts an `IngestOptions.mode:
->   'accurate' | 'balanced' | 'lightweight'` cost/quality dial that maps onto
->   the same `MemoryDistiller` (`src/agent/reconstruction/MemoryDistiller.ts`)
->   used by `ReconstructiveMemory` construction (see the entry near the
->   bottom of this banner) — `'lightweight'` never calls the configured
->   `llmProvider`, `'balanced'` (default, = pre-R5 behaviour) lets the
->   distiller auto-decide, `'accurate'` prefers the LLM path and tightens
->   heuristic fallback strictness when no external `validate` hook is
->   supplied. Distillation enrichment (extra `[distilled] …` observations)
->   only activates when `llmProvider` is passed; omitted = ingest behaves
->   exactly as before R5.
-> - **v1.11.0** — `MemoryEngine` turn-aware conversation memory with
->   four-tier dedup (exact / prefix / Jaccard / semantic).
-> - **v1.12.0** — Pluggable `IMemoryBackend` (in-memory / sqlite),
->   `DecayEngine.calculatePrdEffectiveImportance` PRD-scale scoring.
-> - **v1.13.0 (Phase δ)** — `MemoryValidator` (consistency / contradictions /
->   reliability), `TrajectoryCompressor`, `ExperienceExtractor`. All
->   wrap-and-extend per ADR-011.
-> - **v2.9.0 (η.4.4)** — Bitemporal validity for entities + observations
->   (`validFrom` / `validUntil` / `observationMeta[]`).
-> - **v2.9.0 (η.5.5)** — Multi-agent conflict view, visibility expansion
->   (role + time-window gates), optimistic concurrency control, audit
->   attribution enforcer.
-> - **v2.9.0 (η.6.1 / η.6.3)** — RBAC (Role / Permission / Matrix /
->   Middleware), `PiiRedactor` for export-time PII scrubbing.
-> - **v2.9.0 (3B.4–3B.7)** — Procedural memory (`ProcedureManager` +
->   `StepSequencer`), active retrieval (`ActiveRetrievalController` with
->   iterative query rewriting), causal reasoning (`CausalReasoner`),
->   world-model orchestrator (`WorldModelManager` + `WorldStateSnapshot`).
-> - **v1.15.0 (Phases 0–11 performance & scale)** — The agent memory subsystem
->   benefits transparently from infrastructure improvements in PR #34:
->   `EpisodicMemoryManager` and `WorkingMemoryManager` now sit on top of
->   `GraphStorage`'s optional mmap branch (`MEMORY_USE_MMAP`) for >100 MB
->   stores, segment-sharded JSONL (`MEMORY_STORAGE_SEGMENT_COUNT`) for
->   parallel reads, and the `JsonlColumnStore` columnar observation backend
->   for very-wide entity rows. `ContextWindowManager` retrieval results now
->   pass through `ctx.compressedEntityCache` (`CompressedMap` with
->   `ZlibCompressionAdapter`) so retrieved entities cost less RAM
->   at rest. No agent-memory API changes; opt-in via env vars.
-> - **Phase 2 memory-types expansion (2026-05)** — Four new catalog-aligned
->   `MemoryType` slots and one provenance mixin:
->   - **Sprint 4** — `FailureManager` + `MemoryType: 'failure'`. Structured
->     `FailureRecord` (`context` / `attempted` / `failure_mode` / `root_cause` /
->     `applicability_hint`) for pre-task failure lookup. `markResolved` returns
->     discriminated `MarkResolvedResult`.
->   - **Sprint 5** — `PlanManager` + `MemoryType: 'plan'`. Hierarchical
->     `PlanRecord` with `GoalNode` tree, discriminated `PlanLifecycle` /
->     `GoalNodeLifecycle`, branded `PlanId` / `GoalNodeId`,
->     `validatePlanInvariants` after every mutation, cycle-protected DFS.
->   - **Sprint 6 (partial)** — `TrustLevel` discriminated mixin on
->     `MemorySource` (`ground-truth` / `verified` / `inferred` / `unverified`)
->     with `inferTrustLevel` backfill and `'trust_level'` `ConflictStrategy`.
->     `CollaborativeSynthesis.resolveConflicts` ordering integration deferred.
->   - **Sprint 8** — `AgentReflectionManager` (class renamed from
->     `ReflectionManager` in v2.9.x duplicate resolution) + `MemoryType:
->     'reflection'` + `ReflectionStage` pipeline stage. Additive (no
->     supersession of evidence); content-hash dedup at create; raw
->     `PatternResult.confidence ≥ 0.4` gate; session-end scheduling via
->     `runOnSessionEnd(sessionId)` helper. Back-compat barrel alias
->     `ReflectionMemoryManager` retained; `src/search/ReflectionManager`
->     (progressive query refinement) keeps the short name.
->
->   Common conventions across all four sprints: branded ids, discriminated
->   lifecycle unions, `MarkResolvedResult`-style returns,
->   `validate*Invariants` after mutation, `storage.updateEntity:
->   Promise<boolean>` branched to surface `vanished-mid-update`. See
->   `docs/roadmap/MEMORY_TYPES_EXPANSION_PHASE_2.md` for design rationale.
-> - **v2.0.0 (seven-theme function/API-call consistency & efficiency audit)** —
->   Two changes touch the agent-memory surface directly: `AccessTracker.getAccessStats`
->   and `AccessTracker.flush` dropped their needless `Promise` wrappers (now
->   synchronous — Theme 3, breaking), and the absent-value sentinel was
->   standardized to `undefined` across `AgentMemoryManager.copyMemory` /
->   `mergeCrossAgent` and `MultiAgentMemoryManager.transferMemory` / `copyMemory`
->   / `mergeCrossAgent` (were `T | null` — Theme 5, breaking). New shared
->   `Result<T, E>` discriminated union (`src/types/result.ts`) plus a documented
->   error-signalling policy (`CONTRIBUTING.md`): throw for programmer errors,
->   return `Result` for expected domain failures, never swallow silently.
-> - **v2.0.x (Phase 3B.8 Heuristic Guidelines Manager)** — Last 3B item,
->   closes the "From Storage to Experience" series. Storage-backed
->   `HeuristicManager` (`@experimental` match algorithm) with new
->   `MemoryType: 'heuristic'`, `HeuristicEntity`, `HeuristicId`, and
->   `ctx.heuristicManager` lazy getter (3B.8a). Companion
->   `HeuristicExtractionStage` crystallises resolved `FailureRecord`s and
->   qualifying `ReflectionRecord`s into heuristics with content-hash
->   idempotency (3B.8b). Mutating writes use `EntityManager` OCC and surface
->   `'conflict'` via a new `HeuristicUpdateResult`, matching the #55 pattern.
->   Both constructors are breaking; the class was `@experimental`.
-> - **v2.9.0 (knowledge-graph-as-core convergence)** — Stable
->   `Entity.id` (opaque UUID assigned at creation, preserved across
->   updates/renames/persistence on both backends) + new
->   `EntityManager.renameEntity(oldName, newName)` primitive (atomically
->   rewrites relation endpoints, children `parentId`, version-chain
->   fields; emits `entity:renamed` then `entity:deleted`/`entity:created`;
->   `RefIndex` is now actually wired into `EntityManager` by
->   `ManagerContext` so refs remap on rename / purge on delete).
->   `SQLiteStorage` gained full `GraphEventEmitter` parity with
->   `GraphStorage` (`storage.events`), so event-driven derived views
->   (TF-IDF sync, `GraphRankPrior`, columnar observation store) now work
->   on the SQLite backend too. Graph connectivity lands as an opt-in
->   signal across search, salience, and decay — every knob below
->   defaults to 0 = off with behavior identical to before: new
->   `GraphRankPrior` (`@experimental`, cached normalized PageRank over
->   `GraphTraversal` with degree-only fallback) feeds a fourth `graph`
->   channel on `HybridScorer`/`HybridSearchManager`
->   (`MEMORY_HYBRID_GRAPH_WEIGHT`) and an opt-in `RankedSearch` boost
->   (`MEMORY_RANKED_GRAPH_BOOST`); `SalienceEngine` gains
->   `connectivityWeight` → a `connectivityBoost` component (normalized
->   entity degree) in `ScoredEntity.components`
->   (`MEMORY_SALIENCE_CONNECTIVITY_WEIGHT` /
->   `AGENT_MEMORY_SALIENCE_CONNECTIVITY_WEIGHT`); `DecayEngine` gains
->   `connectivityProtection` (legacy decay path only — well-connected
->   entities decay slower; requires a degree snapshot refreshed by the
->   batch decay operations or the new public
->   `refreshConnectivitySnapshot()`) via
->   `MEMORY_DECAY_CONNECTIVITY_PROTECTION` /
->   `AGENT_MEMORY_DECAY_CONNECTIVITY_PROTECTION`. Separately,
->   `ProcedureStore`, `WorkThreadManager`, and `SessionCheckpointManager`
->   all had their single-JSON-blob-observation storage decomposed into
->   real entity+relation graph structure (steps/threads/checkpoints as
->   first-class entities linked via `has_step`/`precedes`/`has_fallback`,
->   `child_of`/`blocked_by`, and `has_checkpoint`/`snapshots` relations
->   respectively) — see the Procedural Memory entry below and the
->   per-file JSDoc; legacy blob encodings auto-migrate on read, with
->   bulk `migrateLegacy*` helpers and `@deprecated` decoders retained for
->   direct use. Public method signatures are unchanged except
->   `SessionCheckpointManager`'s constructor, which now takes
->   `entityManager`/`relationManager` (facade-wired, no caller impact).
->   Contract clarifications: `InMemoryBackend` is documented
->   ephemeral-by-design (durability belongs to the SQLite-backed
->   `IMemoryBackend`); `ReconstructiveMemory`'s CTC graph is documented
->   as a specialized index, with bridge persistence into the entity
->   graph as the default system-of-record path.
-> - **v2.0.x (Entity-level observation dedup)** — `ObservationDedupManager`
->   surfaces cross-entity duplicate observation strings (the gap between
->   `MemoryEngine`'s turn-level dedup and `CompressionManager`'s
->   entity-grouping dedup). `findDuplicateObservations` (SHA-256 exact)
->   and `findJaccardDuplicates` (token Jaccard with union-find grouping)
->   take a `{entityType, projectId, sessionId, minOccurrences, maxGroups}`
->   filter. `ctx.observationDedupManager` lazy getter; companion
->   `ObservationDedupReportStage` emits `[info]`-prefixed diagnostic
->   entries when registered on a pipeline. Report-only; merge/strip
->   actions deferred as follow-ups.
-> - **v2.0.x (Tool Affordance — scope expansion)** —
->   `ToolAffordanceManager` (`MemoryType: 'tool_affordance'`,
->   `ctx.toolAffordanceManager`) tracks per-tool rolling outcome stats
->   (success rate, common failure modes, avg duration) for adaptive
->   tool selection. Companion `ToolCallObserver`
->   (`ctx.toolCallObserver`) is the producer pipeline —
->   `observeStart` / `observeComplete` / `observeError` /
->   `observePartial`. Companion `MCPToolObserverAdapter` shims MCP-shaped
->   envelopes (no `@modelcontextprotocol/sdk` dep — structural typing).
->   **Scope expansion**: MemoryJS now tracks tool-call outcomes, not
->   just memories. Explicit user decision on the Phase 2 doc's open
->   Q4 ("scope of tool"). CLI: `memory tool-affordance
->   list|show|stats|suggest`.
-> - **v2.0.x (Phase 3 Project Context)** — `ProjectContextManager` ships
->   structured project-knowledge memory (`MemoryType: 'project_context'`),
->   one record per `projectId` with `facts` / `conventions` / `commands` /
->   `glossary` arrays. `upsert` merges with array append+dedup;
->   `forContext(projectId, {budgetChars})` renders prose for wakeUp.
->   `ContextWindowManager.wakeUp` gains `WakeUpResult.projectContext` —
->   when `options.projectId` is set, the layer is populated automatically
->   (token budget via `maxProjectContextTokens`, default 300). Consumers
->   concatenate above `l0`. CLI: `memory project-context
->   show|append-fact|append-convention|append-command|append-glossary|clear`.
->   **Closes Phase 3 of the memory-types expansion fully** —
->   `do_not_remember`, Decision Rationale, and Project Context all shipped.
-> - **v2.0.x (Phase 3 Decision Rationale)** — `DecisionManager` ships a
->   runtime-queryable ADR-equivalent memory (`MemoryType: 'decision'`).
->   Lifecycle: proposed → accepted | rejected; accepted → superseded.
->   All lifecycle mutations are OCC-protected and return discriminated
->   results with `'conflict'` / `'illegal-transition'` arms.
->   `findByContext` substring search; `getChain` walks the supersedes
->   link. ADR markdown dual-write via `exportAsAdrMarkdown(id)` /
->   `DecisionManager.parseAdrMarkdown(text)` (static). CLI:
->   `memory decision propose|accept|reject|supersede|list|find|export|import`.
-> - **v2.0.x (Phase 3 `do_not_remember`)** — `ExclusionManager` registers
->   content-pattern exclusion rules (`MemoryType: 'exclusion'`).
->   `add()` hard-deletes existing matches on past-scope; `check()` is
->   wired into `MemoryEngine.addTurn` (returns `blocked: true` result +
->   `memoryEngine:writeBlocked` event) and `WorkingMemoryManager.createWorkingMemory`
->   (throws `MemoryWriteBlockedError`). v1 ships substring matching only;
->   `regex` mode reserved on the `ExclusionMode` union as a future
->   widening point. CLI: `memory exclude add|list|remove`.
-> - **Unreleased (brainapi2-inspired features, R1/R3)** — Two new agent
->   managers, both `@experimental`, neither introducing a new `MemoryType`
->   (they're a convention layer over existing entity/relation storage,
->   not a new memory-type slot):
->   - **`EventManager`** (`agent/events/EventManager.ts`, `ctx.eventManager`)
->     — R1 event reification. Actions become first-class
->     `entityType: 'event'` hub entities named `event-<action>-<shortId>`,
->     linked to their actor/target/context/participants via role-typed
->     relations (`actor_of`/`targeted`/`occurred_in`/`participant_in`) and
->     grouped by an optional `flow:<key>` tag. `recordEvent` / `getEvent` /
->     `queryEvents` / `getFlow` / `whoDidWhat`. Missing endpoint entities
->     auto-create as lightweight `entityType: 'concept'` stubs by default.
->     Pure convention layer — no schema change, no new memory type; reuses
->     the storage `TypeIndex`/`RelationIndex` so queries stay O(k)/O(1).
->   - **`RelationConsolidator`** (`agent/RelationConsolidator.ts`) — R3
->     three-tier "Janitor" pass for *relations* (consolidation was
->     previously entity/observation-centric only): tier 1 spelling-variant
->     merge, tier 2 embedding-similarity dedup (≥ 0.90 cosine, gated on an
->     injected embedding provider), tier 3 LLM neighborhood validation
->     (gated on an injected `LLMProvider`; returns `ConsolidationFeedback`
->     and **never auto-mutates**). Companion `RelationConsolidationStage`
->     is a report-only `PipelineStage`. Not wired into `ManagerContext` —
->     construct directly, mirroring other standalone consolidation stages.
 
 ## Overview
 
@@ -279,6 +55,36 @@ AI agents require memory systems that mirror human cognitive patterns: the abili
 
 ---
 
+## Subsystem Capabilities
+
+The sections after this one describe the original lifecycle services. This section lists the other parts of `src/agent/` that exist today. The per-memory-type sections (Failure, Plan, Reflection, Heuristic, Tool Affordance, Project Context, Decision, Exclusion, Trust) describe the memory types in detail.
+
+- **Roles and cognition.** `RoleProfiles` (5 built-in profiles), an entropy filter, a consolidation scheduler, collaborative synthesis, failure distillation, a cognitive load analyzer, and a 5-tier visibility resolver.
+- **Versioning and scoping.** Memory versioning (supersession), project scoping, a contradiction detector, and semantic forget.
+- **Temporal relations.** `invalidateRelation`, `queryAsOf`, and `timeline`. Entities and observations also carry bitemporal validity (`validFrom`, `validUntil`, `observationMeta[]`).
+- **Wake-up and diary.** `ContextWindowManager.wakeUp` builds a 4-layer memory stack. Each agent has a diary. Local embeddings are the default.
+- **Conversation ingest.** `IOManager.ingest` writes an `ingest-<id>` provenance manifest (per-chunk hash and offset, `derived_from` relations, per-observation `sourceRef`). `IngestOptions.mode` is `'accurate' | 'balanced' | 'lightweight'` and maps onto `MemoryDistiller` (`src/agent/reconstruction/MemoryDistiller.ts`), the same distiller that `ReconstructiveMemory` uses.
+  - `'lightweight'` never calls the configured `llmProvider`.
+  - `'balanced'` (default) lets the distiller decide.
+  - `'accurate'` prefers the LLM path. It tightens the heuristic fallback when no external `validate` hook exists.
+  - Enrichment (extra `[distilled] ...` observations) runs only when the caller passes `llmProvider`.
+- **Conversation memory.** `MemoryEngine` is turn-aware and uses four-tier dedup: exact, prefix, Jaccard, semantic.
+- **Backends.** `IMemoryBackend` is pluggable (in-memory or SQLite). `InMemoryBackend` is ephemeral by design; durability belongs to the SQLite backend. `DecayEngine.calculatePrdEffectiveImportance` gives PRD-scale scoring.
+- **Quality and learning.** `MemoryValidator` (consistency, contradictions, reliability), `TrajectoryCompressor`, and `ExperienceExtractor`. All three wrap and extend existing components.
+- **Multi-agent control.** A conflict view, visibility gates (role and time window), optimistic concurrency control, an audit attribution enforcer, RBAC (Role, Permission, Matrix, Middleware), and `PiiRedactor` for export-time PII scrubbing.
+- **World model.** `ProcedureManager` with `StepSequencer`, `ActiveRetrievalController` (iterative query rewriting), `CausalReasoner`, and `WorldModelManager` with `WorldStateSnapshot`.
+- **Scale infrastructure.** Agent managers sit on the storage layer and use its optional features without API changes: the mmap branch (`MEMORY_USE_MMAP`) for stores over 100 MB, segment-sharded JSONL (`MEMORY_STORAGE_SEGMENT_COUNT`), the `JsonlColumnStore` columnar observation backend, and `ctx.compressedEntityCache` (`CompressedMap` with `ZlibCompressionAdapter`) for retrieval results. All are opt-in through environment variables.
+- **Error contract.** `Result<T, E>` (`src/types/result.ts`) and a documented policy (`CONTRIBUTING.md`): throw for programmer errors, return `Result` for expected domain failures, never swallow errors silently. `AccessTracker.getAccessStats` and `AccessTracker.flush` are synchronous. The absent-value sentinel is `undefined` in `AgentMemoryManager.copyMemory` / `mergeCrossAgent` and `MultiAgentMemoryManager.transferMemory` / `copyMemory` / `mergeCrossAgent`.
+- **Observation dedup.** `ObservationDedupManager` (`ctx.observationDedupManager`) finds duplicate observation strings across entities. `findDuplicateObservations` uses SHA-256 exact match. `findJaccardDuplicates` uses token Jaccard with union-find grouping. Both take a `{entityType, projectId, sessionId, minOccurrences, maxGroups}` filter. `ObservationDedupReportStage` emits `[info]`-prefixed diagnostic entries. The manager reports only; it does not merge or strip.
+- **Event reification (`@experimental`).** `EventManager` (`agent/events/EventManager.ts`, `ctx.eventManager`) turns actions into `entityType: 'event'` hub entities named `event-<action>-<shortId>`. Role-typed relations (`actor_of`, `targeted`, `occurred_in`, `participant_in`) link each event to its actor, target, context, and participants. An optional `flow:<key>` tag groups events. The API is `recordEvent`, `getEvent`, `queryEvents`, `getFlow`, and `whoDidWhat`. Missing endpoint entities become lightweight `entityType: 'concept'` stubs by default. The layer is a convention over existing storage with no schema change and no new memory type. It reuses `TypeIndex` and `RelationIndex`, so queries stay O(k) or O(1).
+- **Relation consolidation (`@experimental`).** `RelationConsolidator` (`agent/RelationConsolidator.ts`) runs a three-tier pass over relations. Tier 1 merges spelling variants. Tier 2 deduplicates by embedding similarity (cosine >= 0.90, needs an injected embedding provider). Tier 3 validates neighborhoods with an injected `LLMProvider`, returns `ConsolidationFeedback`, and never mutates automatically. `RelationConsolidationStage` is a report-only `PipelineStage`. `ManagerContext` does not wire it; callers construct it directly.
+- **Stable entity identity.** `Entity.id` is an opaque UUID assigned at creation and kept across updates, renames, and persistence on both backends. `EntityManager.renameEntity(oldName, newName)` rewrites relation endpoints, child `parentId` values, and version-chain fields atomically. It emits `entity:renamed`, then `entity:deleted` / `entity:created`. `ManagerContext` wires `RefIndex` into `EntityManager`, so references remap on rename and purge on delete. `SQLiteStorage` has full `GraphEventEmitter` parity with `GraphStorage` (`storage.events`), so event-driven derived views (TF-IDF sync, `GraphRankPrior`, the columnar observation store) work on both backends.
+- **Graph connectivity signals (opt-in).** Every knob defaults to 0 (off).
+  - `GraphRankPrior` (`@experimental`) caches normalized PageRank over `GraphTraversal`, with a degree-only fallback. It feeds a fourth `graph` channel on `HybridScorer` / `HybridSearchManager` (`MEMORY_HYBRID_GRAPH_WEIGHT`) and an optional `RankedSearch` boost (`MEMORY_RANKED_GRAPH_BOOST`).
+  - `SalienceEngine.connectivityWeight` adds a `connectivityBoost` component (normalized entity degree) to `ScoredEntity.components` (`MEMORY_SALIENCE_CONNECTIVITY_WEIGHT` / `AGENT_MEMORY_SALIENCE_CONNECTIVITY_WEIGHT`).
+  - `DecayEngine.connectivityProtection` slows decay for well-connected entities on the legacy decay path only. It needs a degree snapshot, which the batch decay operations or the public `refreshConnectivitySnapshot()` refresh (`MEMORY_DECAY_CONNECTIVITY_PROTECTION` / `AGENT_MEMORY_DECAY_CONNECTIVITY_PROTECTION`).
+- **Graph-structured storage.** `ProcedureStore`, `WorkThreadManager`, and `SessionCheckpointManager` store their data as entities and relations: steps, threads, and checkpoints are first-class entities linked by `has_step` / `precedes` / `has_fallback`, `child_of` / `blocked_by`, and `has_checkpoint` / `snapshots`. Legacy single-JSON-blob observations migrate on read. Bulk `migrateLegacy*` helpers and `@deprecated` decoders remain available. `SessionCheckpointManager` takes `entityManager` and `relationManager` in its constructor (the facade wires them). `ReconstructiveMemory`'
+
 ## Data Model Extensions
 
 ### Extended Entity Interface
@@ -305,7 +111,7 @@ interface AgentEntity extends Entity {
   accessPattern?: 'frequent' | 'occasional' | 'rare';
 
   // === Memory Strength ===
-  confidence: number;           // Belief strength (0.0-1.0)
+  confidence: number;           // Belief strength
   confirmationCount: number;    // Times verified/reinforced
   decayRate?: number;           // Custom decay multiplier
 
@@ -319,7 +125,7 @@ interface MemorySource {
   agentId: string;
   timestamp: string;
   method: 'observed' | 'inferred' | 'told' | 'consolidated';
-  reliability: number;          // Trust score (0.0-1.0)
+  reliability: number;          // Trust score
   originalEntityId?: string;    // If consolidated from another memory
 }
 ```
@@ -331,7 +137,7 @@ interface AgentObservation {
   content: string;
 
   // === Confidence & Verification ===
-  confidence: number;           // How certain (0.0-1.0)
+  confidence: number;           // How certain
   confirmationCount: number;    // Times verified
   contradictedBy?: string[];    // Conflicting observation IDs
 
@@ -408,10 +214,10 @@ interface AccessTracker {
   /**
    * Get access statistics for an entity
    */
-  getAccessStats(entityName: string): AccessStats; // v2.0.0: synchronous (Theme 3)
+  getAccessStats(entityName: string): AccessStats; // synchronous
 
   /**
-   * Calculate recency score (0.0-1.0) based on last access
+   * Calculate recency score based on last access
    */
   calculateRecencyScore(entityName: string, halfLifeHours?: number): number;
 
@@ -514,10 +320,10 @@ interface DecayResult {
 ```
 
 > **Shipped `DecayEngineConfig` also has** (see the Decay Formula section
-> below): `connectivityProtection` (v2.9.0, default 0) — well-connected
+> below): `connectivityProtection` (default 0) — well-connected
 > entities decay slower in this legacy path; and the PRD-scale sibling
 > fields (`decayRate`/`freshnessCoefficient`/`relevanceWeight`/
-> `minImportanceThreshold`, v1.12) that back the separate
+> `minImportanceThreshold`) that back the separate
 > `calculatePrdEffectiveImportance` method, not shown above.
 
 ### 3. Consolidation Pipeline
@@ -660,13 +466,13 @@ interface ScoredEntity {
     frequencyBoost: number;
     contextRelevance: number;
     noveltyBoost: number;
-    connectivityBoost: number; // v2.9.0: normalized entity degree, only computed when connectivityWeight > 0
+    connectivityBoost: number; // normalized entity degree, only computed when connectivityWeight > 0
   };
 }
 ```
 
 > **Shipped `SalienceEngineConfig` also has** `connectivityWeight`
-> (v2.9.0, default 0 = disabled) — weight applied to
+> (default 0 = disabled) — weight applied to
 > `components.connectivityBoost` above. With the default weight the
 > signal is never computed, so scores are bit-identical to prior
 > behavior. `rankEntitiesBySalience` caches the degree map once per
@@ -847,7 +653,7 @@ interface MultiAgentMemoryManager {
   mergeCrossAgent(
     entityNames: string[],
     trustWeights?: Record<string, number>
-  ): Promise<AgentEntity | undefined>; // v2.0.0: undefined when < 2 inputs (Theme 5)
+  ): Promise<AgentEntity | undefined>; // undefined when < 2 inputs
 }
 
 interface AgentMetadata {
@@ -901,14 +707,14 @@ type ConflictStrategy =
 
 ### Procedural Memory
 
-- **Purpose**: Skills, patterns, procedures (3B.4)
+- **Purpose**: Skills, patterns, procedures
 - **Lifetime**: Permanent
 - **Manager**: `ProcedureManager` + `StepSequencer` + `ProcedureStore`
 - **Characteristics**:
   - Extracted from repeated observations
   - Rule-based patterns
   - Action sequences executable via `invoke()`
-  - **Storage (v2.9.0)**: `ProcedureStore` persists steps as
+  - **Storage**: `ProcedureStore` persists steps as
     first-class `procedure-step` entities (name
     `${procId}::step-${order}`, `parentId` = procedure) carrying
     `[order]`/`[action]`/`[timeout]`/`[param]` observation lines, linked
@@ -920,7 +726,7 @@ type ConflictStrategy =
     take an added `RelationManager` — callers going through
     `ctx.procedureManager` are unaffected.
 
-### Prospective Memory (v1.14 / Phase 1)
+### Prospective Memory
 
 - **Purpose**: Intentions-to-act at a future time / event / condition
 - **Lifetime**: Append-only-until-fired; expires per TTL
@@ -941,7 +747,7 @@ type ConflictStrategy =
     `checkIntervalMs`, each not-due check persists `lifecycle.lastCheckedAt`
     (an update to an otherwise append-only record)
 
-### Failure Memory (Sprint 4)
+### Failure Memory
 
 - **Purpose**: Pre-task lookup of "what failed when I tried similar work
   before" — catalog frames this as the single biggest concrete win available
@@ -957,7 +763,7 @@ type ConflictStrategy =
     `SearchManager.semanticSearch` upgrade is a follow-up
   - `markResolved` returns discriminated `MarkResolvedResult`
 
-### Plan Memory (Sprint 5)
+### Plan Memory
 
 - **Purpose**: Hierarchical goal decomposition + sub-tasks + acceptance
   criteria. Forward-looking like prospective, but mutable and tree-shaped
@@ -976,15 +782,14 @@ type ConflictStrategy =
   - Unified `transitionNode(planId, nodeId, transition)` state-machine entry
     point; mutators throw on `storage.updateEntity` returning false
 
-### Reflection Memory (Sprint 8)
+### Reflection Memory
 
 - **Purpose**: Derived insights from pattern + trajectory summary +
   experience extraction over a candidate set. Catalog Type 10
 - **Lifetime**: Permanent; soft-delete via `archive`
-- **Manager**: `AgentReflectionManager` (renamed from `ReflectionManager`
-  in v2.9.x — collision with `src/search/ReflectionManager` broke
-  package-root exports; back-compat barrel alias `ReflectionMemoryManager`
-  retained); `MemoryType: 'reflection'`
+- **Manager**: `AgentReflectionManager` (named to avoid a collision with
+  `src/search/ReflectionManager`; the back-compat barrel alias
+  `ReflectionMemoryManager` exists); `MemoryType: 'reflection'`
 - **Pipeline integration**: `ReflectionStage` — explicit
   `runOnSessionEnd(sessionId)` helper for session-end triggers, or register
   on the default pipeline
@@ -999,12 +804,10 @@ type ConflictStrategy =
   - `getRelevantForSession` returns reflections matching `sourceSessionId`
     OR overlapping `evidence ∩ sessionEntityNames`
 
-### Heuristic Guidelines (Phase 3B.8)
+### Heuristic Guidelines
 
 - **Purpose**: Crystallise implicit patterns into explicit
-  natural-language `condition → action` strategies. Catalog Type 11 —
-  the final 3B item, closes the "From Storage to Experience" memory
-  evolution series
+  natural-language `condition → action` strategies. Catalog Type 11
 - **Lifetime**: Permanent; remove via `HeuristicManager.remove`
 - **Manager**: storage-backed `HeuristicManager` (`@experimental` match
   algorithm); `MemoryType: 'heuristic'`; accessed via `ctx.heuristicManager`
@@ -1050,23 +853,21 @@ type ConflictStrategy =
   `rollingStats(toolName)` returns the flat snake-case shape;
   `suggestTool(taskHint, {limit?, minScore?})` ranks by
   `successRate × recencyFactor`; `get` / `list` / `remove`
-- **Producer pipeline** (Phase Tool B): `ToolCallObserver`
+- **Producer pipeline**: `ToolCallObserver`
   (`ctx.toolCallObserver`) is the canonical caller. `observeStart` →
   `observeComplete` / `observeError` / `observePartial` close the
   observation, compute `durationMs`, and emit `toolCall:*` events for
   telemetry subscribers
-- **MCP adapter** (Phase Tool C): `MCPToolObserverAdapter`
+- **MCP adapter**: `MCPToolObserverAdapter`
   (`src/adapters/MCPToolObserverAdapter.ts`) wraps MCP-shaped tool-call
   envelopes (`{name}` / `{tool}` / `{method: 'tools/call', params:
   {name}}`); structural typing — no `@modelcontextprotocol/sdk` dep
   added
 - **CLI**: `memory tool-affordance list|show|stats|suggest`
-- **Scope expansion note**: MemoryJS now tracks tool-call outcomes,
-  not just memories. This was an explicit, user-approved scope decision
-  on the Phase 2 doc's open Q4 — see
-  [`TOOL_AFFORDANCE_PLAN.md`](../roadmap/TOOL_AFFORDANCE_PLAN.md)
+- **Scope note**: MemoryJS tracks tool-call outcomes, not just
+  memories. See [`TOOL_AFFORDANCE_PLAN.md`](../roadmap/TOOL_AFFORDANCE_PLAN.md)
 
-### Project Context (Phase 3)
+### Project Context
 
 - **Purpose**: Structured project-knowledge memory — runtime-queryable
   companion to unstructured CLAUDE.md content. Catalog Type 2 enhancement
@@ -1087,14 +888,14 @@ type ConflictStrategy =
   entity; `get(projectId)` is sync via name index; `forContext(projectId,
   {budgetChars?})` formats as prose with ellipsis truncation. Mutations
   OCC-protected via `EntityManager.updateEntity({expectedVersion})`
-- **wakeUp integration** (Phase PC B): when `options.projectId` is set,
+- **wakeUp integration**: when `options.projectId` is set,
   `ContextWindowManager.wakeUp` populates `WakeUpResult.projectContext`
   with the prose summary (token budget via `maxProjectContextTokens`,
   default 300). Consumers concatenate `projectContext` ABOVE `l0` for
   system-prompt assembly; the result type is flat
 - **CLI**: `memory project-context show|append-fact|append-convention|append-command|append-glossary|clear`
 
-### Decision Rationale (Phase 3)
+### Decision Rationale
 
 - **Purpose**: Runtime-queryable architecture-decision-record (ADR)
   memory. Lets an agent answer "have we already decided X?" without
@@ -1124,7 +925,7 @@ type ConflictStrategy =
   (CLI) own `fs.readFileSync` / `writeFileSync`
 - **CLI**: `memory decision propose|accept|reject|supersede|list|find|export|import`
 
-### Exclusion (`do_not_remember`, Phase 3)
+### Exclusion (`do_not_remember`)
 
 - **Purpose**: User-supplied content-pattern exclusion rules. Hard-delete
   existing matches on `add`; write-block future matches at the two hot
@@ -1150,7 +951,7 @@ type ConflictStrategy =
   surface requires a careful design (timeout + max length cap +
   governance integration) that's deferred
 
-### Trust Hierarchy Mixin (Sprint 6)
+### Trust Hierarchy Mixin
 
 - **Purpose**: Categorical complement to the numeric `reliability` /
   `confidence` / `AgentMetadata.trustLevel` scores. Discriminated label
@@ -1268,7 +1069,7 @@ where:
     where importance_boost = base_importance / 10
 ```
 
-**Connectivity protection (v2.9.0, off by default):** when
+**Connectivity protection (off by default):** when
 `DecayEngine`'s `connectivityProtection` config is > 0, `decay_factor`
 above is replaced by an `effective_decay_factor` that is lifted toward 1
 for well-connected entities:
@@ -1451,45 +1252,6 @@ const config: AgentMemoryConfig = {
   }
 };
 ```
-
----
-
-## Implementation Phases
-
-### Phase 1: Memory Lifecycle Foundation
-- Extend Entity with access tracking fields
-- Implement AccessTracker service
-- Add recency-weighted search scoring
-- Implement basic decay calculations
-- Add working memory TTL support
-
-### Phase 2: Session & Episodic Memory
-- Create Session entity type
-- Implement WorkingMemoryManager
-- Add session-scoped queries
-- Implement memory expiration cleanup
-- Add promotion pipeline basics
-
-### Phase 3: Decay & Consolidation
-- Implement full DecayEngine
-- Add observation summarization
-- Build ConsolidationPipeline
-- Add pattern extraction
-- Implement auto-consolidation rules
-
-### Phase 4: Context-Aware Retrieval
-- Implement SalienceEngine
-- Build ContextWindowManager
-- Add task relevance scoring
-- Implement novelty detection
-- Add context-optimized retrieval
-
-### Phase 5: Multi-Agent Support
-- Add agent identity fields
-- Implement visibility controls
-- Build MultiAgentMemoryManager
-- Add conflict resolution
-- Implement cross-agent memory merge
 
 ---
 

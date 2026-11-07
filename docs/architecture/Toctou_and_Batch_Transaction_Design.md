@@ -5,8 +5,7 @@
 
 # Design: TOCTOU Race Fix (M1) & BatchTransaction Partial Save (M4)
 
-**Date:** 2026-02-10
-**Status:** ✅ Approved → Implemented (v1.5+; both fixes shipped — covered by
+**Status:** ✅ Approved → Implemented (both fixes shipped — covered by
 `tests/unit/core/ConcurrencyControl.test.ts` and
 `tests/unit/core/BatchTransaction.test.ts` + `TransactionBatching.test.ts`).
 
