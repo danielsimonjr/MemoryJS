@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `README.md` is stateless: the version line and the code-samples note at the top are gone. npm shows the version.
+
 ## [4.6.0] - 2026-11-06
 
 ### Added
