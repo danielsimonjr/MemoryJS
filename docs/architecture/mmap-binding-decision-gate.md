@@ -7,7 +7,7 @@
 
 **Status:** ⏸ Deferred — awaiting user approval of an external native dep.
 
-> **Note (v2.5.0):** The `BufferMmapBackend` reference impl was removed during
+> **Note:** The `BufferMmapBackend` reference impl was removed during
 > a dead-code pass. `FsReadMmapBackend` is now the sole production
 > `IMmapBackend` implementation.
 
@@ -31,7 +31,7 @@ add:
   copy-out, not disk I/O.
 
 The cost: a native dep that has to be approved (we don't add deps
-without explicit user input on this branch).
+without explicit user input).
 
 ## Options surveyed
 
@@ -60,12 +60,11 @@ large files) is small relative to disk I/O. The native binding is
 a 10–30 % CPU improvement on iteration-heavy workloads; not
 free, not transformative.
 
-## Phase 11 disposition
+## Disposition
 
-- Task 82 documented (this file).
-- Task 83 ships the `FsReadMmapBackend` as the default portable
-  backend so callers don't have to wait for the decision.
-- Task 84 wires `GraphStorage.loadGraph` to use a configurable
+- `FsReadMmapBackend` is the default portable
+  backend, so callers do not have to wait for the decision.
+- `GraphStorage.loadGraph` uses a configurable
   backend via `MEMORY_USE_MMAP=true`, default backend is
   `FsReadMmapBackend`. A future `MmapIoBackend` plugs in via the
   same env var without touching the wiring.

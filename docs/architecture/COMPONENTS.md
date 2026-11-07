@@ -1,7 +1,5 @@
 # MemoryJS - Component Reference
 
-**Version**: Unreleased (post v2.9.0 — brainapi2-inspired features R1/R2/R3/R4/R5/R7/R9 + S1–S10/Sec1–Sec10 speed & security optimization program; Phases 0–11 performance & scale track via PR #34; Phase 2 memory-types expansion Sprints 4–6 + 8; v2.0.0 seven-theme function/API-call consistency & efficiency audit; knowledge-graph-as-core convergence — stable `Entity.id` + `renameEntity`, SQLite event parity, graph-connectivity signals)
-**Last Updated**: 2026-09-10
 
 ---
 
@@ -50,17 +48,17 @@ MemoryJS follows a layered architecture with specialized components:
 ```
 
 **Total (`src/` only):** 292 TypeScript files | 103,641 LOC | 2,030 exports | 233 classes | 620 interfaces
-(authoritative numbers from `docs/architecture/dependency-summary.compact.json`, see `TEST_COVERAGE.md` for test counts — 374 test files, 281/292 source files with tests, 96.2%). Runtime circular dependencies in `src/` are 0; type-only circular dependencies in `src/` are 8 via the `src/types/**` ESLint leaf-layer guard (S10) — see [ARCHITECTURE.md](./ARCHITECTURE.md#build--packaging).
+(authoritative numbers from `docs/architecture/dependency-summary.compact.json`, see `TEST_COVERAGE.md` for test counts — 374 test files, 281/292 source files with tests, 96.2%). Runtime circular dependencies in `src/` are 0; type-only circular dependencies in `src/` are 8 via the `src/types/**` ESLint leaf-layer guard — see [ARCHITECTURE.md](./ARCHITECTURE.md#build--packaging).
 
-### New since v1.13: dedicated sub-modules under `agent/`
+### Dedicated sub-modules under `agent/`
 
-- `agent/causal/` — `CausalReasoner` (3B.6)
-- `agent/procedural/` — `ProcedureManager` + `StepSequencer` (3B.4); `graph/` (Procedural Graph: Manager, Session, Evolution, Validator, Schemas, backings)
-- `agent/retrieval/` — `ActiveRetrievalController` + `QueryRewriter` (3B.5)
-- `agent/world/` — `WorldModelManager` + `WorldStateSnapshot` (3B.7)
-- `agent/rbac/` — `RbacMiddleware` + `RoleAssignmentStore` + `PermissionMatrix` (η.6.1)
-- `agent/collaboration/` — `CollaborationAuditEnforcer` (η.5.5.d)
-- `agent/events/` — `EventManager` (R1 event reification, `@experimental`)
+- `agent/causal/` — `CausalReasoner`
+- `agent/procedural/` — `ProcedureManager` + `StepSequencer`; `graph/` (Procedural Graph: Manager, Session, Evolution, Validator, Schemas, backings)
+- `agent/retrieval/` — `ActiveRetrievalController` + `QueryRewriter`
+- `agent/world/` — `WorldModelManager` + `WorldStateSnapshot`
+- `agent/rbac/` — `RbacMiddleware` + `RoleAssignmentStore` + `PermissionMatrix`
+- `agent/collaboration/` — `CollaborationAuditEnforcer`
+- `agent/events/` — `EventManager` (event reification, `@experimental`)
 
 ### Dedicated sub-modules under `core/` and `utils/`
 
@@ -305,11 +303,11 @@ export class ConsolidationPipeline {
 ```typescript
 export class AccessTracker {
   async recordAccess(entityName: string, context?: AccessContext): Promise<void>
-  getAccessStats(entityName: string): AccessStats     // v2.0.0: synchronous (was Promise)
+  getAccessStats(entityName: string): AccessStats     // synchronous
   calculateRecencyScore(entityName: string, halfLifeHours?: number): number
   async getFrequentlyAccessed(limit: number): Promise<Entity[]>
   async getRecentlyAccessed(limit: number): Promise<Entity[]>
-  flush(): void                                       // v2.0.0: synchronous (was Promise)
+  flush(): void                                       // synchronous
 }
 ```
 
@@ -462,7 +460,7 @@ Wired into `ContextWindowManager.retrieveForContext()` — runs after salience s
 
 ### RoleProfiles (`agent/RoleProfiles.ts`)
 
-**Purpose**: Role-aware salience weight presets and token budget splits (v1.7.0)
+**Purpose**: Role-aware salience weight presets and token budget splits
 
 ```typescript
 type AgentRole = 'researcher' | 'planner' | 'executor' | 'reviewer' | 'coordinator';
@@ -486,7 +484,7 @@ Five built-in profiles ship with opinionated defaults — e.g. `researcher` boos
 
 ### EntropyFilter (`agent/EntropyFilter.ts`)
 
-**Purpose**: Shannon entropy gate that removes low-information memories before consolidation (v1.7.0)
+**Purpose**: Shannon entropy gate that removes low-information memories before consolidation
 
 ```typescript
 export class EntropyFilter {
@@ -503,7 +501,7 @@ Integrated as an early stage in `ConsolidationPipeline`. Entropy is computed fro
 
 ### ConsolidationScheduler (`agent/ConsolidationScheduler.ts`)
 
-**Purpose**: Background recursive deduplication and merge scheduler (v1.7.0)
+**Purpose**: Background recursive deduplication and merge scheduler
 
 ```typescript
 export class ConsolidationScheduler {
@@ -523,7 +521,7 @@ Each scheduled cycle calls `ConsolidationPipeline.runAutoConsolidation()` and re
 
 ### MemoryFormatter (`agent/MemoryFormatter.ts`) — updated
 
-**Purpose**: Memory-to-prompt formatting with salience-proportional budget allocation (v1.7.0)
+**Purpose**: Memory-to-prompt formatting with salience-proportional budget allocation
 
 ```typescript
 export class MemoryFormatter {
@@ -531,7 +529,7 @@ export class MemoryFormatter {
   formatEntity(entity: AgentEntity): string
   formatObservations(observations: string[], limit?: number): string
 
-  // v1.7.0
+  // role profiles and visibility
   formatWithSalienceBudget(
     memories: AgentEntity[],
     scores: Map<string, number>,
@@ -544,7 +542,7 @@ export class MemoryFormatter {
 
 ### CollaborativeSynthesis (`agent/CollaborativeSynthesis.ts`)
 
-**Purpose**: Graph-neighbourhood synthesis merging observations from multiple agents (v1.7.0)
+**Purpose**: Graph-neighbourhood synthesis merging observations from multiple agents
 
 ```typescript
 export class CollaborativeSynthesis {
@@ -571,7 +569,7 @@ Walks the relation graph up to `hopDepth` hops, collects all agent-contributed o
 
 ### FailureDistillation (`agent/FailureDistillation.ts`)
 
-**Purpose**: Causal chain lesson extraction from failed episodes (v1.7.0)
+**Purpose**: Causal chain lesson extraction from failed episodes
 
 ```typescript
 export class FailureDistillation {
@@ -594,7 +592,7 @@ Reconstructs the event sequence leading to the failure entity via reverse causal
 
 ### CognitiveLoadAnalyzer (`agent/CognitiveLoadAnalyzer.ts`)
 
-**Purpose**: Multi-dimensional cognitive load scoring for a memory set (v1.7.0)
+**Purpose**: Multi-dimensional cognitive load scoring for a memory set
 
 ```typescript
 export class CognitiveLoadAnalyzer {
@@ -615,7 +613,7 @@ interface CognitiveLoadReport {
 
 ### VisibilityResolver (`agent/VisibilityResolver.ts`)
 
-**Purpose**: Five-level shared memory visibility model with group membership (v1.7.0)
+**Purpose**: Five-level shared memory visibility model with group membership
 
 ```typescript
 type VisibilityLevel = 'private' | 'team' | 'org' | 'shared' | 'public';
@@ -647,7 +645,7 @@ Visibility rules: `private` → owner only; `team` → same team members; `org` 
 
 ### ProspectiveMemoryManager (`agent/ProspectiveMemoryManager.ts`)
 
-**Purpose**: Intentions-to-act at a future time / event / condition. Phase 1 prospective memory. Catalog Type 4.
+**Purpose**: Intentions-to-act at a future time / event / condition. Prospective memory. Catalog Type 4.
 
 ```typescript
 export class ProspectiveMemoryManager {
@@ -668,7 +666,7 @@ export class ProspectiveMemoryManager {
 
 ### FailureManager (`agent/FailureManager.ts`)
 
-**Purpose**: Pre-task failure lookup. Catalog Type 9 — "the single biggest concrete win available to most agentic systems" per the Phase 2 catalog. Sprint 4.
+**Purpose**: Pre-task failure lookup. Catalog Type 9 — "the single biggest concrete win available to most agentic systems" per the memory-types catalog.
 
 ```typescript
 export class FailureManager {
@@ -687,7 +685,7 @@ export class FailureManager {
 
 ### PlanManager (`agent/PlanManager.ts`)
 
-**Purpose**: Hierarchical goal trees with sub-tasks + acceptance criteria. Catalog Type 6. Sprint 5.
+**Purpose**: Hierarchical goal trees with sub-tasks + acceptance criteria. Catalog Type 6.
 
 ```typescript
 export class PlanManager {
@@ -712,7 +710,7 @@ export class PlanManager {
 
 ### AgentReflectionManager (`agent/AgentReflectionManager.ts`)
 
-**Purpose**: Derived insights from pattern + trajectory + experience over a candidate set. Additive (no supersession of evidence). Catalog Type 10. Sprint 8. Renamed from `ReflectionManager` in v2.9.x (the name collided with `src/search/ReflectionManager` — progressive query refinement — and ESM ambiguous-star-export rules silently dropped both from the package root); the historical barrel alias `ReflectionMemoryManager` is retained for back-compat.
+**Purpose**: Derived insights from pattern + trajectory + experience over a candidate set. Additive (no supersession of evidence). Catalog Type 10. The class name differs from `ReflectionManager` (that name collides with `src/search/ReflectionManager` — progressive query refinement — and ESM ambiguous-star-export rules silently dropped both from the package root); the barrel alias `ReflectionMemoryManager` exists for back-compat.
 
 ```typescript
 export class AgentReflectionManager {
@@ -732,7 +730,7 @@ export class AgentReflectionManager {
 
 ### ReflectionStage (`agent/ConsolidationPipeline.ts`)
 
-**Purpose**: Pipeline stage that produces `ReflectionEntity` records from candidate episodic + semantic memories. Mirrors `ProspectivePromotionStage`'s self-sufficient pattern. Sprint 8.
+**Purpose**: Pipeline stage that produces `ReflectionEntity` records from candidate episodic + semantic memories. Mirrors `ProspectivePromotionStage`'s self-sufficient pattern.
 
 ```typescript
 export class ReflectionStage implements PipelineStage {
@@ -755,7 +753,7 @@ Pipeline: gather observations (max-per-run circuit breaker) → `PatternDetector
 
 ---
 
-### ConflictResolver — `'trust_level'` strategy (Sprint 6)
+### ConflictResolver — `'trust_level'` strategy
 
 **Purpose**: Sixth `ConflictStrategy` (alongside `most_recent` / `highest_confidence` / `most_confirmations` / `trusted_agent` / `merge_all`). Resolves by highest categorical `TrustLevel` on `MemorySource.trustLevel` (or `inferTrustLevel` backfill), with recency tiebreak.
 
@@ -771,7 +769,7 @@ Backfill from existing `MemorySource` shape (`method` + `reliability`) via `infe
 
 ---
 
-### EventManager (`agent/events/EventManager.ts`) — Unreleased, `@experimental` (R1)
+### EventManager (`agent/events/EventManager.ts`) — `@experimental`
 
 **Purpose**: Reifies actions as first-class `entityType: 'event'` hub entities — the brainapi2-style n-ary "triangle" model — so "who did what, to whom, where, when" is one queryable unit instead of flat triples
 
@@ -798,7 +796,7 @@ Pure convention layer over existing storage (no schema change). Queries use the 
 
 ---
 
-### RelationConsolidator (`agent/RelationConsolidator.ts`) — Unreleased, `@experimental` (R3)
+### RelationConsolidator (`agent/RelationConsolidator.ts`) — `@experimental`
 
 **Purpose**: Three-tier "Janitor" pass for relation-level deduplication and neighborhood validation — closes a gap where consolidation was previously entity/observation-centric only
 
@@ -848,7 +846,7 @@ export class ProceduralGraphManager {
 **Conventions**:
 - Wired via `await ctx.createProceduralGraph({ backing: { type: 'jsonl' | 'sqlite' | 'memory'; path? }, policy? })`. An injected backing is not owned; a constructed one is disposed by `ManagerContext.close()`.
 - `openSession` pins a frozen revision for guidance; `evolve` is offline (library never executes guidance text); `prepareCandidate` applies detached edits without committing.
-- Expected validation and policy denials return result unions and never throw. Companion `ProcedureManager` + `StepSequencer` remain the 3B.4 linear-procedure path.
+- Expected validation and policy denials return result unions and never throw. Companion `ProcedureManager` + `StepSequencer` remain the linear-procedure path.
 
 ---
 
@@ -875,7 +873,7 @@ export class EntityManager {
 
 `renameEntity(oldName, newName)` validates the new name like `createEntities`, then delegates to the storage-level `renameEntity` primitive (optional member on `IGraphStorage`; implemented by both `GraphStorage` and `SQLiteStorage`) which atomically rewrites `Relation.from`/`Relation.to`, other entities' `parentId`, and version-chain fields (`parentEntityName`, `rootEntityName`, `supersededBy`). Registered `RefIndex` aliases are remapped. Throws `EntityNotFoundError` / `DuplicateEntityError`. Segment-mode JSONL storage (`MEMORY_STORAGE_SEGMENT_COUNT`) is routing-aware — a rename that changes an entity's shard is handled correctly. Emits `entity:renamed`, then `entity:deleted` (old name), then `entity:created` (renamed entity) so create/delete-only derived views (TF-IDF sync, `GraphRankPrior`) stay consistent without learning the new event type.
 
-**Unreleased — delta persistence (S2) + governance enforcement chokepoint (Sec1):**
+**delta persistence + governance enforcement chokepoint:**
 
 `createEntities`/`updateEntity`/`batchUpdate`/`deleteEntities`/`renameEntity` no longer read-modify-write the whole graph. Each now calls a batch storage primitive (`appendEntitiesCompat`, `updateEntity`, `deleteEntitiesCompat`, etc.) that persists only the changed rows — one fsync / one SQLite transaction per call — and emits per-item events (`entity:created`/`entity:updated`/`entity:deleted`) instead of relying on `graph:saved`. Validation still reads a snapshot via `storage.loadGraph()` under `storage.graphMutex` to prevent TOCTOU races between the read and the delta write.
 
@@ -920,7 +918,7 @@ type GraphEvent = 'entity:created' | 'entity:updated' | 'entity:deleted' | 'enti
 
 **Event parity across backends**: `SQLiteStorage` now exposes its own `GraphEventEmitter` (`storage.events`) with the same event surface as `GraphStorage` (JSONL) — `graph:loaded`/`graph:saved`, `entity:created`/`updated`, `relation:created`, and the rename sequence (emitted once at the `EntityManager` level, not duplicated per-backend). `IGraphStorage.events?` is an optional interface member so third-party/test storage implementations without an emitter remain valid; derived views degrade gracefully when it's absent. This means event-driven derived views — `TFIDFEventSync`, `GraphRankPrior`, the columnar observation store (`MEMORY_OBSERVATIONS_COLUMNAR`) — now work identically on both the JSONL and SQLite backends, where previously they only worked on JSONL.
 
-**Unreleased — batch-mutation event contract (S2 delta persistence)**: since manager mutations became delta operations (see the EntityManager update above), per-item events fire **exactly once per logical change** for every mutation path, including batch calls that previously only emitted `graph:saved`:
+**batch-mutation event contract (delta persistence)**: since manager mutations became delta operations (see the EntityManager update above), per-item events fire **exactly once per logical change** for every mutation path, including batch calls that previously only emitted `graph:saved`:
 
 - `entity:created` / `entity:updated` / `entity:deleted` — per entity, from the delta primitives (`appendEntity`/`appendEntities`, `updateEntity`/`updateEntities`, storage `deleteEntities`); `entity:updated` also fires when a relation delete bumps an affected entity's `lastModified` (`changes = { lastModified }`)
 - `relation:created` / `relation:deleted` — per relation, from `appendRelation`/`appendRelations` (including upserts, e.g. `RelationManager.invalidateRelation`) and storage `deleteRelations` / cascaded deletes from `deleteEntities`
@@ -930,7 +928,7 @@ type GraphEvent = 'entity:created' | 'entity:updated' | 'entity:deleted' | 'enti
 
 ---
 
-### SQLiteStorage (`core/SQLiteStorage.ts`) — Unreleased: write-side tuning (S3)
+### SQLiteStorage (`core/SQLiteStorage.ts`) — write-side tuning
 
 **Purpose**: FTS5-backed storage with tuned pragmas and cached prepared statements for write-heavy workloads
 
@@ -947,7 +945,7 @@ this.db.pragma('temp_store = MEMORY');    // keep temp tables/indices in memory
 
 ---
 
-### StorageFactory + sqlite-register (`core/StorageFactory.ts`, `core/sqlite-register.ts`) — Unreleased: lazy SQLite loading (S9)
+### StorageFactory + sqlite-register (`core/StorageFactory.ts`, `core/sqlite-register.ts`) — lazy SQLite loading
 
 **Purpose**: Keep JSONL-only consumers from paying for (or being broken by) the `better-sqlite3` native addon
 
@@ -962,7 +960,7 @@ export async function preloadSQLiteStorage(): Promise<void>  // explicit dynamic
 import './sqlite-register.js';
 ```
 
-The core barrel (`core/index.ts`) imports `sqlite-register.ts` for its side effect, so ordinary consumers of `createStorage({ type: 'sqlite', ... })` still work with no extra step. Requesting `type: 'sqlite'` before the registration has run throws a descriptive error pointing at `preloadSQLiteStorage()` or an explicit `SQLiteStorage` import. JSONL-only consumers who import from the `./core` or `./sqlite`-excluding subpaths never evaluate the `SQLiteStorage` module, so the native addon is never loaded and an ABI/prebuild mismatch on that platform can't break them. **Known gap**: the root package barrel (`src/index.ts`) still re-exports `SQLiteStorage` via `core/index.ts`, so it is eagerly loaded for anyone importing from the package root — full removal from the default import graph is a documented v3 follow-up (`docs/development/OPTIMIZATION_OPPORTUNITIES.md`, item S9). `SQLiteStorage` also gained a `graphMutex` field mirroring `GraphStorage`'s `AsyncMutex`, fixing a crash in batch manager mutations run against a raw SQLite backend.
+The core barrel (`core/index.ts`) imports `sqlite-register.ts` for its side effect, so ordinary consumers of `createStorage({ type: 'sqlite', ... })` still work with no extra step. Requesting `type: 'sqlite'` before the registration has run throws a descriptive error pointing at `preloadSQLiteStorage()` or an explicit `SQLiteStorage` import. JSONL-only consumers who import from the `./core` or `./sqlite`-excluding subpaths never evaluate the `SQLiteStorage` module, so the native addon is never loaded and an ABI/prebuild mismatch on that platform can't break them. **Known gap**: the root package barrel (`src/index.ts`) still re-exports `SQLiteStorage` via `core/index.ts`, so it is eagerly loaded for anyone importing from the package root — full removal from the default import graph is a documented v3 follow-up (`docs/development/OPTIMIZATION_OPPORTUNITIES.md`). `SQLiteStorage` also gained a `graphMutex` field mirroring `GraphStorage`'s `AsyncMutex`, fixing a crash in batch manager mutations run against a raw SQLite backend.
 
 ---
 
@@ -1193,11 +1191,11 @@ interface HybridSearchOptions {
 
 Wired as the `ctx.hybridSearchManager` lazy getter, which reads `MEMORY_HYBRID_GRAPH_WEIGHT` once at first access — when 0/unset (the default), `GraphRankPrior` is never attached and behavior is identical to before the graph channel existed.
 
-**Unreleased — evidence paths (`explain: true`, R2)**: `search()` accepts `explain?: boolean` (default `false`, byte-identical output when omitted); each result gains `evidencePaths` built by `EvidencePathBuilder`. `LLMSearchExecutor.execute` accepts the same option.
+**evidence paths (`explain: true`)**: `search()` accepts `explain?: boolean` (default `false`, byte-identical output when omitted); each result gains `evidencePaths` built by `EvidencePathBuilder`. `LLMSearchExecutor.execute` accepts the same option.
 
 ---
 
-### EvidencePathBuilder (`search/EvidencePathBuilder.ts`) — Unreleased, `@experimental` (R2)
+### EvidencePathBuilder (`search/EvidencePathBuilder.ts`) — `@experimental`
 
 **Purpose**: Given a result entity and the anchor entities that directly matched the query (per search layer), produces the graph paths connecting each anchor to the result — traceable "why" evidence instead of an opaque similarity score
 
@@ -1485,31 +1483,31 @@ export class IOManager {
     options?: ImportOptions
   ): Promise<ImportResult>
 
-  // Backup (delegated to BackupManager since Phase 5 / v1.15.0)
+  // Backup (delegated to BackupManager)
   async createBackup(options?: BackupOptions): Promise<BackupResult>
   async listBackups(): Promise<BackupInfo[]>
   async restoreFromBackup(backupPath: string): Promise<RestoreResult>
   async deleteBackup(backupPath: string): Promise<void>
   async cleanOldBackups(keepCount?: number): Promise<number>
 
-  // Conversation ingestion (v1.9.0)
+  // Conversation ingestion
   async ingest(input: string | { messages: ChatMessage[] }, options?: IngestOptions): Promise<IngestResult>
   splitTranscript(content: string, options?: SplitOptions): SplitResult
 }
 ```
 
-Supported formats: `json`, `csv`, `graphml`, `gexf`, `dot`, `markdown`, `mermaid`, and (η.5.4) `turtle`, `rdf-xml`, `json-ld`. v1.15.0 hardens `splitTranscript()` with `MAX_SPLIT_LENGTH` (10 MB) and `MAX_PARTS` (10,000) guards against ReDoS.
+Supported formats: `json`, `csv`, `graphml`, `gexf`, `dot`, `markdown`, `mermaid`, and `turtle`, `rdf-xml`, `json-ld`. `splitTranscript()` has with `MAX_SPLIT_LENGTH` (10 MB) and `MAX_PARTS` (10,000) guards against ReDoS.
 
-**Unreleased — ingest provenance + cost/quality mode dial (R4b/R5)**:
+**ingest provenance + cost/quality mode dial**:
 
 ```typescript
 type IngestMode = 'accurate' | 'balanced' | 'lightweight';
 
 interface IngestOptions {
-  mode?: IngestMode;              // R5 dial, default 'balanced' (= pre-R5 behaviour)
+  mode?: IngestMode;              // cost/quality dial, default 'balanced'
   llmProvider?: LLMProvider;      // enables distillation enrichment; omitted = raw-observation behaviour regardless of mode
   validate?: (produced: IngestProduced) => Promise<IngestValidationFeedback>;  // 'accurate'-mode-only hook
-  keepSourceText?: boolean;       // R4b: include raw chunk text (capped 4000 chars) in the manifest
+  keepSourceText?: boolean;       // include raw chunk text (capped 4000 chars) in the manifest
   // ...entityType, chunkBy, dryRun, tags, projectId, maxChunkSize, deduplicateThreshold
 }
 
@@ -1518,15 +1516,15 @@ interface IngestResult {
   observationsAdded: number;
   skippedDuplicates: number;
   entityNames: string[];
-  ingestId: string;               // R4b: 8 hex chars
-  manifestEntity: string;         // R4b: `ingest-<ingestId>`
+  ingestId: string;               // 8 hex chars
+  manifestEntity: string;         // `ingest-<ingestId>`
   chunkCount: number;
-  tokenUsage?: { input: number; output: number; approximate: boolean };  // R5: present only when the LLM was invoked
-  validation?: { valid: boolean; issues?: string[] };  // R5: present only in 'accurate' mode with a validate hook
+  tokenUsage?: { input: number; output: number; approximate: boolean };  // present only when the LLM was invoked
+  validation?: { valid: boolean; issues?: string[] };  // present only in 'accurate' mode with a validate hook
 }
 ```
 
-Every non-dry-run ingest writes an `ingest-<id>` manifest entity (`entityType: 'ingest-manifest'`) with one `[chunk]: <JSON>` observation line per source chunk (`{ id, source, offset, length, hash }`; raw text only when `keepSourceText: true`). Each created entity is linked to the manifest via a `derived_from` relation and records per-observation `sourceRef` provenance through `observationMeta` — so evidence paths can extend answer → relation → observation → source chunk. `mode` maps onto the `MemoryDistiller` construction dial: `'lightweight'` → heuristic-only (LLM provider never called), `'balanced'` (default) → auto, `'accurate'` → llm-preferred, with `heuristicStrictness: 'strict'` when no `validate` hook is supplied (accurate mode always tightens something, even without an external validator). Distillation-based enrichment (extra `[distilled] …` observations + `tokenUsage` accounting) only activates when `llmProvider` is supplied — every mode preserves the pre-R5 raw-observation behaviour otherwise. (`redactPii` is a separate option on `exportGraph`/backup — not part of `IngestOptions`; see the `GovernanceManager` section below for the related `redactAuditSnapshots` option, Sec6.)
+Every non-dry-run ingest writes an `ingest-<id>` manifest entity (`entityType: 'ingest-manifest'`) with one `[chunk]: <JSON>` observation line per source chunk (`{ id, source, offset, length, hash }`; raw text only when `keepSourceText: true`). Each created entity is linked to the manifest via a `derived_from` relation and records per-observation `sourceRef` provenance through `observationMeta` — so evidence paths can extend answer → relation → observation → source chunk. `mode` maps onto the `MemoryDistiller` construction dial: `'lightweight'` → heuristic-only (LLM provider never called), `'balanced'` (default) → auto, `'accurate'` → llm-preferred, with `heuristicStrictness: 'strict'` when no `validate` hook is supplied (accurate mode always tightens something, even without an external validator). Distillation-based enrichment (extra `[distilled] …` observations + `tokenUsage` accounting) only activates when `llmProvider` is supplied — every mode keeps the raw-observation behaviour otherwise. (`redactPii` is a separate option on `exportGraph`/backup — not part of `IngestOptions`; see the `GovernanceManager` section below for the related `redactAuditSnapshots` option.)
 
 ---
 
@@ -1618,7 +1616,7 @@ export interface ArchiveCriteria {
 
 ### FreshnessManager (`features/FreshnessManager.ts`)
 
-**Purpose**: TTL/confidence freshness reporting (v1.6.0)
+**Purpose**: TTL/confidence freshness reporting
 
 ```typescript
 export class FreshnessManager {
@@ -1641,7 +1639,7 @@ Combines `Entity.ttl` (absolute time-to-live) and `Entity.confidence` (belief st
 
 ---
 
-### AuditLog (`features/AuditLog.ts`) — Unreleased: tamper-evident hash chain (Sec5)
+### AuditLog (`features/AuditLog.ts`) — tamper-evident hash chain
 
 **Purpose**: Persistent JSONL audit trail for create/update/delete/merge/archive operations, now hash-chained for tamper-evidence
 
@@ -1684,7 +1682,7 @@ Each entry carries a monotonic `seq` and a `prevHash` SHA-256 chain over the pre
 
 ---
 
-### GovernanceManager (`features/GovernanceManager.ts`) — Unreleased: enforcement chokepoint (Sec1) + PII redaction (Sec6)
+### GovernanceManager (`features/GovernanceManager.ts`) — enforcement chokepoint + PII redaction
 
 **Purpose**: Policy enforcement and transactional safety for memory mutations; now the source of the hooks `EntityManager` consults directly (see the EntityManager section above)
 
@@ -1696,7 +1694,7 @@ export interface GovernancePolicy {
 }
 
 export interface GovernanceManagerOptions {
-  /** Sec6: redact PII from before/after audit snapshots (live graph untouched). Default false. */
+  /** Redact PII from before/after audit snapshots (live graph untouched). Default false. */
   redactAuditSnapshots?: boolean;
   /** Custom redactor for redactAuditSnapshots; defaults to `new PiiRedactor()`. */
   redactor?: PiiRedactor;
@@ -1711,13 +1709,13 @@ export class GovernanceManager {
 }
 ```
 
-**Unreleased — enforcement chokepoint (Sec1)**: previously `GovernanceManager` was only reachable if a caller manually built one and routed writes through `withTransaction` — `MEMORY_GOVERNANCE_ENABLED` was a no-op read nowhere in `src/`. Now, when the env var is the strict literal `'true'` (checked once at first `ctx.entityManager` access), `ManagerContext` builds a `GovernanceManager`, converts its `GovernancePolicy` + `AuditLog` into `EntityManager.GovernanceHooks`, and calls `entityManager.setGovernanceHooks(hooks)` — so `createEntities`/`updateEntity`/`batchUpdate`/`deleteEntities`/`renameEntity` are policy-checked and audited directly, with no `withTransaction` wrapper required. `ctx.governanceManager` remains available for manual `withTransaction` usage either way (unset env var = zero overhead on `EntityManager`, but the manager itself still works).
+**enforcement chokepoint**: previously `GovernanceManager` was only reachable if a caller manually built one and routed writes through `withTransaction` — `MEMORY_GOVERNANCE_ENABLED` was a no-op read nowhere in `src/`. Now, when the env var is the strict literal `'true'` (checked once at first `ctx.entityManager` access), `ManagerContext` builds a `GovernanceManager`, converts its `GovernancePolicy` + `AuditLog` into `EntityManager.GovernanceHooks`, and calls `entityManager.setGovernanceHooks(hooks)` — so `createEntities`/`updateEntity`/`batchUpdate`/`deleteEntities`/`renameEntity` are policy-checked and audited directly, with no `withTransaction` wrapper required. `ctx.governanceManager` remains available for manual `withTransaction` usage either way (unset env var = zero overhead on `EntityManager`, but the manager itself still works).
 
 Wraps `EntityManager` mutations with policy checks. `withTransaction` snapshots current state for rollback. Emits to `AuditLog` on every committed operation.
 
 ---
 
-### BackupManager (`features/BackupManager.ts`) — Phase 5 (v1.15.0)
+### BackupManager (`features/BackupManager.ts`)
 
 **Purpose**: Backup lifecycle extracted from `IOManager` — create / list / restore / delete / cleanOld
 
@@ -1747,7 +1745,7 @@ Compares observations across the same `rootEntityName` chain to find statements 
 
 ## Adapter Components
 
-### ApiKeyAuthMiddleware (`adapters/ApiKeyAuthMiddleware.ts`) — Unreleased (Sec9)
+### ApiKeyAuthMiddleware (`adapters/ApiKeyAuthMiddleware.ts`)
 
 **Purpose**: Reference authentication layer wiring `APIKeyStore.validate()` into the framework-agnostic `RestRouter`
 
@@ -1819,15 +1817,15 @@ export function tokenize(text: string): string[]
 - Tag utilities: `normalizeTag`, `normalizeTags`, `hasMatchingTag`
 - Date utilities: `isWithinDateRange`, `getCurrentTimestamp`
 - Filter utilities: `isWithinImportanceRange`, `filterByImportance`
-- Path security: `validateFilePath(path, baseDir?, confineToBase?)` — default `confineToBase=true` since v1.15.0 (PR #38); throws on `..` segments unconditionally; opts out at explicit user-input call sites (CLI, `ensureMemoryFilePath`)
+- Path security: `validateFilePath(path, baseDir?, confineToBase?)` — default `confineToBase=true`; throws on `..` segments unconditionally; opts out at explicit user-input call sites (CLI, `ensureMemoryFilePath`)
 
-### logger (`utils/logger.ts`) — Phase 0 (v1.15.0)
+### logger (`utils/logger.ts`)
 
 **Purpose**: Structured logger replacing scattered `console.*` calls
 
-Stderr-only by design (logger never writes to stdout — CLI commands keep their output channel clean). Honors `LOG_LEVEL=debug|info|warn|error`. Used by `GraphStorage`, `SQLiteStorage`, `TaskQueue`, `MemoryEngine`, and all `Phase 0+` components.
+Stderr-only by design (logger never writes to stdout — CLI commands keep their output channel clean). Honors `LOG_LEVEL=debug|info|warn|error`. Used by `GraphStorage`, `SQLiteStorage`, `TaskQueue`, `MemoryEngine`, and all components.
 
-### taskScheduler (`utils/taskScheduler.ts`) — Phase 0 (v1.15.0)
+### taskScheduler (`utils/taskScheduler.ts`)
 
 **Purpose**: Priority task queue with bounded resource use
 
@@ -1839,9 +1837,9 @@ export class TaskQueue {
 }
 ```
 
-`enqueue` validates `task.fn` is a real function object (rejects strings to prevent code-injection via `new Function`). The `recordCompleted` helper centralizes eviction. v1.15.0 adds `kickProcessNext` for explicit-error logging on swallowed rejections.
+`enqueue` validates `task.fn` is a real function object (rejects strings to prevent code-injection via `new Function`). The `recordCompleted` helper centralizes eviction. `kickProcessNext` provides explicit-error logging on swallowed rejections.
 
-### compression/ (`utils/compression/`) — Phase 10 (v1.15.0)
+### compression/ (`utils/compression/`)
 
 **Purpose**: Pluggable in-memory compression for entity caches and tiered storage
 
@@ -1881,7 +1879,7 @@ interface Entity {
   importance?: number;
   createdAt?: string;
   lastModified?: string;
-  // v1.6.0: freshness governance
+  // freshness governance
   ttl?: number;           // Time-to-live in milliseconds
   confidence?: number;    // Belief strength 0.0–1.0
 }
@@ -2002,7 +2000,7 @@ interface StructuredQuery {
 }
 ```
 
-### Result Types (`types/result.ts`) — v2.0.0
+### Result Types (`types/result.ts`)
 
 ```typescript
 // Discriminated-union return type for expected domain failures.
@@ -2064,17 +2062,17 @@ mapOk<T, U, E>(result: Result<T, E>, fn: (value: T) => U): Result<U, E>
 │    │                               │   opt-in, default off)  │
 │    │                               │                         │
 │    ├── IOManager ──────────────────┤  (ingest ──► derived_from│
-│    │                               │   relations, R4b)        │
+│    │                               │   relations)             │
 │    ├── TagManager ─────────────────► tag-aliases.jsonl       │
 │    │                               │                         │
 │    ├── FreshnessManager ───────────┤                         │
 │    │                               │                         │
 │    ├── GovernanceManager ──────────┤  ──► AuditLog (JSONL,   │
-│    │                               │      hash-chained, Sec5)│
+│    │                               │      hash-chained)      │
 │    │                               │      ──► EntityManager  │
 │    │                               │          .setGovernance-│
-│    │                               │          Hooks (Sec1)   │
-│    ├── EventManager ───────────────┤  (R1, exp. — hub entities│
+│    │                               │          Hooks          │
+│    ├── EventManager ───────────────┤  (exp. — hub entities   │
 │    │                               │   + role-typed relations)│
 │    ├── RefIndex ───────────────────► refs.jsonl              │
 │    │                               │                         │
@@ -2082,7 +2080,7 @@ mapOk<T, U, E>(result: Result<T, E>, fn: (value: T) => U): Result<U, E>
 └──────────────────────────────────────────────────────────────┘
 ```
 
-`RelationConsolidator` (R3, `@experimental`) and `ApiKeyAuthMiddleware` (Sec9) are constructed directly by callers rather than exposed as `ManagerContext` getters — omitted from the diagram above for that reason; see their component sections for wiring examples.
+`RelationConsolidator` (`@experimental`) and `ApiKeyAuthMiddleware` are constructed directly by callers rather than exposed as `ManagerContext` getters — omitted from the diagram above for that reason; see their component sections for wiring examples.
 
 **Shared Dependencies**:
 - All managers receive `IGraphStorage` via dependency injection
@@ -2094,9 +2092,6 @@ mapOk<T, U, E>(result: Result<T, E>, fn: (value: T) => U): Result<U, E>
 
 ---
 
-**Document Version**: Unreleased (post v2.9.0)
-**Last Updated**: 2026-09-10
-**Maintained By**: Daniel Simon Jr.
 
 ## Verification
 

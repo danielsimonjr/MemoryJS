@@ -1,8 +1,5 @@
 # MemoryJS - System Architecture
 
-**Version**: Unreleased (post v2.9.0 — brainapi2-inspired features R1/R2/R3/R4/R5/R7/R9 + S1–S10/Sec1–Sec10 speed & security optimization program; Phases 0–11 performance & scale track via PR #34; security follow-up via PRs #38 + #39; Phase 2 memory-types expansion Sprints 4–6 + 8; v2.0.0 seven-theme function/API-call consistency & efficiency audit; knowledge-graph-as-core convergence — stable `Entity.id` + `renameEntity`, SQLite event parity, opt-in graph-connectivity signals; Procedural Graph + 2026-09-10 dependency-graph report regen)
-**Last Updated**: 2026-09-10
-
 ---
 
 ## Table of Contents
@@ -69,15 +66,15 @@ To regenerate `TEST_COVERAGE.md`, run `bun run tools:deps:full`.
 
 | Module | Files | Key Exports |
 |--------|-------|-------------|
-| `adapters/` | 7 | `LangChainMemoryAdapter`, `RestRouter`, `RateLimiter`, `pagination` helpers, `MCPToolObserverAdapter`, **`ApiKeyAuthMiddleware`** (Sec9) |
-| `agent/` | 105 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager, ArtifactManager, DistillationPipeline, RoleProfiles, EntropyFilter, ConsolidationScheduler, MemoryFormatter, CollaborativeSynthesis (with ConflictView), FailureDistillation, CognitiveLoadAnalyzer, VisibilityResolver (with role + time-window gates), ContextWindowManager, **MemoryEngine**, **MemoryBackend** + **InMemoryBackend** + **SQLiteBackend**, **MemoryValidator**, **TrajectoryCompressor**, **ExperienceExtractor**, **PatternDetector**, **CausalReasoner**, **ProcedureManager**, **WorldModelManager**, **ActiveRetrievalController**, **CollaborationAuditEnforcer**, **RbacMiddleware**, **ProspectiveMemoryManager** (Phase 1 prospective), **FailureManager** (Sprint 4), **PlanManager** (Sprint 5), **ReflectionManager** (Sprint 8, aliased as `ReflectionMemoryManager`), **ReflectionStage** + **ProspectivePromotionStage** pipeline stages, **`EventManager`** (`agent/events/`, R1, `@experimental`), **`RelationConsolidator`** (R3, `@experimental`), **ProceduralGraph**, **ProceduralGraphManager**, **ProceduralGraphSession**, **ProceduralGraphEvolution**, **InMemory** / **Jsonl** / **Sqlite** Procedural Graph backings |
-| `core/` | 25 | ManagerContext, EntityManager (with optimistic concurrency + temporal validity + state machine + **`GovernanceHooks`**, Sec1), RelationManager (with temporal invalidation), ObservationManager (with bitemporal axis), HierarchyManager, GraphStorage (with optional mmap branch), SQLiteStorage (with read-pool + `PartialIndexAdvisor` + **tuned pragmas + cached prepared statements**, S3), **PostgreSQLStorage**, GraphTraversal (HITS / clique / Louvain), TransactionManager, RefIndex, `FileSegmentStorage`, `JsonlColumnStore`, `TieredIndex` (`LRUHotTier` / `DiskWarmTier` / `BrotliColdTier`), `IMmapBackend` / `FsReadMmapBackend`, **`sqlite-register`** (S9 lazy-loading side effect) |
-| `search/` | 51 | SearchManager, RankedSearch (incremental TF-IDF), BM25Search (incremental), BooleanSearch, FuzzySearch, SemanticSearch, HybridSearchManager, NGramIndex, TemporalSearch, LLMQueryPlanner, LLMSearchExecutor, `PartialIndexAdvisor`, `SpellChecker`, **`EvidencePathBuilder`** (R2, `@experimental`) |
-| `features/` | 18 | IOManager (with RDF / Turtle / JSON-LD export + **ingest provenance/mode dial**, R4b/R5), `BackupManager`, TagManager, ArchiveManager, CompressionManager, StreamingExporter, FreshnessManager, AuditLog (**hash-chained**, Sec5), GovernanceManager (**enforcement chokepoint**, Sec1), ContradictionDetector, SemanticForget, AutoLinker |
-| `utils/` | 35 | BatchProcessor, CompressedCache, WorkerPoolManager, schemas (Zod), errors (with VersionConflictError + AttributionRequiredError), `logger` (Phase 0), `taskScheduler` (Phase 0, bounded), **`compression/`** (`ICompressionAdapter` + `Zlib`/`Brotli`/`Identity` + `CompressedMap`, Phase 10) |
-| `types/` | 12 | Entity (with bitemporal + supersession + contentHash fields), Relation, AgentEntity (with allowedRoles + visibleFrom/Until), SessionEntity, ArtifactEntity, Procedure, **`proceduralGraph.ts`** (Procedural Graph leaf contracts), **ProspectiveEntity** + **FailureEntity** + **PlanEntity** + **ReflectionEntity** (Phase 2 memory-type entities), **TrustLevel** mixin on `MemorySource` (`ground-truth`/`verified`/`inferred`/`unverified`), **`Result<T, E>`** (v2.0.0 — `ok`/`err`/`isOk`/`isErr`/`unwrap`/`unwrapOr`/`mapOk` in `result.ts`), **`event.ts`** (R1 — `EventRecord`/`EventQueryFilter`/`WhoDidWhatEntry`) — leaf layer, ESLint-enforced (S10) |
-| `security/` | 5 | **PiiRedactor** + DEFAULT_PII_PATTERNS, **ABAC + RLS + API keys** (Phase 5) |
-| `cli/` | 31 | `memory` / `memoryjs` binary commands (with pipe support, Phase 0), **`memory audit log\|history\|verify\|stats`** (R4a) + **`memory doctor`** (R9) |
+| `adapters/` | 7 | `LangChainMemoryAdapter`, `RestRouter`, `RateLimiter`, `pagination` helpers, `MCPToolObserverAdapter`, **`ApiKeyAuthMiddleware`** |
+| `agent/` | 105 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager, ArtifactManager, DistillationPipeline, RoleProfiles, EntropyFilter, ConsolidationScheduler, MemoryFormatter, CollaborativeSynthesis (with ConflictView), FailureDistillation, CognitiveLoadAnalyzer, VisibilityResolver (with role + time-window gates), ContextWindowManager, **MemoryEngine**, **MemoryBackend** + **InMemoryBackend** + **SQLiteBackend**, **MemoryValidator**, **TrajectoryCompressor**, **ExperienceExtractor**, **PatternDetector**, **CausalReasoner**, **ProcedureManager**, **WorldModelManager**, **ActiveRetrievalController**, **CollaborationAuditEnforcer**, **RbacMiddleware**, **ProspectiveMemoryManager** (prospective), **FailureManager**, **PlanManager**, **ReflectionManager** (aliased as `ReflectionMemoryManager`), **ReflectionStage** + **ProspectivePromotionStage** pipeline stages, **`EventManager`** (`agent/events/`, `@experimental`), **`RelationConsolidator`** (`@experimental`), **ProceduralGraph**, **ProceduralGraphManager**, **ProceduralGraphSession**, **ProceduralGraphEvolution**, **InMemory** / **Jsonl** / **Sqlite** Procedural Graph backings |
+| `core/` | 25 | ManagerContext, EntityManager (with optimistic concurrency + temporal validity + state machine + **`GovernanceHooks`**), RelationManager (with temporal invalidation), ObservationManager (with bitemporal axis), HierarchyManager, GraphStorage (with optional mmap branch), SQLiteStorage (with read-pool + `PartialIndexAdvisor` + **tuned pragmas + cached prepared statements**), **PostgreSQLStorage**, GraphTraversal (HITS / clique / Louvain), TransactionManager, RefIndex, `FileSegmentStorage`, `JsonlColumnStore`, `TieredIndex` (`LRUHotTier` / `DiskWarmTier` / `BrotliColdTier`), `IMmapBackend` / `FsReadMmapBackend`, **`sqlite-register`** (lazy-loading side effect) |
+| `search/` | 51 | SearchManager, RankedSearch (incremental TF-IDF), BM25Search (incremental), BooleanSearch, FuzzySearch, SemanticSearch, HybridSearchManager, NGramIndex, TemporalSearch, LLMQueryPlanner, LLMSearchExecutor, `PartialIndexAdvisor`, `SpellChecker`, **`EvidencePathBuilder`** (`@experimental`) |
+| `features/` | 18 | IOManager (with RDF / Turtle / JSON-LD export + **ingest provenance/mode dial**), `BackupManager`, TagManager, ArchiveManager, CompressionManager, StreamingExporter, FreshnessManager, AuditLog (**hash-chained**), GovernanceManager (**enforcement chokepoint**), ContradictionDetector, SemanticForget, AutoLinker |
+| `utils/` | 35 | BatchProcessor, CompressedCache, WorkerPoolManager, schemas (Zod), errors (with VersionConflictError + AttributionRequiredError), `logger`, `taskScheduler` (bounded), **`compression/`** (`ICompressionAdapter` + `Zlib`/`Brotli`/`Identity` + `CompressedMap`) |
+| `types/` | 12 | Entity (with bitemporal + supersession + contentHash fields), Relation, AgentEntity (with allowedRoles + visibleFrom/Until), SessionEntity, ArtifactEntity, Procedure, **`proceduralGraph.ts`** (Procedural Graph leaf contracts), **ProspectiveEntity** + **FailureEntity** + **PlanEntity** + **ReflectionEntity** (memory-type entities), **TrustLevel** mixin on `MemorySource` (`ground-truth`/`verified`/`inferred`/`unverified`), **`Result<T, E>`** (`ok`/`err`/`isOk`/`isErr`/`unwrap`/`unwrapOr`/`mapOk` in `result.ts`), **`event.ts`** (`EventRecord`/`EventQueryFilter`/`WhoDidWhatEntry`) — leaf layer, ESLint-enforced |
+| `security/` | 5 | **PiiRedactor** + DEFAULT_PII_PATTERNS, **ABAC + RLS + API keys** |
+| `cli/` | 31 | `memory` / `memoryjs` binary commands (with pipe support), **`memory audit log\|history\|verify\|stats`** + **`memory doctor`** |
 | `entry/` | 1 | `src/index.ts` |
 | `root/` | 1 | `src/sqlite.ts` (`SQLiteStorage` preload/register) |
 | `workers/` | 1 | Levenshtein distance calculations (the orphan `workers/index.ts` barrel was deleted as dead code) |
@@ -338,7 +335,7 @@ class AgentMemoryManager {
 - **ArtifactManager**: Stable artifact creation with auto-registered refs
 - **DistillationPipeline**: Post-retrieval policy-based memory filtering
 
-**Phase 2 memory-type managers** (sit alongside `AgentMemoryManager` as
+**Memory-type managers** (sit alongside `AgentMemoryManager` as
 dedicated per-type write paths; accessed via `ctx.<getter>` rather than
 through `AgentMemoryManager`):
 - **ProspectiveMemoryManager** (`ctx.prospectiveMemory`) — intentions-to-act
@@ -355,7 +352,7 @@ through `AgentMemoryManager`):
 - **ReflectionManager** (`ctx.reflectionManager`) — additive reflections
   produced by `ReflectionStage` (pattern + trajectory + experience); content-
   hash dedup at create; `ReflectionScope` discriminator. Catalog Type 10.
-- **TrustLevel mixin** on `MemorySource` (Sprint 6) — discriminated
+- **TrustLevel mixin** on `MemorySource` — discriminated
   categorical label complementing the numeric `reliability`/`confidence`
   scores; powers the `'trust_level'` `ConflictStrategy`. Catalog Type 12
   (Provenance).
@@ -467,17 +464,17 @@ interface Entity {
   tags?: string[];           // Optional categorization (lowercase)
   importance?: number;       // Optional 0-10 priority
   parentId?: string;         // Optional hierarchical parent
-  // v1.6.0: freshness governance
+  // freshness governance
   ttl?: number;              // Optional time-to-live in milliseconds
   confidence?: number;       // Optional belief strength 0.0–1.0
-  // v1.8.0: project scoping + memory versioning
+  // project scoping + memory versioning
   projectId?: string;
   version?: number;
   parentEntityName?: string;
   rootEntityName?: string;
   isLatest?: boolean;
   supersededBy?: string;
-  // v1.11.0: MemoryEngine dedup
+  // MemoryEngine dedup
   contentHash?: string;      // SHA-256 of raw content — O(1) exact-equality dedup
 }
 ```
@@ -494,7 +491,7 @@ interface AgentEntity extends Entity {
   expiresAt?: string;        // TTL for working memory
   accessCount: number;       // Retrieval frequency
   lastAccessedAt?: string;   // Most recent access
-  confidence: number;        // Belief strength (0.0-1.0)
+  confidence: number;        // Belief strength
   agentId?: string;          // Owning agent
   visibility: 'private' | 'team' | 'org' | 'shared' | 'public';
   source?: MemorySource;     // Provenance (with optional TrustLevel mixin)
@@ -596,14 +593,14 @@ interface KnowledgeGraph {
 - Higher-level abstraction may hide granular control
 - Additional complexity for simple use cases
 
-### 7. Why a `Result<T, E>` Error-Handling Contract? (v2.0.0)
+### 7. Why a `Result<T, E>` Error-Handling Contract?
 
 **Decision**: One documented error-signalling policy across the codebase
 (`CONTRIBUTING.md` > Error Handling), backed by a `Result<T, E>`
 discriminated-union type in `src/types/result.ts`.
 
 **Rationale**:
-- The v2.0.0 API audit found four error-signalling styles coexisting with
+- Without a policy, four error-signalling styles coexist with
   no rule — `throw`, `return null`, discriminated unions, and silent
   swallowing — mixed even within single classes.
 - The policy: **throw** for programmer errors (bad arguments, invariant
@@ -615,8 +612,8 @@ discriminated-union type in `src/types/result.ts`.
   `if (result.ok)`.
 
 **Trade-offs**:
-- The contract is established in v2.0.0; migrating every existing call
-  site onto it is incremental follow-up work.
+- The contract is in place; migrating every existing call
+  site onto it is incremental work.
 
 ### 8. Why Stable Entity IDs + a `renameEntity` Primitive?
 
@@ -644,7 +641,7 @@ discriminated-union type in `src/types/result.ts`.
 - Four independent opt-in knobs (`MEMORY_HYBRID_GRAPH_WEIGHT`, `MEMORY_RANKED_GRAPH_BOOST`, `MEMORY_SALIENCE_CONNECTIVITY_WEIGHT`, `MEMORY_DECAY_CONNECTIVITY_PROTECTION`) is more surface area than a single global switch, but lets each consumer tune independently.
 - PageRank is skipped above 50,000 entities (degree-centrality fallback) — a deliberate scalability cap rather than an unbounded computation.
 
-### 10. Why Enforce Governance Directly on `EntityManager` Rather Than a Parallel Transaction Path? (Unreleased — Sec1)
+### 10. Why Enforce Governance Directly on `EntityManager` Rather Than a Parallel Transaction Path?
 
 **Decision**: Wire `GovernanceManager`'s policy + audit log directly into `EntityManager` via a `setGovernanceHooks()` chokepoint, consulted inline by `createEntities`/`updateEntity`/`batchUpdate`/`deleteEntities`/`renameEntity`, rather than requiring callers to route writes through `GovernanceManager.withTransaction()`.
 
@@ -665,7 +662,7 @@ discriminated-union type in `src/types/result.ts`.
 
 **Trade-offs**:
 - `EntityManager` now has an optional dependency on a `GovernancePolicy`-shaped interface (structural, not a class import) — a small increase in its surface area for a capability most callers never enable.
-- Sec1 governs `EntityManager` writes only; other direct-storage write paths (if any exist outside `EntityManager`) are not covered by this chokepoint and would need their own wiring.
+- The governance chokepoint governs `EntityManager` writes only; other direct-storage write paths (if any exist outside `EntityManager`) are not covered by this chokepoint and would need their own wiring.
 
 ---
 
@@ -715,30 +712,30 @@ CREATE VIRTUAL TABLE entities_fts USING fts5(
 
 ## Build & Packaging
 
-**Unreleased — subpath exports, tree-shaking, and lazy heavy dependencies (S7–S10).**
+**subpath exports, tree-shaking, and lazy heavy dependencies.**
 
 Prior to this pass, `package.json` `exports` had only a `"."` entry and no `sideEffects` field, so any consumer importing from the package root pulled in 217 of the (then) 255 source files — including `chrono-node` (the heaviest external dependency) and the `better-sqlite3` native addon — regardless of which managers were actually used.
 
-### `sideEffects: false` + 9 subpath exports (S7)
+### `sideEffects: false` + 9 subpath exports
 
 `package.json` now declares `"sideEffects": false` (the only real module-scope side effect in the whole tree, `globalMemoryMonitor` in `src/utils/MemoryMonitor.ts`, was confirmed not to be relied on for implicit registration) and adds dedicated ESM/CJS dual-condition subpath exports: `./core`, `./search`, `./agent`, `./features`, `./utils`, `./types`, `./sqlite`, alongside the root `.` entry. Bundlers can now tree-shake unused managers and consumers can import only the subsystem they need (e.g. `import { EntityManager } from '@danielsimonjr/memoryjs/core'` skips the search/agent/features barrels entirely).
 
-### Lazy `chrono-node` (S8)
+### Lazy `chrono-node`
 
 `TemporalQueryParser`'s top-level `import * as chrono from 'chrono-node'` became a lazy `await import('chrono-node')` at its actual call sites. `TemporalSearch.searchByTimeQuery` was already async, so no caller-visible signature change was needed. This removes the single heaviest external dependency from the default import path — warm root import dropped from ~220ms to ~150ms; the `./search` subpath alone imports in ~40ms.
 
-### Lazy SQLite via a registration pattern (S9)
+### Lazy SQLite via a registration pattern
 
-`StorageFactory` no longer statically imports `SQLiteStorage` (whose module top-level `import Database from 'better-sqlite3'` loads the native addon unconditionally). Instead, `SQLiteStorage`'s constructor is delivered through a small module-level registry (`registerSQLiteStorage`/`preloadSQLiteStorage` in `src/core/StorageFactory.ts`); `src/core/sqlite-register.ts` performs the registration as a module side effect, imported by the core barrel so ordinary `createStorage({ type: 'sqlite' })` callers see no change. Requesting SQLite before registration throws a descriptive error pointing at `preloadSQLiteStorage()` or an explicit `SQLiteStorage` import — never a cryptic ABI-mismatch crash for callers who never asked for SQLite. **Completion (post-merge)**: `SQLiteStorage` no longer holds a top-level `import Database from 'better-sqlite3'` — the native addon is lazily `createRequire`'d inside the class on first instantiation. So even though the root package barrel (`src/index.ts`) still *evaluates* the `SQLiteStorage` module via the `core` barrel re-export, importing from the package root no longer loads the native addon; it loads only when a `SQLiteStorage` is actually constructed (verified: absent from `require.cache` after a root import, present after actual SQLite use). This closes the S9 follow-up entirely — JSONL-only consumers never touch the native binding regardless of import path.
+`StorageFactory` no longer statically imports `SQLiteStorage` (whose module top-level `import Database from 'better-sqlite3'` loads the native addon unconditionally). Instead, `SQLiteStorage`'s constructor is delivered through a small module-level registry (`registerSQLiteStorage`/`preloadSQLiteStorage` in `src/core/StorageFactory.ts`); `src/core/sqlite-register.ts` performs the registration as a module side effect, imported by the core barrel so ordinary `createStorage({ type: 'sqlite' })` callers see no change. Requesting SQLite before registration throws a descriptive error pointing at `preloadSQLiteStorage()` or an explicit `SQLiteStorage` import — never a cryptic ABI-mismatch crash for callers who never asked for SQLite. **Completion (post-merge)**: `SQLiteStorage` no longer holds a top-level `import Database from 'better-sqlite3'` — the native addon is lazily `createRequire`'d inside the class on first instantiation. So even though the root package barrel (`src/index.ts`) still *evaluates* the `SQLiteStorage` module via the `core` barrel re-export, importing from the package root no longer loads the native addon; it loads only when a `SQLiteStorage` is actually constructed (verified: absent from `require.cache` after a root import, present after actual SQLite use). This fully closes the lazy-SQLite gap — JSONL-only consumers never touch the native binding regardless of import path.
 
-### Types layer as a leaf, ESLint-enforced (S10)
+### Types layer as a leaf, ESLint-enforced
 
 **Design decision**: `src/types/**` may only be imported *from*, never import implementation code — including type-only imports, which still create `tsc`/IDE recompile fan-out and were the source of all 37+ pre-existing circular dependencies (all type-only, zero runtime cost, but real developer-experience cost). Two ESLint rules in `eslint.config.mjs` enforce this on every file under `src/types/**/*.ts`:
 
 - `no-restricted-imports` blocks any import matching `**/agent/**`, `**/core/**`, `**/utils/**`, `**/search/**`, `**/features/**`, `**/adapters/**`, `**/security/**`, `**/cli/**`, `**/workers/**`.
 - `no-restricted-syntax` additionally catches inline `import('...')` type annotations (a `TSImportType` AST node) targeting the same directories — the historical escape hatch `no-restricted-imports` alone can't see, and the one that created the pre-existing cycles.
 
-Where a type genuinely needs to be shared, the shared type moves *into* `src/types` and the implementation module re-exports it (not the other way around). Result: type-only circular dependencies dropped from 39 to 4 at S10; the 2026-09-10 census records 8 type-only cycles (runtime circular dependencies remain 0). Separately, `ManagerContext`'s import of the search barrel for three symbols (`SemanticSearch`, `createEmbeddingService`, `createVectorStore`, previously pulling in ~70 files including chrono-node and workerpool transitively) was narrowed to their concrete source files.
+Where a type genuinely needs to be shared, the shared type moves *into* `src/types` and the implementation module re-exports it (not the other way around). Result: type-only circular dependencies dropped from 39 to 4; the dependency census records 8 type-only cycles (runtime circular dependencies remain 0). Separately, `ManagerContext`'s import of the search barrel for three symbols (`SemanticSearch`, `createEmbeddingService`, `createVectorStore`, previously pulling in ~70 files including chrono-node and workerpool transitively) was narrowed to their concrete source files.
 
 ---
 
@@ -815,13 +812,13 @@ Where a type genuinely needs to be shared, the shared type moves *into* `src/typ
 - No `eval()` or `Function()` calls
 - Boolean query parser uses safe AST-based tokenization
 
-### Governance, Audit & Authentication (Unreleased — Sec1/Sec5/Sec6/Sec9)
+### Governance, Audit & Authentication
 
-- **Governance enforcement chokepoint (Sec1)**: `MEMORY_GOVERNANCE_ENABLED='true'` wires policy checks + audit logging directly into `EntityManager` mutations — see [Key Design Decision #10](#key-design-decisions) for the full rationale.
-- **Tamper-evident audit log (Sec5)**: `AuditLog` entries are hash-chained (monotonic `seq` + SHA-256 `prevHash`); `verifyChain()` detects tampering, reordering, or truncation of any line but the last. File mode `0600`. Documented honestly as tamper-*evident*, not tamper-*proof* (see the `AuditLog` module JSDoc's trust-boundary note).
-- **PII redaction (Sec6)**: opt-in `redactPii` on `IOManager` exports/backups and opt-in `redactAuditSnapshots` on `GovernanceManager` — both pass observation text through `PiiRedactor` on a copy; the live graph is never mutated.
-- **REST authentication (Sec9)**: `ApiKeyAuthMiddleware` wires `APIKeyStore.validate()` into `RestRouter` — Bearer/`X-Api-Key` extraction, per-route scope enforcement (`GET` → no scope required, mutating methods → `entities:write` by default), timing-safe key comparison. Previously `APIKeyStore` existed but had zero wiring into the REST adapter.
-- **Decompression bomb caps (Sec8)**: Brotli/zlib decompression now enforces a default 256 MB output cap (`MEMORY_MAX_DECOMPRESSED_BYTES`), closing an unbounded-expansion path in `BackupManager.restore` and related decompression call sites.
+- **Governance enforcement chokepoint**: `MEMORY_GOVERNANCE_ENABLED='true'` wires policy checks + audit logging directly into `EntityManager` mutations — see [Key Design Decision #10](#key-design-decisions) for the full rationale.
+- **Tamper-evident audit log**: `AuditLog` entries are hash-chained (monotonic `seq` + SHA-256 `prevHash`); `verifyChain()` detects tampering, reordering, or truncation of any line but the last. File mode `0600`. Documented honestly as tamper-*evident*, not tamper-*proof* (see the `AuditLog` module JSDoc's trust-boundary note).
+- **PII redaction**: opt-in `redactPii` on `IOManager` exports/backups and opt-in `redactAuditSnapshots` on `GovernanceManager` — both pass observation text through `PiiRedactor` on a copy; the live graph is never mutated.
+- **REST authentication**: `ApiKeyAuthMiddleware` wires `APIKeyStore.validate()` into `RestRouter` — Bearer/`X-Api-Key` extraction, per-route scope enforcement (`GET` → no scope required, mutating methods → `entities:write` by default), timing-safe key comparison. Previously `APIKeyStore` existed but had zero wiring into the REST adapter.
+- **Decompression bomb caps**: Brotli/zlib decompression now enforces a default 256 MB output cap (`MEMORY_MAX_DECOMPRESSED_BYTES`), closing an unbounded-expansion path in `BackupManager.restore` and related decompression call sites.
 
 ---
 
@@ -857,7 +854,7 @@ Where a type genuinely needs to be shared, the shared type moves *into* `src/typ
 | `tests/performance/` | Benchmarks |
 | `tests/edge-cases/` | Boundary conditions |
 
-### Coverage (2026-09-10)
+### Coverage
 
 Per [`TEST_COVERAGE.md`](TEST_COVERAGE.md): 281 of 292 source files have a direct test import (**96.2%**). 11 files have no dedicated test. This is not 100% coverage.
 

@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The generated reports in `docs/architecture/` hold no package version and no date. `tools/create-dependency-graph` and `gen-duplicate-baseline.mjs` no longer write them, so a regeneration changes a report only when the code changes. `TEST_COVERAGE.md` and `test-coverage.json` were regenerated: their last run was several releases old.
 
 - `README.md` is stateless: the version line and the code-samples note at the top are gone. npm shows the version.
+- The hand-written `docs/architecture` files describe the current design only. Version, date, and phase tags are gone.
 
 ## [4.6.0] - 2026-11-06
 

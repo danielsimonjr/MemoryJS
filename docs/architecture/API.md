@@ -31,20 +31,20 @@ surface only.
 17. [BatchTransaction](#batchtransaction)
 18. [StorageFactory](#storagefactory)
 19. [Types](#types)
-20. [BackupManager](#backupmanager) *(v1.15.0 Phase 5)*
-21. [MemoryEngine](#memoryengine) *(v1.11.0)*
-22. [GovernanceManager](#governancemanager) *(v1.6.0)*
-23. [FreshnessManager](#freshnessmanager) *(v1.6.0)*
-24. [RbacMiddleware + RoleAssignmentStore](#rbacmiddleware--roleassignmentstore) *(η.6.1)*
-25. [ProcedureManager + CausalReasoner + WorldModelManager + ActiveRetrievalController](#proceduremanager--causalreasoner--worldmodelmanager--activeretrievalcontroller) *(3B.4–3B.7)*
-26. [IMemoryBackend](#imemorybackend) *(v1.12.0)*
-27. [GraphRankPrior + HybridSearchManager](#graphrankprior--hybridsearchmanager) *(v2.9.0)*
-28. [EventManager](#eventmanager) *(3.0.0, R1, `@experimental`)*
-29. [EvidencePathBuilder](#evidencepathbuilder) *(3.0.0, R2, `@experimental`)*
-30. [RelationConsolidator](#relationconsolidator) *(3.0.0, R3, `@experimental`)*
-31. [ApiKeyAuthMiddleware](#apikeyauthmiddleware) *(3.0.0, Sec9)*
+20. [BackupManager](#backupmanager)
+21. [MemoryEngine](#memoryengine)
+22. [GovernanceManager](#governancemanager)
+23. [FreshnessManager](#freshnessmanager)
+24. [RbacMiddleware + RoleAssignmentStore](#rbacmiddleware--roleassignmentstore)
+25. [ProcedureManager + CausalReasoner + WorldModelManager + ActiveRetrievalController](#proceduremanager--causalreasoner--worldmodelmanager--activeretrievalcontroller)
+26. [IMemoryBackend](#imemorybackend)
+27. [GraphRankPrior + HybridSearchManager](#graphrankprior--hybridsearchmanager)
+28. [EventManager](#eventmanager) *(`@experimental`)*
+29. [EvidencePathBuilder](#evidencepathbuilder) *(`@experimental`)*
+30. [RelationConsolidator](#relationconsolidator) *(`@experimental`)*
+31. [ApiKeyAuthMiddleware](#apikeyauthmiddleware)
 32. [ProceduralGraphManager](#proceduralgraphmanager) (`ctx.createProceduralGraph`, `@experimental`)
-33. [Batch primitives and helper surface](#batch-primitives-and-helper-surface) *(2026-11 design pass)*
+33. [Batch primitives and helper surface](#batch-primitives-and-helper-surface)
 
 ---
 
@@ -107,29 +107,29 @@ const ctx = new ManagerContext('./memory.jsonl');
 | `contextWindowManager` | `ContextWindowManager` | Token budgeting |
 | `memoryFormatter` | `MemoryFormatter` | Output formatting |
 | `storage` | `IGraphStorage` | Direct storage access |
-| `freshnessManager` | `FreshnessManager` | TTL/confidence freshness reports (v1.6.0) |
-| `governanceManager` | `GovernanceManager` | Policy + audit transactions (v1.6.0) |
-| `refIndex` | `RefIndex` | Named-reference O(1) lookup (v1.6.0) |
+| `freshnessManager` | `FreshnessManager` | TTL/confidence freshness reports |
+| `governanceManager` | `GovernanceManager` | Policy + audit transactions |
+| `refIndex` | `RefIndex` | Named-reference O(1) lookup |
 | `skillManager` | `SkillManager` | Recursa skill registry over the context storage (RS-2); semantic blending is used when `ctx.semanticSearch` has been initialised before the first `skillManager` access; `MEMORY_EMBEDDING_PROVIDER=none` disables it |
 | `instructionSets` | `InstructionSetManager` | Recursa role-scoped instruction sets (RS-5); `history()` uses `transitionLedger` when enabled |
 | `knowledgeRepository` | `KnowledgeRepository` | Recursa snapshots, revisions and budgeted `loadForContext` (RS-5), composed from `skillManager`, `instructionSets` and `failureManager` |
 | `skillPublisher` | `SkillPublisher` | Recursa atomic SKILL.md publish and import over `skillManager` (RS-3) |
 | `learningLoop(deps)` | `LearningLoop` | Recursa learning loop (RS-18, RS-21); a fresh, independent loop per call. `learn` / `start` route to the recursive learner when the run has more tasks than the leaf threshold (`opts.leafThreshold`, else `MEMORY_LEARNING_LEAF_THRESHOLD`, else 20) or `split` is set with more than one task |
 | `bootstrapper(deps)` | `Bootstrapper` | Recursa bootstrapper (RS-10..RS-13): corpus map, coverage boundaries, exploration notes, practice tasks, optional learning pass through `learningLoop`; a new instance per call |
-| `semanticForget` | `SemanticForget` | Two-tier deletion with audit (v1.8.0) |
-| `temporalSearch` | `TemporalSearch` | NL time-range search (v1.9.0) |
-| `procedureManager` | `ProcedureManager` | Procedural memory (3B.4) |
-| `causalReasoner` | `CausalReasoner` | Causal find/effects/counterfactual (3B.6) |
-| `worldModelManager` | `WorldModelManager` | World-state orchestrator (3B.7) |
-| `activeRetrieval` | `ActiveRetrievalController` | Iterative query rewriting (3B.5) |
-| `roleAssignmentStore` | `RoleAssignmentStore` | RBAC role grants (η.6.1) |
-| `rbacMiddleware` | `RbacMiddleware` | `checkPermission()` policy (η.6.1) |
-| `memoryEngine` | `MemoryEngine` | Turn-aware conversation memory + 4-tier dedup (v1.11.0) |
-| `memoryBackend` | `IMemoryBackend` | Pluggable backend selector via `MEMORY_BACKEND` (v1.12.0) |
-| `compressedEntityCache` | `CompressedMap<string, Entity>` | In-memory compressed entity cache (v1.15.0 Phase 10) |
-| `diagnostics(options?)` | `DiagnosticsReport` | **Method, not a getter.** Aggregate report (index health, entity counts). `{ observationDedup: true }` adds the observation dedup ratio (O(total observations)). `explainPlan` is `ctx.searchManager.explainPlan(query)`; index health is `ctx.indexHealth()` (v1.15.0 Phase 0/1) |
-| `graphRankPrior` | `GraphRankPrior` | Cached normalized-PageRank ranking signal, event-invalidated (v2.9.0, `@experimental`) |
-| `hybridSearchManager` | `HybridSearchManager` | Semantic + lexical + symbolic (+ optional graph) layered search (v2.9.0) |
+| `semanticForget` | `SemanticForget` | Two-tier deletion with audit |
+| `temporalSearch` | `TemporalSearch` | NL time-range search |
+| `procedureManager` | `ProcedureManager` | Procedural memory |
+| `causalReasoner` | `CausalReasoner` | Causal find/effects/counterfactual |
+| `worldModelManager` | `WorldModelManager` | World-state orchestrator |
+| `activeRetrieval` | `ActiveRetrievalController` | Iterative query rewriting |
+| `roleAssignmentStore` | `RoleAssignmentStore` | RBAC role grants |
+| `rbacMiddleware` | `RbacMiddleware` | `checkPermission()` policy |
+| `memoryEngine` | `MemoryEngine` | Turn-aware conversation memory + 4-tier dedup |
+| `memoryBackend` | `IMemoryBackend` | Pluggable backend selector via `MEMORY_BACKEND` |
+| `compressedEntityCache` | `CompressedMap<string, Entity>` | In-memory compressed entity cache |
+| `diagnostics(options?)` | `DiagnosticsReport` | **Method, not a getter.** Aggregate report (index health, entity counts). `{ observationDedup: true }` adds the observation dedup ratio (O(total observations)). `explainPlan` is `ctx.searchManager.explainPlan(query)`; index health is `ctx.indexHealth()` |
+| `graphRankPrior` | `GraphRankPrior` | Cached normalized-PageRank ranking signal, event-invalidated (`@experimental`) |
+| `hybridSearchManager` | `HybridSearchManager` | Semantic + lexical + symbolic (+ optional graph) layered search |
 | `materializedViews` | `MaterializedViewsManager` | Pre-computed result sets for repeated filter-based queries; lazy, auto-invalidated on entity events: updates dirty only views whose filter keys intersect the changed keys, creates/deletes dirty all, date-bounded views are dirtied by every update (`@experimental`) |
 | `observationStore` | `ObservationStore` | Per-context, in-process interned observation store; not persisted, starts empty on each new context |
 | `tieredPostingsIndex` | `TieredIndex<unknown> \| null` | 3-tier LRU / disk / Brotli index composer, `null` unless `MEMORY_TIERED_INDEX='true'`. `@internal`: no in-tree consumer yet |
@@ -505,7 +505,7 @@ async getEntity(name: string, options?: GetEntityOptions): Promise<Entity | null
 
 ### updateEntity (with Optimistic Concurrency Control)
 
-Update an entity, optionally requiring a specific version (η.5.5.c).
+Update an entity, optionally requiring a specific version.
 
 ```text
 async updateEntity(
@@ -517,7 +517,7 @@ async updateEntity(
 
 If `expectedVersion` is supplied and doesn't match the current `version` field on the entity, throws `VersionConflictError`. Used by `MultiAgentMemoryManager` to safely interleave writes from multiple agents.
 
-### invalidateEntity (η.4.4 — Bitemporal Versioning)
+### invalidateEntity (Bitemporal Versioning)
 
 Mark an entity as no longer valid by setting `validUntil` (does not delete the entity; `entityAsOf` still returns it for past timestamps). Idempotent — a second call updates the existing `validUntil`.
 
@@ -618,7 +618,7 @@ Merge two tags into a target tag.
 async mergeTags(tag1: string, tag2: string, targetTag: string): Promise<number>
 ```
 
-### listEntities (v2.9.0)
+### listEntities
 
 Public bulk enumeration, replacing the old `entityManager['storage']` private-access pattern.
 
@@ -628,7 +628,7 @@ async listEntities(filter?: { entityType?: string }): Promise<Entity[]>
 
 When `filter.entityType` is supplied, takes an O(k) `TypeIndex` fast path (`storage.getEntitiesByType`) instead of a full-graph scan.
 
-### renameEntity (v2.9.0)
+### renameEntity
 
 Atomically rename an entity, rewriting every stored reference to the old name.
 
@@ -706,7 +706,7 @@ Get all relations in the graph.
 async getAllRelations(): Promise<Relation[]>
 ```
 
-### invalidateRelation (v1.9.0 — Temporal Validity)
+### invalidateRelation (Temporal Validity)
 
 Mark the active (non-terminated) relation matching `from`/`relationType`/`to` as ended, by setting `properties.validUntil` (without deleting it).
 
@@ -721,7 +721,7 @@ async invalidateRelation(
 
 Throws `RelationNotFoundError` if no active relation matches.
 
-### queryAsOf (v1.9.0 — Time-Travel Queries)
+### queryAsOf (Time-Travel Queries)
 
 Get all relations involving an entity that were valid at a given timestamp.
 
@@ -733,7 +733,7 @@ async queryAsOf(
 ): Promise<Relation[]>
 ```
 
-### timeline (v1.9.0 — Chronological History)
+### timeline (Chronological History)
 
 Return all relations involving an entity sorted chronologically by `properties.validFrom` (unbounded relations last).
 
@@ -783,7 +783,7 @@ async deleteObservations(deletions: ObservationDeletion[]): Promise<ObservationR
 
 **Events (DES-3).** `addObservations` emits `observation:added` once per entity that gained observations, with only the strings actually added. Duplicates emit nothing. `deleteObservations` emits `observation:deleted` with only the strings actually removed; requested-but-absent strings are not reported. Both events fire after the `entity:updated` event for the same write. `createEntities` with initial observations emits `entity:created` only, not `observation:added`.
 
-### invalidateObservation (η.4.4 — Bitemporal Axis)
+### invalidateObservation (Bitemporal Axis)
 
 Mark a specific observation (matched by its content string) as no longer valid at a given point in time, without removing it from the entity's `observations[]`. Adds an `observationMeta[]` entry recording the boundary.
 
@@ -795,7 +795,7 @@ async invalidateObservation(
 ): Promise<void>
 ```
 
-### observationsAsOf (η.4.4 — Time-Travel)
+### observationsAsOf (Time-Travel)
 
 Return the observations that were valid for an entity at a given timestamp.
 
@@ -1024,7 +1024,7 @@ clearBooleanCache(): void
 clearRankedCache(): void
 ```
 
-### searchByTime (v1.9.0 — Temporal Search)
+### searchByTime (Temporal Search)
 
 Natural-language time-range search via `chrono-node`.
 
@@ -1034,7 +1034,7 @@ async searchByTime(query: string, options?: TemporalSearchOptions): Promise<Know
 
 Accepts expressions like `"last hour"`, `"yesterday"`, `"between Jan 1 and Feb 1"`. See also `ctx.temporalSearch` for the lower-level `TemporalSearch` instance.
 
-### autoSearch (BM25-incremental, v1.15.0 Phase 1)
+### autoSearch (BM25-incremental)
 
 Auto-selects the best search strategy for the query (basic / boolean / fuzzy / ranked / semantic / hybrid). BM25 indexing is now incremental — single-entity creates and updates touch only the affected postings list instead of rebuilding the full corpus.
 
@@ -1046,7 +1046,7 @@ async autoSearch(query: string, options?: SearchOptions): Promise<{
 }>
 ```
 
-### Diagnostics (Phase 0/1, v1.15.0)
+### Diagnostics
 
 ```text
 ctx.searchManager.explainPlan(query: string): ExplainPlanResult   // { ascii: string; json: QueryPlan }
@@ -1158,7 +1158,7 @@ Get all neighbors of an entity with their connecting relations.
 async getNeighborsWithRelations(entityName: string, options?: { direction?: 'in' | 'out' | 'both' }): Promise<NeighborResult[]>
 ```
 
-### HITS Algorithm (v1.15.0 Phase 1)
+### HITS Algorithm
 
 Hyperlink-Induced Topic Search — computes `hub` and `authority` scores for every entity. Useful for identifying high-quality information sources (high authority) vs. broad connectors (high hub).
 
@@ -1166,7 +1166,7 @@ Hyperlink-Induced Topic Search — computes `hub` and `authority` scores for eve
 async hits(options?: { maxIterations?: number; tolerance?: number }): Promise<Map<string, { hub: number; authority: number }>>
 ```
 
-### Clique Enumeration (v1.15.0 Phase 1)
+### Clique Enumeration
 
 Enumerate maximal cliques in the (undirected projection of the) graph via Bron–Kerbosch with pivot selection.
 
@@ -1174,7 +1174,7 @@ Enumerate maximal cliques in the (undirected projection of the) graph via Bron�
 async findMaximalCliques(options?: { minSize?: number; maxCliques?: number }): Promise<string[][]>
 ```
 
-### Louvain Community Detection (v1.15.0 Phase 1)
+### Louvain Community Detection
 
 Greedy modularity-optimization community detection. Returns each entity's community ID.
 
@@ -1285,15 +1285,15 @@ async listBackups(): Promise<BackupInfo[]>
 
 ### deleteBackup
 
-Delete a backup. Since v1.15.0 (Phase 5) this delegates to `BackupManager.delete()` which adds a symlink-attack guard before the underlying `fs.unlink`.
+Delete a backup. This delegates to `BackupManager.delete()` which adds a symlink-attack guard before the underlying `fs.unlink`.
 
 ```text
 async deleteBackup(backupId: string): Promise<void>
 ```
 
-> All five backup methods (`createBackup` / `listBackups` / `restoreFromBackup` / `deleteBackup` / `cleanOldBackups`) are thin facades over [`BackupManager`](#backupmanager) since v1.15.0 Phase 5. Existing callers see no API change.
+> All five backup methods (`createBackup` / `listBackups` / `restoreFromBackup` / `deleteBackup` / `cleanOldBackups`) are thin facades over [`BackupManager`](#backupmanager). Existing callers see no API change.
 
-### ingest (v1.9.0 — Conversation Ingestion; provenance + mode dial, R4b/R5, 3.0.0)
+### ingest (Conversation Ingestion; provenance + mode dial)
 
 Format-agnostic conversation ingestion pipeline.
 
@@ -1303,7 +1303,7 @@ async ingest(
   options?: IngestOptions
 ): Promise<IngestResult>
 
-type IngestMode = 'accurate' | 'balanced' | 'lightweight';  // R5, default 'balanced'
+type IngestMode = 'accurate' | 'balanced' | 'lightweight';  // default 'balanced'
 
 interface IngestOptions {
   mode?: IngestMode;
@@ -1324,13 +1324,13 @@ interface IngestResult {
 }
 ```
 
-`input` accepts raw transcript text (auto-split via `splitTranscript`), a `{ messages: [...] }` object, or an array of `ChatMessage`. v1.15.0 hardens transcript splitting with `MAX_SPLIT_LENGTH` (10 MB) and `MAX_PARTS` (10 000) guards against ReDoS.
+`input` accepts raw transcript text (auto-split via `splitTranscript`), a `{ messages: [...] }` object, or an array of `ChatMessage`. Transcript splitting has with `MAX_SPLIT_LENGTH` (10 MB) and `MAX_PARTS` (10 000) guards against ReDoS.
 
-**R4b — provenance manifest**: every non-dry-run ingest writes an `ingest-<id>` manifest entity (`entityType: 'ingest-manifest'`) with one `[chunk]: <JSON>` observation line per source chunk (`{ id, source, offset, length, hash }`); each created entity links to the manifest via a `derived_from` relation and records per-observation `sourceRef` provenance through `observationMeta` — evidence paths can extend answer → relation → observation → source chunk.
+**Provenance manifest**: every non-dry-run ingest writes an `ingest-<id>` manifest entity (`entityType: 'ingest-manifest'`) with one `[chunk]: <JSON>` observation line per source chunk (`{ id, source, offset, length, hash }`); each created entity links to the manifest via a `derived_from` relation and records per-observation `sourceRef` provenance through `observationMeta` — evidence paths can extend answer → relation → observation → source chunk.
 
-**R5 — cost/quality dial**: `mode` maps onto the `MemoryDistiller` construction dial — `'lightweight'` → heuristic-only (LLM never called), `'balanced'` (default, = pre-R5 behaviour) → auto, `'accurate'` → llm-preferred plus the optional `validate` hook (the `RelationConsolidator` seam). Distillation enrichment and `tokenUsage` accounting only activate when `llmProvider` is supplied.
+**Cost/quality dial**: `mode` maps onto the `MemoryDistiller` construction dial — `'lightweight'` → heuristic-only (LLM never called), `'balanced'` (default) → auto, `'accurate'` → llm-preferred plus the optional `validate` hook (the `RelationConsolidator` seam). Distillation enrichment and `tokenUsage` accounting only activate when `llmProvider` is supplied.
 
-### splitTranscript (v1.9.0)
+### splitTranscript
 
 Pure function that splits a transcript into per-session text segments using delimiter regex.
 
@@ -1338,7 +1338,7 @@ Pure function that splits a transcript into per-session text segments using deli
 splitTranscript(content: string, options?: SplitOptions): SplitResult
 ```
 
-### exportGraph — Linked-Data formats (η.5.4)
+### exportGraph — Linked-Data formats
 
 In addition to `json` / `csv` / `graphml` / `gexf` / `dot` / `markdown` / `mermaid`, `exportGraph` accepts W3C Linked-Data targets:
 
@@ -1632,13 +1632,13 @@ createStorageFromPath(path: string): IGraphStorage
 
 (Free functions, not static class methods — `MEMORY_STORAGE_TYPE` overrides `config.type` when set.)
 
-`IGraphStorage` gained two optional members (v2.9.0) so existing third-party/test implementations remain valid without changes: `renameEntity?(oldName, newName): Promise<Entity>` (storage-level rename primitive; both `GraphStorage` and `SQLiteStorage` implement it) and `readonly events?: GraphEventEmitter` (also now implemented by `SQLiteStorage`, giving it full event parity with `GraphStorage` — `graph:loaded`/`saved`, `entity:created`/`updated`/`deleted`, `relation:created` — so event-driven derived views like `TFIDFEventSync` and `GraphRankPrior` work on the SQLite backend too). `SQLiteStorage` also gained the `graphMutex` member already present on `GraphStorage` (fixes a crash in batch manager mutations against the raw SQLite backend).
+`IGraphStorage` gained two optional members so existing third-party/test implementations remain valid without changes: `renameEntity?(oldName, newName): Promise<Entity>` (storage-level rename primitive; both `GraphStorage` and `SQLiteStorage` implement it) and `readonly events?: GraphEventEmitter` (also now implemented by `SQLiteStorage`, giving it full event parity with `GraphStorage` — `graph:loaded`/`saved`, `entity:created`/`updated`/`deleted`, `relation:created` — so event-driven derived views like `TFIDFEventSync` and `GraphRankPrior` work on the SQLite backend too). `SQLiteStorage` also gained the `graphMutex` member already present on `GraphStorage` (fixes a crash in batch manager mutations against the raw SQLite backend).
 
 ---
 
 ## Batch primitives and helper surface
 
-Added in the 2026-11 design pass. Each entry is additive; existing signatures are unchanged.
+Each entry is additive; existing signatures are unchanged.
 
 ### Shared env helpers (`src/utils/envConfig.ts`, `@public`)
 
@@ -1728,7 +1728,7 @@ const ctx = new ManagerContext({
 
 ```typescript
 interface Entity {
-  // Core (since v1.0)
+  // Core
   name: string;
   entityType: string;
   observations: string[];
@@ -1738,17 +1738,17 @@ interface Entity {
   createdAt?: string;
   lastModified?: string;
 
-  // v2.9.0 — stable identity
+  // Stable identity
   id?: string;                    // Opaque UUID, assigned at creation (crypto.randomUUID),
                                    // preserved across updates/renames/persistence on both
                                    // backends. `name` remains the public key; `id` is
                                    // forward-compat for v2 reference migration.
 
-  // v1.6.0 — Freshness
+  // Freshness
   ttl?: number;                    // milliseconds
   confidence?: number;             // 0.0–1.0 belief strength
 
-  // v1.8.0 — Project scoping + supersession
+  // Project scoping + supersession
   projectId?: string;
   version?: number;
   parentEntityName?: string;
@@ -1756,10 +1756,10 @@ interface Entity {
   isLatest?: boolean;
   supersededBy?: string;
 
-  // v1.11.0 — Memory Engine dedup
+  // Memory Engine dedup
   contentHash?: string;            // SHA-256 of raw turn content
 
-  // η.4.4 — Bitemporal validity (orthogonal to supersession)
+  // Bitemporal validity (orthogonal to supersession)
   validFrom?: string;              // ISO 8601
   validUntil?: string;              // ISO 8601, undefined = open
   observationMeta?: Array<{
@@ -1782,7 +1782,7 @@ interface AgentEntity extends Entity {
   lastAccessedAt?: string;
   confidence: number;              // 0.0–1.0
   agentId?: string;
-  visibility: 'private' | 'team' | 'org' | 'shared' | 'public';   // v1.7.0 expanded from 3-level → 5-level
+  visibility: 'private' | 'team' | 'org' | 'shared' | 'public';   // 5-level model
   promotedAt?: string;
   promotedFrom?: string;
   source?: {
@@ -1792,7 +1792,7 @@ interface AgentEntity extends Entity {
     reliability: number;
   };
 
-  // η.5.5.b — Visibility expansion
+  // Visibility expansion
   visibleFrom?: string;            // ISO 8601 time-window start
   visibleUntil?: string;            // ISO 8601 time-window end
   allowedRoles?: string[];          // RBAC role predicate (any-of)
@@ -1862,11 +1862,11 @@ interface SearchFilters {
 }
 ```
 
-### Result\<T, E\> (v2.0.0)
+### Result\<T, E\>
 
 Discriminated-union return type for operations with expected, caller-handled
 failure modes (`src/types/result.ts`, exported from the types barrel).
-Introduced by the v2.0.0 Theme 1 error-signalling audit.
+Part of the error-signalling policy.
 
 ```text
 type Result<T, E = Error> =
@@ -1905,7 +1905,7 @@ unions — do not treat this section as a copy of that module.
 
 ## BackupManager
 
-(v1.15.0 Phase 5) Backup lifecycle extracted from `IOManager`. Accessed via `ctx.ioManager` (delegating facade) or directly via the constructor if you need finer-grained control.
+Backup lifecycle extracted from `IOManager`. Accessed via `ctx.ioManager` (delegating facade) or directly via the constructor if you need finer-grained control.
 
 ### create
 
@@ -1947,7 +1947,7 @@ async cleanOld(keepCount?: number): Promise<number>
 
 ## MemoryEngine
 
-(v1.11.0) Turn-aware conversation memory composing over `EpisodicMemoryManager` + `WorkingMemoryManager`. Wired via `ctx.memoryEngine` (lazy getter).
+Turn-aware conversation memory composing over `EpisodicMemoryManager` + `WorkingMemoryManager`. Wired via `ctx.memoryEngine` (lazy getter).
 
 ### addTurn
 
@@ -2007,7 +2007,7 @@ Integer [0, 10] scoring via `length × keyword × recent-turn-overlap` signals. 
 
 ## GovernanceManager
 
-(v1.6.0; enforcement chokepoint, Sec1, 3.0.0) Policy enforcement and audit logging for memory mutations. Wired via `ctx.governanceManager`.
+(enforcement chokepoint) Policy enforcement and audit logging for memory mutations. Wired via `ctx.governanceManager`.
 
 ### withTransaction
 
@@ -2039,7 +2039,7 @@ interface GovernancePolicy {
 
 Consulted before every mutation the manager handles; a hook returning `false` throws and rolls back the transaction. All three hooks are optional — an absent hook allows the operation.
 
-### Constructor options — `redactAuditSnapshots` (Sec6)
+### Constructor options — `redactAuditSnapshots`
 
 ```text
 new GovernanceManager(storage: GraphStorage, auditLog: AuditLog, options?: {
@@ -2050,15 +2050,15 @@ new GovernanceManager(storage: GraphStorage, auditLog: AuditLog, options?: {
 
 The live graph is never mutated — only the audit-log copies are redacted.
 
-### Enforcement chokepoint (Sec1, 3.0.0)
+### Enforcement chokepoint
 
-`MEMORY_GOVERNANCE_ENABLED` was previously read nowhere in `src/`, so setting it did nothing and no mutation path was governed. Now, when it is the strict literal `'true'` (checked once at first `ctx.entityManager` access), `ManagerContext` wires this manager's live policy + audit log directly into `EntityManager` via `EntityManager.setGovernanceHooks()` — so `createEntities`/`updateEntity`/`batchUpdate`/`deleteEntities`/`renameEntity` are policy-checked (`GovernanceError` on denial) and audited (fire-and-forget; an audit-sink failure never fails the underlying write) without requiring the caller to route writes through `withTransaction`. Policy is read live via `getPolicy()`, so a `setPolicy()` call after construction takes effect on the next mutation. Unset env var = zero checks, zero audit calls on `EntityManager` (pre-Sec1 behavior); `ctx.governanceManager` remains usable manually via `withTransaction` either way.
+`MEMORY_GOVERNANCE_ENABLED` was previously read nowhere in `src/`, so setting it did nothing and no mutation path was governed. Now, when it is the strict literal `'true'` (checked once at first `ctx.entityManager` access), `ManagerContext` wires this manager's live policy + audit log directly into `EntityManager` via `EntityManager.setGovernanceHooks()` — so `createEntities`/`updateEntity`/`batchUpdate`/`deleteEntities`/`renameEntity` are policy-checked (`GovernanceError` on denial) and audited (fire-and-forget; an audit-sink failure never fails the underlying write) without requiring the caller to route writes through `withTransaction`. Policy is read live via `getPolicy()`, so a `setPolicy()` call after construction takes effect on the next mutation. Unset env var = zero checks, zero audit calls on `EntityManager` (no governance behavior); `ctx.governanceManager` remains usable manually via `withTransaction` either way.
 
 ---
 
 ## FreshnessManager
 
-(v1.6.0) Wired via `ctx.freshnessManager`.
+Wired via `ctx.freshnessManager`.
 
 ```text
 calculateFreshness(entity: Entity, now?: Date): FreshnessScore
@@ -2073,7 +2073,7 @@ async generateReport(): Promise<FreshnessReport>
 
 ## RbacMiddleware + RoleAssignmentStore
 
-(η.6.1) Available in code via `ctx.rbacMiddleware` and `ctx.roleAssignmentStore` (lazy getters, always present). RBAC is not enabled by an environment variable; `checkPermission` is called by your own code.
+Available in code via `ctx.rbacMiddleware` and `ctx.roleAssignmentStore` (lazy getters, always present). RBAC is not enabled by an environment variable; `checkPermission` is called by your own code.
 
 ```text
 // Synchronous decision. Denies when no active assignment matches.
@@ -2099,24 +2099,24 @@ ctx.roleAssignmentStore.hydrate(): Promise<void>   // load persisted assignments
 
 ## ProcedureManager + CausalReasoner + WorldModelManager + ActiveRetrievalController
 
-(3B.4–3B.7) See dedicated component docs in [`COMPONENTS.md`](./COMPONENTS.md). Brief surface:
+See dedicated component docs in [`COMPONENTS.md`](./COMPONENTS.md). Brief surface:
 
 ```text
-// 3B.4 — Procedural memory
+// Procedural memory
 ctx.procedureManager.addProcedure(spec: ProcedureSpec): Promise<string>
 ctx.procedureManager.matchProcedure(context: unknown): Promise<ProcedureMatch[]>
 ctx.procedureManager.refineProcedure(id: string, feedback: ProcedureFeedback): Promise<void>
 
-// 3B.5 — Active retrieval
+// Active retrieval
 ctx.activeRetrieval.adaptiveRetrieve(opts: { query: string; maxRounds?: number }): Promise<RetrievalResult>
 
-// 3B.6 — Causal reasoning
+// Causal reasoning
 ctx.causalReasoner.findCauses(entity: string): Promise<Entity[]>
 ctx.causalReasoner.findEffects(entity: string): Promise<Entity[]>
 ctx.causalReasoner.counterfactual(scenario: CounterfactualSpec): Promise<CounterfactualResult>
 ctx.causalReasoner.detectCycles(): Promise<CausalCycle[]>
 
-// 3B.7 — World model
+// World model
 ctx.worldModelManager.getCurrentState(): Promise<WorldStateSnapshot>
 ctx.worldModelManager.validateFact(fact: FactCandidate): Promise<ValidationResult>
 ctx.worldModelManager.predictOutcome(scenario: ScenarioSpec): Promise<OutcomePrediction>
@@ -2226,7 +2226,7 @@ const evolved = await pg.evolve({
 
 ## IMemoryBackend
 
-(v1.12.0) Pluggable backend interface for `MemoryEngine`. Selected via `MEMORY_BACKEND=sqlite|in-memory` and accessed via `ctx.memoryBackend`.
+Pluggable backend interface for `MemoryEngine`. Selected via `MEMORY_BACKEND=sqlite|in-memory` and accessed via `ctx.memoryBackend`.
 
 ```typescript
 import type { MemoryTurn, GetWeightedOptions, WeightedTurn } from '@danielsimonjr/memoryjs';
@@ -2244,7 +2244,7 @@ interface IMemoryBackend {
 
 ## GraphRankPrior + HybridSearchManager
 
-(v2.9.0 — knowledge-graph-as-core convergence) Graph-connectivity as a first-class ranking signal. All new weights/options default to `0`/off with behavior identical to before they existed. See `docs/architecture/KNOWLEDGE_GRAPH_CORE_FEASIBILITY.md`.
+(knowledge-graph-as-core convergence) Graph-connectivity as a first-class ranking signal. All new weights/options default to `0`/off with behavior identical to before they existed. See `docs/architecture/KNOWLEDGE_GRAPH_CORE_FEASIBILITY.md`.
 
 ### GraphRankPrior
 
@@ -2293,7 +2293,7 @@ async search(
 
 `HybridSearchResult.matchedLayers` can now include `'graph'`; `scores.graph` carries the normalized graph-connectivity contribution when the channel is active. `HybridSearchLayer` (`= HybridSearchResult['matchedLayers'][number]`) is a `@deprecated` alias kept for back-compat.
 
-### RankedSearch.setGraphPrior (v2.9.0)
+### RankedSearch.setGraphPrior
 
 Opt-in post-scoring boost for TF-IDF/BM25 ranked search.
 
@@ -2311,7 +2311,7 @@ Multiplies each result's score by `score × (1 + boost × normalizedPageRank)` a
 
 ## EventManager
 
-(3.0.0 — R1, `@experimental`) Reifies actions as first-class `entityType: 'event'` hub entities with role-typed relations. Wired via `ctx.eventManager`.
+(`@experimental`) Reifies actions as first-class `entityType: 'event'` hub entities with role-typed relations. Wired via `ctx.eventManager`.
 
 ### recordEvent
 
@@ -2358,7 +2358,7 @@ const who = await ctx.eventManager.whoDidWhat({ target: 'api-service' });
 
 ## EvidencePathBuilder
 
-(3.0.0 — R2, `@experimental`) Builds traceable graph paths from search-query anchors to a result entity — the "why" behind a hit. Constructed per search call when `explain: true` is requested; not exposed as a `ManagerContext` getter.
+(`@experimental`) Builds traceable graph paths from search-query anchors to a result entity — the "why" behind a hit. Constructed per search call when `explain: true` is requested; not exposed as a `ManagerContext` getter.
 
 ```text
 new EvidencePathBuilder(graph: ReadonlyKnowledgeGraph, options?: {
@@ -2380,13 +2380,13 @@ interface EvidencePathSet {
 }
 ```
 
-Wired automatically into `HybridSearchManager.search({ explain: true })` and `LLMSearchExecutor.execute` — results gain an `evidencePaths` field. `explain` defaults to `false`; omitting it is byte-identical to pre-R2 output.
+Wired automatically into `HybridSearchManager.search({ explain: true })` and `LLMSearchExecutor.execute` — results gain an `evidencePaths` field. `explain` defaults to `false`; omitting it is byte-identical to output without `explain`.
 
 ---
 
 ## RelationConsolidator
 
-(3.0.0 — R3, `@experimental`) Three-tier "Janitor" pass for relation-level deduplication and neighborhood validation. Not wired into `ManagerContext` — construct directly.
+(`@experimental`) Three-tier "Janitor" pass for relation-level deduplication and neighborhood validation. Not wired into `ManagerContext` — construct directly.
 
 ```text
 new RelationConsolidator(
@@ -2416,7 +2416,7 @@ async consolidate(options?: { newRelations?: Relation[]; apply?: boolean }): Pro
 
 ## ApiKeyAuthMiddleware
 
-(3.0.0 — Sec9) Reference authentication layer wiring `APIKeyStore.validate()` into `RestRouter`.
+Reference authentication layer wiring `APIKeyStore.validate()` into `RestRouter`.
 
 ```text
 new ApiKeyAuthMiddleware(options: {

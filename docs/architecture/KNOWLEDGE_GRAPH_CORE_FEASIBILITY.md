@@ -5,7 +5,7 @@
 
 # Feasibility: Making the Knowledge Graph the Core of MemoryJS
 
-**Status:** Assessment (2026-07-23) — **convergence phase 1 implemented** (same date, this branch)
+**Status:** Assessment — **convergence phase 1 implemented**
 **Scope:** Evaluates whether the Entity/Relation knowledge graph can — and should — become the architectural core of the library, and what that would take.
 
 > **Implementation status:**
@@ -13,7 +13,7 @@
 > - **Gap 2 (salience/decay):** ✅ `connectivityWeight` in `SalienceEngine`, `connectivityProtection` in `DecayEngine` (legacy path). Default-off, bit-identical prior behavior asserted by tests.
 > - **Gap 3 (blob decomposition):** ✅ complete for all named managers. `ProcedureStore` — steps are `procedure-step` entities with `has_step`/`precedes`/`has_fallback` relations. `WorkThreadManager` — scalar observation lines + `child_of`/`blocked_by` relations as source of truth. `SessionCheckpoint` — checkpoints are `session-checkpoint` entities with `has_checkpoint`/`snapshots` relations. All three auto-migrate legacy blobs on read and export bulk migrators. `ProfileManager` needed no change — its `[static]`/`[dynamic]` prefixes are already line-per-observation (contract documented in its header).
 > - **Gap 4 (parallel models):** ✅ contracts documented in `InMemoryBackend` (ephemeral by design) and `ReconstructiveMemory` (CTC graph is an index; bridge persistence is the default system-of-record path).
-> - **Prerequisite (identity):** ✅ staged as designed — `Entity.id` (UUID, both backends, SQLite auto-migration) + `renameEntity` primitive (atomic reference rewrite on both backends, RefIndex remap, `entity:renamed` event). Reference-site migration to `id` remains the v2.0 cut.
+> - **Prerequisite (identity):** ✅ staged as designed — `Entity.id` (UUID, both backends, SQLite auto-migration) + `renameEntity` primitive (atomic reference rewrite on both backends, RefIndex remap, `entity:renamed` event). Reference-site migration to `id` remains a later step.
 
 ---
 
@@ -87,7 +87,7 @@ The single biggest structural obstacle is that **entity name is the primary key*
 
 Any serious graph-core investment — graph-aware ranking caches, blob decomposition into linked nodes, cross-store references — multiplies the cost of name coupling, because every new edge is another thing a rename breaks.
 
-**Closing it:** introduce stable internal ids (keeping `name` as a unique, mutable label). This is a v2.0-scale change to the storage schema and `Relation` type, but it can be staged: add an `id` column now, backfill, and migrate reference sites incrementally while `name` remains the public API.
+**Closing it:** introduce stable internal ids (keeping `name` as a unique, mutable label). This is a large change to the storage schema and `Relation` type, but it can be staged: add an `id` column now, backfill, and migrate reference sites incrementally while `name` remains the public API.
 
 ---
 
@@ -97,7 +97,7 @@ Feasible, worth doing, and best framed as **convergence rather than re-architect
 
 1. **Cheap wins first** (minor releases): graph-connectivity signals in `SalienceEngine` and `HybridScorer`; wire `GraphTraversal` PageRank into ranked search as an optional scorer. This makes the graph the *computational* core where it is currently just the storage core.
 2. **Blob decomposition** manager-by-manager (`ProcedureStore` first), each with a migration path.
-3. **Stable ids + `renameEntity`** as the headline v2.0 breaking change, unblocking everything downstream.
+3. **Stable ids + `renameEntity`** as the headline breaking change, unblocking everything downstream.
 4. **Don't** force-unify `CueTagContentGraph` or delete `InMemoryBackend`; define them as ephemeral indexes over the graph with persistence-through-the-bridge as the contract.
 
 ### What to avoid
