@@ -4,8 +4,6 @@
 
 # Unused Files and Exports Analysis
 
-**Generated**: 2026-11-06
-
 ## Summary
 
 - **Potentially unused files**: 0

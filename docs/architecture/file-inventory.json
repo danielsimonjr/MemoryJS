@@ -1,5 +1,4 @@
 {
-  "generated": "2026-11-06",
   "totalFiles": 984,
   "byDisposition": {
     "reachable": 395,
@@ -6865,7 +6864,7 @@
       "package": "(root)",
       "area": "tools",
       "disposition": "tool",
-      "loc": 3854
+      "loc": 3833
     },
     {
       "file": "tools/migrate-from-jsonl-to-sqlite/migrate-from-jsonl-to-sqlite.ts",

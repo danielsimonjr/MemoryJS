@@ -4,8 +4,6 @@
 
 # Duplicate Symbols
 
-**Generated**: 2026-11-06 (by tools/create-dependency-graph)
-
 Names that are OWN-DEFINED (not merely re-exported) by >= 2 distinct files, then CLASSIFIED so the actionable subset is clear: `TRUE_DUPLICATE` (real merge targets) vs `ALIAS_DELEGATION` (a `const X = importedY` forward, excluded once <2 real bodies remain) and `ALLOWLISTED` (matches `duplicate-allowlist.json`).
 
 > **Note:** This report groups names by OWN definition, not by call graph, then classifies each flagged name: TRUE_DUPLICATE (the actionable merge targets), ALIAS_DELEGATION (a const-alias forward to an imported symbol, not an independent body — excluded once fewer than 2 real bodies remain), and ALLOWLISTED (matches duplicate-allowlist.json: deliberately-independent local helpers/types). A flagged name may be a genuine duplicate OR a legitimately-independent local definition; a human triages TRUE_DUPLICATE entries using the defining files + public flags before merging anything.

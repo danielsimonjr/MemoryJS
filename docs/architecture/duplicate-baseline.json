@@ -1,5 +1,4 @@
 {
-  "generated": "2026-07-24",
   "note": "The in-progress dedup campaign backlog: TRUE_DUPLICATE names accepted as of `generated`. `node tools/create-dependency-graph/check-duplicates.mjs` fails only on NEW TRUE_DUPLICATE names beyond this set — as names are consolidated, re-run this generator to shrink the baseline. Not auto-run; a human re-seeds it deliberately after reviewing what changed.",
   "runtime": {},
   "types": {}
