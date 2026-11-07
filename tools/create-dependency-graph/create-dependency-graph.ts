@@ -1852,7 +1852,6 @@ function generateJSON(
   roots: Set<string>,
   dormant: { orphaned: string[]; testOnly: string[] }
 ): object {
-  const today = new Date().toISOString().split('T')[0];
 
   // Convert modules to JSON-friendly format
   const modulesJson: Record<string, Record<string, object>> = {};
@@ -1903,8 +1902,6 @@ function generateJSON(
   return {
     metadata: {
       name: packageJson.name,
-      version: packageJson.version,
-      lastUpdated: today,
       totalFiles: stats.totalTypeScriptFiles,
       totalModules: stats.totalModules,
       totalExports: stats.totalExports,
@@ -2017,13 +2014,10 @@ function generateMarkdown(
   matrix: DependencyMatrix,
   roots: Set<string>
 ): string {
-  const today = new Date().toISOString().split('T')[0];
   const lines: string[] = [];
   const projectName = packageJson.name || 'Project';
 
   lines.push(`# ${projectName} - Dependency Graph`);
-  lines.push('');
-  lines.push(`**Version**: ${packageJson.version} | **Last Updated**: ${today}`);
   lines.push('');
   lines.push(
     'This document provides a comprehensive dependency graph of all files, components, imports, functions, and variables in the codebase.'
@@ -2296,8 +2290,6 @@ function generateMarkdown(
   lines.push('');
   lines.push('---');
   lines.push('');
-  lines.push(`*Last Updated*: ${today}`);
-  lines.push(`*Version*: ${packageJson.version}`);
   lines.push('');
 
   return lines.join('\n');
@@ -2317,8 +2309,6 @@ function generateCompactSummary(
     m: {
       // metadata
       n: packageJson.name,
-      v: packageJson.version,
-      d: new Date().toISOString().split('T')[0],
       f: stats.totalTypeScriptFiles,
       e: stats.totalExports,
       re: stats.totalReExports,
@@ -2402,11 +2392,8 @@ function expectedUnitTestPath(sourceFile: string): string {
  */
 function generateTestCoverageMarkdown(coverage: TestCoverageAnalysis): string {
   const lines: string[] = [];
-  const today = new Date().toISOString().split('T')[0];
 
   lines.push('# Test Coverage Analysis');
-  lines.push('');
-  lines.push(`**Generated**: ${today}`);
   lines.push('');
 
   const totalSource = coverage.sourceFiles.length;
@@ -2532,7 +2519,6 @@ function generateTestCoverageJson(coverage: TestCoverageAnalysis): object {
   const b = coverage.policyBreakdown;
   return {
     metadata: {
-      generatedAt: new Date().toISOString(),
       totalSourceFiles: coverage.sourceFiles.length,
       totalTestFiles: coverage.testFiles.length,
       testedCount: coverage.testedFiles.length,
@@ -2687,7 +2673,6 @@ interface DuplicateSymbolEntry {
 }
 
 interface DuplicateSymbolsReport {
-  generated: string;
   note: string;
   summary: {
     runtimeDuplicates: number;
@@ -3008,7 +2993,6 @@ function detectDuplicateSymbols(
 
 function generateDuplicateSymbolsMarkdown(report: DuplicateSymbolsReport): string {
   let md = '# Duplicate Symbols\n\n';
-  md += `**Generated**: ${report.generated} (by tools/create-dependency-graph)\n\n`;
   md += `Names that are OWN-DEFINED (not merely re-exported) by >= 2 distinct files, then `;
   md += `CLASSIFIED so the actionable subset is clear: \`TRUE_DUPLICATE\` (real merge targets) `;
   md += `vs \`ALIAS_DELEGATION\` (a \`const X = importedY\` forward, excluded once <2 real `;
@@ -3120,7 +3104,6 @@ interface FileInventoryRow {
 }
 
 interface FileInventory {
-  generated: string;
   totalFiles: number;
   byDisposition: Record<string, number>;
   byArea: Record<string, number>;
@@ -3267,7 +3250,6 @@ function buildFileInventory(
   }
 
   return {
-    generated: new Date().toISOString().split('T')[0],
     totalFiles: rows.length,
     byDisposition,
     byArea,
@@ -3297,7 +3279,6 @@ function generateFileInventoryMarkdown(inv: FileInventory): string {
   const lines: string[] = [];
   lines.push('# Complete File Inventory');
   lines.push('');
-  lines.push(`**Generated**: ${inv.generated} (by tools/create-dependency-graph)`);
   lines.push('');
   lines.push(
     'Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks/`, ' +
@@ -3640,7 +3621,6 @@ async function main(): Promise<void> {
   const runtimeByTag = tallyByTag(dup.runtime);
   const typeByTag = tallyByTag(dup.types);
   const duplicateReport: DuplicateSymbolsReport = {
-    generated: new Date().toISOString().split('T')[0],
     note: DUPLICATE_SYMBOLS_NOTE,
     summary: {
       runtimeDuplicates: runtimeByTag.TRUE_DUPLICATE,
@@ -3740,7 +3720,6 @@ async function main(): Promise<void> {
   // Write full unused analysis to a separate file
   const unusedReportPath = join(OUTPUT_DIR, 'unused-analysis.md');
   let unusedReport = '# Unused Files and Exports Analysis\n\n';
-  unusedReport += `**Generated**: ${new Date().toISOString().split('T')[0]}\n\n`;
   const deadExports = unusedAnalysis.unusedExports.filter((e) => e.inFileRefs === 0);
   const contractExports = unusedAnalysis.unusedExports.filter((e) => e.inFileRefs > 0);
 

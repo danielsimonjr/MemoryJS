@@ -22,7 +22,6 @@ const collect = (entries) => {
 };
 
 const baseline = {
-  generated: new Date().toISOString().split('T')[0],
   note:
     'The in-progress dedup campaign backlog: TRUE_DUPLICATE names accepted as of `generated`. ' +
     '`node tools/create-dependency-graph/check-duplicates.mjs` fails only on NEW ' +
