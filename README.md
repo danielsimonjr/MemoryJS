@@ -1,7 +1,5 @@
 # MemoryJS
 
-> **Code samples.** Samples assume `const ctx = new ManagerContext('./memory.jsonl')` and the placeholders `graph: KnowledgeGraph` (from `await ctx.storage.loadGraph()`), `entities: Entity[]` and `storage: IGraphStorage`. Every other name in a sample is imported or declared in it.
-
 [![NPM](https://img.shields.io/npm/v/@danielsimonjr/memoryjs.svg)](https://www.npmjs.com/package/@danielsimonjr/memoryjs)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-7.0+-blue.svg)](https://www.typescriptlang.org/)
@@ -11,7 +9,7 @@ Entities, relations and observations are stored on JSONL, SQLite or (optionally)
 (BM25, TF-IDF, fuzzy, semantic, hybrid, temporal, LLM-planned), graph algorithms, bitemporal versioning, RBAC, an
 Agent Memory System, and the experimental Recursa skill and learning harness.
 
-Current version: **4.5.0**. Runtime: Node.js 22.12.0 or later. Development: Bun 1.4.2 or later.
+Runtime: Node.js 22.12.0 or later. Development: Bun 1.4.2 or later.
 The CLI is `memory` (or `memoryjs`): `bunx --package @danielsimonjr/memoryjs memory --help`.
 
 > Powers [@danielsimonjr/memory-mcp](https://www.npmjs.com/package/@danielsimonjr/memory-mcp), a Model Context
