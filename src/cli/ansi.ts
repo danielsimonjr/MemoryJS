@@ -3,7 +3,8 @@
  *
  * In-repo replacement for `chalk`, covering only the six styles the CLI prints.
  * A non-empty `NO_COLOR` disables color and wins over `FORCE_COLOR`. Otherwise
- * `FORCE_COLOR=0`/`false` disables and `1`/`2`/`3`/`true`/empty enables. With
+ * `FORCE_COLOR=0`/`false` disables; `1`–`3`, any higher numeric (clamped), `true`,
+ * and empty enable. With
  * neither variable set, color is enabled only when stdout is a TTY.
  *
  * @module cli/ansi
@@ -46,9 +47,13 @@ function colorEnabled(): boolean {
   if (force === 'false' || force === '0') return false;
   if (force === '' || force === 'true') return true;
 
-  const level = Number.parseInt(force, 10);
-  if (level === 0) return false;
-  if (level >= 1 && level <= 3) return true;
+  // chalk 6's vendored supports-color: only pure digit strings count as numeric.
+  if (/^\d+$/.test(force)) {
+    const level = Math.min(Number.parseInt(force, 10), 3);
+    if (level === 0) return false;
+    return true;
+  }
+
   return Boolean(process.stdout.isTTY);
 }
 
