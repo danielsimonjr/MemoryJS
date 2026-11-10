@@ -155,9 +155,17 @@ describe('RunExclusiveMutex challenger pins', () => {
     const mutex = new RunExclusiveMutex();
     for (let i = 0; i < 20_000; i++) await mutex.runExclusive(() => i);
     const gc = globalThis.gc;
-    if (typeof gc === 'function') gc();
+    // Without an explicit GC, heapUsed is not a leak oracle (other tests share
+    // the worker). Always exercise the second burst so a retained chain still
+    // shows up as a hang or OOM; pin the byte delta only when GC is available.
+    if (typeof gc !== 'function') {
+      for (let i = 0; i < 20_000; i++) await mutex.runExclusive(() => i);
+      return;
+    }
+    gc();
     const before = process.memoryUsage().heapUsed;
     for (let i = 0; i < 20_000; i++) await mutex.runExclusive(() => i);
+    gc();
     const after = process.memoryUsage().heapUsed;
     expect(after - before).toBeLessThan(8 * 1024 * 1024);
   });
