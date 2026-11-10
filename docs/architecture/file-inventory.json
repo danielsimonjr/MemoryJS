@@ -305,7 +305,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 547
+      "loc": 550
     },
     {
       "file": "src/agent/bootstrap/ExplorationNotes.ts",
@@ -536,7 +536,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 532
+      "loc": 537
     },
     {
       "file": "src/agent/GuardedComponentEdit.ts",
@@ -697,7 +697,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 530
+      "loc": 537
     },
     {
       "file": "src/agent/learning/index.ts",
@@ -1789,7 +1789,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1607
+      "loc": 1629
     },
     {
       "file": "src/core/EntityStateMachine.ts",
@@ -3861,7 +3861,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 737
+      "loc": 762
     },
     {
       "file": "tests/unit/agent/GuardedComponentEdit.test.ts",
@@ -4001,7 +4001,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 104
+      "loc": 146
     },
     {
       "file": "tests/unit/agent/learning/InProcessLearnHandler.concurrency.test.ts",
@@ -4134,7 +4134,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 157
+      "loc": 154
     },
     {
       "file": "tests/unit/agent/learning/RevisionMerger.test.ts",
@@ -5100,7 +5100,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 869
+      "loc": 903
     },
     {
       "file": "tests/unit/core/EntityStateMachine.test.ts",

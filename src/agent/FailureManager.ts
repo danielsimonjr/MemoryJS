@@ -168,7 +168,8 @@ export class FailureManager {
    *
    * @param items - Input and options per failure, in order.
    * @returns One slot per input in the same order; `undefined` when that record was built but
-   *   refused by storage.
+   *   refused by storage. If the batch write lands and then throws, the per-record fallback
+   *   reuses ids already in storage instead of appending them again.
    * @throws Error when validation fails while building a record (same as `record`).
    */
   async recordMany(
@@ -189,6 +190,10 @@ export class FailureManager {
       const slots: Array<FailureRecord | undefined> = built.map(() => undefined);
       for (let i = 0; i < built.length; i++) {
         const b = built[i]!;
+        if (this.storage.getEntityByName(b.record.id) !== undefined) {
+          slots[i] = b.record;
+          continue;
+        }
         try {
           await this.appendFailures([b.entity as unknown as Entity]);
           slots[i] = b.record;

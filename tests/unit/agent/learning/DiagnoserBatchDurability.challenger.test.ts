@@ -85,8 +85,15 @@ describe('Diagnoser failure-record durability under batching [challenger]', () =
       return { id: `failure-${record.mock.calls.length}` };
     });
     const recordMany = vi.fn(async (items: ReadonlyArray<{ input: { context: string } }>) => {
-      for (const { input } of items) await record(input);
-      return [];
+      const slots: Array<{ id: string } | undefined> = [];
+      for (const { input } of items) {
+        try {
+          slots.push(await record(input));
+        } catch {
+          slots.push(undefined);
+        }
+      }
+      return slots;
     });
     const d = new Diagnoser({
       failureManager: { record, recordMany } as unknown as Pick<FailureManager, 'record'> &
@@ -99,5 +106,40 @@ describe('Diagnoser failure-record durability under batching [challenger]', () =
     expect(out[0]?.relatedFailureId).toMatch(/^failure-/);
     expect(out[2]?.relatedFailureId).toMatch(/^failure-/);
     expect(out[1]?.relatedFailureId).toBeUndefined();
+    expect(record).toHaveBeenCalledTimes(3);
+  });
+
+  it('re-running after a mid-round abort reuses the flushed record instead of writing a duplicate', async () => {
+    const record = vi.fn(async () => ({ id: `failure-${record.mock.calls.length}` }));
+    const dedup = new Map<string, string>();
+    const store = {
+      get: (key: string) => dedup.get(key),
+      set: async (key: string, id: string) => {
+        dedup.set(key, id);
+      },
+    };
+    const controller = new AbortController();
+    let calls = 0;
+    const complete = vi.fn(async () => {
+      calls += 1;
+      if (calls === 2) controller.abort();
+      return JSON.stringify({ kind: 'missing-knowledge', summary: 'no figures in K' });
+    });
+    const d = new Diagnoser({
+      llmProvider: { complete } as unknown as PGCompletionProvider,
+      failureManager: { record } as unknown as Pick<FailureManager, 'record'>,
+    });
+    await expect(
+      d.diagnose(0, [makeItem('task-1'), makeItem('task-2')], KNOWLEDGE, {
+        signal: controller.signal,
+        dedup: store,
+      }),
+    ).rejects.toThrow();
+    expect(record).toHaveBeenCalledTimes(1);
+    const firstId = record.mock.results[0]?.value as Promise<{ id: string }>;
+    const flushed = await firstId;
+    const again = await d.diagnose(0, [makeItem('task-1')], KNOWLEDGE, { dedup: store });
+    expect(record).toHaveBeenCalledTimes(1);
+    expect(again[0]?.relatedFailureId).toBe(flushed.id);
   });
 });

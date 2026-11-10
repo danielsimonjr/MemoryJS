@@ -23,13 +23,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   were individually durable before; only the last completed step boundary is guaranteed.
   `FailureManager.recordMany` and `Diagnoser.recordPending` keep batched fsyncs on the happy path
   while flushing lessons decided before a mid-round abort and falling back to per-record
-  persistence when one batched append is refused.
+  persistence when one batched append is refused. The per-record fallback skips ids already
+  present after a batch that wrote then failed, so those records are not appended twice.
+  `EntityManager.batchUpdate` accepts optional `expectedVersion` per item and checks every one
+  under `graphMutex` before the single storage write.
 - `CorpusMapper` sets a navigation node's `parentId` when it creates the node instead of calling
   `HierarchyManager.setEntityParent` afterwards. Each of those calls validated the link against
   `loadGraph()`'s borrowed view and then wrote on its own, so mapping a 32-document corpus cost 36
   validation passes and 36 durable appends on top of the creates. Creates are now ordered
   parent-first because SQLite enforces `parentId` as a foreign key; conflict observations on stored
-  nodes still use `updateEntity` with `expectedVersion` OCC per node.
+  nodes use `batchUpdate` with per-entity `expectedVersion` OCC in that one commit.
 - A JSONL append no longer pays two `stat` calls and a `chmod`. `appendLines` read the file's mode
   with its own `stat` and then called `restrictSensitiveFilePermissions`, which stat'ed again, and
   the `0600` restriction was re-issued on every write because Windows `chmod` cannot express

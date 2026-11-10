@@ -96,7 +96,8 @@ export interface DiagnoseOptions {
   sessionId?: string;
   /**
    * Optional abort signal. An abort rejects with `AbortError` (from `ConcurrencyLimiter`); no
-   * fallback diagnosis is produced and no failure is recorded after the abort.
+   * fallback diagnosis is produced. Failure records already decided in this round are flushed
+   * before the abort propagates.
    */
   signal?: AbortSignal;
   /** Learning trace the round belongs to; part of the dedup key (default `''`). */
@@ -357,7 +358,13 @@ export class Diagnoser {
       recorded = true;
       return out;
     } catch (err) {
-      if (!recorded && pending.length > 0) await this.recordPending(pending, opts);
+      if (!recorded && pending.length > 0) {
+        try {
+          await this.recordPending(pending, opts);
+        } catch (flushErr) {
+          logger.warn(`Diagnoser: flushing records before abort failed: ${describeError(flushErr)}`);
+        }
+      }
       throw err;
     }
   }

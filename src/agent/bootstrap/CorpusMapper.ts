@@ -420,7 +420,8 @@ export class CorpusMapper {
     // link was a `setEntityParent` call after the fact, and that call validated against
     // `loadGraph()`'s borrowed view (deep-frozen off production) before each write on its own: 36
     // links meant 36 validation passes and 36 durable appends. Links to an already-stored node
-    // still go through the hierarchy manager.
+    // still go through the hierarchy manager. Conflict observations on stored nodes use one
+    // `batchUpdate` with per-entity `expectedVersion` OCC and a single durable commit.
     const parentOf = new Map<string, string>();
     for (const { child, parent } of persist.parents) parentOf.set(child, parent);
     const creating = new Set(persist.nodes.map((info) => info.name));
@@ -442,18 +443,20 @@ export class CorpusMapper {
     }
     if (persist.entities.length > 0) await this.entityManager.createEntities(parentFirst(persist.entities, persist.parents));
 
+    const conflictUpdates: Array<{ name: string; updates: Partial<Entity>; expectedVersion: number }> = [];
     for (const [name, lines] of conflictLines) {
       const info = leaves.get(name);
       const stored = this.storage.getEntityByName(name);
       if (!info || info.fresh || !stored) continue;
       const toAdd = lines.filter((line) => !stored.observations.includes(line));
       if (toAdd.length === 0) continue;
-      await this.entityManager.updateEntity(
+      conflictUpdates.push({
         name,
-        { observations: [...stored.observations, ...toAdd] } as Partial<Entity>,
-        { expectedVersion: stored.version ?? 1 },
-      );
+        updates: { observations: [...stored.observations, ...toAdd] } as Partial<Entity>,
+        expectedVersion: stored.version ?? 1,
+      });
     }
+    if (conflictUpdates.length > 0) await this.entityManager.batchUpdate(conflictUpdates);
     if (persist.relations.length > 0) await this.relationManager.createRelations(persist.relations);
     for (const { child, parent } of persist.parents) {
       if (creating.has(child)) continue;

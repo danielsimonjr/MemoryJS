@@ -10,9 +10,8 @@
  * up: adding a phase that saves twice is a real regression, and it should fail here.
  *
  * The assertions count durable commits, not time, so they mean the same thing on every OS and
- * under any machine load. The ceilings are deliberately loose (about 2x the measured count) so a
- * different split or an extra action does not fail an unrelated change; a return to per-phase
- * writes is a 3-5x jump and always trips them.
+ * under any machine load. Ceilings sit just above the instrumented count (34 trace flushes, 33
+ * JSONL appends, 2 rewrites for this fixture) so a return to per-phase writes still fails hard.
  */
 import { describe, expect, it } from 'vitest';
 import type { IGraphStorage } from '../../../../src/types/types.js';
@@ -98,14 +97,12 @@ describe.each([
       expect(result.stoppedBecause).toBe('all-pass');
 
       // A four-task, two-leaf run: 2 children x (start + solve + judge + diagnose + edit +
-      // validate x2 + apply) plus the parent's plan/merge/reflect. Measured 76 flushes before any
-      // further tuning; the ceiling catches a return to per-phase writes (which was 3x this).
-      expect(counts.traceFlushes).toBeLessThanOrEqual(120);
+      // validate x2 + apply) plus the parent's plan/merge/reflect. Instrumented at 34 flushes /
+      // 33 JSONL appends / 2 rewrites (same on 555566e and 7ae8f7a). Per-phase writes were ~276.
+      expect(counts.traceFlushes).toBeLessThanOrEqual(40);
       if (backend.name === 'jsonl') {
-        // One append per flush at most, plus the handful of snapshot/skill/failure writes. Before
-        // coalescing this run performed 276 appends.
-        expect(counts.jsonlAppends).toBeLessThanOrEqual(140);
-        expect(counts.jsonlRewrites).toBeLessThanOrEqual(8);
+        expect(counts.jsonlAppends).toBeLessThanOrEqual(40);
+        expect(counts.jsonlRewrites).toBeLessThanOrEqual(4);
       }
     } finally {
       counts.restore();

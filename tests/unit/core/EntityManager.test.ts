@@ -7,7 +7,7 @@ import { EntityManager } from '../../../src/core/EntityManager.js';
 import { HierarchyManager } from '../../../src/core/HierarchyManager.js';
 import { GraphStorage } from '../../../src/core/GraphStorage.js';
 import { SQLiteStorage } from '../../../src/core/SQLiteStorage.js';
-import { EntityNotFoundError, ValidationError } from '../../../src/utils/errors.js';
+import { EntityNotFoundError, ValidationError, VersionConflictError } from '../../../src/utils/errors.js';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -380,6 +380,40 @@ describe('EntityManager', () => {
     it('should handle empty updates array', async () => {
       const updated = await manager.batchUpdate([]);
       expect(updated).toEqual([]);
+    });
+
+    it('checks expectedVersion per entity in one commit', async () => {
+      const alice = await manager.getEntity('Alice');
+      const bob = await manager.getEntity('Bob');
+      const proto = Object.getPrototypeOf(storage) as { appendLines: (lines: string[]) => Promise<void> };
+      const original = proto.appendLines;
+      let appends = 0;
+      proto.appendLines = async function (this: unknown, lines: string[]) {
+        appends += 1;
+        return original.call(this, lines);
+      };
+      try {
+        const updated = await manager.batchUpdate([
+          { name: 'Alice', updates: { importance: 9 }, expectedVersion: alice!.version ?? 1 },
+          { name: 'Bob', updates: { importance: 8 }, expectedVersion: bob!.version ?? 1 },
+        ]);
+        expect(appends).toBe(1);
+        expect(updated[0]!.version).toBe((alice!.version ?? 1) + 1);
+        expect(updated[1]!.version).toBe((bob!.version ?? 1) + 1);
+      } finally {
+        proto.appendLines = original;
+      }
+    });
+
+    it('refuses the whole batch when one expectedVersion is stale', async () => {
+      await expect(
+        manager.batchUpdate([
+          { name: 'Alice', updates: { importance: 9 }, expectedVersion: 1 },
+          { name: 'Bob', updates: { importance: 8 }, expectedVersion: 99 },
+        ]),
+      ).rejects.toThrow(VersionConflictError);
+      expect((await manager.getEntity('Alice'))!.importance).toBe(7);
+      expect((await manager.getEntity('Bob'))!.importance).toBe(6);
     });
 
     it('should handle single entity update', async () => {

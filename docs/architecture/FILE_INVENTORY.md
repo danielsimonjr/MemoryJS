@@ -81,7 +81,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/bootstrap/Bootstrapper.ts` | src | reachable | 246 |
 | `src/agent/bootstrap/bootstrapShared.ts` | src | reachable | 203 |
 | `src/agent/bootstrap/BoundaryRecorder.ts` | src | reachable | 249 |
-| `src/agent/bootstrap/CorpusMapper.ts` | src | reachable | 547 |
+| `src/agent/bootstrap/CorpusMapper.ts` | src | reachable | 550 |
 | `src/agent/bootstrap/ExplorationNotes.ts` | src | reachable | 396 |
 | `src/agent/bootstrap/index.ts` | src | reachable | 20 |
 | `src/agent/bootstrap/PracticeTaskGenerator.ts` | src | reachable | 351 |
@@ -114,7 +114,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/ExclusionManager.ts` | src | reachable | 210 |
 | `src/agent/ExperienceExtractor.ts` | src | reachable | 435 |
 | `src/agent/FailureDistillation.ts` | src | reachable | 314 |
-| `src/agent/FailureManager.ts` | src | reachable | 532 |
+| `src/agent/FailureManager.ts` | src | reachable | 537 |
 | `src/agent/GuardedComponentEdit.ts` | src | reachable | 711 |
 | `src/agent/harness/ConcurrencyLimiter.ts` | src | reachable | 246 |
 | `src/agent/harness/EvictionIndex.ts` | src | reachable | 163 |
@@ -137,7 +137,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/knowledge/ScratchKnowledge.ts` | src | reachable | 191 |
 | `src/agent/knowledgeContext.ts` | src | reachable | 116 |
 | `src/agent/learning/ChildKnowledgeOverlay.ts` | src | reachable | 272 |
-| `src/agent/learning/Diagnoser.ts` | src | reachable | 530 |
+| `src/agent/learning/Diagnoser.ts` | src | reachable | 537 |
 | `src/agent/learning/index.ts` | src | reachable | 63 |
 | `src/agent/learning/InProcessLearnHandler.ts` | src | reachable | 76 |
 | `src/agent/learning/KnowledgeEditor.ts` | src | reachable | 375 |
@@ -293,7 +293,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/core/context/LearningFacade.ts` | src | reachable | 252 |
 | `src/core/context/SearchFacade.ts` | src | reachable | 323 |
 | `src/core/context/StorageInfraFacade.ts` | src | reachable | 277 |
-| `src/core/EntityManager.ts` | src | reachable | 1607 |
+| `src/core/EntityManager.ts` | src | reachable | 1629 |
 | `src/core/EntityStateMachine.ts` | src | reachable | 104 |
 | `src/core/GraphEventEmitter.ts` | src | reachable | 471 |
 | `src/core/GraphStorage.ts` | src | reachable | 1872 |
@@ -589,7 +589,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/ExclusionManager.test.ts` | tests | test | 237 |
 | `tests/unit/agent/ExperienceExtractor.test.ts` | tests | test | 178 |
 | `tests/unit/agent/FailureDistillation.test.ts` | tests | test | 617 |
-| `tests/unit/agent/FailureManager.test.ts` | tests | test | 737 |
+| `tests/unit/agent/FailureManager.test.ts` | tests | test | 762 |
 | `tests/unit/agent/GuardedComponentEdit.test.ts` | tests | test | 598 |
 | `tests/unit/agent/harness/ConcurrencyLimiter.test.ts` | tests | test | 247 |
 | `tests/unit/agent/harness/EvictionIndex.test.ts` | tests | test | 130 |
@@ -609,7 +609,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/knowledge/KnowledgeRepository.test.ts` | tests | test | 220 |
 | `tests/unit/agent/knowledgeContext.sections.test.ts` | tests | test | 63 |
 | `tests/unit/agent/learning/Diagnoser.test.ts` | tests | test | 254 |
-| `tests/unit/agent/learning/DiagnoserBatchDurability.challenger.test.ts` | tests | test | 104 |
+| `tests/unit/agent/learning/DiagnoserBatchDurability.challenger.test.ts` | tests | test | 146 |
 | `tests/unit/agent/learning/InProcessLearnHandler.concurrency.test.ts` | tests | test | 61 |
 | `tests/unit/agent/learning/KnowledgeEditor.test.ts` | tests | test | 308 |
 | `tests/unit/agent/learning/LeafAbortDedup.test.ts` | tests | test | 125 |
@@ -628,7 +628,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/learning/RecursiveLearner.test.ts` | tests | test | 208 |
 | `tests/unit/agent/learning/RecursiveLiveK.test.ts` | tests | test | 121 |
 | `tests/unit/agent/learning/RecursivePlanBudget.test.ts` | tests | test | 66 |
-| `tests/unit/agent/learning/RecursiveWriteBudget.test.ts` | tests | test | 157 |
+| `tests/unit/agent/learning/RecursiveWriteBudget.test.ts` | tests | test | 154 |
 | `tests/unit/agent/learning/RevisionMerger.test.ts` | tests | test | 298 |
 | `tests/unit/agent/learning/RevisionMergeRules.test.ts` | tests | test | 134 |
 | `tests/unit/agent/learning/RevisionValidator.test.ts` | tests | test | 167 |
@@ -766,7 +766,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/entity-manager-project-stamping.test.ts` | tests | test | 51 |
 | `tests/unit/core/entity-manager-version-chain.test.ts` | tests | test | 152 |
 | `tests/unit/core/EntityManager.legacyDelete.test.ts` | tests | test | 67 |
-| `tests/unit/core/EntityManager.test.ts` | tests | test | 869 |
+| `tests/unit/core/EntityManager.test.ts` | tests | test | 903 |
 | `tests/unit/core/EntityStateMachine.test.ts` | tests | test | 65 |
 | `tests/unit/core/GraphEventEmitter.observation.test.ts` | tests | test | 78 |
 | `tests/unit/core/GraphEventEmitter.test.ts` | tests | test | 519 |
