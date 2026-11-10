@@ -73,6 +73,8 @@ export interface MemoryEntityParts {
   importance?: number;
   /** Optional content hash stored on the entity. */
   contentHash?: string;
+  /** Optional parent link, set at creation instead of a follow-up write. */
+  parentId?: string;
   /** Timestamp used for both `createdAt` and `lastModified`. */
   now: string;
 }
@@ -99,6 +101,7 @@ export function buildMemoryEntity(parts: MemoryEntityParts): Entity {
     confirmationCount: 0,
     version: 1,
     ...(parts.contentHash !== undefined ? { contentHash: parts.contentHash } : {}),
+    ...(parts.parentId !== undefined ? { parentId: parts.parentId } : {}),
     [parts.field]: parts.value,
   } as unknown as Entity;
 }
