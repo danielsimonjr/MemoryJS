@@ -7,7 +7,7 @@
  * @module cli
  */
 
-import { Command } from 'commander';
+import { Command } from './parseArgs.js';
 import { registerCommands } from './commands/index.js';
 import { readFileSync } from 'fs';
 import { createInterface } from 'readline';

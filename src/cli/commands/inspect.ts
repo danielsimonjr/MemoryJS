@@ -15,7 +15,7 @@
  * @module cli/commands/inspect
  */
 
-import { Command } from 'commander';
+import { Command } from '../parseArgs.js';
 import { promises as fs } from 'node:fs';
 import { ManagerContext } from '../../core/ManagerContext.js';
 import type { Entity, Relation } from '../../types/types.js';

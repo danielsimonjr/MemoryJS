@@ -6,7 +6,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { readFileSync } from 'fs';
-import { Command } from 'commander';
+import { Command } from '../../../src/cli/parseArgs.js';
 
 // Mock fs module
 vi.mock('fs', async () => {
@@ -37,17 +37,18 @@ vi.mock('path', async () => {
   };
 });
 
-// Mock commander to capture configuration
+// Mock the CLI parser to capture the program the entry point configures
 let capturedProgram: Command | null = null;
 
-vi.mock('commander', async () => {
-  const actual = await vi.importActual('commander');
-  const ActualCommand = (actual as { Command: typeof Command }).Command;
+vi.mock('../../../src/cli/parseArgs.js', async () => {
+  const actual = await vi.importActual<typeof import('../../../src/cli/parseArgs.js')>(
+    '../../../src/cli/parseArgs.js',
+  );
 
-  class MockCommand extends ActualCommand {
-    constructor() {
-      super();
-      capturedProgram = this;
+  class MockCommand extends actual.Command {
+    constructor(...args: ConstructorParameters<typeof actual.Command>) {
+      super(...args);
+      capturedProgram = this as unknown as Command;
     }
 
     parse(): this {

@@ -6,7 +6,7 @@
  */
 
 import { vi, type MockInstance } from 'vitest';
-import { Command } from 'commander';
+import { Command } from '../../../../src/cli/parseArgs.js';
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';

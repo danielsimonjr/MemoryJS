@@ -12,7 +12,7 @@
  * @module cli/commands/cache
  */
 
-import { Command } from 'commander';
+import { Command } from '../parseArgs.js';
 import { clearAllSearchCaches, cleanupAllCaches, getAllCacheStats } from '../../utils/searchCache.js';
 import { getOptions, createLogger } from './helpers.js';
 import { formatError } from '../formatters.js';

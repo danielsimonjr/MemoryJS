@@ -18,7 +18,7 @@
  * @module cli/commands/check
  */
 
-import { Command } from 'commander';
+import { Command } from '../parseArgs.js';
 import { ManagerContext } from '../../core/ManagerContext.js';
 import { runAction } from './helpers.js';
 

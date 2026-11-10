@@ -9,7 +9,7 @@
  * @module cli/commands/exclusion
  */
 
-import { Command } from 'commander';
+import { Command } from '../parseArgs.js';
 import { runAction, getOptions, createContext, createLogger } from './helpers.js';
 import { formatSuccess, formatError } from '../formatters.js';
 

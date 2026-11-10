@@ -6,7 +6,7 @@
  * @module cli/commands/helpers
  */
 
-import { Command } from 'commander';
+import { Command } from '../parseArgs.js';
 import { ManagerContext } from '../../core/ManagerContext.js';
 import { parseGlobalOptions, createLogger, type GlobalOptions } from '../options.js';
 import { findConfigFile, loadConfig, mergeCliConfig } from '../config.js';

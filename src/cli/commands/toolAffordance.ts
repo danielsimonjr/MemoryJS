@@ -7,7 +7,7 @@
  * @module cli/commands/toolAffordance
  */
 
-import { Command } from 'commander';
+import { Command } from '../parseArgs.js';
 import { getOptions, createContext, createLogger } from './helpers.js';
 import { formatError } from '../formatters.js';
 
