@@ -166,6 +166,8 @@ export class RecursiveLearner {
    */
   async start(opts: RecursiveStartOptions): Promise<RecursiveState> {
     const checked = checkStartOptions(opts);
+    // The trace does not exist yet, so its id cannot scope the batch: create it first, then
+    // coalesce the task records and the run's first state into one write.
     const traceId = await this.opts.traces.create({
       learnerKind: 'recursive',
       round: 0,
@@ -175,10 +177,12 @@ export class RecursiveLearner {
       metrics: EMPTY_METRICS,
       ...(opts.parentTraceId !== undefined ? { parentTraceId: opts.parentTraceId } : {}),
     });
-    await this.opts.traces.writeTasks(traceId, taskRecordsJson(checked.tasks));
-    const state = initialRecursiveState(traceId, opts, checked);
-    await saveRecursive(this.opts.traces, state);
-    return copyRecursive(state);
+    return this.opts.traces.batch(traceId, async () => {
+      await this.opts.traces.writeTasks(traceId, taskRecordsJson(checked.tasks));
+      const state = initialRecursiveState(traceId, opts, checked);
+      await saveRecursive(this.opts.traces, state);
+      return copyRecursive(state);
+    });
   }
 
   /** Current persisted state of a run (a copy). */
@@ -196,7 +200,7 @@ export class RecursiveLearner {
    * @throws Error when the run is not in the `plan` phase.
    */
   async plan(traceId: string): Promise<{ subsets: SubsetRecord[]; childTraceIds: string[] }> {
-    return this.mutex.run(traceId, async () => {
+    return this.mutex.run(traceId, () => this.opts.traces.batch(traceId, async () => {
       const { state, tasks } = await loadRecursive(this.opts.traces, traceId);
       if (state.phase === 'children') {
         return { subsets: copyRecursive(state).subsets, childTraceIds: [...state.childTraceIds] };
@@ -234,7 +238,7 @@ export class RecursiveLearner {
       state.phase = 'children';
       await saveRecursive(this.opts.traces, state);
       return { subsets: copyRecursive(state).subsets, childTraceIds };
-    });
+    }));
   }
 
   /**
@@ -264,7 +268,7 @@ export class RecursiveLearner {
    * @throws Error for an unknown child id or when the run is not waiting for children.
    */
   async submitChild(traceId: string, childTraceId: string, failure?: string): Promise<RecursiveState> {
-    return this.mutex.run(traceId, async () => {
+    return this.mutex.run(traceId, () => this.opts.traces.batch(traceId, async () => {
       const { state } = await loadRecursive(this.opts.traces, traceId);
       if (state.phase !== 'children') throw new Error(`RecursiveLearner: submitChild is not expected in phase ${state.phase}`);
       const index = state.childTraceIds.indexOf(childTraceId);
@@ -292,7 +296,7 @@ export class RecursiveLearner {
       state.accounting = acct.toState();
       await saveRecursive(this.opts.traces, state);
       return copyRecursive(state);
-    });
+    }));
   }
 
   /**
@@ -306,7 +310,7 @@ export class RecursiveLearner {
    * @throws Error when children are still running, the run is not merging, or validation lacks a solver or judge.
    */
   async merge(traceId: string, deps: MergeDeps = {}): Promise<MergeOutcome> {
-    return this.mutex.run(traceId, async () => {
+    return this.mutex.run(traceId, () => this.opts.traces.batch(traceId, async () => {
       const { state, tasks } = await loadRecursive(this.opts.traces, traceId);
       if (state.phase === 'reflect' && state.lastMerge) return mergeOutcomeOf(state.lastMerge, state.mergedRevisionId);
       if (state.phase !== 'children' && state.phase !== 'merge') throw new Error(`RecursiveLearner: merge is not expected in phase ${state.phase}`);
@@ -360,7 +364,7 @@ export class RecursiveLearner {
       });
       await saveRecursive(this.opts.traces, state);
       return mergeOutcomeOf(record, state.mergedRevisionId);
-    });
+    }));
   }
 
   /**
@@ -372,7 +376,7 @@ export class RecursiveLearner {
    * @throws Error when the run is not in the `reflect` phase.
    */
   async reflect(traceId: string): Promise<ReflectDecision> {
-    return this.mutex.run(traceId, async () => {
+    return this.mutex.run(traceId, () => this.opts.traces.batch(traceId, async () => {
       const { state, tasks } = await loadRecursive(this.opts.traces, traceId);
       if (state.phase !== 'reflect') throw new Error(`RecursiveLearner: reflect is not expected in phase ${state.phase}`);
       const merge = state.lastMerge ?? { applied: false, verdict: 'none' as const, fixed: [], regressed: [], notes: [] };
@@ -406,7 +410,7 @@ export class RecursiveLearner {
         keyInsights: [...reflector.keyInsights],
         improvedShare: reflector.improvedShare,
       };
-    });
+    }));
   }
 
   /**
@@ -436,7 +440,7 @@ export class RecursiveLearner {
    * @returns The stopped state.
    */
   async abort(traceId: string, reason: LearnStopReason = 'aborted'): Promise<RecursiveState> {
-    return this.mutex.run(traceId, async () => {
+    return this.mutex.run(traceId, () => this.opts.traces.batch(traceId, async () => {
       const { state, tasks } = await loadRecursive(this.opts.traces, traceId);
       if (state.phase !== 'done') {
         for (const id of state.completedChildIds) {
@@ -449,7 +453,7 @@ export class RecursiveLearner {
         await this.opts.traces.setMetrics(traceId, metricsOf(tasks, state.current, state.criteria?.current));
       }
       return copyRecursive(state);
-    });
+    }));
   }
 
   /**

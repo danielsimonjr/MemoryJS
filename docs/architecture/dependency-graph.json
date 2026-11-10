@@ -3,7 +3,7 @@
     "name": "@danielsimonjr/memoryjs",
     "totalFiles": 412,
     "totalModules": 12,
-    "totalExports": 2873
+    "totalExports": 2874
   },
   "entryPoints": [
     {
@@ -2642,6 +2642,12 @@
           }
         ],
         "internalDependencies": [
+          {
+            "file": "../utils/logger.js",
+            "imports": [
+              "logger"
+            ]
+          },
           {
             "file": "../types/types.js",
             "imports": [
@@ -8784,7 +8790,8 @@
           {
             "file": "../FailureManager.js",
             "imports": [
-              "FailureManager"
+              "FailureManager",
+              "FailureInput"
             ],
             "typeOnly": true
           },
@@ -16729,7 +16736,7 @@
             "file": "../utils/durableWriteFile.js",
             "imports": [
               "durableWriteFile",
-              "restrictSensitiveFilePermissions"
+              "restrictModeFromStat"
             ]
           },
           {
@@ -27511,6 +27518,7 @@
           "syncParentDirectory",
           "durableAppendFile",
           "restrictSensitiveFilePermissions",
+          "restrictModeFromStat",
           "DurableReplaceError"
         ],
         "classes": [
@@ -27522,7 +27530,8 @@
           "renameOver",
           "syncParentDirectory",
           "durableAppendFile",
-          "restrictSensitiveFilePermissions"
+          "restrictSensitiveFilePermissions",
+          "restrictModeFromStat"
         ]
       },
       "src/utils/entityUtils.ts": {
@@ -30385,11 +30394,11 @@
   "statistics": {
     "totalTypeScriptFiles": 412,
     "totalModules": 12,
-    "totalLinesOfCode": 129631,
-    "totalExports": 2873,
+    "totalLinesOfCode": 130124,
+    "totalExports": 2874,
     "totalClasses": 280,
     "totalInterfaces": 833,
-    "totalFunctions": 681,
+    "totalFunctions": 682,
     "totalTypeGuards": 49,
     "totalEnums": 4,
     "totalConstants": 193,

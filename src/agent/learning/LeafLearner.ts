@@ -111,6 +111,8 @@ export class LeafLearner {
       if (!task) throw new RangeError(`LeafLearner: unknown task id ${id}`);
       return task;
     });
+    // The trace does not exist yet, so its id cannot scope the batch: create it first, then
+    // coalesce the task records and the run's first state into one write.
     const traceId = await this.opts.traces.create({
       learnerKind: 'leaf',
       round: 0,
@@ -120,28 +122,30 @@ export class LeafLearner {
       metrics: EMPTY_METRICS,
       ...(opts.parentTraceId !== undefined ? { parentTraceId: opts.parentTraceId } : {}),
     });
-    await this.opts.traces.writeTasks(traceId, taskRecordsJson(tasks));
-    const run: Ctx['run'] = {
-      schema: 1,
-      stateRev: 0,
-      ...(opts.sessionId !== undefined ? { sessionId: opts.sessionId } : {}),
-      startedAtMs: Date.now(),
-      state: { traceId, round: 0, phase: 'solve', pending: [], results: {}, feedback: {} },
-      options,
-      taskIds,
-      tasks,
-      roundSnapshotId: '',
-      snapshotId: '',
-      diagnoses: [],
-      accounting: new LearningAccountant().toState(),
-      revisionCount: 0,
-      appliedRevisionIds: [],
-      recordedFailures: {},
-      answers: {},
-    };
-    const ctx: Ctx = { run, acct: LearningAccountant.fromState(run.accounting) };
-    await beginRound(this.env, ctx, 0);
-    return copyState(run.state);
+    return this.opts.traces.batch(traceId, async () => {
+      await this.opts.traces.writeTasks(traceId, taskRecordsJson(tasks));
+      const run: Ctx['run'] = {
+        schema: 1,
+        stateRev: 0,
+        ...(opts.sessionId !== undefined ? { sessionId: opts.sessionId } : {}),
+        startedAtMs: Date.now(),
+        state: { traceId, round: 0, phase: 'solve', pending: [], results: {}, feedback: {} },
+        options,
+        taskIds,
+        tasks,
+        roundSnapshotId: '',
+        snapshotId: '',
+        diagnoses: [],
+        accounting: new LearningAccountant().toState(),
+        revisionCount: 0,
+        appliedRevisionIds: [],
+        recordedFailures: {},
+        answers: {},
+      };
+      const ctx: Ctx = { run, acct: LearningAccountant.fromState(run.accounting) };
+      await beginRound(this.env, ctx, 0);
+      return copyState(run.state);
+    });
   }
 
   /**
@@ -176,7 +180,11 @@ export class LeafLearner {
    * @throws Error when the state is inconsistent or another driver saved first (stale state).
    */
   async next(traceId: string, opts: { signal?: AbortSignal } = {}): Promise<StepRequest> {
-    return this.advance(await loadCtx(this.env, traceId), opts.signal);
+    // One durable checkpoint per returned step: the phases a single call runs (diagnose, edit,
+    // validate, apply) each save the run, append an action and sometimes set metrics, and those
+    // writes are coalesced into one per trace. Resumability is unchanged — the state is committed
+    // before this returns, exactly as before.
+    return this.opts.traces.batch(traceId, async () => this.advance(await loadCtx(this.env, traceId), opts.signal));
   }
 
   /**
@@ -195,6 +203,18 @@ export class LeafLearner {
   async submit(traceId: string, kind: 'judge', payload: Record<string, CriterionResult[] | null>): Promise<LeafState>;
   async submit(traceId: string, kind: 'solve' | 'judge', payload: Record<string, unknown>): Promise<LeafState> {
     assertPayload(kind, payload);
+    return this.opts.traces.batch(traceId, () => this.submitUnbatched(traceId, kind, payload));
+  }
+
+  /**
+   * Body of {@link LeafLearner.submit}: one coalesced write batch per submitted step.
+   *
+   * @param traceId - Root trace id.
+   * @param kind - Which request is answered.
+   * @param payload - Results keyed by task id.
+   * @returns The updated state.
+   */
+  private async submitUnbatched(traceId: string, kind: 'solve' | 'judge', payload: Record<string, unknown>): Promise<LeafState> {
     const ctx = await loadCtx(this.env, traceId);
     const { run } = ctx;
     if (run.state.phase === 'done') throw new Error(`LeafLearner: run ${traceId} is done`);
@@ -224,10 +244,12 @@ export class LeafLearner {
    * @returns The state.
    */
   async abort(traceId: string): Promise<LeafState> {
-    const ctx = await loadCtx(this.env, traceId);
-    if (ctx.run.state.phase !== 'done') await stopRun(this.env, ctx, 'aborted');
-    this.fullAnswers.delete(traceId);
-    return copyState(ctx.run.state);
+    return this.opts.traces.batch(traceId, async () => {
+      const ctx = await loadCtx(this.env, traceId);
+      if (ctx.run.state.phase !== 'done') await stopRun(this.env, ctx, 'aborted');
+      this.fullAnswers.delete(traceId);
+      return copyState(ctx.run.state);
+    });
   }
 
   /**

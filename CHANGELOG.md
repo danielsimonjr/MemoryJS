@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The recursive-learner integration tests no longer come close to the 30 s vitest timeout on
+  `windows-latest`. They were not slow because of the work they do but because of how often that
+  work was made durable: one Recursa loop over a 32-document corpus performed 276 `fsync` calls,
+  and an `fsync` costs about 20x on Windows what it costs on Linux, so the run took 15.3 s on
+  Windows against 1.6 s on Linux. `LearningTrace` now coalesces the writes of one trace for the
+  duration of one learner step (`LearningTrace.batch(traceId, fn)`) and commits them as a single
+  `updateEntity` with the same OCC version, so a step's checkpoint is still durable before the step
+  returns and resume at step boundaries still works. Writes are scoped per trace id, because
+  sibling learners share one `LearningTrace` and write their own traces concurrently. A batch still
+  commits the writes issued before a throw, matching the unbatched behaviour failure-record dedup
+  relies on. Tradeoff: a crash inside a step before the flush loses intra-step checkpoints that
+  were individually durable before; only the last completed step boundary is guaranteed.
+  `FailureManager.recordMany` and `Diagnoser.recordPending` keep batched fsyncs on the happy path
+  while flushing lessons decided before a mid-round abort and falling back to per-record
+  persistence when one batched append is refused. The per-record fallback skips ids already
+  present after a batch that wrote then failed, so those records are not appended twice.
+  `EntityManager.batchUpdate` accepts optional `expectedVersion` per item and checks every one
+  under `graphMutex` before the single storage write.
+- `CorpusMapper` sets a navigation node's `parentId` when it creates the node instead of calling
+  `HierarchyManager.setEntityParent` afterwards. Each of those calls validated the link against
+  `loadGraph()`'s borrowed view and then wrote on its own, so mapping a 32-document corpus cost 36
+  validation passes and 36 durable appends on top of the creates. Creates are now ordered
+  parent-first because SQLite enforces `parentId` as a foreign key; conflict observations on stored
+  nodes use `batchUpdate` with per-entity `expectedVersion` OCC in that one commit.
+- A JSONL append no longer pays two `stat` calls and a `chmod`. `appendLines` read the file's mode
+  with its own `stat` and then called `restrictSensitiveFilePermissions`, which stat'ed again, and
+  the `0600` restriction was re-issued on every write because Windows `chmod` cannot express
+  `0600` (it only toggles the read-only bit), so the condition it checked could never be met.
+  `restrictModeFromStat` takes the mode from the `stat` the append already needed and is a no-op
+  on Windows, where access is governed by the parent directory's ACLs.
+
 ### Changed
 
 - English natural-language dates are parsed in-repo. `src/search/enDate/` is a focused rebuild of the part of `chrono-node` 2.9.1 MemoryJS used: parsers propose components, refiners fill implied fields and merge ranges, covering casual words (`today`, `tomorrow`, `yesterday`, `tonight`, `noon`, `midnight`, `morning`, `evening`, `now`, `last night`), relative offsets (`N units ago`, `in N units`, `N units from now`, `next`/`last`/`this` + weekday/week/month/quarter/year), absolute dates and times (ISO dates and instants with `Z` or numeric offsets, `YYYY-MM-DD`/slash/dot forms, month-name dates, clock times with `am`/`pm`, timezone abbreviations), and ranges (`A to B`, `A - B`, `between A and B`, `10am-2pm`). `TemporalQueryParser` keeps its custom relative ranges (`last hour`, `this week`, `3 days ago`, `since X`, ...) and sends everything else to the new parser; `since` now uses `parseEnDateStart`. `chrono-node` is no longer a dependency.

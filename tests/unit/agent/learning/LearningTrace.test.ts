@@ -115,6 +115,85 @@ describe.each(BACKENDS)('LearningTrace persistence [$name]', (backend) => {
     expect(outcomes.size).toBe(20);
   });
 
+  it('coalesces every write of one trace in a batch into a single durable commit', async () => {
+    const storage = backend.open(backend.path());
+    const entities = new EntityManager(storage as never);
+    const traces = new LearningTrace(storage, { entityManager: entities });
+    const id = await traces.create(baseRecord());
+    const before = storage.getEntityByName(id)!.version ?? 1;
+
+    const record = await traces.batch(id, async () => {
+      await traces.appendAction(id, action(0));
+      await traces.writeState(id, JSON.stringify({ stateRev: 1, phase: 'solve' }));
+      await traces.setMetrics(id, metrics(0.9));
+      await traces.addRevisionId(id, 'revision-batched');
+      return traces.get(id);
+    });
+
+    // One `updateEntity` for the whole batch, not one per queued write.
+    expect((storage.getEntityByName(id)!.version ?? 1) - before).toBe(1);
+    // Everything queued landed, and reads inside the batch saw the queued writes.
+    expect(record?.actions).toHaveLength(1);
+    expect(record?.metrics.allPass).toBe(0.9);
+    expect(record?.revisionIds).toEqual(['revision-batched']);
+    expect(await traces.readState(id)).toBe(JSON.stringify({ stateRev: 1, phase: 'solve' }));
+  });
+
+  it('a batch is scoped to its own trace, so a sibling trace still commits on its own', async () => {
+    const storage = backend.open(backend.path());
+    const traces = new LearningTrace(storage);
+    const first = await traces.create(baseRecord({ subsetLabel: 'first' }));
+    const second = await traces.create(baseRecord({ subsetLabel: 'second' }));
+    await traces.batch(first, async () => {
+      await traces.appendAction(first, action(0));
+      // A write to another trace inside the batch is not held hostage by it.
+      await traces.appendAction(second, action(1));
+      expect((await traces.get(second))?.actions).toHaveLength(1);
+    });
+    expect((await traces.get(first))?.actions).toHaveLength(1);
+    expect((await traces.get(second))?.actions).toHaveLength(1);
+  });
+
+  it('a batch still commits the writes issued before a throw, so recorded side effects survive', async () => {
+    const storage = backend.open(backend.path());
+    const traces = new LearningTrace(storage);
+    const id = await traces.create(baseRecord());
+    await expect(
+      traces.batch(id, async () => {
+        await traces.appendAction(id, action(0));
+        throw new Error('boom after the append');
+      }),
+    ).rejects.toThrow('boom after the append');
+    // Unbatched, the append was already durable when the throw happened; batching keeps that.
+    expect((await traces.get(id))?.actions).toHaveLength(1);
+  });
+
+  it('rejects a queued write whose guard refuses it, and never commits that write', async () => {
+    const storage = backend.open(backend.path());
+    const traces = new LearningTrace(storage);
+    const id = await traces.create(baseRecord());
+    await expect(
+      traces.batch(id, async () => {
+        await traces.appendAction(id, action(0));
+        await traces.writeState(id, '{"stateRev":2}', () => {
+          throw new Error('stale state (expected rev 1)');
+        });
+      }),
+    ).rejects.toThrow('stale state');
+    // The guard runs when the write is queued, so the refused state is never persisted — and the
+    // append queued before it still is, exactly as it would have been without a batch.
+    expect(await traces.readState(id)).toBeUndefined();
+    expect((await traces.get(id))?.actions).toHaveLength(1);
+  });
+
+  it('keeps the write-once rule for task records inside a batch', async () => {
+    const storage = backend.open(backend.path());
+    const traces = new LearningTrace(storage);
+    const id = await traces.create(baseRecord());
+    await traces.batch(id, () => traces.writeTasks(id, '[]'));
+    await expect(traces.writeTasks(id, '[]')).rejects.toThrow(/already has task records/);
+  });
+
   it('keeps 1,200 actions under the 16 KiB entity limit and folds the oldest', async () => {
     const storage = backend.open(backend.path());
     const entities = new EntityManager(storage as never);

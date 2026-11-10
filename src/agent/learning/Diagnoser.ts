@@ -6,8 +6,10 @@
  * An optional LLM proposes the diagnosis (zod-validated, one retry, then the deterministic
  * fallback). For `missing-knowledge` and `wrong-behaviour` diagnoses one failure record is
  * written per trace, task and round (key `traceId + taskId + round`, held in a
- * {@link FailureDedupStore}). Failure-record errors are logged and never thrown. An abort
- * rejects with `AbortError`.
+ * {@link FailureDedupStore}). Failure-record errors are logged per record and never abort the
+ * round. A mid-round `AbortError` still persists failure records for tasks already diagnosed in
+ * that round (they would be re-recorded only via dedup on a full replay, so they must flush before
+ * the abort propagates). An abort rejects with `AbortError`.
  *
  * `relatedSkillIds` follow the order of `knowledge.skillIds`, which `loadForContext` fills best
  * match first, so the first id is the highest-scoring related skill.
@@ -17,7 +19,7 @@
  */
 
 import { z } from 'zod';
-import type { FailureManager } from '../FailureManager.js';
+import type { FailureManager, FailureInput } from '../FailureManager.js';
 import type { AgentReflectionManager } from '../AgentReflectionManager.js';
 import type { InteractionLog } from '../harness/InteractionLog.js';
 import type { PGCompletionProvider } from '../procedural/graph/CompletionProvider.js';
@@ -58,7 +60,7 @@ const DiagnosisDraftSchema = z.object({
 /** Dependencies of {@link Diagnoser}. All optional; missing ones disable that evidence source. */
 export interface DiagnoserDeps {
   /** Receives one failure record per task per round for `missing-knowledge` / `wrong-behaviour`. */
-  failureManager?: Pick<FailureManager, 'record'>;
+  failureManager?: Pick<FailureManager, 'record'> & Partial<Pick<FailureManager, 'recordMany'>>;
   /** Supplies earlier reflections for the session. */
   reflections?: Pick<AgentReflectionManager, 'getRelevantForSession'>;
   /** Supplies trace excerpts for the solver addresses. */
@@ -94,7 +96,8 @@ export interface DiagnoseOptions {
   sessionId?: string;
   /**
    * Optional abort signal. An abort rejects with `AbortError` (from `ConcurrencyLimiter`); no
-   * fallback diagnosis is produced and no failure is recorded after the abort.
+   * fallback diagnosis is produced. Failure records already decided in this round are flushed
+   * before the abort propagates.
    */
   signal?: AbortSignal;
   /** Learning trace the round belongs to; part of the dedup key (default `''`). */
@@ -250,6 +253,30 @@ export function buildDiagnosisPrompt(
   ].join('\n');
 }
 
+/** One diagnosis that wants a durable failure record, queued until the round's records are written. */
+interface PendingFailure {
+  /** The failed task it came from. */
+  item: DiagnoseItem;
+  /** The diagnosis to annotate with the record id. */
+  diagnosis: Diagnosis;
+  /** Its failed rubric criteria (used for the record text). */
+  failed: Criterion[];
+  /** Dedup key: trace, task and round. */
+  key: string;
+}
+
+/**
+ * Dedup key of a failure record: the trace, task and round it belongs to.
+ *
+ * @param opts - Diagnose options (trace id).
+ * @param item - Failed task.
+ * @param round - Round number.
+ * @returns The key.
+ */
+function dedupKey(opts: DiagnoseOptions, item: DiagnoseItem, round: number): string {
+  return `${opts.traceId ?? ''}\u0000${item.task.id}\u0000${round}`;
+}
+
 /**
  * Diagnoses failed tasks and records failure memory for knowledge and behaviour failures.
  *
@@ -294,38 +321,141 @@ export class Diagnoser {
     opts: DiagnoseOptions = {},
   ): Promise<Diagnosis[]> {
     const out: Diagnosis[] = [];
-    for (const item of items) {
-      if (item.feedback.allPass) continue;
-      if (opts.signal?.aborted) throw new AbortError();
-      const excerpts = await this.readExcerpts(item.result.traceAddrs);
-      const reflections = await this.priorReflections(opts.sessionId, item.task.id);
-      const failed = failedRubricCriteria(item.task, item.feedback);
-      const skills = relatedSkills(knowledge.skillIds, [
-        ...failed.map((c) => c.text),
-        ...excerpts.map((e) => e.text),
-      ]);
+    const pending: PendingFailure[] = [];
+    let recorded = false;
+    try {
+      for (const item of items) {
+        if (item.feedback.allPass) continue;
+        if (opts.signal?.aborted) throw new AbortError();
+        const excerpts = await this.readExcerpts(item.result.traceAddrs);
+        const reflections = await this.priorReflections(opts.sessionId, item.task.id);
+        const failed = failedRubricCriteria(item.task, item.feedback);
+        const skills = relatedSkills(knowledge.skillIds, [
+          ...failed.map((c) => c.text),
+          ...excerpts.map((e) => e.text),
+        ]);
 
-      const llm = await this.diagnoseWithLlm(item, excerpts, reflections, opts.signal);
-      const kind = llm?.kind ?? classifyFallback(item.task, item.feedback, knowledge);
-      const summary = llm?.summary ?? this.fallbackSummary(kind, failed);
+        const llm = await this.diagnoseWithLlm(item, excerpts, reflections, opts.signal);
+        const kind = llm?.kind ?? classifyFallback(item.task, item.feedback, knowledge);
+        const summary = llm?.summary ?? this.fallbackSummary(kind, failed);
 
-      const diagnosis: Diagnosis = {
-        taskId: item.task.id,
-        kind,
-        summary,
-        evidenceAddrs: [...item.result.traceAddrs],
-        relatedSkillIds: skills,
-        confidence: llm ? LLM_CONFIDENCE : FALLBACK_CONFIDENCE,
-      };
+        const diagnosis: Diagnosis = {
+          taskId: item.task.id,
+          kind,
+          summary,
+          evidenceAddrs: [...item.result.traceAddrs],
+          relatedSkillIds: skills,
+          confidence: llm ? LLM_CONFIDENCE : FALLBACK_CONFIDENCE,
+        };
 
-      if (opts.signal?.aborted) throw new AbortError();
-      if (kind === 'missing-knowledge' || kind === 'wrong-behaviour') {
-        const failureId = await this.recordOnce(round, item, diagnosis, failed, opts);
-        if (failureId !== undefined) diagnosis.relatedFailureId = failureId;
+        if (opts.signal?.aborted) throw new AbortError();
+        if (kind === 'missing-knowledge' || kind === 'wrong-behaviour') {
+          pending.push({ item, diagnosis, failed, key: dedupKey(opts, item, round) });
+        }
+        out.push(diagnosis);
       }
-      out.push(diagnosis);
+      await this.recordPending(pending, opts);
+      recorded = true;
+      return out;
+    } catch (err) {
+      if (!recorded && pending.length > 0) {
+        try {
+          await this.recordPending(pending, opts);
+        } catch (flushErr) {
+          logger.warn(`Diagnoser: flushing records before abort failed: ${describeError(flushErr)}`);
+        }
+      }
+      throw err;
     }
-    return out;
+  }
+
+  /**
+   * Write the round's new failure records in one durable write.
+   *
+   * A diagnosis that needs a lesson used to call `record` itself, one append per failure. A round
+   * with N failed tasks therefore cost N appends and N fsyncs, which is the single most expensive
+   * thing this module did on Windows. `recordMany` writes them together; ids are handed back so
+   * each diagnosis can carry its `relatedFailureId`, and a store without `recordMany` (a test
+   * double) still uses `record` per item.
+   *
+   * @param pending - Diagnoses that want a failure record.
+   * @param opts - Dedup store and trace/session context.
+   */
+  private async recordPending(pending: PendingFailure[], opts: DiagnoseOptions): Promise<void> {
+    const dedup = opts.dedup ?? this.memoryDedup;
+    const fresh = pending.filter((p) => dedup.get(p.key) === undefined);
+    for (const p of pending) {
+      const known = dedup.get(p.key);
+      if (known !== undefined) p.diagnosis.relatedFailureId = known;
+    }
+    if (fresh.length === 0) return;
+    const mgr = this.deps.failureManager;
+    if (!mgr) return;
+    const inputs = fresh.map((p) => this.failureInput(p, opts));
+    let records: Array<{ id: string }>;
+    if (typeof mgr.recordMany === 'function') {
+      try {
+        const many = await mgr.recordMany(inputs.map((input) => ({ input })));
+        records = many.map((r) => (r === undefined ? { id: '' } : r));
+      } catch (err) {
+        logger.warn(`Diagnoser: batched failure records failed (${describeError(err)}), recording individually`);
+        records = await this.recordFreshIndividually(fresh, inputs, mgr);
+      }
+    } else {
+      records = await this.recordFreshIndividually(fresh, inputs, mgr);
+    }
+    for (let i = 0; i < fresh.length; i++) {
+      const id = records[i]?.id;
+      if (id === undefined || id === '') continue;
+      const p = fresh[i]!;
+      p.diagnosis.relatedFailureId = id;
+      await dedup.set(p.key, id);
+    }
+  }
+
+  /**
+   * Persist failure records one at a time; one refusal is logged and does not affect siblings.
+   *
+   * @param fresh - Pending diagnoses to record.
+   * @param inputs - Failure inputs aligned with `fresh`.
+   * @param mgr - Failure sink.
+   * @returns One entry per `fresh` item, with `{ id: '' }` when that record was refused.
+   */
+  private async recordFreshIndividually(
+    fresh: PendingFailure[],
+    inputs: FailureInput[],
+    mgr: Pick<FailureManager, 'record'>,
+  ): Promise<Array<{ id: string }>> {
+    const records: Array<{ id: string }> = [];
+    for (let i = 0; i < inputs.length; i++) {
+      try {
+        records.push(await mgr.record(inputs[i]!));
+      } catch (err) {
+        logger.warn(`Diagnoser: failure record for ${fresh[i]!.item.task.id} failed: ${describeError(err)}`);
+        records.push({ id: '' });
+      }
+    }
+    return records;
+  }
+
+  /**
+   * Failure input for one diagnosis, with the same text `recordOnce` used to build.
+   *
+   * @param p - Pending diagnosis.
+   * @param opts - Session context.
+   * @returns The failure input.
+   */
+  private failureInput(p: PendingFailure, opts: DiagnoseOptions): FailureInput {
+    const sessionId = opts.sessionId;
+    const failedIds = p.failed.map((c) => c.id);
+    return {
+      context: head(p.item.task.input, HEAD_CHARS, '(empty task input)'),
+      attempted: head(p.item.result.answer, HEAD_CHARS, '(empty answer)'),
+      failure_mode: p.failed.map((c) => c.text).join('; ') || `failed criteria: ${failedIds.join(', ') || 'none'}`,
+      root_cause: p.diagnosis.summary,
+      applicability_hint: `${p.item.task.category ?? 'uncategorized'}: ${failedIds.join(', ') || 'none'}`,
+      ...(sessionId !== undefined ? { sourceSessionId: sessionId } : {}),
+    };
   }
 
   /** Fallback summary text for a classification. */
@@ -403,40 +533,4 @@ export class Diagnoser {
     return undefined;
   }
 
-  /**
-   * Record the failure once per trace, task and round. Repeat calls return the stored id.
-   * Never throws for a record error: it is logged and yields `undefined` (and is retried on the
-   * next call, since nothing was stored).
-   */
-  private async recordOnce(
-    round: number,
-    item: DiagnoseItem,
-    diagnosis: Diagnosis,
-    failed: Criterion[],
-    opts: DiagnoseOptions,
-  ): Promise<string | undefined> {
-    const sessionId = opts.sessionId;
-    const dedup = opts.dedup ?? this.memoryDedup;
-    const key = `${opts.traceId ?? ''}\u0000${item.task.id}\u0000${round}`;
-    const known = dedup.get(key);
-    if (known !== undefined) return known;
-    const mgr = this.deps.failureManager;
-    if (!mgr) return undefined;
-    const failedIds = failed.map((c) => c.id);
-    try {
-      const record = await mgr.record({
-        context: head(item.task.input, HEAD_CHARS, '(empty task input)'),
-        attempted: head(item.result.answer, HEAD_CHARS, '(empty answer)'),
-        failure_mode: failed.map((c) => c.text).join('; ') || `failed criteria: ${failedIds.join(', ') || 'none'}`,
-        root_cause: diagnosis.summary,
-        applicability_hint: `${item.task.category ?? 'uncategorized'}: ${failedIds.join(', ') || 'none'}`,
-        ...(sessionId !== undefined ? { sourceSessionId: sessionId } : {}),
-      });
-      await dedup.set(key, record.id);
-      return record.id;
-    } catch (err) {
-      logger.warn(`Diagnoser: failure record for ${item.task.id} failed: ${describeError(err)}`);
-      return undefined;
-    }
-  }
 }
