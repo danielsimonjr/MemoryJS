@@ -10,9 +10,9 @@
 - **Dormant files** (runtime code on disk, unreachable from any entry/build root): 0
   - **Orphaned (reachable from nothing — delete/wire candidates)**: 0
   - **Test-only (exercised by a test, ships nothing)**: 0
-- **Potentially unused exports**: 165
+- **Potentially unused exports**: 170
   - **Unreferenced anywhere (deletion candidates)**: 4
-  - **Referenced in-module (type contracts / helpers backing live exports)**: 161
+  - **Referenced in-module (type contracts / helpers backing live exports)**: 166
 
 Seeded reachability roots (4):
 
@@ -434,4 +434,12 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 - `GraphGenerationDependency` (type) — 2 in-file refs
 - `SearchCacheName` (type) — 3 in-file refs
+
+### `src/utils/threadPool.ts`
+
+- `WorkerPoolOptions` (interface) — 6 in-file refs
+- `PoolStats` (interface) — 1 in-file ref
+- `ExecOptions` (interface) — 1 in-file ref
+- `WorkerRegisterOptions` (interface) — 1 in-file ref
+- `WorkerType` (type) — 3 in-file refs
 

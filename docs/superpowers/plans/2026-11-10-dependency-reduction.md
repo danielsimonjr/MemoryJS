@@ -1025,9 +1025,9 @@ Same verification block as Sprint 6. `package.json` has no `zod`.
 - Create: `tests/unit/utils/threadPool.parity.test.ts`
 - Modify: `src/utils/WorkerPoolManager.ts`, `src/utils/WorkerTaskManager.ts`, `src/search/FuzzySearch.ts`, `src/workers/levenshteinWorker.ts`
 
-- [ ] **Step 1: A test runs the same Levenshtein batch through the installed workerpool and through `threadPool` and expects equal results, a working `timeout`, a working `cancel`, `terminate(true)` and `terminate()` with no argument, `pool(options)` with no script, and an ESM worker loaded with `workerThreadOpts: { type: 'module' }`.**
-- [ ] **Step 2: Implement the thin pool. One function per worker message. Keep `workerType: 'process'` because `WorkerPoolConfig` already accepts it. The default call sites pass `'thread'`.**
-- [ ] **Step 3: Switch call sites. Remove `@danielsimonjr/workerpool` only after Step 1 is green. Run `bun install` and the fuzzy-search unit tests. Expected: PASS.**
+- [x] **Step 1: A test runs the same Levenshtein batch through the installed workerpool and through `threadPool` and expects equal results, a working `timeout`, a working `cancel`, `terminate(true)` and `terminate()` with no argument, `pool(options)` with no script, and an ESM worker loaded with `workerThreadOpts: { type: 'module' }`.**
+- [x] **Step 2: Implement the thin pool. One function per worker message. Keep `workerType: 'process'` because `WorkerPoolConfig` already accepts it. The default call sites pass `'thread'`.**
+- [x] **Step 3: Switch call sites. Remove `@danielsimonjr/workerpool` only after Step 1 is green. Run `bun install` and the fuzzy-search unit tests. Expected: PASS.**
 
 ### Task 18: Sprint 8 verification
 

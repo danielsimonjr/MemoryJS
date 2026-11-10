@@ -563,12 +563,13 @@ interface KnowledgeGraph {
 
 ### 4. Why Worker Pool for Fuzzy Search?
 
-**Decision**: Use `@danielsimonjr/workerpool` for Levenshtein calculations
+**Decision**: Use the in-repo pool in `src/utils/threadPool.ts` for Levenshtein calculations
 
 **Rationale**:
 - Levenshtein distance is CPU-intensive
 - Worker pools prevent blocking main thread
 - Enables parallel processing for large result sets
+- `threadPool.ts` is a thin `node:worker_threads` pool covering only the workerpool API MemoryJS used, so the package is no longer a dependency
 
 ### 5. Why Deferred Integrity?
 
@@ -735,7 +736,7 @@ Prior to this pass, `package.json` `exports` had only a `"."` entry and no `side
 - `no-restricted-imports` blocks any import matching `**/agent/**`, `**/core/**`, `**/utils/**`, `**/search/**`, `**/features/**`, `**/adapters/**`, `**/security/**`, `**/cli/**`, `**/workers/**`.
 - `no-restricted-syntax` additionally catches inline `import('...')` type annotations (a `TSImportType` AST node) targeting the same directories — the historical escape hatch `no-restricted-imports` alone can't see, and the one that created the pre-existing cycles.
 
-Where a type genuinely needs to be shared, the shared type moves *into* `src/types` and the implementation module re-exports it (not the other way around). Result: type-only circular dependencies dropped from 39 to 4; the dependency census records 8 type-only cycles (runtime circular dependencies remain 0). Separately, `ManagerContext`'s import of the search barrel for three symbols (`SemanticSearch`, `createEmbeddingService`, `createVectorStore`, previously pulling in ~70 files including chrono-node and workerpool transitively) was narrowed to their concrete source files.
+Where a type genuinely needs to be shared, the shared type moves *into* `src/types` and the implementation module re-exports it (not the other way around). Result: type-only circular dependencies dropped from 39 to 4; the dependency census records 8 type-only cycles (runtime circular dependencies remain 0). Separately, `ManagerContext`'s import of the search barrel for three symbols (`SemanticSearch`, `createEmbeddingService`, `createVectorStore`, previously pulling in ~70 files including chrono-node and the worker pool transitively) was narrowed to their concrete source files.
 
 ---
 

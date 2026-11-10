@@ -283,7 +283,10 @@ Levenshtein distance calculation is CPU-intensive:
 
 ### Decision
 
-Use `@danielsimonjr/workerpool` to offload Levenshtein calculations to worker threads.
+Offload Levenshtein calculations to worker threads through `src/utils/threadPool.ts`, a
+thin pool over `node:worker_threads`. It was originally `@danielsimonjr/workerpool`; Sprint 8
+of the dependency-reduction work replaced it with the in-repo module, keeping the same
+`pool` / `exec` / `timeout` / `cancel` / `stats` / `terminate` surface.
 
 ```typescript
 // Worker performs calculation
@@ -292,7 +295,7 @@ export function levenshteinDistance(s1: string, s2: string): number {
 }
 
 // Main thread delegates
-const pool = workerpool.pool('./levenshteinWorker.js');
+const pool = createThreadPool('./levenshteinWorker.js', { workerType: 'thread' });
 const results = await pool.exec('searchEntities', [query, entities, threshold]);
 ```
 
@@ -303,7 +306,7 @@ const results = await pool.exec('searchEntities', [query, entities, threshold]);
 | Main thread | Simple | Blocks UI, poor perf |
 | Web Workers | Browser support | Not Node.js native |
 | Worker threads | Node native | Manual pool management |
-| Workerpool | Managed pool | External dependency |
+| Managed pool library | Managed pool | External dependency |
 | WASM | Fast | Complex build |
 
 ### Consequences
@@ -315,8 +318,8 @@ const results = await pool.exec('searchEntities', [query, entities, threshold]);
 - Graceful pool management
 
 **Negative:**
-- External dependency
-- Worker serialization overhead
+- Serialization overhead
+- The pool is ours to maintain (no external dependency, but no upstream fixes either)
 - More complex error handling
 - Build complexity for workers
 

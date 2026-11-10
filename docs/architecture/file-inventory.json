@@ -1,11 +1,11 @@
 {
-  "totalFiles": 1031,
+  "totalFiles": 1037,
   "byDisposition": {
-    "reachable": 410,
+    "reachable": 411,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 585,
+    "test": 590,
     "tool": 10,
     "config": 2,
     "bench": 5,
@@ -14,8 +14,8 @@
   "byArea": {
     "benchmarks": 5,
     "examples": 15,
-    "src": 414,
-    "tests": 585,
+    "src": 415,
+    "tests": 590,
     "tools": 10,
     "config": 2
   },
@@ -3003,6 +3003,13 @@
       "loc": 214
     },
     {
+      "file": "src/utils/threadPool.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 961
+    },
+    {
       "file": "src/utils/timing.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
@@ -3042,7 +3049,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 402
+      "loc": 404
     },
     {
       "file": "src/utils/WorkerTaskManager.ts",
@@ -6860,6 +6867,13 @@
       "loc": 67
     },
     {
+      "file": "tests/unit/utils/helpers/captureThreadPoolParity.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 48
+    },
+    {
       "file": "tests/unit/utils/helpers/schemaParityCases.ts",
       "package": "(root)",
       "area": "tests",
@@ -6879,6 +6893,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 216
+    },
+    {
+      "file": "tests/unit/utils/helpers/threadPoolParityCases.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 448
     },
     {
       "file": "tests/unit/utils/ids.test.ts",
@@ -7091,6 +7112,27 @@
       "loc": 95
     },
     {
+      "file": "tests/unit/utils/threadPool.live.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 93
+    },
+    {
+      "file": "tests/unit/utils/threadPool.parity.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 272
+    },
+    {
+      "file": "tests/unit/utils/threadPool.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 412
+    },
+    {
       "file": "tests/unit/utils/timing.test.ts",
       "package": "(root)",
       "area": "tests",
@@ -7172,7 +7214,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 75
+      "loc": 163
     },
     {
       "file": "tools/chunking-for-files/chunking-for-files.ts",
