@@ -12,6 +12,16 @@ import { ansi } from '../../../src/cli/ansi.js';
 
 const ENV_KEYS = ['NO_COLOR', 'FORCE_COLOR'] as const;
 
+function withStdoutTTY(value: boolean, run: () => void): void {
+  const previous = process.stdout.isTTY;
+  Object.defineProperty(process.stdout, 'isTTY', { value, configurable: true });
+  try {
+    run();
+  } finally {
+    Object.defineProperty(process.stdout, 'isTTY', { value: previous, configurable: true });
+  }
+}
+
 const FORCED: Array<[keyof typeof ansi, string]> = [
   ['bold', '\u001b[1mName\u001b[22m'],
   ['red', '\u001b[31mName\u001b[39m'],
@@ -80,9 +90,19 @@ describe('ansi', () => {
       process.env.FORCE_COLOR = force;
       expect(ansi.red('x')).toBe('x');
     }
-    // An unrecognized FORCE_COLOR falls back to TTY detection, which is off here.
-    process.env.FORCE_COLOR = 'bogus';
-    expect(ansi.red('x')).toBe('x');
+  });
+
+  it('falls back to TTY detection for non-numeric FORCE_COLOR', () => {
+    delete process.env.NO_COLOR;
+    for (const force of ['bogus', ' 1', '1 ', '\t1', '1,2,0', '0.5', '-1', ' ']) {
+      process.env.FORCE_COLOR = force;
+      withStdoutTTY(false, () => {
+        expect(ansi.red('x')).toBe('x');
+      });
+      withStdoutTTY(true, () => {
+        expect(ansi.red('x')).toBe('\u001b[31mx\u001b[39m');
+      });
+    }
   });
 
   it('matches chalk for FORCE_COLOR values above 3, which chalk clamps to level 3', () => {
@@ -93,31 +113,11 @@ describe('ansi', () => {
     }
   });
 
-  it('matches chalk for FORCE_COLOR with surrounding whitespace, which chalk treats as non-numeric', () => {
-    delete process.env.NO_COLOR;
-    for (const force of [' 1', '1 ', '\t1']) {
-      process.env.FORCE_COLOR = force;
-      expect(ansi.red('x')).toBe('x');
-    }
-  });
-
-  it('matches chalk for zero-padded, fractional, negative, and space-only FORCE_COLOR', () => {
+  it('matches chalk for zero-padded FORCE_COLOR, which chalk treats as numeric', () => {
     delete process.env.NO_COLOR;
     process.env.FORCE_COLOR = '01';
     expect(ansi.red('x')).toBe('\u001b[31mx\u001b[39m');
     process.env.FORCE_COLOR = '00';
-    expect(ansi.red('x')).toBe('x');
-    process.env.FORCE_COLOR = '0.5';
-    expect(ansi.red('x')).toBe('x');
-    process.env.FORCE_COLOR = '-1';
-    expect(ansi.red('x')).toBe('x');
-    process.env.FORCE_COLOR = ' ';
-    expect(ansi.red('x')).toBe('x');
-  });
-
-  it('matches chalk for comma-separated FORCE_COLOR, which chalk treats as non-numeric', () => {
-    delete process.env.NO_COLOR;
-    process.env.FORCE_COLOR = '1,2,0';
     expect(ansi.red('x')).toBe('x');
   });
 
@@ -157,14 +157,11 @@ describe('ansi', () => {
   it('enables color with no FORCE_COLOR only when stdout is a TTY', () => {
     delete process.env.NO_COLOR;
     delete process.env.FORCE_COLOR;
-    const isTTY = process.stdout.isTTY;
-    try {
-      Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true });
+    withStdoutTTY(true, () => {
       expect(ansi.red('x')).toBe('\u001b[31mx\u001b[39m');
-      Object.defineProperty(process.stdout, 'isTTY', { value: false, configurable: true });
+    });
+    withStdoutTTY(false, () => {
       expect(ansi.red('x')).toBe('x');
-    } finally {
-      Object.defineProperty(process.stdout, 'isTTY', { value: isTTY, configurable: true });
-    }
+    });
   });
 });

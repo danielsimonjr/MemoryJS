@@ -3,9 +3,9 @@
  *
  * In-repo replacement for `chalk`, covering only the six styles the CLI prints.
  * A non-empty `NO_COLOR` disables color and wins over `FORCE_COLOR`. Otherwise
- * `FORCE_COLOR=0`/`false` disables; `1`–`3`, any higher numeric (clamped), `true`,
- * and empty enable. With
- * neither variable set, color is enabled only when stdout is a TTY.
+ * `FORCE_COLOR=0`/`false` disables; `1`–`3`, any higher pure-digit value (clamped
+ * to 3), `true`, and empty enable. Non-numeric `FORCE_COLOR` and neither
+ * variable set follow stdout TTY detection.
  *
  * @module cli/ansi
  */
