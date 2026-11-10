@@ -449,7 +449,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/utils/postingIndex.ts` | src | reachable | 24 |
 | `src/utils/relationHelpers.ts` | src | reachable | 286 |
 | `src/utils/relationValidation.ts` | src | reachable | 257 |
-| `src/utils/RunExclusiveMutex.ts` | src | reachable | 47 |
+| `src/utils/RunExclusiveMutex.ts` | src | reachable | 44 |
 | `src/utils/schemas.ts` | src | reachable | 812 |
 | `src/utils/SchemaValidator.ts` | src | reachable | 373 |
 | `src/utils/searchAlgorithms.ts` | src | reachable | 252 |
@@ -1011,7 +1011,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/utils/postingIndex.test.ts` | tests | test | 73 |
 | `tests/unit/utils/relationHelpers.test.ts` | tests | test | 451 |
 | `tests/unit/utils/relationValidation.test.ts` | tests | test | 507 |
-| `tests/unit/utils/RunExclusiveMutex.challenger.test.ts` | tests | test | 192 |
+| `tests/unit/utils/RunExclusiveMutex.challenger.test.ts` | tests | test | 200 |
 | `tests/unit/utils/RunExclusiveMutex.test.ts` | tests | test | 237 |
 | `tests/unit/utils/schemas.test.ts` | tests | test | 894 |
 | `tests/unit/utils/schemas.validateResult.test.ts` | tests | test | 50 |

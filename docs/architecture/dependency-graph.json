@@ -26740,7 +26740,7 @@
         ]
       },
       "src/utils/RunExclusiveMutex.ts": {
-        "description": "Run-exclusive mutex.",
+        "description": "FIFO mutex whose `runExclusive` has no timeout and no queue cap.",
         "externalDependencies": [],
         "nodeDependencies": [],
         "internalDependencies": [],
@@ -29998,7 +29998,7 @@
   "statistics": {
     "totalTypeScriptFiles": 404,
     "totalModules": 12,
-    "totalLinesOfCode": 126999,
+    "totalLinesOfCode": 126996,
     "totalExports": 2823,
     "totalClasses": 280,
     "totalInterfaces": 826,
