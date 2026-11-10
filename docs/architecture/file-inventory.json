@@ -1705,7 +1705,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 225
+      "loc": 242
     },
     {
       "file": "src/core/columns/IColumnStore.ts",
@@ -4869,7 +4869,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 110
+      "loc": 127
     },
     {
       "file": "tests/unit/cli/projectContext.test.ts",

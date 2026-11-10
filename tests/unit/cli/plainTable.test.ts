@@ -59,6 +59,23 @@ describe('PlainTable', () => {
     expect(colored.toString()).toContain('\u001b[36mName\u001b[39m');
   });
 
+  it('matches string-width 4 for text presentation, emoji presentation, and a joiner', () => {
+    const row = (cell: string): string => {
+      const table = new PlainTable({ head: ['H'], colWidths: [8] });
+      table.push([cell]);
+      return table.toString().split('\n')[3] ?? '';
+    };
+    // Content width is 6. U+2764 and U+2600 are text presentation (width 1).
+    expect(row('\u2764')).toBe('| \u2764      |');
+    expect(row('\u2600')).toBe('| \u2600      |');
+    // U+2764 + VS16 is one emoji presentation (width 2).
+    expect(row('\u2764\uFE0F')).toBe('| \u2764\uFE0F     |');
+    // U+2B50 is an emoji (width 2) and a following VS16 is a separate column.
+    expect(row('\u2B50\uFE0F')).toBe('| \u2B50\uFE0F    |');
+    // A joiner outside an emoji presentation is width 1.
+    expect(row('a\u200Db')).toBe('| a\u200Db    |');
+  });
+
   it('counts a fullwidth character as two columns and hard-breaks a long token', () => {
     const table = new PlainTable({
       head: ['H'],

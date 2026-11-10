@@ -281,7 +281,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/cli/index.ts` | src | build-entry | 204 |
 | `src/cli/interactive.ts` | src | reachable | 439 |
 | `src/cli/options.ts` | src | reachable | 58 |
-| `src/cli/plainTable.ts` | src | reachable | 225 |
+| `src/cli/plainTable.ts` | src | reachable | 242 |
 | `src/core/columns/IColumnStore.ts` | src | reachable | 177 |
 | `src/core/columns/JsonlColumnStore.ts` | src | reachable | 227 |
 | `src/core/context/AgentBookkeepingFacade.ts` | src | reachable | 217 |
@@ -733,7 +733,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/cli/observationDedup.test.ts` | tests | test | 60 |
 | `tests/unit/cli/options.test.ts` | tests | test | 313 |
 | `tests/unit/cli/plainTable.challenger.test.ts` | tests | test | 201 |
-| `tests/unit/cli/plainTable.test.ts` | tests | test | 110 |
+| `tests/unit/cli/plainTable.test.ts` | tests | test | 127 |
 | `tests/unit/cli/projectContext.test.ts` | tests | test | 65 |
 | `tests/unit/cli/search-extended.test.ts` | tests | test | 66 |
 | `tests/unit/cli/smoke.test.ts` | tests | test | 83 |
