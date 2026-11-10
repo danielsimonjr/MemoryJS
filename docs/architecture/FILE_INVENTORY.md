@@ -249,7 +249,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/world/index.ts` | src | reachable | 17 |
 | `src/agent/world/WorldModelManager.ts` | src | reachable | 128 |
 | `src/agent/world/WorldStateSnapshot.ts` | src | reachable | 125 |
-| `src/cli/ansi.ts` | src | reachable | 88 |
+| `src/cli/ansi.ts` | src | reachable | 93 |
 | `src/cli/commands/audit.ts` | src | reachable | 286 |
 | `src/cli/commands/cache.ts` | src | reachable | 76 |
 | `src/cli/commands/check.ts` | src | reachable | 172 |
@@ -709,7 +709,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/WorkThreadManager.test.ts` | tests | test | 1209 |
 | `tests/unit/agent/WorldModel.test.ts` | tests | test | 176 |
 | `tests/unit/cli/actionFrame.test.ts` | tests | test | 446 |
-| `tests/unit/cli/ansi.test.ts` | tests | test | 102 |
+| `tests/unit/cli/ansi.test.ts` | tests | test | 171 |
 | `tests/unit/cli/audit.test.ts` | tests | test | 420 |
 | `tests/unit/cli/cache-reindex.test.ts` | tests | test | 157 |
 | `tests/unit/cli/check.test.ts` | tests | test | 165 |

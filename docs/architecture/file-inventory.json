@@ -1481,7 +1481,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 88
+      "loc": 93
     },
     {
       "file": "src/cli/commands/audit.ts",
@@ -4701,7 +4701,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 102
+      "loc": 171
     },
     {
       "file": "tests/unit/cli/audit.test.ts",
