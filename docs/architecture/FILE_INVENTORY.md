@@ -1056,7 +1056,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/utils/textSimilarity.tokenSets.test.ts` | tests | test | 95 |
 | `tests/unit/utils/threadPool.live.test.ts` | tests | test | 93 |
 | `tests/unit/utils/threadPool.parity.test.ts` | tests | test | 272 |
-| `tests/unit/utils/threadPool.test.ts` | tests | test | 412 |
+| `tests/unit/utils/threadPool.test.ts` | tests | test | 419 |
 | `tests/unit/utils/timing.test.ts` | tests | test | 192 |
 | `tests/unit/utils/tokenEstimate.test.ts` | tests | test | 40 |
 | `tests/unit/utils/unrefInterval.test.ts` | tests | test | 92 |
@@ -1068,7 +1068,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/utils/WorkerPoolManager.test.ts` | tests | test | 408 |
 | `tests/unit/utils/WorkerTaskManager.test.ts` | tests | test | 255 |
 | `tests/unit/workers/levenshteinWorker.test.ts` | tests | test | 425 |
-| `tests/unit/workers/WorkerPool.test.ts` | tests | test | 163 |
+| `tests/unit/workers/WorkerPool.test.ts` | tests | test | 167 |
 | `tools/chunking-for-files/chunking-for-files.ts` | tools | tool | 1255 |
 | `tools/compress-for-context/compress-for-context.ts` | tools | tool | 1461 |
 | `tools/create-dependency-graph/create-dependency-graph.ts` | tools | tool | 3833 |

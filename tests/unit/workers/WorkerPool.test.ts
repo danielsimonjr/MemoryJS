@@ -20,7 +20,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 
 const ROOT = join(__dirname, '..', '..', '..');
 
@@ -64,6 +64,11 @@ function codeOf(source: string): string {
     .replace(/`(?:[^`\\]|\\.)*`/g, '``');
 }
 
+/** Repository-relative path with forward slashes, so comparisons are host-independent. */
+function relativePath(file: string): string {
+  return relative(ROOT, file).split('\\').join('/');
+}
+
 const srcFiles = sourceFiles(join(ROOT, 'src'));
 
 describe('workerpool inventory', () => {
@@ -80,14 +85,13 @@ describe('workerpool inventory', () => {
     const importers: string[] = [];
     for (const dir of ['src', 'scripts', 'tests', 'benchmarks']) {
       for (const file of sourceFiles(join(ROOT, dir))) {
-        const relative = file.slice(ROOT.length + 1);
         // Raw source: a specifier is a string literal, which `codeOf` erases.
         // Comments that name the package stay allowed; only a real import of the
         // specifier counts.
         const source = readFileSync(file, 'utf8');
         const specifierUse =
           /(?:\bfrom\s*|\bimport\s*\(\s*|\brequire\s*\(\s*)(['"])@danielsimonjr\/workerpool\1/;
-        if (specifierUse.test(source)) importers.push(relative);
+        if (specifierUse.test(source)) importers.push(relativePath(file));
       }
     }
     expect(importers.sort()).toEqual(['tests/unit/utils/threadPool.live.test.ts']);
@@ -110,7 +114,7 @@ describe('workerpool inventory', () => {
     const offenders = srcFiles
       .filter((file) => !file.endsWith(join('utils', 'threadPool.ts')))
       .filter((file) => /from\s+['"]node:(?:worker_threads|child_process)['"]/.test(readFileSync(file, 'utf8')))
-      .map((file) => file.slice(ROOT.length + 1));
+      .map(relativePath);
     expect(offenders).toEqual([]);
   });
 
@@ -138,7 +142,7 @@ describe('workerpool inventory', () => {
           new RegExp(`\\b${escaped}\\s*\\.\\s*([A-Za-z_$][\\w$]*)`, 'g'),
         )) {
           const member = match[1]!;
-          if (!INVENTORY_MEMBERS.has(member)) offenders.push(`${file.slice(ROOT.length + 1)}: ${alias}.${member}`);
+          if (!INVENTORY_MEMBERS.has(member)) offenders.push(`${relativePath(file)}: ${alias}.${member}`);
         }
       }
     }

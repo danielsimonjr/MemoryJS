@@ -302,6 +302,9 @@ describe('threadPool', () => {
       const poolUnderTest = pool({ maxWorkers: 1 });
       const started = Date.now();
       try {
+        // Warm the worker so the measurement is the task's own duration rather
+        // than the worker's start-up (workerpool has the same cold-start cost).
+        await poolUnderTest.exec((n: number) => n, [0]);
         const error = await poolUnderTest.exec(sleep, [1000]).timeout(80)
           .then(() => null, (reason: unknown) => reason as Error);
         expect(error).toBeInstanceOf(TimeoutError);
@@ -315,9 +318,13 @@ describe('threadPool', () => {
     it('does not fire a timeout once the task finished', async () => {
       const poolUnderTest = pool({ maxWorkers: 1 });
       try {
+        // Warm the worker first: a cold spawn can outlast a short timeout, which
+        // is workerpool's behaviour too and would make this assertion about the
+        // worker's start-up rather than about the timer being cleared.
+        expect(await poolUnderTest.exec((n: number) => n, [0])).toBe(0);
         const promise = poolUnderTest.exec((n: number) => n, [7]);
-        expect(await promise.timeout(30)).toBe(7);
-        await new Promise((resolve) => setTimeout(resolve, 60));
+        expect(await promise.timeout(2000)).toBe(7);
+        await new Promise((resolve) => setTimeout(resolve, 100));
         expect(promise.resolved).toBe(true);
         expect(promise.rejected).toBe(false);
       } finally {

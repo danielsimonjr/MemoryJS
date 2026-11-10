@@ -7130,7 +7130,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 412
+      "loc": 419
     },
     {
       "file": "tests/unit/utils/timing.test.ts",
@@ -7214,7 +7214,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 163
+      "loc": 167
     },
     {
       "file": "tools/chunking-for-files/chunking-for-files.ts",
