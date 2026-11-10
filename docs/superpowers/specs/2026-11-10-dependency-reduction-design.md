@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-10
 **Status:** Proposed. This document is the spec. Implementation is later sprints, one PR each.
-**Target version:** patch releases on 4.x (current package version 4.6.0). A sprint whose parity holds and that adds no public export, retypes nothing, and leaves `engines` alone is a patch, including Sprints 5–8. Sprint 9 cannot delete `better-sqlite3` on the current `engines.node` of `>=22.12.0` (see that section). An engines bump is a major and stays gated on Daniel. Daniel decided the chrono rebuild on 2026-11-10 (9:12 AM CT) and the KEEP-runtime rebuilds on 2026-11-10 (9:13 AM CT).
+**Target version:** patch releases on 4.x (current package version 4.6.0) for Sprints 1–8. Sprint 9 is a major: `engines.node` becomes `>=22.16.0`. Daniel approved that major on 2026-11-10 (10:08 AM CT). The sprint may land the code and the engines field. The version number, tag, and publish wait until Daniel OKs the release. Daniel decided the chrono rebuild on 2026-11-10 (9:12 AM CT) and the KEEP-runtime rebuilds on 2026-11-10 (9:13 AM CT).
 **Package:** `@danielsimonjr/memoryjs`
 **Lockfile measured:** `bun.lock` lockfileVersion 2, 269 package entries, on master at the time of this spec.
 **Out of scope for code:** this run writes only this spec and `docs/superpowers/plans/2026-11-10-dependency-reduction.md`. No merge, tag, release, or publish.
@@ -17,7 +17,7 @@ Cut third-party packages MemoryJS installs and ships, without changing the publi
 - Reimplementing a package's whole surface when MemoryJS uses a subset. Sprints 5–9 rebuild that subset, each inspired by the original package, each with parity tests before the package is removed. Sprint 5 does not reimplement every chrono locale. Sprint 7 does not reimplement unused Zod methods.
 - Vendoring large packages. No dependency in this inventory is both small enough and license-clean enough that copying the upstream source is better than a narrow in-repo replacement or than keeping the package.
 - Changing `tools/*` packages. They are not part of the published `files` list (`dist`, `scripts/rebuild-native.mjs`, `README.md`, `LICENSE`).
-- A major version inside Sprints 1–8. Public exports, CLI flag names, storage formats, and environment variables stay as they are. The only major this design allows is a later Sprint 9 PR that Daniel accepts, and its only break is `engines.node` moving to `>=22.16.0`.
+- A major version inside Sprints 1–8. Public exports, CLI flag names, storage formats, and environment variables stay as they are. Sprint 9 is the approved major. Its break is `engines.node` moving from `>=22.12.0` to `>=22.16.0`. Publishing that major waits for Daniel.
 - Running the published library or the CLI under Bun. Bun is the development toolchain. Node is the deployment runtime. There is no `bun:sqlite` adapter.
 
 ## Roles for later sprints
@@ -56,7 +56,7 @@ Runtime union of the eight `dependencies` entries: 15 lockfile packages. Dev uni
 
 ## Downstream consumers
 
-`package.json` `version` is `4.6.0`. A consumer ranged at `^4.5.0` receives patch and minor releases. Sprints 1–8 are patches when parity holds: they do not change exported names, types, CLI flags, or on-disk formats, so those consumers receive them and see the same behavior. Sprint 9 does not bump `engines.node` unless Daniel accepts a major, and that major is what drops `^4.5.0` consumers still on Node 22.12 through 22.15.
+`package.json` `version` is `4.6.0`. A consumer ranged at `^4.5.0` receives patch and minor releases. Sprints 1–8 are patches when parity holds: they do not change exported names, types, CLI flags, or on-disk formats, so those consumers receive them and see the same behavior. Sprint 9 is the approved major that sets `engines.node` to `>=22.16.0`. Consumers on Node 22.12 through 22.15 stay on 4.x. The sprint does not set `package.json` `version`, tag, or publish. Daniel OKs that release separately.
 
 Checked on 2026-11-10 against `github.com/danielsimonjr/episodic-memory` branch `main` at `b1b0d8e3330b46f05fef02020cd82549029a1a07` (`episodic-memory` 1.7.3, committed 2026-11-07). Current `package.json` `dependencies` do **not** include `@danielsimonjr/memoryjs`. A Recursa branch, `cursor/recursa-task0-memoryjs-dep-2f37` (package 1.7.1), did add `@danielsimonjr/memoryjs` `^4.5.0`. Main removed it in `6b5de905` ("chore: drop the @danielsimonjr/memoryjs dependency", PR #35, 2026-11-06) after PR #34 replaced the adapter with a native knowledge store. The only `src/` hit on main is a comment in `src/learn/knowledge-store.ts` about that previous adapter. Nothing imports the package.
 
@@ -132,7 +132,7 @@ A general Unicode table would be a second `cli-table3`. The replacement covers t
 
 Width measurement strips ANSI (`CSI … m`) and then uses the same rules as `string-width` 4 for the characters the CLI can print: a fullwidth code point is 2, an emoji presentation is 2, a combining mark is 0, everything else is 1. `String.length` is not the width. When `wordWrap` is true, wrap on whitespace, and hard-break a single token that is wider than the content width. When `wordWrap` is omitted, do not wrap. ANSI in headers must not inflate the width. Header text is short. Body cells are not colored today. Do not implement `colSpan`, `rowSpan`, `style`, `chars` overrides, or streaming.
 
-JSON and CSV formatters must stay byte-identical. Tests pin the table cases MemoryJS renders rather than the whole `cli-table3` matrix. Borders can still differ in glyph choice from cli-table3. That presentation limit is called out in Sprint 3 so Daniel can reject the sprint if a consumer snapshots table output.
+JSON and CSV formatters must stay byte-identical. Tests pin the table cases MemoryJS renders rather than the whole `cli-table3` matrix. Borders may differ in glyph choice from cli-table3. Daniel approved that difference on 2026-11-10 (10:08 AM CT). It ships in the Sprint 3 patch. It is not an open decision.
 
 #### `chrono-node` @ 2.9.1 — REBUILD (Sprint 5)
 
@@ -189,7 +189,7 @@ Production call sites include `src/utils/schemas.ts` (entity, relation, import, 
 
 `src/utils/index.ts` re-exports the schemas, the `z.infer` type aliases (`EntityInput`, `CreateEntityInput`, and the rest of that block), and `formatZodErrors(error: ZodError)`. Those aliases must still infer the same fields. Error text and issue shape that reach users or MCP tools (`invalid_args` from `safeParse`, including `.strict()` unknown keys and a reserved-key `.refine()`) must match Zod 4.6.7. `z.toJSONSchema` output that the Recursa adapter publishes must match for the same schemas. MIT notice if any Zod source is adapted. Semver is a patch when that parity holds and no public field is added or removed. `episodic-memory` depends on `zod` itself; MemoryJS's copy does not satisfy that dependency, and removing MemoryJS's copy does not remove theirs.
 
-#### `better-sqlite3` @ 13.0.3 — REBUILD, gated (Sprint 9)
+#### `better-sqlite3` @ 13.0.3 — REBUILD (Sprint 9, approved major)
 
 | | |
 |---|---|
@@ -204,13 +204,17 @@ Production call sites include `src/utils/schemas.ts` (entity, relation, import, 
 `node:sqlite` facts, checked against Node release notes:
 
 - Added in Node 22.5.0 behind `--experimental-sqlite`.
-- Unflagged in Node 22.13.0 (`nodejs/node#55890`). The module stayed experimental. Node 22.12.0, which `engines.node` `>=22.12.0` still allows, does not load `node:sqlite` unless the process was started with that flag.
+- Unflagged in Node 22.13.0 (`nodejs/node#55890`). The module stayed experimental. Today's `engines.node` of `>=22.12.0` still allows Node 22.12.0, which does not load `node:sqlite` unless the process was started with that flag. Sprint 9 removes that range.
 - FTS5 arrived in Node 22.16.0 with `nodejs/node#57621` (`sqlite: enable common flags`). Node 22.13.0 through 22.15.x open the module with no flag and still throw `no such module: fts5` on `SQLiteStorage`'s virtual table. `src/core/SQLiteStorage.ts` `explainMissingFts5` already says this.
 - `PRAGMA journal_mode = WAL` is ordinary SQLite, not a separate compile flag. The probe still runs it, plus the `synchronous` pragma `SQLiteStorage` sets. A passing WAL pragma does not prove FTS5.
 
-The CI matrix (`typescript.yml`, job `ci`) is Ubuntu, macOS, and Windows, with `node-version` `22` and `24`. Those aliases install the newest release of each major. In November 2026 that newest 22 is past 22.16, so a green six-job probe does not cover the engines floor. A separate step already runs the suite with `MEMORY_SQLITE_DRIVER=node` on Ubuntu and Node 24 only. That step is not the gate.
+Daniel approved this replacement on 2026-11-10 (10:08 AM CT). It is not gated. The sprint sets `engines.node` to `>=22.16.0` in the same PR that deletes the native module. That engines change is why the release is a major. The sprint does not change `package.json` `version`, does not tag, and does not publish. Daniel OKs the release that ships the major.
 
-Sprint 9 therefore starts gated. Deleting `better-sqlite3` while `engines` stays `>=22.12.0` drops FTS5 for every consumer on 22.12 through 22.15. The sprint stops and asks Daniel. The ways forward are a separate major that sets `engines.node` to `>=22.16.0`, or keeping the native module as the default and leaving `node:sqlite` as today's fallback. This sprint does not apply the engines bump and does not delete the native module until Daniel picks the major. If he does, the rest of that later PR switches the default constructor to the adapter, benchmarks it, updates `doctor.ts` (the ABI check must not require the removed addon), `scripts/node-runtime-smoke.mjs` (it `require`s `better-sqlite3` today), both `external: ['better-sqlite3']` entries in `tsup.config.ts`, and `scripts/rebuild-native.mjs`, and deletes the dependency only after parity tests are green. `tools/migrate-from-jsonl-to-sqlite` keeps its own `better-sqlite3` and is out of scope. `episodic-memory` pins `better-sqlite3@13.0.3` on its own. MIT notice if any better-sqlite3 text is adapted. `@types/better-sqlite3` leaves with the runtime package when that removal happens.
+The CI matrix (`typescript.yml`, job `ci`) is Ubuntu, macOS, and Windows, with `node-version` `22` and `24`. `22` means the newest 22, which in November 2026 is past 22.16, but the alias does not pin the floor. Sprint 9 changes the Node 22 leg to `22.16` (lowest version that has unflagged `node:sqlite` and FTS5) and keeps Node 24. The job name is the branch-protection context (`ci (${{ matrix.os }}, ${{ matrix.node }})`). Moving `22` to `22.16` renames those three checks. The sprint calls that out so protection can be updated. It does not add a Bun-runtime job.
+
+Tests load `node:sqlite` only in the Node lane (`bun run test:ci`, which starts with `node -e`). They skip only when `typeof Bun !== 'undefined'`. The Ubuntu Node 24 step that sets `MEMORY_SQLITE_DRIVER=node` stays until the native module is gone. After removal, `MEMORY_SQLITE_DRIVER=node` is the only driver, and that step still runs the suite on Node.
+
+The sprint switches the default constructor to `createNodeSqliteDatabaseCtor()`, benchmarks it, updates `doctor.ts` (the ABI check must not require the removed addon), `scripts/node-runtime-smoke.mjs` (it `require`s `better-sqlite3` today), both `external: ['better-sqlite3']` entries in `tsup.config.ts`, and `scripts/rebuild-native.mjs`, and deletes the dependency only after parity tests are green. `tools/migrate-from-jsonl-to-sqlite` keeps its own `better-sqlite3` and is out of scope. `episodic-memory` pins `better-sqlite3@13.0.3` on its own. MIT notice if any better-sqlite3 text is adapted. `@types/better-sqlite3` leaves with the runtime package.
 
 #### `@danielsimonjr/workerpool` @ 10.2.0 — REBUILD (Sprint 8)
 
@@ -248,7 +252,7 @@ Dynamic `import('@huggingface/transformers')` in `src/search/EmbeddingService.ts
 |---|---|---|---|---|---|
 | `rimraf` | 6.1.4 | 262,867 | 10 (`glob`, `package-json-from-dist`, …) | REBUILD | Used only as `rimraf dist` in the `clean` script. Node 22 `fs.rm(path, { recursive: true, force: true })` is the same operation. BlueOak-1.0.0. Actively published, but the transitive glob chain is the reason it was bumped (CHANGELOG notes GHSA-3g3m-2fjr-6pw4 and GHSA-g3hv-75wg-m249 via glob/minimatch). Deleting it removes that chain from the dev install. |
 | `@types/better-sqlite3` | 9.6.0 | (types) | 3 with `@types/node` | KEEP until Sprint 9 completes | Compiling `SQLiteStorage` needs the types while the native module stays. Sprint 9 removes it with `better-sqlite3` if the `node:sqlite` path is accepted. |
-| `@types/node` | 26.4.0 | (types) | 2 (`undici-types`) | KEEP | `engines.node` is `>=22.12.0`. The types are the Node API. |
+| `@types/node` | 26.4.0 | (types) | 2 (`undici-types`) | KEEP | The types are the Node API. Sprint 9 raises `engines.node` to `>=22.16.0`. |
 | `typescript` | 7.0.2 | 2,497,498 | 1 | KEEP | `typecheck` is `tsc --noEmit && tsc --noEmit -p tsconfig.probes.json`. TS 7 has no programmatic compiler API (`scripts/emit-dts.mjs` exists because of that). Replacing the compiler is not a dependency-diet task. Apache-2.0. |
 | `tsup` | 8.5.1 | 389,734 | 45 | KEEP | `build` is `tsup && node scripts/emit-dts.mjs && node scripts/check-exports.mjs`. The config has three pipelines (ESM split library, CJS library, CLI banner, workers). Replacing tsup rewrites the publishable bundle. MIT. |
 | `tsx` | 4.23.1 | (closure 2, via `esbuild`) | 2 | KEEP | `benchmark` and `audit:plans` run `tsx`. One transitive. Not published. |
@@ -280,7 +284,7 @@ Dynamic `import('@huggingface/transformers')` in `src/search/EmbeddingService.ts
 
 1. **Keep every runtime dependency.** Zero risk, zero reduction. Rejected. `rimraf`, `chalk`, `async-mutex`, and `cli-table3` are small, narrow, and not part of the library contract.
 2. **Vendor the large packages (zod, chrono-node, workerpool, better-sqlite3).** Copies their bugs and licenses into the repo and keeps the bytes. Rejected for every package.
-3. **Rebuild the narrow call sites, then the remaining runtime dependencies one sprint at a time.** Chosen. Order is smallest and safest first through Sprint 5, then commander, Zod, workerpool, and gated `node:sqlite`. Optional peers and the dev toolchain stay.
+3. **Rebuild the narrow call sites, then the remaining runtime dependencies one sprint at a time.** Chosen. Order is smallest and safest first through Sprint 5, then commander, Zod, workerpool, and `node:sqlite` as an approved major. Optional peers and the dev toolchain stay.
 
 ## Sprint order
 
@@ -288,13 +292,13 @@ Dynamic `import('@huggingface/transformers')` in `src/search/EmbeddingService.ts
 |---|---|---|---|---|
 | 1 | `rimraf` | REBUILD | Dev script only. `dist/` delete. | none (devDependency) |
 | 2 | `chalk` | REBUILD | CLI colors. Library API untouched. | patch |
-| 3 | `cli-table3` | REBUILD | CLI table text only. JSON/CSV identical. Safer than the mutex sprint. | patch, with a presentation note |
+| 3 | `cli-table3` | REBUILD | CLI table text only. JSON/CSV identical. Border glyphs may differ. Daniel approved that on 2026-11-10 (10:08 AM CT). | patch |
 | 4 | `async-mutex` | REBUILD | In-process write serialization. Parity with no timeout and no reentrancy. | patch |
 | 5 | `chrono-node` | REBUILD | English date parser. Custom phrases pinned to today's parser. Fallback phrases pinned to chrono-node 2.9.1. Not gated. | patch when both oracles hold |
 | 6 | `commander` | REBUILD | CLI parse, help, pipe-mode `parseAsync`, and `InvalidArgumentError`. Lowest risk of the runtime rebuilds. | patch when help snapshots match |
 | 7 | `zod` | REBUILD | Schema subset (including `toJSONSchema`, `discriminatedUnion`, `iso.datetime`), inferred types, and surfaced error shape. Higher risk than the CLI. | patch when parity holds |
 | 8 | `@danielsimonjr/workerpool` | REBUILD | `node:worker_threads` pool for the used API subset, including `workerType: 'process'`. | patch when results match |
-| 9 | `better-sqlite3` | REBUILD, gated | `node:sqlite` cannot replace the native module on `engines` `>=22.12.0`: no flag only from 22.13.0, FTS5 only from 22.16.0. Highest risk. | major, and only after Daniel accepts `engines.node` `>=22.16.0` in a separate PR. Otherwise the sprint stays GATED and the dependency stays |
+| 9 | `better-sqlite3` | REBUILD, approved | `node:sqlite` on Node, `engines.node` `>=22.16.0`. CI Node leg pinned to 22.16. Tests run in the Node lane. Publish waits for Daniel. | major. The sprint does not set `version`, tag, or publish |
 
 KEEP packages have no sprint.
 
@@ -302,12 +306,12 @@ KEEP packages have no sprint.
 
 These lines are binding on every sprint. The plan repeats them.
 
-- Node production runtime remains `>=22.12.0`. Bun remains `>=1.4.2` and `packageManager` remains `bun@1.4.2`. Bun installs, runs scripts, and drives CI. The published `dist/` and the CLI run on Node 22 and Node 24. They are not required to run inside the Bun runtime.
+- Node production runtime remains `>=22.12.0` until Sprint 9, which sets `engines.node` to `>=22.16.0`. Bun remains `>=1.4.2` and `packageManager` remains `bun@1.4.2`. Bun installs, runs scripts, and drives CI. The published `dist/` and the CLI run on Node. They are not required to run inside the Bun runtime.
 - Daniel decided on 2026-11-10 (9:59 AM CT) that every sprint keeps the Bun dev workflow green: `bun install --frozen-lockfile`, `bun run typecheck`, `bun run lint`, `bun run test:ci`, and `bun run build`. What CI actually runs is recorded under "Dev toolchain and the Node test lane" below. A sprint does not add a Bun-runtime matrix.
 - `bun.lock` is the lockfile that changes. Do not add a root `package-lock.json`.
 - Public exports in `package.json` `exports` stay. No exported TypeScript name is removed or retyped.
 - `overrides.esbuild` stays `^0.28.1`.
-- `better-sqlite3` stays external in both `tsup.config.ts` pipelines until a Sprint 9 removal Daniel has accepted. That removal drops both `external` entries in the same PR.
+- `better-sqlite3` stays external in both `tsup.config.ts` pipelines until Sprint 9 deletes it. That sprint drops both `external` entries.
 - Storage file formats, SQLite schema, and environment-variable names stay.
 - Each sprint is one PR. The builder is deepseek-v41-flash-1017. The challenger is glm-5p3-flash. The build reviewer is composer-2.5. The build checker/fixer is grok-4.6. The final PR reviewer is grok-4.7. The build reviewer reconciles the challenger's findings, then the build checker/fixer checks the whole PR against the plan and fixes every remaining issue, then the final PR reviewer runs. Merge only after the final PR reviewer reports PASS and CI is green.
 - Tests that describe the old dependency's behavior land in the same PR as the removal, and they are written to fail before the new module exists.
@@ -339,11 +343,11 @@ Per-sprint audit for the Bun dev workflow. None of these require the published c
 | 6 `commander` | `process.argv` and `process.exit` in the shipped CLI, which is Node | Tests call `parse` / `parseAsync` with an explicit argv and `{ from: 'user' }`. `exitOverride` throws. They do not depend on Bun's argv. |
 | 7 `zod` | No. Pure functions | `safeParse`, `z.infer`, and `toJSONSchema` run in the Node lane. |
 | 8 worker pool | `node:worker_threads` and, for `workerType: 'process'`, `node:child_process` | Required proof is the Node lane (`bun run test:ci`). Do not retarget that script at Bun. Bun 1.4's worker implementation is not the deployment target. |
-| 9 `better-sqlite3` | `node:sqlite` on Node only | No `bun:sqlite`. Tests run via `bun run test:ci` so the process is Node. Skip only when `typeof Bun !== 'undefined'`. Still gated on Daniel for an `engines.node` bump to `>=22.16.0`. |
+| 9 `better-sqlite3` | `node:sqlite` on Node only | No `bun:sqlite`. Tests run via `bun run test:ci` so the process is Node. Skip only when `typeof Bun !== 'undefined'`. Approved major: `engines.node` `>=22.16.0`. CI pins Node `22.16`. Publish waits for Daniel. |
 
 ## Success criteria
 
-- After Sprints 1–8, root `devDependencies` no longer lists `rimraf`, and root `dependencies` and `devDependencies` no longer list `chalk`, `async-mutex`, `cli-table3`, `chrono-node`, `commander`, `zod`, or `@danielsimonjr/workerpool`. Sprint 9 removes `better-sqlite3` and `@types/better-sqlite3` only in the major Daniel accepts for `engines.node` `>=22.16.0`. Until then they stay.
+- After Sprints 1–8, root `devDependencies` no longer lists `rimraf`, and root `dependencies` and `devDependencies` no longer list `chalk`, `async-mutex`, `cli-table3`, `chrono-node`, `commander`, `zod`, or `@danielsimonjr/workerpool`. Sprint 9 removes `better-sqlite3` and `@types/better-sqlite3` and sets `engines.node` to `>=22.16.0`. It does not publish.
 - `bun.lock` no longer contains those keys or `rimraf`'s `glob` / `minimatch` chain unless some other direct dependency still pulls them (today none does).
 - `rg "from 'chalk'|from 'cli-table3'|from 'async-mutex'|from 'chrono-node'|rimraf" src package.json` finds no matches.
 - `bun install --frozen-lockfile`, `bun run typecheck`, `bun run lint`, `bun run test:ci`, and `bun run build` exit 0. `bun run test:ci` still starts with `node -e` so Vitest runs on Node. `node:sqlite` tests skip only when `typeof Bun !== 'undefined'`.
@@ -355,6 +359,7 @@ Per-sprint audit for the Bun dev workflow. None of these require the published c
 - No package in `package.json` is missing a decision.
 - VENDOR is defined and unused on purpose.
 - `AsyncMutex` is distinguished from the `async-mutex` replacement so a builder cannot "reuse the existing mutex."
-- Sprint 5 rebuilds chrono-node. Sprints 6–8 rebuild commander, Zod, and workerpool. Sprint 9 stays gated: latest Node 22 on CI is not the `>=22.12.0` floor, and FTS5 needs 22.16.0. It targets `node:sqlite` only. Optional peers and the dev toolchain have no rebuild sprint.
+- Sprint 5 rebuilds chrono-node. Sprints 6–8 rebuild commander, Zod, and workerpool. Sprint 9 is the approved `node:sqlite` major (`engines.node` `>=22.16.0`). Optional peers and the dev toolchain have no rebuild sprint.
+- Closed decisions (2026-11-10, 10:08 AM CT): Sprint 3 border glyphs ship in a patch. Sprint 9 is not gated. Nothing in this spec is waiting on Daniel except the later publish of the major.
 - Bun develops; Node ships. The Node test lane is `bun run test:ci`. There is no `bun:sqlite` path.
 - Tool packages and the esbuild override are explicit keeps.
