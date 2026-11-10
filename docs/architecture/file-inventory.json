@@ -1,11 +1,11 @@
 {
-  "totalFiles": 1002,
+  "totalFiles": 1003,
   "byDisposition": {
     "reachable": 400,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 566,
+    "test": 567,
     "tool": 10,
     "config": 2,
     "bench": 5,
@@ -15,7 +15,7 @@
     "benchmarks": 5,
     "examples": 15,
     "src": 404,
-    "tests": 566,
+    "tests": 567,
     "tools": 10,
     "config": 2
   },
@@ -6809,6 +6809,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 507
+    },
+    {
+      "file": "tests/unit/utils/RunExclusiveMutex.challenger.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 192
     },
     {
       "file": "tests/unit/utils/RunExclusiveMutex.test.ts",
