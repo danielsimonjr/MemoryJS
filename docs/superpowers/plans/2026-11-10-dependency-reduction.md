@@ -16,7 +16,7 @@
 - `bun.lock` is the lockfile that changes. Do not add a root `package-lock.json`.
 - Public exports in `package.json` `exports` stay. No exported TypeScript name is removed or retyped.
 - `overrides.esbuild` stays `^0.28.1`.
-- `better-sqlite3` stays external in `tsup.config.ts`.
+- `better-sqlite3` stays external in both `tsup.config.ts` pipelines until the Sprint 9 major Daniel accepts. That PR drops both `external` entries.
 - Storage file formats, SQLite schema, and environment-variable names stay.
 - Each sprint is one PR. The builder is deepseek-v41-flash-1017. The challenger is glm-5p3-flash. The build reviewer is composer-2.5. The build checker/fixer is grok-4.6. The final PR reviewer is grok-4.7.
 - The build reviewer reconciles the challenger's findings, then hands the PR to the build checker/fixer. The build checker/fixer checks everything in the PR against this plan and fixes all remaining issues, then hands the PR to the final PR reviewer.
