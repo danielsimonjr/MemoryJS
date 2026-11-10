@@ -85,6 +85,75 @@ describe('ansi', () => {
     expect(ansi.red('x')).toBe('x');
   });
 
+  it('matches chalk for FORCE_COLOR values above 3, which chalk clamps to level 3', () => {
+    delete process.env.NO_COLOR;
+    for (const force of ['4', '9', '999']) {
+      process.env.FORCE_COLOR = force;
+      expect(ansi.red('x')).toBe('\u001b[31mx\u001b[39m');
+    }
+  });
+
+  it('matches chalk for FORCE_COLOR with surrounding whitespace, which chalk treats as non-numeric', () => {
+    delete process.env.NO_COLOR;
+    for (const force of [' 1', '1 ', '\t1']) {
+      process.env.FORCE_COLOR = force;
+      expect(ansi.red('x')).toBe('x');
+    }
+  });
+
+  it('matches chalk for zero-padded, fractional, negative, and space-only FORCE_COLOR', () => {
+    delete process.env.NO_COLOR;
+    process.env.FORCE_COLOR = '01';
+    expect(ansi.red('x')).toBe('\u001b[31mx\u001b[39m');
+    process.env.FORCE_COLOR = '00';
+    expect(ansi.red('x')).toBe('x');
+    process.env.FORCE_COLOR = '0.5';
+    expect(ansi.red('x')).toBe('x');
+    process.env.FORCE_COLOR = '-1';
+    expect(ansi.red('x')).toBe('x');
+    process.env.FORCE_COLOR = ' ';
+    expect(ansi.red('x')).toBe('x');
+  });
+
+  it('matches chalk for comma-separated FORCE_COLOR, which chalk treats as non-numeric', () => {
+    delete process.env.NO_COLOR;
+    process.env.FORCE_COLOR = '1,2,0';
+    expect(ansi.red('x')).toBe('x');
+  });
+
+  it('disables color for any non-empty NO_COLOR value', () => {
+    for (const value of ['1', '0', 'true', 'false', 'no', ' ']) {
+      process.env.NO_COLOR = value;
+      process.env.FORCE_COLOR = '3';
+      expect(ansi.red('x')).toBe('x');
+    }
+  });
+
+  it('keeps empty NO_COLOR neutral across FORCE_COLOR true, false, and levels', () => {
+    process.env.NO_COLOR = '';
+    process.env.FORCE_COLOR = '0';
+    expect(ansi.red('x')).toBe('x');
+    process.env.FORCE_COLOR = 'false';
+    expect(ansi.red('x')).toBe('x');
+    process.env.FORCE_COLOR = '2';
+    expect(ansi.red('x')).toBe('\u001b[31mx\u001b[39m');
+  });
+
+  it('wraps nested styles the way chalk composes open and close sequences', () => {
+    delete process.env.NO_COLOR;
+    process.env.FORCE_COLOR = '1';
+    expect(ansi.red(ansi.bold('x'))).toBe('\u001b[31m\u001b[1mx\u001b[22m\u001b[39m');
+    expect(ansi.bold(ansi.red('x'))).toBe('\u001b[1m\u001b[31mx\u001b[39m\u001b[22m');
+    expect(ansi.red(ansi.gray('x'))).toBe('\u001b[31m\u001b[90mx\u001b[39m\u001b[31m\u001b[39m');
+    expect(ansi.red(ansi.bold(ansi.green('x')))).toBe('\u001b[31m\u001b[1m\u001b[32mx\u001b[39m\u001b[31m\u001b[22m\u001b[39m');
+  });
+
+  it('disables color for nested styles when NO_COLOR is set', () => {
+    process.env.NO_COLOR = '1';
+    process.env.FORCE_COLOR = '3';
+    expect(ansi.red(ansi.bold('x'))).toBe('x');
+  });
+
   it('enables color with no FORCE_COLOR only when stdout is a TTY', () => {
     delete process.env.NO_COLOR;
     delete process.env.FORCE_COLOR;
