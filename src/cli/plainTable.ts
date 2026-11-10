@@ -14,7 +14,8 @@
  * Options for {@link PlainTable}.
  *
  * `wordWrap` wraps on whitespace and hard-breaks an over-long token. Omitting
- * it renders each cell on a single line and truncates with `…` when needed.
+ * it truncates with `…` instead of wrapping. Embedded newlines still become
+ * extra grid rows, matching cli-table3.
  */
 export interface PlainTableOptions {
   head: string[];
@@ -23,7 +24,7 @@ export interface PlainTableOptions {
 }
 
 const TRUNCATE_CHAR = '…';
-const GRAPHME_SEGMENTER = new Intl.Segmenter('en', { granularity: 'grapheme' });
+const GRAPHEME_SEGMENTER = new Intl.Segmenter('en', { granularity: 'grapheme' });
 
 /** Grapheme clusters that count as one emoji column (width 2), per `string-width` 4. */
 const EMOJI_GRAPHEME =
@@ -88,7 +89,7 @@ function graphemeWidth(grapheme: string): number {
 }
 
 function graphemesOf(value: string): string[] {
-  return [...GRAPHME_SEGMENTER.segment(value)].map((part) => part.segment);
+  return [...GRAPHEME_SEGMENTER.segment(value)].map((part) => part.segment);
 }
 
 function visibleWidth(value: string): number {
@@ -189,8 +190,10 @@ export class PlainTable {
   }
 
   /**
-   * Render the table as text: a top border, the header, a header rule, each
-   * body row (wrapped to its tallest cell), and a bottom border.
+   * Render the table as text: a top border, the header, a header rule, and
+   * each body row (wrapped to its tallest cell). A final bottom border is
+   * added when there is at least one body row. With zero body rows the header
+   * rule is the closing border, matching cli-table3.
    */
   toString(): string {
     const widths = this.options.colWidths;

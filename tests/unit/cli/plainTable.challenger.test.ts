@@ -42,6 +42,7 @@ describe('PlainTable challenger findings', () => {
         expect(line.length).toBeLessThanOrEqual(borderLines(text)[0].length);
       }
       expect(text).not.toContain('a'.repeat(40));
+      expect(text).toContain('| aaaaaaaaaaaaaaaaa… | knows         | b                  |');
     });
   });
 
@@ -113,8 +114,8 @@ describe('PlainTable challenger findings', () => {
       const table = new PlainTable({ head: ['M'], colWidths: [10] });
       table.push(['e\u0483']);
       const row = table.toString().split('\n').at(-2) as string;
-      // string-width 4 reports 'e\u0483' as width 2 (the mark is a spacing
-      // combining mark outside the Mn range the helper covers).
+      // string-width 4 only ignores combining marks in U+0300–U+036F, so
+      // U+0483 (COMBINING CYRILLIC TITLO) counts as width 1 and the cell is 2.
       expect(row).toBe('| e\u0483       |');
     });
   });
@@ -135,11 +136,9 @@ describe('PlainTable challenger findings', () => {
   });
 
   describe('F5: head-only table drops the bottom border', () => {
-    it('closes the table with a bottom border even with zero body rows', () => {
+    it('closes a head-only table with the header rule (cli-table3 has no extra bottom)', () => {
       const table = new PlainTable({ head: ['A', 'B'], colWidths: [6, 6] });
-      const text = table.toString();
-      const lines = text.split('\n');
-      expect(lines.at(-1)).toBe('+------+------+');
+      expect(table.toString()).toBe(['+------+------+', '| A    | B    |', '+------+------+'].join('\n'));
     });
   });
 

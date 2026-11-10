@@ -720,6 +720,18 @@ describe('CLI Formatters', () => {
         'Entity1,works_for,Entity2',
         'Entity2,owns,Entity3',
       ].join('\n'));
+      expect(formatSearchResults([{ entity: entities[0], score: 0.95 }, { entity: entities[1], score: 0.75 }], 'csv')).toBe([
+        'name,entityType,score,observations',
+        'Entity1,person,0.950,Observation 1; Observation 2',
+        'Entity2,organization,0.750,Observation A',
+      ].join('\n'));
+      expect(formatCentrality({
+        algorithm: 'degree',
+        topEntities: [{ name: 'A', score: 0.9 }],
+      }, 'csv')).toBe([
+        'rank,name,score',
+        '1,A,0.9000',
+      ].join('\n'));
     });
   });
 });
