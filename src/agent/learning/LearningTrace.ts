@@ -402,10 +402,13 @@ export class LearningTrace {
    * and write their own traces concurrently, so a global scope would make one sibling's flush
    * cover another's writes.
    *
-   * Durability is unchanged: the flush is the same `updateEntity` with the same OCC version, so a
-   * crash before it loses the queued writes exactly as it would have lost the unbatched writes.
-   * A throw from `fn` discards the queued writes (nothing was made durable) and rethrows; a throw
-   * from a queued write's guard discards the whole batch of that trace and rethrows.
+   * Durability tradeoff: step-boundary resumability is unchanged — the flush is the same
+   * `updateEntity` with the same OCC version, so anything queued for the step is durable before
+   * `batch` returns on the success path. A process crash *inside* the step before the flush now
+   * loses intra-step checkpoints that were individually durable under the unbatched path (only the
+   * last successful step boundary is guaranteed). A throw from `fn` still commits the queued
+   * writes issued before the throw (matching unbatched behaviour failure-lesson dedup relies on);
+   * a throw from a queued write's OCC guard discards the whole batch of that trace and rethrows.
    *
    * Calls for the same trace nest: only the outermost call flushes.
    *

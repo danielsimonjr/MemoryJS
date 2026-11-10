@@ -2643,6 +2643,12 @@
         ],
         "internalDependencies": [
           {
+            "file": "../utils/logger.js",
+            "imports": [
+              "logger"
+            ]
+          },
+          {
             "file": "../types/types.js",
             "imports": [
               "Entity",
@@ -30001,7 +30007,7 @@
   "statistics": {
     "totalTypeScriptFiles": 404,
     "totalModules": 12,
-    "totalLinesOfCode": 127397,
+    "totalLinesOfCode": 127452,
     "totalExports": 2824,
     "totalClasses": 280,
     "totalInterfaces": 826,

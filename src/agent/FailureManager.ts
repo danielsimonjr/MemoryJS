@@ -24,6 +24,7 @@
  */
 
 import { randomUUID } from 'crypto';
+import { logger } from '../utils/logger.js';
 import type { Entity, IGraphStorage } from '../types/types.js';
 import type {
   FailureEntity,
@@ -151,7 +152,10 @@ export class FailureManager {
    */
   async record(input: FailureInput, options: FailureEntityOptions = {}): Promise<FailureRecord> {
     const [record] = await this.recordMany([{ input, options }]);
-    return record!;
+    if (record === undefined) {
+      throw new Error('FailureManager.record: failed to persist failure');
+    }
+    return record;
   }
 
   /**
@@ -163,20 +167,38 @@ export class FailureManager {
    * append, which is the expensive operation on Windows.
    *
    * @param items - Input and options per failure, in order.
-   * @returns The recorded failures, in the same order.
-   * @throws Error for the same reasons as `record`, naming the failure that was refused.
+   * @returns One slot per input in the same order; `undefined` when that record was built but
+   *   refused by storage.
+   * @throws Error when validation fails while building a record (same as `record`).
    */
-  async recordMany(items: ReadonlyArray<{ input: FailureInput; options?: FailureEntityOptions }>): Promise<FailureRecord[]> {
+  async recordMany(
+    items: ReadonlyArray<{ input: FailureInput; options?: FailureEntityOptions }>,
+  ): Promise<Array<FailureRecord | undefined>> {
     if (items.length === 0) return [];
     const built: Array<{ record: FailureRecord; entity: FailureEntity }> = [];
     for (const { input, options = {} } of items) built.push(await this.buildFailure(input, options));
     try {
       await this.appendFailures(built.map((b) => b.entity as unknown as Entity));
+      return built.map((b) => b.record);
     } catch (err) {
       const cause = err instanceof Error ? err.message : String(err);
-      throw new Error(`FailureManager.record: failed to persist failure '${built[0]!.record.id}': ${cause}`);
+      if (built.length === 1) {
+        throw new Error(`FailureManager.record: failed to persist failure '${built[0]!.record.id}': ${cause}`);
+      }
+      logger.warn(`FailureManager.recordMany: batch persist failed (${cause}), recording individually`);
+      const slots: Array<FailureRecord | undefined> = built.map(() => undefined);
+      for (let i = 0; i < built.length; i++) {
+        const b = built[i]!;
+        try {
+          await this.appendFailures([b.entity as unknown as Entity]);
+          slots[i] = b.record;
+        } catch (singleErr) {
+          const singleCause = singleErr instanceof Error ? singleErr.message : String(singleErr);
+          logger.warn(`FailureManager.record: failed to persist failure '${b.record.id}': ${singleCause}`);
+        }
+      }
+      return slots;
     }
-    return built.map((b) => b.record);
   }
 
   /**

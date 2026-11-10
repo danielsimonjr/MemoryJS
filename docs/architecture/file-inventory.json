@@ -1,11 +1,11 @@
 {
-  "totalFiles": 1004,
+  "totalFiles": 1005,
   "byDisposition": {
     "reachable": 400,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 568,
+    "test": 569,
     "tool": 10,
     "config": 2,
     "bench": 5,
@@ -15,7 +15,7 @@
     "benchmarks": 5,
     "examples": 15,
     "src": 404,
-    "tests": 568,
+    "tests": 569,
     "tools": 10,
     "config": 2
   },
@@ -305,7 +305,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 544
+      "loc": 547
     },
     {
       "file": "src/agent/bootstrap/ExplorationNotes.ts",
@@ -536,7 +536,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 510
+      "loc": 532
     },
     {
       "file": "src/agent/GuardedComponentEdit.ts",
@@ -697,7 +697,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 503
+      "loc": 530
     },
     {
       "file": "src/agent/learning/index.ts",
@@ -795,7 +795,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 676
+      "loc": 679
     },
     {
       "file": "src/agent/learning/llmJson.ts",
@@ -3995,6 +3995,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 254
+    },
+    {
+      "file": "tests/unit/agent/learning/DiagnoserBatchDurability.challenger.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 104
     },
     {
       "file": "tests/unit/agent/learning/InProcessLearnHandler.concurrency.test.ts",

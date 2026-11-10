@@ -15,16 +15,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and an `fsync` costs about 20x on Windows what it costs on Linux, so the run took 15.3 s on
   Windows against 1.6 s on Linux. `LearningTrace` now coalesces the writes of one trace for the
   duration of one learner step (`LearningTrace.batch(traceId, fn)`) and commits them as a single
-  `updateEntity` with the same OCC version, so a step's checkpoint is still durable before it
-  returns and a resume still works. Writes are scoped per trace id, because sibling learners share
-  one `LearningTrace` and write their own traces concurrently. A batch commits the writes issued
-  before a throw, matching the unbatched behaviour that the failure-record dedup relies on.
+  `updateEntity` with the same OCC version, so a step's checkpoint is still durable before the step
+  returns and resume at step boundaries still works. Writes are scoped per trace id, because
+  sibling learners share one `LearningTrace` and write their own traces concurrently. A batch still
+  commits the writes issued before a throw, matching the unbatched behaviour failure-record dedup
+  relies on. Tradeoff: a crash inside a step before the flush loses intra-step checkpoints that
+  were individually durable before; only the last completed step boundary is guaranteed.
+  `FailureManager.recordMany` and `Diagnoser.recordPending` keep batched fsyncs on the happy path
+  while flushing lessons decided before a mid-round abort and falling back to per-record
+  persistence when one batched append is refused.
 - `CorpusMapper` sets a navigation node's `parentId` when it creates the node instead of calling
-  `HierarchyManager.setEntityParent` afterwards. Each of those calls validated the link against a
-  full deep-copied graph and then wrote on its own, so mapping a 32-document corpus cost 36
-  whole-graph copies and 36 durable appends on top of the creates. Creates are now ordered
-  parent-first because SQLite enforces `parentId` as a foreign key, and conflict observations on
-  stored nodes are written as one `batchUpdate`.
+  `HierarchyManager.setEntityParent` afterwards. Each of those calls validated the link against
+  `loadGraph()`'s borrowed view and then wrote on its own, so mapping a 32-document corpus cost 36
+  validation passes and 36 durable appends on top of the creates. Creates are now ordered
+  parent-first because SQLite enforces `parentId` as a foreign key; conflict observations on stored
+  nodes still use `updateEntity` with `expectedVersion` OCC per node.
 - A JSONL append no longer pays two `stat` calls and a `chmod`. `appendLines` read the file's mode
   with its own `stat` and then called `restrictSensitiveFilePermissions`, which stat'ed again, and
   the `0600` restriction was re-issued on every write because Windows `chmod` cannot express

@@ -826,6 +826,7 @@ Reachable from a root: **404** of 404 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../utils/logger.js` | `logger` | Import |
 | `../types/types.js` | `Entity, IGraphStorage` | Import (type-only) |
 | `../types/agent-memory.js` | `FailureEntity, FailureLifecycle, FailureRecord, MarkResolvedResult` | Import (type-only) |
 | `../types/agent-memory.js` | `BLAMED_COMPONENT_KINDS, isFailureMemory, isHeuristicMemory, toIsoDateTime` | Import |
@@ -7605,7 +7606,7 @@ Reachable from a root: **404** of 404 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/core/EntityManager` | 12 files | 48 files |
 | `src/search/index` | 51 files | 1 file |
 | `src/utils/errors` | 0 files | 42 files |
-| `src/utils/logger` | 0 files | 38 files |
+| `src/utils/logger` | 0 files | 39 files |
 | `src/agent/AgentMemoryManager` | 33 files | 3 files |
 | `src/types/learning` | 2 files | 34 files |
 | `src/types/skills` | 1 file | 34 files |
@@ -7887,7 +7888,7 @@ graph TD
 |----------|-------|
 | Total TypeScript Files | 404 |
 | Total Modules | 12 |
-| Total Lines of Code | 127397 |
+| Total Lines of Code | 127452 |
 | Total Exports | 2824 |
 | Total Re-exports | 1716 |
 | Total Classes | 280 |

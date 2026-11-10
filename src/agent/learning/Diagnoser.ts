@@ -6,8 +6,10 @@
  * An optional LLM proposes the diagnosis (zod-validated, one retry, then the deterministic
  * fallback). For `missing-knowledge` and `wrong-behaviour` diagnoses one failure record is
  * written per trace, task and round (key `traceId + taskId + round`, held in a
- * {@link FailureDedupStore}). Failure-record errors are logged and never thrown. An abort
- * rejects with `AbortError`.
+ * {@link FailureDedupStore}). Failure-record errors are logged per record and never abort the
+ * round. A mid-round `AbortError` still persists failure records for tasks already diagnosed in
+ * that round (they would be re-recorded only via dedup on a full replay, so they must flush before
+ * the abort propagates). An abort rejects with `AbortError`.
  *
  * `relatedSkillIds` follow the order of `knowledge.skillIds`, which `loadForContext` fills best
  * match first, so the first id is the highest-scoring related skill.
@@ -319,38 +321,45 @@ export class Diagnoser {
   ): Promise<Diagnosis[]> {
     const out: Diagnosis[] = [];
     const pending: PendingFailure[] = [];
-    for (const item of items) {
-      if (item.feedback.allPass) continue;
-      if (opts.signal?.aborted) throw new AbortError();
-      const excerpts = await this.readExcerpts(item.result.traceAddrs);
-      const reflections = await this.priorReflections(opts.sessionId, item.task.id);
-      const failed = failedRubricCriteria(item.task, item.feedback);
-      const skills = relatedSkills(knowledge.skillIds, [
-        ...failed.map((c) => c.text),
-        ...excerpts.map((e) => e.text),
-      ]);
+    let recorded = false;
+    try {
+      for (const item of items) {
+        if (item.feedback.allPass) continue;
+        if (opts.signal?.aborted) throw new AbortError();
+        const excerpts = await this.readExcerpts(item.result.traceAddrs);
+        const reflections = await this.priorReflections(opts.sessionId, item.task.id);
+        const failed = failedRubricCriteria(item.task, item.feedback);
+        const skills = relatedSkills(knowledge.skillIds, [
+          ...failed.map((c) => c.text),
+          ...excerpts.map((e) => e.text),
+        ]);
 
-      const llm = await this.diagnoseWithLlm(item, excerpts, reflections, opts.signal);
-      const kind = llm?.kind ?? classifyFallback(item.task, item.feedback, knowledge);
-      const summary = llm?.summary ?? this.fallbackSummary(kind, failed);
+        const llm = await this.diagnoseWithLlm(item, excerpts, reflections, opts.signal);
+        const kind = llm?.kind ?? classifyFallback(item.task, item.feedback, knowledge);
+        const summary = llm?.summary ?? this.fallbackSummary(kind, failed);
 
-      const diagnosis: Diagnosis = {
-        taskId: item.task.id,
-        kind,
-        summary,
-        evidenceAddrs: [...item.result.traceAddrs],
-        relatedSkillIds: skills,
-        confidence: llm ? LLM_CONFIDENCE : FALLBACK_CONFIDENCE,
-      };
+        const diagnosis: Diagnosis = {
+          taskId: item.task.id,
+          kind,
+          summary,
+          evidenceAddrs: [...item.result.traceAddrs],
+          relatedSkillIds: skills,
+          confidence: llm ? LLM_CONFIDENCE : FALLBACK_CONFIDENCE,
+        };
 
-      if (opts.signal?.aborted) throw new AbortError();
-      if (kind === 'missing-knowledge' || kind === 'wrong-behaviour') {
-        pending.push({ item, diagnosis, failed, key: dedupKey(opts, item, round) });
+        if (opts.signal?.aborted) throw new AbortError();
+        if (kind === 'missing-knowledge' || kind === 'wrong-behaviour') {
+          pending.push({ item, diagnosis, failed, key: dedupKey(opts, item, round) });
+        }
+        out.push(diagnosis);
       }
-      out.push(diagnosis);
+      await this.recordPending(pending, opts);
+      recorded = true;
+      return out;
+    } catch (err) {
+      if (!recorded && pending.length > 0) await this.recordPending(pending, opts);
+      throw err;
     }
-    await this.recordPending(pending, opts);
-    return out;
   }
 
   /**
@@ -376,24 +385,17 @@ export class Diagnoser {
     const mgr = this.deps.failureManager;
     if (!mgr) return;
     const inputs = fresh.map((p) => this.failureInput(p, opts));
-    let records: Array<{ id: string }> | undefined;
+    let records: Array<{ id: string }>;
     if (typeof mgr.recordMany === 'function') {
       try {
-        records = await mgr.recordMany(inputs.map((input) => ({ input })));
+        const many = await mgr.recordMany(inputs.map((input) => ({ input })));
+        records = many.map((r) => (r === undefined ? { id: '' } : r));
       } catch (err) {
-        logger.warn(`Diagnoser: failure records for round failed: ${describeError(err)}`);
-        return;
+        logger.warn(`Diagnoser: batched failure records failed (${describeError(err)}), recording individually`);
+        records = await this.recordFreshIndividually(fresh, inputs, mgr);
       }
     } else {
-      records = [];
-      for (let i = 0; i < inputs.length; i++) {
-        try {
-          records.push(await mgr.record(inputs[i]!));
-        } catch (err) {
-          logger.warn(`Diagnoser: failure record for ${fresh[i]!.item.task.id} failed: ${describeError(err)}`);
-          records.push({ id: '' });
-        }
-      }
+      records = await this.recordFreshIndividually(fresh, inputs, mgr);
     }
     for (let i = 0; i < fresh.length; i++) {
       const id = records[i]?.id;
@@ -402,6 +404,31 @@ export class Diagnoser {
       p.diagnosis.relatedFailureId = id;
       await dedup.set(p.key, id);
     }
+  }
+
+  /**
+   * Persist failure records one at a time; one refusal is logged and does not affect siblings.
+   *
+   * @param fresh - Pending diagnoses to record.
+   * @param inputs - Failure inputs aligned with `fresh`.
+   * @param mgr - Failure sink.
+   * @returns One entry per `fresh` item, with `{ id: '' }` when that record was refused.
+   */
+  private async recordFreshIndividually(
+    fresh: PendingFailure[],
+    inputs: FailureInput[],
+    mgr: Pick<FailureManager, 'record'>,
+  ): Promise<Array<{ id: string }>> {
+    const records: Array<{ id: string }> = [];
+    for (let i = 0; i < inputs.length; i++) {
+      try {
+        records.push(await mgr.record(inputs[i]!));
+      } catch (err) {
+        logger.warn(`Diagnoser: failure record for ${fresh[i]!.item.task.id} failed: ${describeError(err)}`);
+        records.push({ id: '' });
+      }
+    }
+    return records;
   }
 
   /**

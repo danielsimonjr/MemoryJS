@@ -417,9 +417,10 @@ export class CorpusMapper {
   ): Promise<void> {
     const now = nowIso();
     // A parent link for a node this flush creates is written with the create. Previously every
-    // link was a `setEntityParent` call after the fact, and that call validates against a full
-    // deep-copied graph and then writes on its own: 36 links meant 36 whole-graph copies and 36
-    // durable appends. Links to an already-stored node still go through the hierarchy manager.
+    // link was a `setEntityParent` call after the fact, and that call validated against
+    // `loadGraph()`'s borrowed view (deep-frozen off production) before each write on its own: 36
+    // links meant 36 validation passes and 36 durable appends. Links to an already-stored node
+    // still go through the hierarchy manager.
     const parentOf = new Map<string, string>();
     for (const { child, parent } of persist.parents) parentOf.set(child, parent);
     const creating = new Set(persist.nodes.map((info) => info.name));
@@ -441,16 +442,18 @@ export class CorpusMapper {
     }
     if (persist.entities.length > 0) await this.entityManager.createEntities(parentFirst(persist.entities, persist.parents));
 
-    const updates: Array<{ name: string; updates: Partial<Entity> }> = [];
     for (const [name, lines] of conflictLines) {
       const info = leaves.get(name);
       const stored = this.storage.getEntityByName(name);
       if (!info || info.fresh || !stored) continue;
       const toAdd = lines.filter((line) => !stored.observations.includes(line));
       if (toAdd.length === 0) continue;
-      updates.push({ name, updates: { observations: [...stored.observations, ...toAdd] } });
+      await this.entityManager.updateEntity(
+        name,
+        { observations: [...stored.observations, ...toAdd] } as Partial<Entity>,
+        { expectedVersion: stored.version ?? 1 },
+      );
     }
-    if (updates.length > 0) await this.entityManager.batchUpdate(updates);
     if (persist.relations.length > 0) await this.relationManager.createRelations(persist.relations);
     for (const { child, parent } of persist.parents) {
       if (creating.has(child)) continue;
@@ -484,7 +487,7 @@ export { defaultPartitioner };
  * Order entities so every node comes after the parent it names.
  *
  * Setting `parentId` at creation avoids a follow-up `setEntityParent` per link (each of those
- * validates against a full deep-copied graph and writes on its own), but both backends require
+ * validates against `loadGraph()`'s borrowed view and writes on its own), but both backends require
  * the parent row to exist first: SQLite enforces `parentId` as a foreign key. Nodes whose parent
  * is not part of this batch keep their input position, and a cycle cannot occur because the
  * navigation tree is built top-down.

@@ -9,7 +9,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 1004
+**Total files**: 1005
 
 ## Disposition counts
 
@@ -19,12 +19,12 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 568 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 569 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 5 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 15 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **1004** | |
+| **Total** | **1005** | |
 
 ## Per-area counts
 
@@ -34,7 +34,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `config` | 2 |
 | `examples` | 15 |
 | `src` | 404 |
-| `tests` | 568 |
+| `tests` | 569 |
 | `tools` | 10 |
 
 ## All files
@@ -81,7 +81,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/bootstrap/Bootstrapper.ts` | src | reachable | 246 |
 | `src/agent/bootstrap/bootstrapShared.ts` | src | reachable | 203 |
 | `src/agent/bootstrap/BoundaryRecorder.ts` | src | reachable | 249 |
-| `src/agent/bootstrap/CorpusMapper.ts` | src | reachable | 544 |
+| `src/agent/bootstrap/CorpusMapper.ts` | src | reachable | 547 |
 | `src/agent/bootstrap/ExplorationNotes.ts` | src | reachable | 396 |
 | `src/agent/bootstrap/index.ts` | src | reachable | 20 |
 | `src/agent/bootstrap/PracticeTaskGenerator.ts` | src | reachable | 351 |
@@ -114,7 +114,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/ExclusionManager.ts` | src | reachable | 210 |
 | `src/agent/ExperienceExtractor.ts` | src | reachable | 435 |
 | `src/agent/FailureDistillation.ts` | src | reachable | 314 |
-| `src/agent/FailureManager.ts` | src | reachable | 510 |
+| `src/agent/FailureManager.ts` | src | reachable | 532 |
 | `src/agent/GuardedComponentEdit.ts` | src | reachable | 711 |
 | `src/agent/harness/ConcurrencyLimiter.ts` | src | reachable | 246 |
 | `src/agent/harness/EvictionIndex.ts` | src | reachable | 163 |
@@ -137,7 +137,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/knowledge/ScratchKnowledge.ts` | src | reachable | 191 |
 | `src/agent/knowledgeContext.ts` | src | reachable | 116 |
 | `src/agent/learning/ChildKnowledgeOverlay.ts` | src | reachable | 272 |
-| `src/agent/learning/Diagnoser.ts` | src | reachable | 503 |
+| `src/agent/learning/Diagnoser.ts` | src | reachable | 530 |
 | `src/agent/learning/index.ts` | src | reachable | 63 |
 | `src/agent/learning/InProcessLearnHandler.ts` | src | reachable | 76 |
 | `src/agent/learning/KnowledgeEditor.ts` | src | reachable | 375 |
@@ -151,7 +151,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/learning/LeafValidation.ts` | src | reachable | 231 |
 | `src/agent/learning/LearningAccountant.ts` | src | reachable | 329 |
 | `src/agent/learning/LearningReflector.ts` | src | reachable | 229 |
-| `src/agent/learning/LearningTrace.ts` | src | reachable | 676 |
+| `src/agent/learning/LearningTrace.ts` | src | reachable | 679 |
 | `src/agent/learning/llmJson.ts` | src | reachable | 163 |
 | `src/agent/learning/observationChunks.ts` | src | reachable | 85 |
 | `src/agent/learning/RecursiveChildren.ts` | src | reachable | 117 |
@@ -609,6 +609,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/knowledge/KnowledgeRepository.test.ts` | tests | test | 220 |
 | `tests/unit/agent/knowledgeContext.sections.test.ts` | tests | test | 63 |
 | `tests/unit/agent/learning/Diagnoser.test.ts` | tests | test | 254 |
+| `tests/unit/agent/learning/DiagnoserBatchDurability.challenger.test.ts` | tests | test | 104 |
 | `tests/unit/agent/learning/InProcessLearnHandler.concurrency.test.ts` | tests | test | 61 |
 | `tests/unit/agent/learning/KnowledgeEditor.test.ts` | tests | test | 308 |
 | `tests/unit/agent/learning/LeafAbortDedup.test.ts` | tests | test | 125 |
