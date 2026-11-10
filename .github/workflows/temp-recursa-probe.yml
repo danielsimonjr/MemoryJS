@@ -2,7 +2,7 @@ name: TEMP recursa perf probe
 
 # TEMPORARY diagnostic workflow for the Windows recursa-timeout investigation.
 # Deleted before merge. Runs the same instrumented probe on Linux and Windows so the
-# per-phase timings can be compared directly.
+# per-phase timings can be compared directly, plus the real test files.
 
 on:
   push:
@@ -43,5 +43,14 @@ jobs:
             bunx tsx scripts/recursa-perf-probe.ts
           done
 
-      - name: Probe under vitest (the real test file)
-        run: bunx vitest run tests/integration/agent/recursa-loop.test.ts --reporter=verbose
+      - name: Real tests (3 repeats)
+        shell: bash
+        run: |
+          for i in 1 2 3; do
+            echo "===== repeat $i ====="
+            bunx vitest run \
+              tests/integration/agent/recursa-loop.test.ts \
+              tests/integration/agent/recursa-end-to-end.test.ts \
+              tests/unit/agent/learning/RecursiveLearner.test.ts \
+              --reporter=verbose
+          done

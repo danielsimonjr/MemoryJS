@@ -56,6 +56,59 @@ export interface TraceTree {
   children: TraceTree[];
 }
 
+/**
+ * One queued change to a trace entity, replayed against the stored entity when the batch flushes.
+ *
+ * A `record` op mirrors {@link LearningTrace.mutate}'s change function, so a retry after a version
+ * conflict re-runs it on the freshly read record (a concurrent append is never clobbered). The
+ * observation ops carry the serialized payload instead of a prepared array, so replay recomputes
+ * the chunks from whatever the target entity currently holds.
+ */
+type PendingOp =
+  | { kind: 'record'; change: (record: LearningTraceRecord) => LearningTraceRecord }
+  | { kind: 'state'; json: string; check?: (stored: string | undefined) => void }
+  | { kind: 'tasks'; json: string };
+
+/** Queued ops of one trace entity, plus the materialized view reads are served from. */
+interface PendingTrace {
+  ops: PendingOp[];
+  view?: Entity;
+}
+
+/**
+ * Replay `ops`, in order, onto `entity`. Pure: the input is not modified.
+ *
+ * `checks` runs each observation op's guard against the observations produced by the earlier ops of
+ * the same list, which is exactly the state the write would see (so a compare-and-swap inside a
+ * batch still compares against the batch's own earlier writes).
+ *
+ * @param id - Trace id (for error text).
+ * @param entity - Entity to replay onto.
+ * @param ops - Ops in the order they were queued.
+ * @param checks - Run `check` guards and the write-once rule for task records.
+ * @returns The entity the batch would persist.
+ * @throws Error when `entity` is not a learning trace, or a guard refuses the write.
+ */
+function replayOps(id: string, entity: Entity | undefined, ops: readonly PendingOp[], checks: boolean): LearningTraceEntity {
+  if (!isLearningTraceEntity(entity)) throw new Error(`LearningTrace: unknown trace "${id}"`);
+  let record = entity.learningTraceRecord;
+  let observations = entity.observations;
+  for (const op of ops) {
+    if (op.kind === 'record') {
+      record = op.change(record);
+    } else if (op.kind === 'state') {
+      if (checks) op.check?.(decodeChunks(observations, STATE_TAG));
+      observations = [...observations.filter((o) => !isTagged(o, STATE_TAG)), ...encodeChunks(STATE_TAG, op.json)];
+    } else {
+      if (checks && observations.some((o) => isTagged(o, TASKS_TAG))) {
+        throw new Error(`LearningTrace: trace "${id}" already has task records`);
+      }
+      observations = [...observations, ...encodeChunks(TASKS_TAG, op.json)];
+    }
+  }
+  return { ...entity, observations, learningTraceRecord: record };
+}
+
 const FOLD_OUTCOME = /^folded (\d+) actions$/;
 
 /** Tag of the leaf-state observations (`[leaf-state i/n] <chunk>`). */
@@ -130,6 +183,13 @@ export class LearningTrace {
   private readonly relationManager: RelationManager;
   private readonly maxActions: number;
 
+  /** Queued writes per trace id, flushed when that trace's outermost {@link batch} ends. */
+  private readonly pending = new Map<string, PendingTrace>();
+  /** Serializes flushes of one trace id so a flush never overlaps another. */
+  private readonly flushTails = new Map<string, Promise<unknown>>();
+  /** Open {@link batch} depth per trace id; absent/0 means every write flushes immediately. */
+  private readonly batchDepth = new Map<string, number>();
+
   /**
    * Create the instance.
    *
@@ -186,6 +246,9 @@ export class LearningTrace {
    * of one per action). Folding applies to the combined list exactly as if
    * the actions had been appended one at a time.
    *
+   * Inside {@link LearningTrace.batch} the append is queued and combined with the other queued
+   * writes of the same trace, so N appends in one phase cost one durable write, not N.
+   *
    * @param id - Trace id.
    * @param actions - Actions to append, in order (addresses only, never solver output).
    * @returns The committed record.
@@ -231,7 +294,7 @@ export class LearningTrace {
    */
   async get(id: string): Promise<LearningTraceRecord | undefined> {
     await this.storage.ensureLoaded();
-    const entity = this.storage.getEntityByName(id);
+    const entity = this.readEntity(id);
     return isLearningTraceEntity(entity) ? entity.learningTraceRecord : undefined;
   }
 
@@ -286,20 +349,7 @@ export class LearningTrace {
    * @throws Error when the trace does not exist, or whatever `check` throws.
    */
   async writeState(id: string, json: string, check?: (current: string | undefined) => void): Promise<void> {
-    for (;;) {
-      await this.storage.ensureLoaded();
-      const entity = this.storage.getEntityByName(id);
-      if (!isLearningTraceEntity(entity)) throw new Error(`LearningTrace: unknown trace "${id}"`);
-      check?.(decodeChunks(entity.observations, STATE_TAG));
-      const version = entity.version ?? 1;
-      const observations = [...entity.observations.filter((o) => !isTagged(o, STATE_TAG)), ...encodeChunks(STATE_TAG, json)];
-      try {
-        await this.entityManager.updateEntity(id, { observations } as Partial<Entity>, { expectedVersion: version });
-        return;
-      } catch (err) {
-        if (!(err instanceof VersionConflictError)) throw err;
-      }
-    }
+    await this.enqueue(id, { kind: 'state', json, ...(check ? { check } : {}) });
   }
 
   /**
@@ -310,7 +360,7 @@ export class LearningTrace {
    */
   async readState(id: string): Promise<string | undefined> {
     await this.storage.ensureLoaded();
-    const entity = this.storage.getEntityByName(id);
+    const entity = this.readEntity(id);
     if (!isLearningTraceEntity(entity)) return undefined;
     return decodeChunks(entity.observations, STATE_TAG);
   }
@@ -324,15 +374,7 @@ export class LearningTrace {
    * @throws Error when the trace does not exist or already has task records.
    */
   async writeTasks(id: string, json: string): Promise<void> {
-    await this.storage.ensureLoaded();
-    const entity = this.storage.getEntityByName(id);
-    if (!isLearningTraceEntity(entity)) throw new Error(`LearningTrace: unknown trace "${id}"`);
-    if (entity.observations.some((o) => isTagged(o, TASKS_TAG))) {
-      throw new Error(`LearningTrace: trace "${id}" already has task records`);
-    }
-    const version = entity.version ?? 1;
-    const observations = [...entity.observations, ...encodeChunks(TASKS_TAG, json)];
-    await this.entityManager.updateEntity(id, { observations } as Partial<Entity>, { expectedVersion: version });
+    await this.enqueue(id, { kind: 'tasks', json });
   }
 
   /**
@@ -343,9 +385,168 @@ export class LearningTrace {
    */
   async readTasks(id: string): Promise<string | undefined> {
     await this.storage.ensureLoaded();
-    const entity = this.storage.getEntityByName(id);
+    const entity = this.readEntity(id);
     if (!isLearningTraceEntity(entity)) return undefined;
     return decodeChunks(entity.observations, TASKS_TAG);
+  }
+
+  /**
+   * Run `fn` with trace writes for `traceId` coalesced, then flush them in one durable write.
+   *
+   * Writes to `traceId` issued inside the callback are queued and combined in call order, so a
+   * phase that saves state, appends an action and updates metrics costs one write instead of
+   * three. Reads (`get`/`readState`/`readTasks`/`load`) for that trace see the queued writes.
+   * Each save's own compare-and-swap guard still runs, against the state the batch would produce.
+   *
+   * Batching is scoped per trace, not per instance: sibling learners share one `LearningTrace`
+   * and write their own traces concurrently, so a global scope would make one sibling's flush
+   * cover another's writes.
+   *
+   * Durability is unchanged: the flush is the same `updateEntity` with the same OCC version, so a
+   * crash before it loses the queued writes exactly as it would have lost the unbatched writes.
+   * A throw from `fn` discards the queued writes (nothing was made durable) and rethrows; a throw
+   * from a queued write's guard discards the whole batch of that trace and rethrows.
+   *
+   * Calls for the same trace nest: only the outermost call flushes.
+   *
+   * @param traceId - Trace whose writes should be coalesced.
+   * @param fn - Work whose writes to `traceId` should be coalesced.
+   * @returns What `fn` returns.
+   */
+  async batch<T>(traceId: string, fn: () => Promise<T>): Promise<T> {
+    const depth = (this.batchDepth.get(traceId) ?? 0) + 1;
+    this.batchDepth.set(traceId, depth);
+    try {
+      const result = await fn();
+      const remaining = this.closeBatch(traceId, depth);
+      if (remaining === 0) await this.flush(traceId);
+      return result;
+    } catch (err) {
+      const remaining = this.closeBatch(traceId, depth);
+      if (remaining === 0) {
+        // Unbatched, every write issued before the throw was already durable, so the flush still
+        // runs here: a phase that records a side effect and then fails (a diagnosis that records a
+        // failure lesson before crashing) must leave that record where a resume can see it. A
+        // failure from the flush itself never masks the error that is already propagating.
+        await this.flush(traceId).catch(() => undefined);
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * Close one {@link batch} frame of `traceId`.
+   *
+   * @param traceId - Trace id.
+   * @param depth - Depth the frame was opened at.
+   * @returns The number of frames still open for that trace (0 when none remain).
+   */
+  private closeBatch(traceId: string, depth: number): number {
+    if (depth > 1) {
+      this.batchDepth.set(traceId, depth - 1);
+      return depth - 1;
+    }
+    this.batchDepth.delete(traceId);
+    return 0;
+  }
+
+  /**
+   * Entity to read for `id`: the materialized view of the queued writes when there are any, so a
+   * read inside a {@link LearningTrace.batch} sees what the batch has already changed.
+   *
+   * @param id - Trace id.
+   * @returns The entity, or `undefined` when no trace has that id.
+   */
+  private readEntity(id: string): Entity | undefined {
+    const queued = this.pending.get(id);
+    if (queued === undefined) return this.storage.getEntityByName(id);
+    if (queued.view !== undefined) return queued.view;
+    const base = this.storage.getEntityByName(id);
+    if (base === undefined) return undefined;
+    // Guards already ran when the ops were queued; replay here only materializes the view.
+    queued.view = replayOps(id, base, queued.ops, false);
+    return queued.view;
+  }
+
+  /**
+   * Queue one write for `id`, flushing at once when no batch is open.
+   *
+   * @param id - Trace id.
+   * @param op - Write to queue.
+   * @throws Error when the trace does not exist, or the write's guard refuses it.
+   */
+  private async enqueue(id: string, op: PendingOp): Promise<void> {
+    await this.storage.ensureLoaded();
+    const queued = this.pending.get(id) ?? { ops: [] };
+    queued.ops.push(op);
+    this.pending.set(id, queued);
+    // Validate eagerly, against the batch's own earlier writes, so a refused write throws from the
+    // call that made it rather than from an unrelated flush later.
+    try {
+      replayOps(id, this.storage.getEntityByName(id), queued.ops, true);
+    } catch (err) {
+      queued.ops.pop();
+      if (queued.ops.length === 0) this.pending.delete(id);
+      throw err;
+    }
+    queued.view = undefined;
+    if ((this.batchDepth.get(id) ?? 0) === 0) await this.flush(id);
+  }
+
+  /**
+   * Persist and forget the queued writes of one trace. Serialized per id so two flushes of the
+   * same trace never race; a retry after a version conflict re-reads and replays the same ops.
+   *
+   * @param id - Trace id.
+   * @throws Error when the trace does not exist or a queued write's guard refuses it.
+   */
+  private flush(id: string): Promise<void> {
+    const queued = this.pending.get(id);
+    if (queued === undefined) return Promise.resolve();
+    this.pending.delete(id);
+    const previous = this.flushTails.get(id) ?? Promise.resolve();
+    const run = previous.then(
+      () => this.writeOps(id, queued.ops),
+      () => this.writeOps(id, queued.ops),
+    );
+    const settled = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    this.flushTails.set(id, settled);
+    void settled.then(() => {
+      if (this.flushTails.get(id) === settled) this.flushTails.delete(id);
+    });
+    return run;
+  }
+
+  /**
+   * Write one trace's queued ops with OCC, retrying on `VersionConflictError`. The ops are replayed
+   * against whatever the entity holds on each attempt, so a concurrent writer's change survives.
+   *
+   * @param id - Trace id.
+   * @param ops - Ops to apply, in order.
+   * @throws Error when the trace does not exist, a guard refuses the write, or the write fails.
+   */
+  private async writeOps(id: string, ops: readonly PendingOp[]): Promise<void> {
+    for (;;) {
+      await this.storage.ensureLoaded();
+      const entity = this.storage.getEntityByName(id);
+      if (!isLearningTraceEntity(entity)) throw new Error(`LearningTrace: unknown trace "${id}"`);
+      const version = entity.version ?? 1;
+      const next = replayOps(id, entity, ops, true);
+      const updates = {
+        observations: next.observations,
+        learningTraceRecord: next.learningTraceRecord,
+        lastModified: toIsoDateTime(new Date()),
+      } as unknown as Partial<Entity>;
+      try {
+        await this.entityManager.updateEntity(id, updates, { expectedVersion: version });
+        return;
+      } catch (err) {
+        if (!(err instanceof VersionConflictError)) throw err;
+      }
+    }
   }
 
   /**
@@ -355,7 +556,7 @@ export class LearningTrace {
    * @throws Error when the trace does not exist.
    */
   private requireTrace(id: string): void {
-    if (!isLearningTraceEntity(this.storage.getEntityByName(id))) {
+    if (!isLearningTraceEntity(this.readEntity(id))) {
       throw new Error(`LearningTrace: unknown trace "${id}"`);
     }
   }
@@ -373,23 +574,10 @@ export class LearningTrace {
     id: string,
     change: (record: LearningTraceRecord) => LearningTraceRecord,
   ): Promise<LearningTraceRecord> {
-    for (;;) {
-      await this.storage.ensureLoaded();
-      const entity = this.storage.getEntityByName(id);
-      if (!isLearningTraceEntity(entity)) throw new Error(`LearningTrace: unknown trace "${id}"`);
-      const version = entity.version ?? 1;
-      const next = change(entity.learningTraceRecord);
-      try {
-        await this.entityManager.updateEntity(
-          id,
-          { learningTraceRecord: next, lastModified: toIsoDateTime(new Date()) } as unknown as Partial<Entity>,
-          { expectedVersion: version },
-        );
-        return next;
-      } catch (err) {
-        if (!(err instanceof VersionConflictError)) throw err;
-      }
-    }
+    await this.enqueue(id, { kind: 'record', change });
+    const entity = this.readEntity(id);
+    if (!isLearningTraceEntity(entity)) throw new Error(`LearningTrace: unknown trace "${id}"`);
+    return entity.learningTraceRecord;
   }
 
   /**
@@ -400,13 +588,13 @@ export class LearningTrace {
    * @returns The subtree.
    */
   private buildTree(id: string, path: ReadonlySet<string>): TraceTree {
-    const entity = this.storage.getEntityByName(id);
+    const entity = this.readEntity(id);
     if (!isLearningTraceEntity(entity)) throw new Error(`LearningTrace: unknown trace "${id}"`);
     const onPath = new Set(path).add(id);
     const children: TraceTree[] = [];
     for (const childId of this.childIdsOf(id)) {
       if (onPath.has(childId)) continue;
-      if (!isLearningTraceEntity(this.storage.getEntityByName(childId))) continue;
+      if (!isLearningTraceEntity(this.readEntity(childId))) continue;
       children.push(this.buildTree(childId, onPath));
     }
     children.sort(compareTrees);

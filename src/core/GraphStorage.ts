@@ -11,7 +11,7 @@ import { borrowGraphView, deepCopyPlain } from '../utils/graphCopy.js';
 import { promises as fs } from 'fs';
 import {
   durableWriteFile as durableWriteFileShared,
-  restrictSensitiveFilePermissions,
+  restrictModeFromStat,
 } from '../utils/durableWriteFile.js';
 import { Mutex } from 'async-mutex';
 import type { KnowledgeGraph, Entity, Relation, ReadonlyKnowledgeGraph, IGraphStorage, LowercaseData } from '../types/index.js';
@@ -440,7 +440,6 @@ export class GraphStorage implements IGraphStorage {
    * @param prependNewline - Whether to prepend a newline
    */
   private async durableAppendFile(content: string, prependNewline: boolean): Promise<void> {
-    await restrictSensitiveFilePermissions(this.memoryFilePath);
     const fd = await fs.open(this.memoryFilePath, 'a', 0o600);
     try {
       const dataToWrite = prependNewline ? '\n' + content : content;
@@ -456,12 +455,22 @@ export class GraphStorage implements IGraphStorage {
    * when it does not exist yet (ENOENT fallback mirrors the historical
    * per-line append behavior).
    *
+   * The one `stat` below both decides whether a separating newline is needed
+   * and restricts the file's mode, so an append costs one open, one write, one
+   * fsync and one close. It previously paid two `stat` calls (one here, one
+   * inside `restrictSensitiveFilePermissions`) plus a `chmod` on every append;
+   * on Windows `chmod` cannot express `0600` (it only toggles the read-only
+   * bit), so that `chmod` saw a mode it could never satisfy and re-issued
+   * itself on every single write. Windows access control comes from the parent
+   * directory's ACLs, so the restriction is POSIX-only.
+   *
    * @param lines - Serialized JSONL lines (no trailing newline)
    */
   private async appendLines(lines: string[]): Promise<void> {
     const content = lines.join('\n');
     try {
       const stat = await fs.stat(this.memoryFilePath);
+      await restrictModeFromStat(this.memoryFilePath, stat.mode);
       await this.durableAppendFile(content, stat.size > 0);
     } catch (error) {
       // File doesn't exist - create it
