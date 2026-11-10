@@ -9,22 +9,22 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 1022
+**Total files**: 1028
 
 ## Disposition counts
 
 | Disposition | Count | Meaning |
 | --- | --: | --- |
-| `reachable` | 409 | A `src/` file in the module graph, reachable from a root. |
+| `reachable` | 410 | A `src/` file in the module graph, reachable from a root. |
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 577 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 582 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 5 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 15 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **1022** | |
+| **Total** | **1028** | |
 
 ## Per-area counts
 
@@ -33,8 +33,8 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `benchmarks` | 5 |
 | `config` | 2 |
 | `examples` | 15 |
-| `src` | 413 |
-| `tests` | 577 |
+| `src` | 414 |
+| `tests` | 582 |
 | `tools` | 10 |
 
 ## All files
@@ -459,6 +459,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/utils/relationHelpers.ts` | src | reachable | 286 |
 | `src/utils/relationValidation.ts` | src | reachable | 257 |
 | `src/utils/RunExclusiveMutex.ts` | src | reachable | 44 |
+| `src/utils/schema.ts` | src | reachable | 1449 |
 | `src/utils/schemas.ts` | src | reachable | 812 |
 | `src/utils/SchemaValidator.ts` | src | reachable | 373 |
 | `src/utils/searchAlgorithms.ts` | src | reachable | 252 |
@@ -1015,6 +1016,9 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/utils/formatters.test.ts` | tests | test | 470 |
 | `tests/unit/utils/graphCopy.test.ts` | tests | test | 133 |
 | `tests/unit/utils/halfLife.test.ts` | tests | test | 27 |
+| `tests/unit/utils/helpers/captureSchemaParity.ts` | tests | test | 158 |
+| `tests/unit/utils/helpers/schemaParityCases.ts` | tests | test | 640 |
+| `tests/unit/utils/helpers/schemaParityFormat.ts` | tests | test | 99 |
 | `tests/unit/utils/ids.test.ts` | tests | test | 35 |
 | `tests/unit/utils/indexBuckets.test.ts` | tests | test | 98 |
 | `tests/unit/utils/indexes.test.ts` | tests | test | 898 |
@@ -1032,6 +1036,8 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/utils/relationValidation.test.ts` | tests | test | 507 |
 | `tests/unit/utils/RunExclusiveMutex.challenger.test.ts` | tests | test | 200 |
 | `tests/unit/utils/RunExclusiveMutex.test.ts` | tests | test | 237 |
+| `tests/unit/utils/schema.inventory.test.ts` | tests | test | 231 |
+| `tests/unit/utils/schema.parity.test.ts` | tests | test | 165 |
 | `tests/unit/utils/schemas.test.ts` | tests | test | 894 |
 | `tests/unit/utils/schemas.validateResult.test.ts` | tests | test | 50 |
 | `tests/unit/utils/SchemaValidator.test.ts` | tests | test | 631 |

@@ -17,7 +17,7 @@
  */
 
 import { randomUUID } from 'crypto';
-import type { z } from 'zod';
+import type { z } from '../../utils/schema.js';
 import type { RevisionOp, KnowledgeRevisionRecord } from '../../types/skills.js';
 import { toIsoDateTime } from '../../types/agent-memory.js';
 import type { PGCompletionProvider } from '../procedural/graph/CompletionProvider.js';

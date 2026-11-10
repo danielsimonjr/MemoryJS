@@ -10,7 +10,7 @@
  * @internal Used by `RecursaToolAdapter` only.
  */
 
-import { z } from 'zod';
+import { z } from '../utils/schema.js';
 import { INTERACTION_KINDS } from '../agent/harness/InteractionLogFormat.js';
 
 /** Longest free text accepted for answers, content and notes (characters). */

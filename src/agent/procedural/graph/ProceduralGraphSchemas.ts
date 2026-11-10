@@ -8,7 +8,7 @@
  * @experimental
  */
 
-import { z } from 'zod';
+import { z } from '../../../utils/schema.js';
 import type { PGDiagnostic, PGEdge, PGEditSet, PGNode, PGSnapshot } from '../../../types/proceduralGraph.js';
 
 export const PG_LIMITS = {

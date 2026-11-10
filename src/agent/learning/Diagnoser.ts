@@ -18,7 +18,7 @@
  * @experimental Part of the Recursa self-improvement work (spec RS-15).
  */
 
-import { z } from 'zod';
+import { z } from '../../utils/schema.js';
 import type { FailureManager, FailureInput } from '../FailureManager.js';
 import type { AgentReflectionManager } from '../AgentReflectionManager.js';
 import type { InteractionLog } from '../harness/InteractionLog.js';

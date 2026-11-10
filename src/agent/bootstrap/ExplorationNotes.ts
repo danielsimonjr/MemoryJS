@@ -11,7 +11,7 @@
  * @experimental Spec RS-12. Section wording may change.
  */
 
-import { z } from 'zod';
+import { z } from '../../utils/schema.js';
 import type { IGraphStorage } from '../../types/types.js';
 import type { CoverageRecord, NavigationNodeRecord, SkillId, SkillSource } from '../../types/skills.js';
 import type { SkillManager } from '../skills/SkillManager.js';

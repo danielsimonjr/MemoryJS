@@ -7,7 +7,7 @@
  * @module utils/schemas
  */
 
-import { z, type ZodSchema, type ZodError } from 'zod';
+import { z, type ZodSchema, type ZodError } from './schema.js';
 import { IMPORTANCE_RANGE } from './constants.js';
 import { ValidationError } from './errors.js';
 

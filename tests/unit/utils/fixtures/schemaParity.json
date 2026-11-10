@@ -1,0 +1,4989 @@
+{
+  "zodVersion": "4.6.7",
+  "parseResults": [
+    {
+      "label": "entity/valid",
+      "schema": "EntitySchema",
+      "ok": true,
+      "data": {
+        "name": "Alice",
+        "entityType": "person",
+        "observations": [
+          "likes tea"
+        ]
+      }
+    },
+    {
+      "label": "entity/valid-full",
+      "schema": "EntitySchema",
+      "ok": true,
+      "data": {
+        "id": "e1",
+        "name": "Alice",
+        "entityType": "person",
+        "observations": [
+          "likes tea"
+        ],
+        "createdAt": "2026-01-15T12:00:00.000Z",
+        "lastModified": "2026-01-15T12:00:00.000Z",
+        "tags": [
+          "team-a"
+        ],
+        "importance": 7,
+        "parentId": "Root",
+        "contentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    {
+      "label": "entity/empty-name",
+      "schema": "EntitySchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "name"
+          ],
+          "message": "Entity name cannot be empty",
+          "origin": "string",
+          "inclusive": true,
+          "minimum": 1
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "entity/long-name",
+      "schema": "EntitySchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_big",
+          "path": [
+            "name"
+          ],
+          "message": "Entity name cannot exceed 500 characters",
+          "origin": "string",
+          "inclusive": true,
+          "maximum": 500
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "entity/trimmed-name",
+      "schema": "EntitySchema",
+      "ok": true,
+      "data": {
+        "name": "Alice",
+        "entityType": "person",
+        "observations": [
+          "likes tea"
+        ]
+      }
+    },
+    {
+      "label": "entity/empty-type",
+      "schema": "EntitySchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "entityType"
+          ],
+          "message": "Entity type cannot be empty",
+          "origin": "string",
+          "inclusive": true,
+          "minimum": 1
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "entity/missing-observations",
+      "schema": "EntitySchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [
+            "observations"
+          ],
+          "message": "Invalid input: expected array, received undefined",
+          "expected": "array"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "entity/empty-observation",
+      "schema": "EntitySchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "observations",
+            0
+          ],
+          "message": "Observation cannot be empty",
+          "origin": "string",
+          "inclusive": true,
+          "minimum": 1
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "entity/toxic-observation",
+      "schema": "EntitySchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_big",
+          "path": [
+            "observations",
+            0
+          ],
+          "message": "Observation cannot exceed 5000 characters",
+          "origin": "string",
+          "inclusive": true,
+          "maximum": 5000
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "entity/extra-key",
+      "schema": "EntitySchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "unrecognized_keys",
+          "path": [],
+          "message": "Unrecognized key: \"isAdmin\"",
+          "keys": [
+            "isAdmin"
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "entity/bad-importance",
+      "schema": "EntitySchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_big",
+          "path": [
+            "importance"
+          ],
+          "message": "Importance must be at most 10",
+          "origin": "number",
+          "inclusive": true,
+          "maximum": 10
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "entity/fractional-importance",
+      "schema": "EntitySchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [
+            "importance"
+          ],
+          "message": "Importance must be an integer",
+          "expected": "int",
+          "format": "safeint"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "entity/bad-timestamp",
+      "schema": "EntitySchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_format",
+          "path": [
+            "createdAt"
+          ],
+          "message": "Must be a valid ISO 8601 date string",
+          "origin": "string",
+          "pattern": "/^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$/",
+          "format": "datetime"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "entity/bad-hash-length",
+      "schema": "EntitySchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "contentHash"
+          ],
+          "message": "Too small: expected string to have exactly 64 characters",
+          "origin": "string",
+          "inclusive": true,
+          "exact": true,
+          "minimum": 64
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "entity/not-an-object",
+      "schema": "EntitySchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [],
+          "message": "Invalid input: expected object, received string",
+          "expected": "object"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "entity/array",
+      "schema": "EntitySchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [],
+          "message": "Invalid input: expected object, received array",
+          "expected": "object"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "entity/null",
+      "schema": "EntitySchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [],
+          "message": "Invalid input: expected object, received null",
+          "expected": "object"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "create-entity/valid",
+      "schema": "CreateEntitySchema",
+      "ok": true,
+      "data": {
+        "name": "Alice",
+        "entityType": "person",
+        "observations": [
+          "likes tea"
+        ]
+      }
+    },
+    {
+      "label": "create-entity/valid-full",
+      "schema": "CreateEntitySchema",
+      "ok": true,
+      "data": {
+        "name": "Alice",
+        "entityType": "person",
+        "observations": [
+          "likes tea"
+        ],
+        "ttl": 3600,
+        "confidence": 0.5,
+        "version": 2,
+        "isLatest": true,
+        "observationMeta": [
+          {
+            "content": "c",
+            "sourceRef": "ingest-1-chunk-1"
+          }
+        ],
+        "lifecycleStatus": "published",
+        "source": {
+          "kind": "cli"
+        }
+      }
+    },
+    {
+      "label": "create-entity/extra-key",
+      "schema": "CreateEntitySchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "unrecognized_keys",
+          "path": [],
+          "message": "Unrecognized key: \"unknownField\"",
+          "keys": [
+            "unknownField"
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "create-entity/zero-version",
+      "schema": "CreateEntitySchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "version"
+          ],
+          "message": "Too small: expected number to be >0",
+          "origin": "number",
+          "inclusive": false,
+          "minimum": 0
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "create-entity/bad-confidence",
+      "schema": "CreateEntitySchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_big",
+          "path": [
+            "confidence"
+          ],
+          "message": "Too big: expected number to be <=1",
+          "origin": "number",
+          "inclusive": true,
+          "maximum": 1
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "create-entity/bad-lifecycle",
+      "schema": "CreateEntitySchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_value",
+          "path": [
+            "lifecycleStatus"
+          ],
+          "message": "Invalid option: expected one of \"draft\"|\"published\"|\"archived\"",
+          "values": [
+            "draft",
+            "published",
+            "archived"
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "create-entity/bad-observationMeta",
+      "schema": "CreateEntitySchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [
+            "observationMeta",
+            0,
+            "content"
+          ],
+          "message": "Invalid input: expected string, received undefined",
+          "expected": "string"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "create-entity/missing-name",
+      "schema": "CreateEntitySchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [
+            "name"
+          ],
+          "message": "Invalid input: expected string, received undefined",
+          "expected": "string"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "update-entity/valid",
+      "schema": "UpdateEntitySchema",
+      "ok": true,
+      "data": {
+        "importance": 5
+      }
+    },
+    {
+      "label": "update-entity/strips-junk",
+      "schema": "UpdateEntitySchema",
+      "ok": true,
+      "data": {
+        "importance": 5
+      }
+    },
+    {
+      "label": "update-entity/empty",
+      "schema": "UpdateEntitySchema",
+      "ok": true,
+      "data": {}
+    },
+    {
+      "label": "update-entity/bad-importance",
+      "schema": "UpdateEntitySchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "importance"
+          ],
+          "message": "Importance must be at least 0",
+          "origin": "number",
+          "inclusive": true,
+          "minimum": 0
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "update-entity/bad-version",
+      "schema": "UpdateEntitySchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "version"
+          ],
+          "message": "Too small: expected number to be >=1",
+          "origin": "number",
+          "inclusive": true,
+          "minimum": 1
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "update-entity/not-an-object",
+      "schema": "UpdateEntitySchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [],
+          "message": "Invalid input: expected object, received number",
+          "expected": "object"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "update-entity/loose-timestamps",
+      "schema": "UpdateEntitySchema",
+      "ok": true,
+      "data": {
+        "createdAt": "whenever",
+        "lastModified": "whenever"
+      }
+    },
+    {
+      "label": "update-entity/tags-and-observations",
+      "schema": "UpdateEntitySchema",
+      "ok": true,
+      "data": {
+        "observations": [
+          "o"
+        ],
+        "tags": [
+          "a"
+        ]
+      }
+    },
+    {
+      "label": "relation/valid",
+      "schema": "RelationSchema",
+      "ok": true,
+      "data": {
+        "from": "Alice",
+        "to": "Bob",
+        "relationType": "knows"
+      }
+    },
+    {
+      "label": "relation/valid-full",
+      "schema": "RelationSchema",
+      "ok": true,
+      "data": {
+        "from": "Alice",
+        "to": "Bob",
+        "relationType": "knows",
+        "weight": 0.5,
+        "confidence": 0.8,
+        "properties": {
+          "bidirectional": true,
+          "provenance": "pg"
+        },
+        "metadata": {
+          "proceduralGraph": {
+            "schemaVersion": 1
+          }
+        }
+      }
+    },
+    {
+      "label": "relation/extra-key",
+      "schema": "RelationSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "unrecognized_keys",
+          "path": [],
+          "message": "Unrecognized key: \"unknownKey\"",
+          "keys": [
+            "unknownKey"
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "relation/bad-weight",
+      "schema": "RelationSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_big",
+          "path": [
+            "weight"
+          ],
+          "message": "Too big: expected number to be <=1",
+          "origin": "number",
+          "inclusive": true,
+          "maximum": 1
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "relation/missing-type",
+      "schema": "RelationSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [
+            "relationType"
+          ],
+          "message": "Invalid input: expected string, received undefined",
+          "expected": "string"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "relation/bad-properties",
+      "schema": "RelationSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [
+            "properties",
+            "bidirectional"
+          ],
+          "message": "Invalid input: expected boolean, received string",
+          "expected": "boolean"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "relation/metadata-array",
+      "schema": "RelationSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [
+            "metadata"
+          ],
+          "message": "Invalid input: expected record, received array",
+          "expected": "record"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "create-relation/valid",
+      "schema": "CreateRelationSchema",
+      "ok": true,
+      "data": {
+        "from": "Alice",
+        "to": "Bob",
+        "relationType": "knows"
+      }
+    },
+    {
+      "label": "create-relation/extra-key",
+      "schema": "CreateRelationSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "unrecognized_keys",
+          "path": [],
+          "message": "Unrecognized key: \"unknownKey\"",
+          "keys": [
+            "unknownKey"
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "create-relation/empty-endpoint",
+      "schema": "CreateRelationSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "to"
+          ],
+          "message": "Entity name cannot be empty",
+          "origin": "string",
+          "inclusive": true,
+          "minimum": 1
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "search-query/valid",
+      "schema": "SearchQuerySchema",
+      "ok": true,
+      "data": "hello world"
+    },
+    {
+      "label": "search-query/empty",
+      "schema": "SearchQuerySchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [],
+          "message": "Search query cannot be empty",
+          "origin": "string",
+          "inclusive": true,
+          "minimum": 1
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "search-query/whitespace",
+      "schema": "SearchQuerySchema",
+      "ok": true,
+      "data": ""
+    },
+    {
+      "label": "search-query/too-long",
+      "schema": "SearchQuerySchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_big",
+          "path": [],
+          "message": "Search query cannot exceed 1000 characters",
+          "origin": "string",
+          "inclusive": true,
+          "maximum": 1000
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "search-query/number",
+      "schema": "SearchQuerySchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [],
+          "message": "Invalid input: expected string, received number",
+          "expected": "string"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "date-range/valid",
+      "schema": "DateRangeSchema",
+      "ok": true,
+      "data": {
+        "start": "2026-01-01T00:00:00Z",
+        "end": "2026-02-01T00:00:00Z"
+      }
+    },
+    {
+      "label": "date-range/reversed",
+      "schema": "DateRangeSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [],
+          "message": "Start date must be before or equal to end date"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "date-range/bad-start",
+      "schema": "DateRangeSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_format",
+          "path": [
+            "start"
+          ],
+          "message": "Must be a valid ISO 8601 date string",
+          "origin": "string",
+          "pattern": "/^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$/",
+          "format": "datetime"
+        },
+        {
+          "code": "custom",
+          "path": [],
+          "message": "Start date must be before or equal to end date"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "date-range/empty",
+      "schema": "DateRangeSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [
+            "start"
+          ],
+          "message": "Invalid input: expected string, received undefined",
+          "expected": "string"
+        },
+        {
+          "code": "invalid_type",
+          "path": [
+            "end"
+          ],
+          "message": "Invalid input: expected string, received undefined",
+          "expected": "string"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "tag-alias/valid",
+      "schema": "TagAliasSchema",
+      "ok": true,
+      "data": {
+        "canonical": "ai",
+        "aliases": [
+          "ml"
+        ]
+      }
+    },
+    {
+      "label": "tag-alias/no-aliases",
+      "schema": "TagAliasSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "aliases"
+          ],
+          "message": "Must have at least one alias",
+          "origin": "array",
+          "inclusive": true,
+          "minimum": 1
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "tag-alias/bad-alias",
+      "schema": "TagAliasSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "aliases",
+            0
+          ],
+          "message": "Tag cannot be empty",
+          "origin": "string",
+          "inclusive": true,
+          "minimum": 1
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "tag-alias/extra-key",
+      "schema": "TagAliasSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "unrecognized_keys",
+          "path": [],
+          "message": "Unrecognized key: \"extra\"",
+          "keys": [
+            "extra"
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "export-format/valid",
+      "schema": "ExportFormatSchema",
+      "ok": true,
+      "data": "graphml"
+    },
+    {
+      "label": "export-format/bad",
+      "schema": "ExportFormatSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_value",
+          "path": [],
+          "message": "Invalid option: expected one of \"json\"|\"graphml\"|\"csv\"",
+          "values": [
+            "json",
+            "graphml",
+            "csv"
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "export-format/number",
+      "schema": "ExportFormatSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_value",
+          "path": [],
+          "message": "Invalid option: expected one of \"json\"|\"graphml\"|\"csv\"",
+          "values": [
+            "json",
+            "graphml",
+            "csv"
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "batch-create-entities/valid",
+      "schema": "BatchCreateEntitiesSchema",
+      "ok": true,
+      "data": [
+        {
+          "name": "Alice",
+          "entityType": "person",
+          "observations": [
+            "likes tea"
+          ]
+        }
+      ]
+    },
+    {
+      "label": "batch-create-entities/empty",
+      "schema": "BatchCreateEntitiesSchema",
+      "ok": true,
+      "data": []
+    },
+    {
+      "label": "batch-create-entities/toxic",
+      "schema": "BatchCreateEntitiesSchema",
+      "ok": true,
+      "data": []
+    },
+    {
+      "label": "batch-create-entities/item-fail",
+      "schema": "BatchCreateEntitiesSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            1,
+            "name"
+          ],
+          "message": "Entity name cannot be empty",
+          "origin": "string",
+          "inclusive": true,
+          "minimum": 1
+        },
+        {
+          "code": "invalid_type",
+          "path": [
+            1,
+            "entityType"
+          ],
+          "message": "Invalid input: expected string, received undefined",
+          "expected": "string"
+        },
+        {
+          "code": "invalid_type",
+          "path": [
+            1,
+            "observations"
+          ],
+          "message": "Invalid input: expected array, received undefined",
+          "expected": "array"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "batch-create-entities/not-array",
+      "schema": "BatchCreateEntitiesSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [],
+          "message": "Invalid input: expected array, received object",
+          "expected": "array"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "batch-create-relations/valid",
+      "schema": "BatchCreateRelationsSchema",
+      "ok": true,
+      "data": [
+        {
+          "from": "Alice",
+          "to": "Bob",
+          "relationType": "knows"
+        }
+      ]
+    },
+    {
+      "label": "batch-create-relations/empty",
+      "schema": "BatchCreateRelationsSchema",
+      "ok": true,
+      "data": []
+    },
+    {
+      "label": "entity-names/valid",
+      "schema": "EntityNamesSchema",
+      "ok": true,
+      "data": [
+        "Alice",
+        "Bob"
+      ]
+    },
+    {
+      "label": "entity-names/empty",
+      "schema": "EntityNamesSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [],
+          "message": "Must specify at least one entity name",
+          "origin": "array",
+          "inclusive": true,
+          "minimum": 1
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "entity-names/bad",
+      "schema": "EntityNamesSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            1
+          ],
+          "message": "Entity name cannot be empty",
+          "origin": "string",
+          "inclusive": true,
+          "minimum": 1
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "delete-relations/valid",
+      "schema": "DeleteRelationsSchema",
+      "ok": true,
+      "data": [
+        {
+          "from": "Alice",
+          "to": "Bob",
+          "relationType": "knows"
+        }
+      ]
+    },
+    {
+      "label": "delete-relations/empty",
+      "schema": "DeleteRelationsSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [],
+          "message": "Must specify at least one relation",
+          "origin": "array",
+          "inclusive": true,
+          "minimum": 1
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "add-observation/valid",
+      "schema": "AddObservationInputSchema",
+      "ok": true,
+      "data": {
+        "entityName": "Alice",
+        "contents": [
+          "x"
+        ]
+      }
+    },
+    {
+      "label": "add-observation/empty-contents",
+      "schema": "AddObservationInputSchema",
+      "ok": true,
+      "data": {
+        "entityName": "Alice",
+        "contents": []
+      }
+    },
+    {
+      "label": "add-observation/extra-key",
+      "schema": "AddObservationInputSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "unrecognized_keys",
+          "path": [],
+          "message": "Unrecognized key: \"extra\"",
+          "keys": [
+            "extra"
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "add-observations/valid",
+      "schema": "AddObservationsInputSchema",
+      "ok": true,
+      "data": [
+        {
+          "entityName": "Alice",
+          "contents": [
+            "x"
+          ]
+        }
+      ]
+    },
+    {
+      "label": "add-observations/empty",
+      "schema": "AddObservationsInputSchema",
+      "ok": true,
+      "data": []
+    },
+    {
+      "label": "delete-observation/valid",
+      "schema": "DeleteObservationInputSchema",
+      "ok": true,
+      "data": {
+        "entityName": "Alice",
+        "observations": [
+          "x"
+        ]
+      }
+    },
+    {
+      "label": "delete-observation/bad",
+      "schema": "DeleteObservationInputSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "entityName"
+          ],
+          "message": "Entity name cannot be empty",
+          "origin": "string",
+          "inclusive": true,
+          "minimum": 1
+        },
+        {
+          "code": "too_small",
+          "path": [
+            "observations",
+            0
+          ],
+          "message": "Observation cannot be empty",
+          "origin": "string",
+          "inclusive": true,
+          "minimum": 1
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "delete-observations/valid",
+      "schema": "DeleteObservationsInputSchema",
+      "ok": true,
+      "data": [
+        {
+          "entityName": "Alice",
+          "observations": [
+            "x"
+          ]
+        }
+      ]
+    },
+    {
+      "label": "delete-observations/empty",
+      "schema": "DeleteObservationsInputSchema",
+      "ok": true,
+      "data": []
+    },
+    {
+      "label": "archive-criteria/valid",
+      "schema": "ArchiveCriteriaSchema",
+      "ok": true,
+      "data": {
+        "importanceLessThan": 3,
+        "tags": [
+          "old"
+        ]
+      }
+    },
+    {
+      "label": "archive-criteria/empty",
+      "schema": "ArchiveCriteriaSchema",
+      "ok": true,
+      "data": {}
+    },
+    {
+      "label": "archive-criteria/bad-date",
+      "schema": "ArchiveCriteriaSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_format",
+          "path": [
+            "olderThan"
+          ],
+          "message": "Must be a valid ISO 8601 date string",
+          "origin": "string",
+          "pattern": "/^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$/",
+          "format": "datetime"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "archive-criteria/extra-key",
+      "schema": "ArchiveCriteriaSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "unrecognized_keys",
+          "path": [],
+          "message": "Unrecognized key: \"keep\"",
+          "keys": [
+            "keep"
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "saved-search/valid",
+      "schema": "SavedSearchInputSchema",
+      "ok": true,
+      "data": {
+        "name": "My search",
+        "query": "abc",
+        "minImportance": 2
+      }
+    },
+    {
+      "label": "saved-search/empty-name",
+      "schema": "SavedSearchInputSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "name"
+          ],
+          "message": "Search name cannot be empty",
+          "origin": "string",
+          "inclusive": true,
+          "minimum": 1
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "saved-search/missing-query",
+      "schema": "SavedSearchInputSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [
+            "query"
+          ],
+          "message": "Invalid input: expected string, received undefined",
+          "expected": "string"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "saved-search/extra-key",
+      "schema": "SavedSearchInputSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "unrecognized_keys",
+          "path": [],
+          "message": "Unrecognized key: \"extra\"",
+          "keys": [
+            "extra"
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "saved-search-update/valid",
+      "schema": "SavedSearchUpdateSchema",
+      "ok": true,
+      "data": {
+        "query": "abc"
+      }
+    },
+    {
+      "label": "saved-search-update/empty",
+      "schema": "SavedSearchUpdateSchema",
+      "ok": true,
+      "data": {}
+    },
+    {
+      "label": "saved-search-update/bad-importance",
+      "schema": "SavedSearchUpdateSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_big",
+          "path": [
+            "minImportance"
+          ],
+          "message": "Importance must be at most 10",
+          "origin": "number",
+          "inclusive": true,
+          "maximum": 10
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "import-format/valid",
+      "schema": "ImportFormatSchema",
+      "ok": true,
+      "data": "csv"
+    },
+    {
+      "label": "import-format/bad",
+      "schema": "ImportFormatSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_value",
+          "path": [],
+          "message": "Invalid option: expected one of \"json\"|\"csv\"|\"graphml\"",
+          "values": [
+            "json",
+            "csv",
+            "graphml"
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "extended-export-format/valid",
+      "schema": "ExtendedExportFormatSchema",
+      "ok": true,
+      "data": "json-ld"
+    },
+    {
+      "label": "extended-export-format/bad",
+      "schema": "ExtendedExportFormatSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_value",
+          "path": [],
+          "message": "Invalid option: expected one of \"json\"|\"csv\"|\"graphml\"|\"gexf\"|\"dot\"|\"markdown\"|\"mermaid\"|\"turtle\"|\"rdf-xml\"|\"json-ld\"",
+          "values": [
+            "json",
+            "csv",
+            "graphml",
+            "gexf",
+            "dot",
+            "markdown",
+            "mermaid",
+            "turtle",
+            "rdf-xml",
+            "json-ld"
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "merge-strategy/valid",
+      "schema": "MergeStrategySchema",
+      "ok": true,
+      "data": "merge"
+    },
+    {
+      "label": "merge-strategy/bad",
+      "schema": "MergeStrategySchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_value",
+          "path": [],
+          "message": "Invalid option: expected one of \"replace\"|\"skip\"|\"merge\"|\"fail\"",
+          "values": [
+            "replace",
+            "skip",
+            "merge",
+            "fail"
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "export-filter/valid",
+      "schema": "ExportFilterSchema",
+      "ok": true,
+      "data": {
+        "entityType": "person",
+        "tags": [
+          "a"
+        ]
+      }
+    },
+    {
+      "label": "export-filter/bad-date",
+      "schema": "ExportFilterSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_format",
+          "path": [
+            "startDate"
+          ],
+          "message": "Must be a valid ISO 8601 date string",
+          "origin": "string",
+          "pattern": "/^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$/",
+          "format": "datetime"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "export-filter/extra-key",
+      "schema": "ExportFilterSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "unrecognized_keys",
+          "path": [],
+          "message": "Unrecognized key: \"nope\"",
+          "keys": [
+            "nope"
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "optional-tags/valid",
+      "schema": "OptionalTagsSchema",
+      "ok": true,
+      "data": [
+        "a",
+        "b"
+      ]
+    },
+    {
+      "label": "optional-tags/absent",
+      "schema": "OptionalTagsSchema",
+      "ok": true
+    },
+    {
+      "label": "optional-tags/bad",
+      "schema": "OptionalTagsSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            0
+          ],
+          "message": "Tag cannot be empty",
+          "origin": "string",
+          "inclusive": true,
+          "minimum": 1
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "optional-entity-names/valid",
+      "schema": "OptionalEntityNamesSchema",
+      "ok": true,
+      "data": [
+        "Alice"
+      ]
+    },
+    {
+      "label": "optional-entity-names/absent",
+      "schema": "OptionalEntityNamesSchema",
+      "ok": true
+    },
+    {
+      "label": "knowledge-load/valid",
+      "schema": "knowledgeLoadSchema",
+      "ok": true,
+      "data": {
+        "role": "solver",
+        "taskHint": "ledger"
+      }
+    },
+    {
+      "label": "knowledge-load/full",
+      "schema": "knowledgeLoadSchema",
+      "ok": true,
+      "data": {
+        "role": "shared",
+        "taskHint": "x",
+        "budgetTokens": 100,
+        "sections": [
+          "instructions",
+          "skills"
+        ],
+        "includeSkillIds": [
+          "s1"
+        ],
+        "maxSkills": 5
+      }
+    },
+    {
+      "label": "knowledge-load/bad-role",
+      "schema": "knowledgeLoadSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_value",
+          "path": [
+            "role"
+          ],
+          "message": "Invalid option: expected one of \"solver\"|\"learner\"|\"shared\"",
+          "values": [
+            "solver",
+            "learner",
+            "shared"
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "knowledge-load/extra-key",
+      "schema": "knowledgeLoadSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "unrecognized_keys",
+          "path": [],
+          "message": "Unrecognized key: \"zzz\"",
+          "keys": [
+            "zzz"
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "knowledge-load/missing-hint",
+      "schema": "knowledgeLoadSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [
+            "taskHint"
+          ],
+          "message": "Invalid input: expected string, received undefined",
+          "expected": "string"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "knowledge-load/too-many-sections",
+      "schema": "knowledgeLoadSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_big",
+          "path": [
+            "sections"
+          ],
+          "message": "Too big: expected array to have <=3 items",
+          "origin": "array",
+          "inclusive": true,
+          "maximum": 3
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "knowledge-load/zero-maxskills",
+      "schema": "knowledgeLoadSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "maxSkills"
+          ],
+          "message": "Too small: expected number to be >=1",
+          "origin": "number",
+          "inclusive": true,
+          "minimum": 1
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "skills-publish/valid",
+      "schema": "skillsPublishSchema",
+      "ok": true,
+      "data": {
+        "dir": "sub",
+        "snapshotId": "s1"
+      }
+    },
+    {
+      "label": "skills-publish/empty",
+      "schema": "skillsPublishSchema",
+      "ok": true,
+      "data": {}
+    },
+    {
+      "label": "skills-publish/extra-key",
+      "schema": "skillsPublishSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "unrecognized_keys",
+          "path": [],
+          "message": "Unrecognized key: \"other\"",
+          "keys": [
+            "other"
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "skills-import/valid",
+      "schema": "skillsImportSchema",
+      "ok": true,
+      "data": {
+        "dir": "sub"
+      }
+    },
+    {
+      "label": "skills-import/empty-dir",
+      "schema": "skillsImportSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "dir"
+          ],
+          "message": "Too small: expected string to have >=1 characters",
+          "origin": "string",
+          "inclusive": true,
+          "minimum": 1
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "learn-start/valid",
+      "schema": "learnStartSchema",
+      "ok": true,
+      "data": {
+        "tasks": [
+          {
+            "id": "t1",
+            "input": "What is the total?",
+            "rubric": [
+              {
+                "id": "c1",
+                "text": "Mentions 42",
+                "kind": "fact"
+              }
+            ]
+          }
+        ],
+        "budget": {
+          "maxRounds": 2
+        }
+      }
+    },
+    {
+      "label": "learn-start/full",
+      "schema": "learnStartSchema",
+      "ok": true,
+      "data": {
+        "tasks": [
+          {
+            "id": "t1",
+            "input": "What is the total?",
+            "rubric": [
+              {
+                "id": "c1",
+                "text": "Mentions 42",
+                "kind": "fact"
+              }
+            ]
+          }
+        ],
+        "taskIds": [
+          "t1"
+        ],
+        "budget": {
+          "maxRounds": 1,
+          "maxTokens": 10,
+          "maxWallClockMs": 20,
+          "maxChildren": 2
+        },
+        "split": "auto",
+        "validationSampleSize": 1,
+        "validationRepeats": 2,
+        "concurrency": 4,
+        "leafThreshold": 5,
+        "maxDepth": 1,
+        "sessionId": "s",
+        "subsetLabel": "a"
+      }
+    },
+    {
+      "label": "learn-start/empty-tasks",
+      "schema": "learnStartSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "tasks"
+          ],
+          "message": "Too small: expected array to have >=1 items",
+          "origin": "array",
+          "inclusive": true,
+          "minimum": 1
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "learn-start/duplicate-task-ids",
+      "schema": "learnStartSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "tasks"
+          ],
+          "message": "task ids must be unique"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "learn-start/reserved-task-id",
+      "schema": "learnStartSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "tasks",
+            0,
+            "id"
+          ],
+          "message": "reserved key (__proto__, constructor, prototype)"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "learn-start/reserved-source-key",
+      "schema": "learnStartSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [
+            "tasks",
+            0,
+            "sources"
+          ],
+          "message": "Invalid input: expected array, received object",
+          "expected": "array"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "learn-start/bad-task-item",
+      "schema": "learnStartSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "tasks",
+            0,
+            "input"
+          ],
+          "message": "Too small: expected string to have >=1 characters",
+          "origin": "string",
+          "inclusive": true,
+          "minimum": 1
+        },
+        {
+          "code": "invalid_type",
+          "path": [
+            "tasks",
+            0,
+            "rubric"
+          ],
+          "message": "Invalid input: expected array, received undefined",
+          "expected": "array"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "learn-start/extra-task-key",
+      "schema": "learnStartSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "unrecognized_keys",
+          "path": [
+            "tasks",
+            0
+          ],
+          "message": "Unrecognized key: \"extra\"",
+          "keys": [
+            "extra"
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "learn-start/missing-budget",
+      "schema": "learnStartSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [
+            "budget"
+          ],
+          "message": "Invalid input: expected object, received undefined",
+          "expected": "object"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "learn-start/bad-split",
+      "schema": "learnStartSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_value",
+          "path": [
+            "split"
+          ],
+          "message": "Invalid option: expected one of \"byCategory\"|\"byFailureMode\"|\"bySkill\"|\"byTool\"|\"auto\"",
+          "values": [
+            "byCategory",
+            "byFailureMode",
+            "bySkill",
+            "byTool",
+            "auto"
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "learn-start/bad-rubric",
+      "schema": "learnStartSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_value",
+          "path": [
+            "tasks",
+            0,
+            "rubric",
+            0,
+            "kind"
+          ],
+          "message": "Invalid option: expected one of \"fact\"|\"document\"|\"set-exact\"|\"set-precision\"|\"number\"|\"free\"",
+          "values": [
+            "fact",
+            "document",
+            "set-exact",
+            "set-precision",
+            "number",
+            "free"
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "learn-start/infinite-tolerance",
+      "schema": "learnStartSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [
+            "tasks",
+            0,
+            "rubric",
+            0,
+            "tolerance"
+          ],
+          "message": "Invalid input: expected number, received Infinity",
+          "expected": "number",
+          "received": "Infinity"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "learn-start/not-an-object",
+      "schema": "learnStartSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [],
+          "message": "Invalid input: expected object, received string",
+          "expected": "object"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "trace-id/valid",
+      "schema": "traceIdSchema",
+      "ok": true,
+      "data": {
+        "traceId": "t1"
+      }
+    },
+    {
+      "label": "trace-id/extra-key",
+      "schema": "traceIdSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "unrecognized_keys",
+          "path": [],
+          "message": "Unrecognized key: \"extra\"",
+          "keys": [
+            "extra"
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "trace-id/empty",
+      "schema": "traceIdSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "traceId"
+          ],
+          "message": "Too small: expected string to have >=1 characters",
+          "origin": "string",
+          "inclusive": true,
+          "minimum": 1
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "trace-id/missing",
+      "schema": "traceIdSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [
+            "traceId"
+          ],
+          "message": "Invalid input: expected string, received undefined",
+          "expected": "string"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "learn-submit/solve",
+      "schema": "learnSubmitSchema",
+      "ok": true,
+      "data": {
+        "traceId": "t1",
+        "kind": "solve",
+        "payload": {
+          "a": {
+            "answer": "x",
+            "traceAddrs": [
+              "e1"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "label": "learn-submit/judge",
+      "schema": "learnSubmitSchema",
+      "ok": true,
+      "data": {
+        "traceId": "t1",
+        "kind": "judge",
+        "payload": {
+          "a": [
+            {
+              "criterionId": "c1",
+              "pass": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "label": "learn-submit/null-payload-entry",
+      "schema": "learnSubmitSchema",
+      "ok": true,
+      "data": {
+        "traceId": "t1",
+        "kind": "solve",
+        "payload": {
+          "a": null
+        }
+      }
+    },
+    {
+      "label": "learn-submit/bad-kind",
+      "schema": "learnSubmitSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_union",
+          "path": [
+            "kind"
+          ],
+          "message": "Invalid discriminator value. Expected 'solve' | 'judge'",
+          "options": [
+            "solve",
+            "judge"
+          ],
+          "discriminator": "kind",
+          "note": "No matching discriminator",
+          "errors": []
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "learn-submit/missing-kind",
+      "schema": "learnSubmitSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_union",
+          "path": [
+            "kind"
+          ],
+          "message": "Invalid discriminator value. Expected 'solve' | 'judge'",
+          "options": [
+            "solve",
+            "judge"
+          ],
+          "discriminator": "kind",
+          "note": "No matching discriminator",
+          "errors": []
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "learn-submit/not-an-object",
+      "schema": "learnSubmitSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [],
+          "message": "Invalid input: expected object, received array",
+          "expected": "object"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "learn-submit/bad-solve-body",
+      "schema": "learnSubmitSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [
+            "payload",
+            "a",
+            "traceAddrs"
+          ],
+          "message": "Invalid input: expected array, received undefined",
+          "expected": "array"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "learn-submit/reserved-payload-key",
+      "schema": "learnSubmitSchema",
+      "ok": true,
+      "data": {
+        "traceId": "t1",
+        "kind": "solve",
+        "payload": {
+          "unsafe": {
+            "answer": "x",
+            "traceAddrs": []
+          }
+        }
+      }
+    },
+    {
+      "label": "learn-submit/extra-key",
+      "schema": "learnSubmitSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "unrecognized_keys",
+          "path": [],
+          "message": "Unrecognized key: \"extra\"",
+          "keys": [
+            "extra"
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "submit-child/valid",
+      "schema": "submitChildSchema",
+      "ok": true,
+      "data": {
+        "traceId": "t1",
+        "childTraceId": "t2"
+      }
+    },
+    {
+      "label": "submit-child/with-failure",
+      "schema": "submitChildSchema",
+      "ok": true,
+      "data": {
+        "traceId": "t1",
+        "childTraceId": "t2",
+        "failure": "boom"
+      }
+    },
+    {
+      "label": "submit-child/missing-child",
+      "schema": "submitChildSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [
+            "childTraceId"
+          ],
+          "message": "Invalid input: expected string, received undefined",
+          "expected": "string"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "submit-child/extra-key",
+      "schema": "submitChildSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "unrecognized_keys",
+          "path": [],
+          "message": "Unrecognized key: \"nope\"",
+          "keys": [
+            "nope"
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "log-append/valid",
+      "schema": "logAppendSchema",
+      "ok": true,
+      "data": {
+        "sessionId": "s",
+        "kind": "note",
+        "content": "x"
+      }
+    },
+    {
+      "label": "log-append/full",
+      "schema": "logAppendSchema",
+      "ok": true,
+      "data": {
+        "sessionId": "s",
+        "kind": "tool_call",
+        "tag": "t",
+        "content": "x",
+        "ts": "2026-01-15T12:00:00.123Z",
+        "tokens": {
+          "input": 1,
+          "output": 2
+        }
+      }
+    },
+    {
+      "label": "log-append/bad-kind",
+      "schema": "logAppendSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_value",
+          "path": [
+            "kind"
+          ],
+          "message": "Invalid option: expected one of \"model\"|\"tool_call\"|\"tool_output\"|\"note\"|\"feedback\"",
+          "values": [
+            "model",
+            "tool_call",
+            "tool_output",
+            "note",
+            "feedback"
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "log-append/bad-ts",
+      "schema": "logAppendSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_format",
+          "path": [
+            "ts"
+          ],
+          "message": "Invalid ISO datetime",
+          "origin": "string",
+          "pattern": "/^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$/",
+          "format": "datetime"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "log-append/offset-ts",
+      "schema": "logAppendSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_format",
+          "path": [
+            "ts"
+          ],
+          "message": "Invalid ISO datetime",
+          "origin": "string",
+          "pattern": "/^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$/",
+          "format": "datetime"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "log-append/negative-tokens",
+      "schema": "logAppendSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "tokens",
+            "input"
+          ],
+          "message": "Too small: expected number to be >=0",
+          "origin": "number",
+          "inclusive": true,
+          "minimum": 0
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "log-append/extra-key",
+      "schema": "logAppendSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "unrecognized_keys",
+          "path": [],
+          "message": "Unrecognized key: \"extra\"",
+          "keys": [
+            "extra"
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "log-select/valid",
+      "schema": "logSelectSchema",
+      "ok": true,
+      "data": {
+        "addr": "e12"
+      }
+    },
+    {
+      "label": "log-select/full",
+      "schema": "logSelectSchema",
+      "ok": true,
+      "data": {
+        "addr": "e1",
+        "regex": "a+",
+        "lines": [
+          1,
+          2
+        ],
+        "fields": [
+          "content"
+        ]
+      }
+    },
+    {
+      "label": "log-select/bad-addr",
+      "schema": "logSelectSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_format",
+          "path": [
+            "addr"
+          ],
+          "message": "addr must look like e<n>",
+          "origin": "string",
+          "pattern": "/^e[1-9]\\d*$/",
+          "format": "regex"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "log-select/e0-addr",
+      "schema": "logSelectSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_format",
+          "path": [
+            "addr"
+          ],
+          "message": "addr must look like e<n>",
+          "origin": "string",
+          "pattern": "/^e[1-9]\\d*$/",
+          "format": "regex"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "log-select/short-lines",
+      "schema": "logSelectSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "lines"
+          ],
+          "message": "Too small: expected array to have >=2 items",
+          "origin": "array",
+          "inclusive": true,
+          "minimum": 2
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "log-select/long-lines",
+      "schema": "logSelectSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_big",
+          "path": [
+            "lines"
+          ],
+          "message": "Too big: expected array to have <=2 items",
+          "origin": "array",
+          "inclusive": true,
+          "maximum": 2
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "log-select/bad-line-bound",
+      "schema": "logSelectSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "lines",
+            0
+          ],
+          "message": "Too small: expected number to be >=1",
+          "origin": "number",
+          "inclusive": true,
+          "minimum": 1
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "log-select/empty-regex",
+      "schema": "logSelectSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "regex"
+          ],
+          "message": "Too small: expected string to have >=1 characters",
+          "origin": "string",
+          "inclusive": true,
+          "minimum": 1
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "log-select/extra-key",
+      "schema": "logSelectSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "unrecognized_keys",
+          "path": [],
+          "message": "Unrecognized key: \"extra\"",
+          "keys": [
+            "extra"
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "eval-run/valid",
+      "schema": "evalRunSchema",
+      "ok": true,
+      "data": {
+        "tasks": [
+          {
+            "id": "t1",
+            "input": "What is the total?",
+            "rubric": [
+              {
+                "id": "c1",
+                "text": "Mentions 42",
+                "kind": "fact"
+              }
+            ]
+          }
+        ],
+        "answers": {
+          "t1": "42"
+        }
+      }
+    },
+    {
+      "label": "eval-run/full",
+      "schema": "evalRunSchema",
+      "ok": true,
+      "data": {
+        "tasks": [
+          {
+            "id": "t1",
+            "input": "What is the total?",
+            "rubric": [
+              {
+                "id": "c1",
+                "text": "Mentions 42",
+                "kind": "fact"
+              }
+            ]
+          }
+        ],
+        "answers": {
+          "t1": "42"
+        },
+        "knowledge": "k",
+        "concurrency": 2
+      }
+    },
+    {
+      "label": "eval-run/missing-answers",
+      "schema": "evalRunSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [
+            "answers"
+          ],
+          "message": "Invalid input: expected record, received undefined",
+          "expected": "record"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "eval-run/reserved-answer-key",
+      "schema": "evalRunSchema",
+      "ok": true,
+      "data": {
+        "tasks": [
+          {
+            "id": "t1",
+            "input": "What is the total?",
+            "rubric": [
+              {
+                "id": "c1",
+                "text": "Mentions 42",
+                "kind": "fact"
+              }
+            ]
+          }
+        ],
+        "answers": {
+          "__proto__x": "1"
+        }
+      }
+    },
+    {
+      "label": "eval-run/bad-concurrency",
+      "schema": "evalRunSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_big",
+          "path": [
+            "concurrency"
+          ],
+          "message": "Too big: expected number to be <=64",
+          "origin": "number",
+          "inclusive": true,
+          "maximum": 64
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "eval-run/not-an-object",
+      "schema": "evalRunSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [],
+          "message": "Invalid input: expected object, received string",
+          "expected": "object"
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "eval-run/extra-key",
+      "schema": "evalRunSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "unrecognized_keys",
+          "path": [],
+          "message": "Unrecognized key: \"extra\"",
+          "keys": [
+            "extra"
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "pg-node/valid",
+      "schema": "PGNodeSchema",
+      "ok": true,
+      "data": {
+        "id": "n1",
+        "type": "ACTION",
+        "description": "d"
+      }
+    },
+    {
+      "label": "pg-node/with-action",
+      "schema": "PGNodeSchema",
+      "ok": true,
+      "data": {
+        "id": "n1",
+        "type": "SKILL",
+        "description": "d",
+        "actionName": "a"
+      }
+    },
+    {
+      "label": "pg-node/bad-type",
+      "schema": "PGNodeSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_value",
+          "path": [
+            "type"
+          ],
+          "message": "Invalid option: expected one of \"ACTION\"|\"SKILL\"|\"REASONING\"|\"STATE\"",
+          "values": [
+            "ACTION",
+            "SKILL",
+            "REASONING",
+            "STATE"
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "pg-node/empty-id",
+      "schema": "PGNodeSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "id"
+          ],
+          "message": "Too small: expected string to have >=1 characters",
+          "origin": "string",
+          "inclusive": true,
+          "minimum": 1
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "pg-node/extra-key",
+      "schema": "PGNodeSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "unrecognized_keys",
+          "path": [],
+          "message": "Unrecognized key: \"x\"",
+          "keys": [
+            "x"
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "pg-edge/valid",
+      "schema": "PGEdgeSchema",
+      "ok": true,
+      "data": {
+        "source": "a",
+        "relation": "r",
+        "target": "b",
+        "condition": null,
+        "guidance": "g",
+        "pitfalls": "p"
+      }
+    },
+    {
+      "label": "pg-edge/bad-condition",
+      "schema": "PGEdgeSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_union",
+          "path": [
+            "condition"
+          ],
+          "message": "Invalid input",
+          "errors": [
+            [
+              {
+                "code": "invalid_type",
+                "path": [],
+                "message": "Invalid input: expected string, received number",
+                "expected": "string"
+              }
+            ],
+            [
+              {
+                "code": "invalid_type",
+                "path": [],
+                "message": "Invalid input: expected null, received number",
+                "expected": "null"
+              }
+            ]
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "pg-edge/missing-guidance",
+      "schema": "PGEdgeSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_union",
+          "path": [
+            "guidance"
+          ],
+          "message": "Invalid input",
+          "errors": [
+            [
+              {
+                "code": "invalid_type",
+                "path": [],
+                "message": "Invalid input: expected string, received undefined",
+                "expected": "string"
+              }
+            ],
+            [
+              {
+                "code": "invalid_type",
+                "path": [],
+                "message": "Invalid input: expected null, received undefined",
+                "expected": "null"
+              }
+            ]
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "pg-snapshot/valid",
+      "schema": "PGSnapshotSchema",
+      "ok": true,
+      "data": {
+        "schemaVersion": 1,
+        "graphId": "g1",
+        "revisionId": "r1",
+        "entryNodeId": "n1",
+        "relationVocabulary": [
+          "LEADS_TO"
+        ],
+        "cyclePolicy": "allow",
+        "toolCatalogHash": "h1",
+        "nodes": [
+          {
+            "id": "n1",
+            "type": "ACTION",
+            "description": "start"
+          }
+        ],
+        "edges": [
+          {
+            "source": "n1",
+            "relation": "LEADS_TO",
+            "target": "n1",
+            "condition": null,
+            "guidance": null,
+            "pitfalls": null
+          }
+        ]
+      }
+    },
+    {
+      "label": "pg-snapshot/with-parent",
+      "schema": "PGSnapshotSchema",
+      "ok": true,
+      "data": {
+        "schemaVersion": 1,
+        "graphId": "g1",
+        "revisionId": "r1",
+        "parentRevisionId": "r0",
+        "entryNodeId": "n1",
+        "relationVocabulary": [
+          "LEADS_TO"
+        ],
+        "cyclePolicy": "allow",
+        "toolCatalogHash": "h1",
+        "nodes": [
+          {
+            "id": "n1",
+            "type": "ACTION",
+            "description": "start"
+          }
+        ],
+        "edges": [
+          {
+            "source": "n1",
+            "relation": "LEADS_TO",
+            "target": "n1",
+            "condition": null,
+            "guidance": null,
+            "pitfalls": null
+          }
+        ]
+      }
+    },
+    {
+      "label": "pg-snapshot/bad-version",
+      "schema": "PGSnapshotSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_value",
+          "path": [
+            "schemaVersion"
+          ],
+          "message": "Invalid input: expected 1",
+          "values": [
+            1
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "pg-snapshot/bad-policy",
+      "schema": "PGSnapshotSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_value",
+          "path": [
+            "cyclePolicy"
+          ],
+          "message": "Invalid option: expected one of \"allow\"|\"repair\"|\"reject\"",
+          "values": [
+            "allow",
+            "repair",
+            "reject"
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "pg-snapshot/bad-node",
+      "schema": "PGSnapshotSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_value",
+          "path": [
+            "nodes",
+            0,
+            "type"
+          ],
+          "message": "Invalid option: expected one of \"ACTION\"|\"SKILL\"|\"REASONING\"|\"STATE\"",
+          "values": [
+            "ACTION",
+            "SKILL",
+            "REASONING",
+            "STATE"
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "pg-snapshot/extra-key",
+      "schema": "PGSnapshotSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "unrecognized_keys",
+          "path": [],
+          "message": "Unrecognized key: \"extra\"",
+          "keys": [
+            "extra"
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "pg-edit-set/valid",
+      "schema": "PGEditSetSchema",
+      "ok": true,
+      "data": {
+        "add_nodes": [],
+        "delete_nodes": [],
+        "add_edges": [],
+        "delete_edges": []
+      }
+    },
+    {
+      "label": "pg-edit-set/with-items",
+      "schema": "PGEditSetSchema",
+      "ok": true,
+      "data": {
+        "add_nodes": [
+          {
+            "id": "n1",
+            "type": "STATE",
+            "description": "d"
+          }
+        ],
+        "delete_nodes": [
+          "n2"
+        ],
+        "add_edges": [
+          {
+            "source": "n1",
+            "relation": "r",
+            "target": "n2",
+            "condition": null,
+            "guidance": "g",
+            "pitfalls": "p"
+          }
+        ],
+        "delete_edges": [
+          {
+            "source": "n1",
+            "target": "n2"
+          }
+        ]
+      }
+    },
+    {
+      "label": "pg-edit-set/bad-delete-node",
+      "schema": "PGEditSetSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "delete_nodes",
+            0
+          ],
+          "message": "Too small: expected string to have >=1 characters",
+          "origin": "string",
+          "inclusive": true,
+          "minimum": 1
+        }
+      ],
+      "errorName": "ZodError"
+    },
+    {
+      "label": "pg-edit-set/extra-key",
+      "schema": "PGEditSetSchema",
+      "ok": false,
+      "issues": [
+        {
+          "code": "unrecognized_keys",
+          "path": [],
+          "message": "Unrecognized key: \"extra\"",
+          "keys": [
+            "extra"
+          ]
+        }
+      ],
+      "errorName": "ZodError"
+    }
+  ],
+  "errorShapes": [
+    {
+      "label": "error/entity-multi",
+      "schema": "EntitySchema",
+      "errorName": "ZodError",
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "name"
+          ],
+          "message": "Entity name cannot be empty",
+          "origin": "string",
+          "inclusive": true,
+          "minimum": 1
+        },
+        {
+          "code": "too_small",
+          "path": [
+            "entityType"
+          ],
+          "message": "Entity type cannot be empty",
+          "origin": "string",
+          "inclusive": true,
+          "minimum": 1
+        },
+        {
+          "code": "too_small",
+          "path": [
+            "observations",
+            0
+          ],
+          "message": "Observation cannot be empty",
+          "origin": "string",
+          "inclusive": true,
+          "minimum": 1
+        }
+      ]
+    },
+    {
+      "label": "error/trace-id",
+      "schema": "traceIdSchema",
+      "errorName": "ZodError",
+      "issues": [
+        {
+          "code": "unrecognized_keys",
+          "path": [],
+          "message": "Unrecognized key: \"extra\"",
+          "keys": [
+            "extra"
+          ]
+        }
+      ]
+    },
+    {
+      "label": "error/discriminated",
+      "schema": "learnSubmitSchema",
+      "errorName": "ZodError",
+      "issues": [
+        {
+          "code": "invalid_union",
+          "path": [
+            "kind"
+          ],
+          "message": "Invalid discriminator value. Expected 'solve' | 'judge'",
+          "options": [
+            "solve",
+            "judge"
+          ],
+          "discriminator": "kind",
+          "note": "No matching discriminator",
+          "errors": []
+        }
+      ]
+    },
+    {
+      "label": "error/tuple",
+      "schema": "logSelectSchema",
+      "errorName": "ZodError",
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "lines"
+          ],
+          "message": "Too small: expected array to have >=2 items",
+          "origin": "array",
+          "inclusive": true,
+          "minimum": 2
+        }
+      ]
+    },
+    {
+      "label": "error/reserved-record-key",
+      "schema": "learnSubmitSchema",
+      "errorName": "ZodError",
+      "issues": [
+        {
+          "code": "invalid_key",
+          "path": [
+            "payload",
+            "constructor"
+          ],
+          "message": "Invalid key in record",
+          "origin": "record"
+        }
+      ]
+    }
+  ],
+  "opResults": [
+    {
+      "label": "format/entity-multi",
+      "op": "formatZodErrors",
+      "schema": "EntitySchema",
+      "output": [
+        "name: Entity name cannot be empty",
+        "entityType: Entity type cannot be empty",
+        "observations: Invalid input: expected array, received string"
+      ]
+    },
+    {
+      "label": "format/entity-extra-key",
+      "op": "formatZodErrors",
+      "schema": "EntitySchema",
+      "output": [
+        "Unrecognized key: \"isAdmin\""
+      ]
+    },
+    {
+      "label": "format/search-query",
+      "op": "formatZodErrors",
+      "schema": "SearchQuerySchema",
+      "output": [
+        "Search query cannot be empty"
+      ]
+    },
+    {
+      "label": "format/update-entity",
+      "op": "formatZodErrors",
+      "schema": "UpdateEntitySchema",
+      "output": [
+        "importance: Importance must be at most 10"
+      ]
+    },
+    {
+      "label": "issues/trace-id",
+      "op": "issuesOf",
+      "schema": "traceIdSchema",
+      "output": "traceId: Too small: expected string to have >=1 characters; (root): Unrecognized key: \"extra\""
+    },
+    {
+      "label": "issues/eval-run",
+      "op": "issuesOf",
+      "schema": "evalRunSchema",
+      "output": "tasks: Too small: expected array to have >=1 items; answers: Invalid input: expected record, received number"
+    },
+    {
+      "label": "issues/log-select",
+      "op": "issuesOf",
+      "schema": "logSelectSchema",
+      "output": "addr: addr must look like e<n>"
+    },
+    {
+      "label": "issues/learn-submit",
+      "op": "issuesOf",
+      "schema": "learnSubmitSchema",
+      "output": "payload: Invalid input: expected record, received number"
+    }
+  ],
+  "jsonSchemas": [
+    {
+      "schema": "knowledgeLoadSchema",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "solver",
+              "learner",
+              "shared"
+            ]
+          },
+          "taskHint": {
+            "type": "string",
+            "maxLength": 200000
+          },
+          "budgetTokens": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000000
+          },
+          "sections": {
+            "maxItems": 3,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "instructions",
+                "skills",
+                "failures"
+              ]
+            }
+          },
+          "includeSkillIds": {
+            "maxItems": 200,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          "maxSkills": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200
+          }
+        },
+        "required": [
+          "role",
+          "taskHint"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "schema": "skillsPublishSchema",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "dir": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "snapshotId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "schema": "skillsImportSchema",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "dir": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "schema": "learnStartSchema",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "tasks": {
+            "minItems": 1,
+            "maxItems": 1000,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "input": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200000
+                },
+                "category": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "tags": {
+                  "maxItems": 100,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "maxLength": 200
+                  }
+                },
+                "tools": {
+                  "maxItems": 100,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "maxLength": 200
+                  }
+                },
+                "difficulty": {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                "sources": {
+                  "maxItems": 100,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    "additionalProperties": {}
+                  }
+                },
+                "rubric": {
+                  "maxItems": 200,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "text": {
+                        "type": "string",
+                        "maxLength": 4000
+                      },
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "fact",
+                          "document",
+                          "set-exact",
+                          "set-precision",
+                          "number",
+                          "free"
+                        ]
+                      },
+                      "expected": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        ]
+                      },
+                      "tolerance": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "weight": {
+                        "type": "number",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "text",
+                      "kind"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "input",
+                "rubric"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "taskIds": {
+            "minItems": 1,
+            "maxItems": 1000,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "budget": {
+            "type": "object",
+            "properties": {
+              "maxRounds": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 1000
+              },
+              "maxTokens": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1000000
+              },
+              "maxWallClockMs": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1000000
+              },
+              "maxChildren": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1000000
+              }
+            },
+            "required": [
+              "maxRounds"
+            ],
+            "additionalProperties": false
+          },
+          "split": {
+            "type": "string",
+            "enum": [
+              "byCategory",
+              "byFailureMode",
+              "bySkill",
+              "byTool",
+              "auto"
+            ]
+          },
+          "validationSampleSize": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000
+          },
+          "validationRepeats": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10
+          },
+          "concurrency": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 64
+          },
+          "leafThreshold": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000
+          },
+          "maxDepth": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "subsetLabel": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "tasks",
+          "budget"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "schema": "traceIdSchema",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "traceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "traceId"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "schema": "learnSubmitSchema",
+      "jsonSchema": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "traceId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "kind": {
+                "type": "string",
+                "const": "solve"
+              },
+              "payload": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "answer": {
+                          "type": "string",
+                          "maxLength": 200000
+                        },
+                        "traceAddrs": {
+                          "maxItems": 1000,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 64
+                          }
+                        },
+                        "tokens": {
+                          "type": "object",
+                          "properties": {
+                            "input": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1000000
+                            },
+                            "output": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1000000
+                            }
+                          },
+                          "required": [
+                            "input",
+                            "output"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "answer",
+                        "traceAddrs"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              }
+            },
+            "required": [
+              "traceId",
+              "kind",
+              "payload"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "traceId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "kind": {
+                "type": "string",
+                "const": "judge"
+              },
+              "payload": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "criterionId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "pass": {
+                            "type": "boolean"
+                          },
+                          "note": {
+                            "type": "string",
+                            "maxLength": 4000
+                          }
+                        },
+                        "required": [
+                          "criterionId",
+                          "pass"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              }
+            },
+            "required": [
+              "traceId",
+              "kind",
+              "payload"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    {
+      "schema": "submitChildSchema",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "traceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "childTraceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "failure": {
+            "type": "string",
+            "maxLength": 4000
+          }
+        },
+        "required": [
+          "traceId",
+          "childTraceId"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "schema": "logAppendSchema",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "model",
+              "tool_call",
+              "tool_output",
+              "note",
+              "feedback"
+            ]
+          },
+          "tag": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 4194304
+          },
+          "ts": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "tokens": {
+            "type": "object",
+            "properties": {
+              "input": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1000000
+              },
+              "output": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1000000
+              }
+            },
+            "required": [
+              "input",
+              "output"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "sessionId",
+          "kind",
+          "content"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "schema": "logSelectSchema",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "addr": {
+            "type": "string",
+            "pattern": "^e[1-9]\\d*$"
+          },
+          "regex": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "lines": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              }
+            ],
+            "items": false,
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "fields": {
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 100
+            }
+          }
+        },
+        "required": [
+          "addr"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "schema": "evalRunSchema",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "tasks": {
+            "minItems": 1,
+            "maxItems": 1000,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "input": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200000
+                },
+                "category": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "tags": {
+                  "maxItems": 100,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "maxLength": 200
+                  }
+                },
+                "tools": {
+                  "maxItems": 100,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "maxLength": 200
+                  }
+                },
+                "difficulty": {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                "sources": {
+                  "maxItems": 100,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    "additionalProperties": {}
+                  }
+                },
+                "rubric": {
+                  "maxItems": 200,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "text": {
+                        "type": "string",
+                        "maxLength": 4000
+                      },
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "fact",
+                          "document",
+                          "set-exact",
+                          "set-precision",
+                          "number",
+                          "free"
+                        ]
+                      },
+                      "expected": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        ]
+                      },
+                      "tolerance": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "weight": {
+                        "type": "number",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "text",
+                      "kind"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "input",
+                "rubric"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "answers": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 200000
+            }
+          },
+          "knowledge": {
+            "type": "string",
+            "maxLength": 200000
+          },
+          "concurrency": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 64
+          }
+        },
+        "required": [
+          "tasks",
+          "answers"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "schema": "EntitySchema",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "entityType": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "observations": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 5000
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "lastModified": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          "importance": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "parentId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "contentHash": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "name",
+          "entityType",
+          "observations"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "schema": "CreateEntitySchema",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "entityType": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "observations": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 5000
+            }
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          "importance": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "parentId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "projectId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "lastModified": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "ttl": {
+            "type": "number"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "version": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "parentEntityName": {
+            "type": "string"
+          },
+          "rootEntityName": {
+            "type": "string"
+          },
+          "isLatest": {
+            "type": "boolean"
+          },
+          "supersededBy": {
+            "type": "string"
+          },
+          "causedByFailureId": {
+            "type": "string"
+          },
+          "contentHash": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64
+          },
+          "validFrom": {
+            "type": "string"
+          },
+          "validUntil": {
+            "type": "string"
+          },
+          "observationMeta": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "content": {
+                  "type": "string"
+                },
+                "validFrom": {
+                  "type": "string"
+                },
+                "validUntil": {
+                  "type": "string"
+                },
+                "recordedAt": {
+                  "type": "string"
+                },
+                "sourceRef": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "content"
+              ]
+            }
+          },
+          "lifecycleStatus": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "archived"
+            ]
+          },
+          "heuristicRecord": {},
+          "planRecord": {},
+          "skillRecord": {},
+          "instructionSetRecord": {},
+          "knowledgeSnapshotRecord": {},
+          "knowledgeRevisionRecord": {},
+          "navigationNodeRecord": {},
+          "coverageRecord": {},
+          "taskRecord": {},
+          "learningTraceRecord": {},
+          "memoryType": {
+            "type": "string"
+          },
+          "agentId": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string"
+          },
+          "confirmationCount": {
+            "type": "number"
+          },
+          "accessCount": {
+            "type": "number"
+          },
+          "source": {}
+        },
+        "required": [
+          "name",
+          "entityType",
+          "observations"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "schema": "UpdateEntitySchema",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "entityType": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "observations": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 5000
+            }
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          "importance": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "parentId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "lastModified": {
+            "type": "string"
+          },
+          "ttl": {
+            "type": "number"
+          },
+          "confidence": {
+            "type": "number"
+          },
+          "freshnessScore": {
+            "type": "number"
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          },
+          "isLatest": {
+            "type": "boolean"
+          },
+          "supersededBy": {
+            "type": "string"
+          },
+          "rootEntityName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "parentEntityName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "causedByFailureId": {
+            "type": "string"
+          },
+          "contentHash": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64
+          },
+          "validFrom": {
+            "type": "string"
+          },
+          "validUntil": {
+            "type": "string"
+          },
+          "observationMeta": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "content": {
+                  "type": "string"
+                },
+                "validFrom": {
+                  "type": "string"
+                },
+                "validUntil": {
+                  "type": "string"
+                },
+                "recordedAt": {
+                  "type": "string"
+                },
+                "sourceRef": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "content"
+              ]
+            }
+          },
+          "lifecycleStatus": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "archived"
+            ]
+          },
+          "memoryType": {
+            "type": "string"
+          },
+          "sessionId": {
+            "type": "string"
+          },
+          "conversationId": {
+            "type": "string"
+          },
+          "taskId": {
+            "type": "string"
+          },
+          "isWorkingMemory": {
+            "type": "boolean"
+          },
+          "promotedAt": {
+            "type": "string"
+          },
+          "promotedFrom": {
+            "type": "string"
+          },
+          "markedForPromotion": {
+            "type": "boolean"
+          },
+          "accessCount": {
+            "type": "number"
+          },
+          "lastAccessedAt": {
+            "type": "string"
+          },
+          "accessPattern": {
+            "type": "string"
+          },
+          "confirmationCount": {
+            "type": "number"
+          },
+          "decayRate": {
+            "type": "number"
+          },
+          "agentId": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string"
+          },
+          "source": {},
+          "allowedRoles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "visibleFrom": {
+            "type": "string"
+          },
+          "visibleUntil": {
+            "type": "string"
+          },
+          "startedAt": {
+            "type": "string"
+          },
+          "endedAt": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "goalDescription": {
+            "type": "string"
+          },
+          "taskType": {
+            "type": "string"
+          },
+          "userIntent": {
+            "type": "string"
+          },
+          "memoryCount": {
+            "type": "number"
+          },
+          "consolidatedCount": {
+            "type": "number"
+          },
+          "previousSessionId": {
+            "type": "string"
+          },
+          "relatedSessionIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "outcome": {},
+          "failureCauses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "artifactType": {
+            "type": "string"
+          },
+          "toolName": {
+            "type": "string"
+          },
+          "shortId": {
+            "type": "string"
+          },
+          "heuristicRecord": {},
+          "decisionRecord": {},
+          "exclusionRule": {},
+          "projectContextRecord": {},
+          "toolAffordanceRecord": {},
+          "prospectiveRecord": {},
+          "failureRecord": {},
+          "planRecord": {},
+          "reflectionRecord": {},
+          "skillRecord": {},
+          "instructionSetRecord": {},
+          "knowledgeSnapshotRecord": {},
+          "knowledgeRevisionRecord": {},
+          "navigationNodeRecord": {},
+          "coverageRecord": {},
+          "taskRecord": {},
+          "learningTraceRecord": {}
+        }
+      }
+    },
+    {
+      "schema": "RelationSchema",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "to": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "relationType": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "lastModified": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "weight": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "bidirectional": {
+                "type": "boolean"
+              },
+              "validFrom": {
+                "type": "string"
+              },
+              "validUntil": {
+                "type": "string"
+              },
+              "provenance": {
+                "type": "string"
+              }
+            }
+          },
+          "metadata": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "relationType"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "schema": "DateRangeSchema",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": [
+          "start",
+          "end"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "schema": "BatchCreateEntitiesSchema",
+      "jsonSchema": {
+        "maxItems": 1000,
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "entityType": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "observations": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 5000
+              }
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            },
+            "importance": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10
+            },
+            "parentId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "projectId": {
+              "type": "string"
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+            },
+            "lastModified": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+            },
+            "ttl": {
+              "type": "number"
+            },
+            "confidence": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "version": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            },
+            "parentEntityName": {
+              "type": "string"
+            },
+            "rootEntityName": {
+              "type": "string"
+            },
+            "isLatest": {
+              "type": "boolean"
+            },
+            "supersededBy": {
+              "type": "string"
+            },
+            "causedByFailureId": {
+              "type": "string"
+            },
+            "contentHash": {
+              "type": "string",
+              "minLength": 64,
+              "maxLength": 64
+            },
+            "validFrom": {
+              "type": "string"
+            },
+            "validUntil": {
+              "type": "string"
+            },
+            "observationMeta": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "content": {
+                    "type": "string"
+                  },
+                  "validFrom": {
+                    "type": "string"
+                  },
+                  "validUntil": {
+                    "type": "string"
+                  },
+                  "recordedAt": {
+                    "type": "string"
+                  },
+                  "sourceRef": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "content"
+                ]
+              }
+            },
+            "lifecycleStatus": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "published",
+                "archived"
+              ]
+            },
+            "heuristicRecord": {},
+            "planRecord": {},
+            "skillRecord": {},
+            "instructionSetRecord": {},
+            "knowledgeSnapshotRecord": {},
+            "knowledgeRevisionRecord": {},
+            "navigationNodeRecord": {},
+            "coverageRecord": {},
+            "taskRecord": {},
+            "learningTraceRecord": {},
+            "memoryType": {
+              "type": "string"
+            },
+            "agentId": {
+              "type": "string"
+            },
+            "visibility": {
+              "type": "string"
+            },
+            "confirmationCount": {
+              "type": "number"
+            },
+            "accessCount": {
+              "type": "number"
+            },
+            "source": {}
+          },
+          "required": [
+            "name",
+            "entityType",
+            "observations"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "schema": "PGSnapshotSchema",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "type": "number",
+            "const": 1
+          },
+          "graphId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "revisionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "parentRevisionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "entryNodeId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "relationVocabulary": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "cyclePolicy": {
+            "type": "string",
+            "enum": [
+              "allow",
+              "repair",
+              "reject"
+            ]
+          },
+          "toolCatalogHash": {
+            "type": "string",
+            "minLength": 1
+          },
+          "nodes": {
+            "maxItems": 2000,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "ACTION",
+                    "SKILL",
+                    "REASONING",
+                    "STATE"
+                  ]
+                },
+                "description": {
+                  "type": "string",
+                  "maxLength": 4000
+                },
+                "actionName": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                }
+              },
+              "required": [
+                "id",
+                "type",
+                "description"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "edges": {
+            "maxItems": 8000,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "relation": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "target": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "condition": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 4000
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "guidance": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 4000
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "pitfalls": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 4000
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "source",
+                "relation",
+                "target",
+                "condition",
+                "guidance",
+                "pitfalls"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "graphId",
+          "revisionId",
+          "entryNodeId",
+          "relationVocabulary",
+          "cyclePolicy",
+          "toolCatalogHash",
+          "nodes",
+          "edges"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "schema": "PGEditSetSchema",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "add_nodes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "ACTION",
+                    "SKILL",
+                    "REASONING",
+                    "STATE"
+                  ]
+                },
+                "description": {
+                  "type": "string",
+                  "maxLength": 4000
+                },
+                "actionName": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                }
+              },
+              "required": [
+                "id",
+                "type",
+                "description"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "delete_nodes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "add_edges": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "relation": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "target": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "condition": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 4000
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "guidance": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4000
+                },
+                "pitfalls": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4000
+                }
+              },
+              "required": [
+                "source",
+                "relation",
+                "target",
+                "condition",
+                "guidance",
+                "pitfalls"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "delete_edges": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "target": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                }
+              },
+              "required": [
+                "source",
+                "target"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "add_nodes",
+          "delete_nodes",
+          "add_edges",
+          "delete_edges"
+        ],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

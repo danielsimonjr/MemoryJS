@@ -6,7 +6,7 @@
  * @internal Used by `RecursaToolAdapter` only.
  */
 
-import { z } from 'zod';
+import { z } from '../utils/schema.js';
 import { isAbsolute, resolve } from 'path';
 import { ValidationError, KnowledgeGraphError } from '../utils/errors.js';
 import { resolveConfinedTreeDir } from '../agent/skills/skillTreeFs.js';

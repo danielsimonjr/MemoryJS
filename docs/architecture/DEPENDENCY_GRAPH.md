@@ -46,7 +46,7 @@ The codebase is organized into the following modules:
 - **security**: 5 files
 - **root**: 1 file
 - **types**: 14 files
-- **utils**: 52 files
+- **utils**: 53 files
 - **workers**: 1 file
 
 ---
@@ -61,7 +61,7 @@ Seeded build/entry roots (package `exports`, `bin` targets, tsup entries, script
 - `src/sqlite.ts`
 - `src/workers/levenshteinWorker.ts`
 
-Reachable from a root: **413** of 413 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
+Reachable from a root: **414** of 414 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
 
 ---
 
@@ -125,11 +125,6 @@ Reachable from a root: **413** of 413 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/adapters/RecursaToolAdapter.ts` - RecursaToolAdapter: the reference implementation of the Recursa harness tool surface (spec
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `zod` | `z` |
-
 **Node.js Built-in Dependencies:**
 | Module | Import |
 |--------|--------|
@@ -138,6 +133,7 @@ Reachable from a root: **413** of 413 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../utils/schema.js` | `z` | Import |
 | `../core/ManagerContext.js` | `ManagerContext` | Import (type-only) |
 | `../core/context/LearningFacade.js` | `LearningLoop, LearningLoopDeps` | Import (type-only) |
 | `../agent/harness/InteractionLog.js` | `InteractionLog` | Import (type-only) |
@@ -221,14 +217,10 @@ Reachable from a root: **413** of 413 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/adapters/recursaToolSchemas.ts` - Argument schemas of the Recursa tool adapter (spec section 3.8). Each schema validates the
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `zod` | `z` |
-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../utils/schema.js` | `z` | Import |
 | `../agent/harness/InteractionLogFormat.js` | `INTERACTION_KINDS` | Import |
 
 **Exports:**
@@ -238,11 +230,6 @@ Reachable from a root: **413** of 413 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/adapters/recursaToolSupport.ts` - Shared plumbing of the Recursa tool adapter: the stable failure codes, the mapping of thrown
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `zod` | `z` |
-
 **Node.js Built-in Dependencies:**
 | Module | Import |
 |--------|--------|
@@ -251,6 +238,7 @@ Reachable from a root: **413** of 413 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../utils/schema.js` | `z` | Import |
 | `../utils/errors.js` | `ValidationError, KnowledgeGraphError` | Import |
 | `../agent/skills/skillTreeFs.js` | `resolveConfinedTreeDir` | Import |
 
@@ -1510,14 +1498,10 @@ Reachable from a root: **413** of 413 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/agent/bootstrap/ExplorationNotes.ts` - Exploration notes (Recursa RS-12): one convention skill per corpus, written as a cheatsheet.
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `zod` | `z` |
-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../../utils/schema.js` | `z` | Import |
 | `../../types/types.js` | `IGraphStorage` | Import (type-only) |
 | `../../types/skills.js` | `CoverageRecord, NavigationNodeRecord, SkillId, SkillSource` | Import (type-only) |
 | `../skills/SkillManager.js` | `SkillManager` | Import (type-only) |
@@ -1540,14 +1524,10 @@ Reachable from a root: **413** of 413 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/agent/bootstrap/PracticeTaskGenerator.ts` - Practice task generator (Recursa RS-13): turns navigation nodes and source metadata into
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `zod` | `z` |
-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../../utils/schema.js` | `z` | Import |
 | `../../types/types.js` | `Entity, IGraphStorage` | Import (type-only) |
 | `../../types/skills.js` | `NavigationNodeRecord, SkillSource` | Import (type-only) |
 | `../../types/learning.js` | `Criterion, TaskRecord` | Import (type-only) |
@@ -1697,14 +1677,10 @@ Reachable from a root: **413** of 413 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/agent/evaluation/LLMRubricJudge.ts` - LLM-backed rubric judge with zod-validated JSON output and per-criterion deterministic fallback.
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `zod` | `z` |
-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../../utils/schema.js` | `z` | Import |
 | `../../types/learning.js` | `CriterionResult, TaskRecord` | Import (type-only) |
 | `../procedural/graph/CompletionProvider.js` | `PGCompletionProvider` | Import (type-only) |
 | `./DeterministicJudge.js` | `DeterministicJudge, RubricJudge` | Import |
@@ -2190,14 +2166,10 @@ Reachable from a root: **413** of 413 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/agent/learning/Diagnoser.ts` - Diagnoser (spec RS-15): classifies why a failed task failed and records failure memory.
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `zod` | `z` |
-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../../utils/schema.js` | `z` | Import |
 | `../FailureManager.js` | `FailureManager, FailureInput` | Import (type-only) |
 | `../AgentReflectionManager.js` | `AgentReflectionManager` | Import (type-only) |
 | `../harness/InteractionLog.js` | `InteractionLog` | Import (type-only) |
@@ -2237,11 +2209,6 @@ Reachable from a root: **413** of 413 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/agent/learning/KnowledgeEditor.ts` - KnowledgeEditor (spec RS-16): turns diagnoses into one knowledge revision.
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `zod` | `z` |
-
 **Node.js Built-in Dependencies:**
 | Module | Import |
 |--------|--------|
@@ -2250,6 +2217,7 @@ Reachable from a root: **413** of 413 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../../utils/schema.js` | `z` | Import |
 | `../skills/SkillManager.js` | `SkillManager` | Import (type-only) |
 | `../procedural/graph/CompletionProvider.js` | `PGCompletionProvider` | Import (type-only) |
 | `../../types/skills.js` | `SkillRecord, SkillSource, KnowledgeRevisionRecord, RevisionOp` | Import (type-only) |
@@ -2671,11 +2639,6 @@ Reachable from a root: **413** of 413 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/agent/learning/RevisionMerger.ts` - RevisionMerger (spec RS-20): merges the knowledge revisions of child learners into one revision.
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `zod` | `z` |
-
 **Node.js Built-in Dependencies:**
 | Module | Import |
 |--------|--------|
@@ -2684,6 +2647,7 @@ Reachable from a root: **413** of 413 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../../utils/schema.js` | `z` | Import (type-only) |
 | `../../types/skills.js` | `RevisionOp, KnowledgeRevisionRecord` | Import (type-only) |
 | `../../types/agent-memory.js` | `toIsoDateTime` | Import |
 | `../procedural/graph/CompletionProvider.js` | `PGCompletionProvider` | Import (type-only) |
@@ -2705,14 +2669,10 @@ Reachable from a root: **413** of 413 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/agent/learning/RevisionReconcile.ts` - Step 2 of the revision merger (spec RS-20, §3.7 S7): reconcile `skill.update` /
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `zod` | `z` |
-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../../utils/schema.js` | `z` | Import |
 | `../../types/skills.js` | `RevisionOp, SkillRecord` | Import (type-only) |
 | `./llmJson.js` | `fencedText, inlineSafe` | Import |
 | `./revisionMergeShared.js` | `InstructionPatchSchema, SkillPatchSchema, canonical, fixedOfEntry, labelOfEntry, targetOf, CallJson, ChildOutcome, Entry, RevisionMergeResult` | Import |
@@ -2814,14 +2774,10 @@ Reachable from a root: **413** of 413 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/agent/learning/revisionMergeShared.ts` - Types and helpers shared by the revision merger's steps (spec RS-20).
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `zod` | `z` |
-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../../utils/schema.js` | `z` | Import |
 | `../procedural/graph/CompletionProvider.js` | `PGCompletionProvider` | Import (type-only) |
 | `../../types/skills.js` | `KnowledgeRevisionRecord, RevisionOp` | Import (type-only) |
 
@@ -3010,14 +2966,10 @@ Reachable from a root: **413** of 413 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/agent/procedural/graph/ProceduralGraphSchemas.ts` - Zod v4 schemas for Procedural Graph snapshots and refiner edit sets.
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `zod` | `z` |
-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../../../utils/schema.js` | `z` | Import |
 | `../../../types/proceduralGraph.js` | `PGDiagnostic, PGEdge, PGEditSet, PGNode, PGSnapshot` | Import (type-only) |
 
 **Exports:**
@@ -7444,16 +7396,22 @@ Reachable from a root: **413** of 413 files. Dormant: **0** (0 orphaned, 0 test-
 
 ---
 
-### `src/utils/schemas.ts` - Validation Schemas and Helpers
+### `src/utils/schema.ts` - In-repo schema validator for the subset of Zod 4.6.7 that MemoryJS uses.
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `zod` | `z, ZodSchema, ZodError` |
+**Exports:**
+- Classes: `BaseSchema`, `StringSchema`, `NumberSchema`, `BooleanSchema`, `NullSchema`, `UnknownSchema`, `LiteralSchema`, `EnumSchema`, `ArraySchema`, `TupleSchema`, `ObjectSchema`, `RecordSchema`, `UnionSchema`, `DiscriminatedUnionSchema`, `OptionalSchema`, `NullableSchema`, `DefaultSchema`
+- Interfaces: `SchemaIssue`, `ToJSONSchemaParams`
+- Types: `IssuePath`, `ZodError`, `SafeParseResult`, `MessageParams`, `SchemaShape`, `AnySchema`, `ObjectOutput`, `ZodSchema`, `infer`, `output`, `input`, `ZodType`, `ZodIssue`
+- Constants: `z`
+
+---
+
+### `src/utils/schemas.ts` - Validation Schemas and Helpers
 
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `./schema.js` | `z, ZodSchema, ZodError` | Import |
 | `./constants.js` | `IMPORTANCE_RANGE` | Import |
 | `./errors.js` | `ValidationError` | Import |
 
@@ -7807,7 +7765,7 @@ graph TD
         N91[MemoryMonitor]
         N92[RunExclusiveMutex]
         N93[SchemaValidator]
-        N94[...42 more]
+        N94[...43 more]
     end
 
     subgraph Workers
@@ -7898,21 +7856,21 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 413 |
+| Total TypeScript Files | 414 |
 | Total Modules | 12 |
-| Total Lines of Code | 131669 |
-| Total Exports | 2879 |
+| Total Lines of Code | 133118 |
+| Total Exports | 2897 |
 | Total Re-exports | 1716 |
-| Total Classes | 285 |
-| Total Interfaces | 837 |
+| Total Classes | 302 |
+| Total Interfaces | 839 |
 | Total Functions | 682 |
 | Total Type Guards | 49 |
 | Total Enums | 4 |
-| Type-only Imports | 873 |
+| Type-only Imports | 874 |
 | Runtime Circular Deps | 0 |
 | Type-only Circular Deps | 15 |
 | Entry/Build Roots | 4 |
-| Reachable Files | 413 |
+| Reachable Files | 414 |
 | Dormant Files (orphaned / test-only) | 0 (0 / 0) |
 
 ---

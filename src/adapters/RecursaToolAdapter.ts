@@ -32,7 +32,7 @@
  *   harness feedback. The reference MCP server itself is downstream of this module.
  */
 
-import { z } from 'zod';
+import { z } from '../utils/schema.js';
 import type { ManagerContext } from '../core/ManagerContext.js';
 import type { LearningLoop, LearningLoopDeps } from '../core/context/LearningFacade.js';
 import type { InteractionLog } from '../agent/harness/InteractionLog.js';

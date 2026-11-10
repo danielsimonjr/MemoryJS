@@ -16,7 +16,7 @@
  */
 
 import { randomUUID } from 'crypto';
-import { z } from 'zod';
+import { z } from '../../utils/schema.js';
 import type { SkillManager } from '../skills/SkillManager.js';
 import type { PGCompletionProvider } from '../procedural/graph/CompletionProvider.js';
 import type { SkillRecord, SkillSource, KnowledgeRevisionRecord, RevisionOp } from '../../types/skills.js';
