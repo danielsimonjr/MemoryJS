@@ -150,6 +150,66 @@ export class FailureManager {
    *   `appendEntity` fails (disk full, EPERM, etc.)
    */
   async record(input: FailureInput, options: FailureEntityOptions = {}): Promise<FailureRecord> {
+    const [record] = await this.recordMany([{ input, options }]);
+    return record!;
+  }
+
+  /**
+   * Record several failures in one durable write.
+   *
+   * Each record is validated and built exactly as {@link FailureManager.record} builds it; only the
+   * persistence step differs, so N lessons cost one append and one fsync rather than N. A round
+   * that diagnoses many failed tasks is the caller that benefits: every failure used to be its own
+   * append, which is the expensive operation on Windows.
+   *
+   * @param items - Input and options per failure, in order.
+   * @returns The recorded failures, in the same order.
+   * @throws {Error} for the same reasons as `record`, naming the failure that was refused.
+   */
+  async recordMany(items: ReadonlyArray<{ input: FailureInput; options?: FailureEntityOptions }>): Promise<FailureRecord[]> {
+    if (items.length === 0) return [];
+    const built: Array<{ record: FailureRecord; entity: FailureEntity }> = [];
+    for (const { input, options = {} } of items) built.push(await this.buildFailure(input, options));
+    try {
+      await this.appendFailures(built.map((b) => b.entity as unknown as Entity));
+    } catch (err) {
+      const cause = err instanceof Error ? err.message : String(err);
+      throw new Error(`FailureManager.record: failed to persist failure '${built[0]!.record.id}': ${cause}`);
+    }
+    return built.map((b) => b.record);
+  }
+
+  /**
+   * Persist failure entities in one write.
+   *
+   * This goes through the storage layer, not `EntityManager`, for two reasons that were already
+   * true of the single-record path: `EntityManager.createEntities` applies entity-schema validation
+   * that a failure envelope (`tags`/`agentId` left undefined) does not satisfy, and the failure sink
+   * is a low-level record store rather than a governed graph mutation. The batch primitive is used
+   * when the backend has it (both first-party backends do) and the single-item primitive otherwise.
+   *
+   * @param entities - Failure entities to persist.
+   */
+  private async appendFailures(entities: Entity[]): Promise<void> {
+    if (typeof this.storage.appendEntities === 'function') {
+      await this.storage.appendEntities(entities);
+      return;
+    }
+    for (const entity of entities) await this.storage.appendEntity(entity);
+  }
+
+  /**
+   * Validate one failure input and build its record and entity. Shared by `record` and
+   * `recordMany` so both produce identical records.
+   *
+   * @param input - Failure fields.
+   * @param options - Entity options.
+   * @returns The record and the entity to persist.
+   */
+  private async buildFailure(
+    input: FailureInput,
+    options: FailureEntityOptions,
+  ): Promise<{ record: FailureRecord; entity: FailureEntity }> {
     validateNonEmpty(input.context, 'context', 'FailureManager');
     validateNonEmpty(input.attempted, 'attempted', 'FailureManager');
     validateNonEmpty(input.failure_mode, 'failure_mode', 'FailureManager');
@@ -202,14 +262,7 @@ export class FailureManager {
       confirmationCount: 0,
       failureRecord,
     };
-
-    try {
-      await this.storage.appendEntity(entity as unknown as Entity);
-    } catch (err) {
-      const cause = err instanceof Error ? err.message : String(err);
-      throw new Error(`FailureManager.record: failed to persist failure '${id}': ${cause}`);
-    }
-    return failureRecord;
+    return { record: failureRecord, entity };
   }
 
   // ==================== Read ====================

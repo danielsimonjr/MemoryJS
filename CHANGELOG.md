@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The recursive-learner integration tests no longer come close to the 30 s vitest timeout on
+  `windows-latest`. They were not slow because of the work they do but because of how often that
+  work was made durable: one Recursa loop over a 32-document corpus performed 276 `fsync` calls,
+  and an `fsync` costs about 20x on Windows what it costs on Linux, so the run took 15.3 s on
+  Windows against 1.6 s on Linux. `LearningTrace` now coalesces the writes of one trace for the
+  duration of one learner step (`LearningTrace.batch(traceId, fn)`) and commits them as a single
+  `updateEntity` with the same OCC version, so a step's checkpoint is still durable before it
+  returns and a resume still works. Writes are scoped per trace id, because sibling learners share
+  one `LearningTrace` and write their own traces concurrently. A batch commits the writes issued
+  before a throw, matching the unbatched behaviour that the failure-record dedup relies on.
+- `CorpusMapper` sets a navigation node's `parentId` when it creates the node instead of calling
+  `HierarchyManager.setEntityParent` afterwards. Each of those calls validated the link against a
+  full deep-copied graph and then wrote on its own, so mapping a 32-document corpus cost 36
+  whole-graph copies and 36 durable appends on top of the creates. Creates are now ordered
+  parent-first because SQLite enforces `parentId` as a foreign key, and conflict observations on
+  stored nodes are written as one `batchUpdate`.
+- A JSONL append no longer pays two `stat` calls and a `chmod`. `appendLines` read the file's mode
+  with its own `stat` and then called `restrictSensitiveFilePermissions`, which stat'ed again, and
+  the `0600` restriction was re-issued on every write because Windows `chmod` cannot express
+  `0600` (it only toggles the read-only bit), so the condition it checked could never be met.
+  `restrictModeFromStat` takes the mode from the `stat` the append already needed and is a no-op
+  on Windows, where access is governed by the parent directory's ACLs.
+
 ### Changed
 
 - The CLI renders colors through `src/cli/ansi.ts`, a six-style in-repo painter (`cyan`, `bold`, `green`, `red`, `yellow`, `gray`), instead of `chalk`. Color is on when `FORCE_COLOR` is empty, `true`, or a pure digit string whose parsed level is at least 1 (values above 3 enable the same as level 3). Color is off when `NO_COLOR` is non-empty (that wins over `FORCE_COLOR`) or `FORCE_COLOR` is `0` or `false`. Non-numeric `FORCE_COLOR` (whitespace, commas, fractions) and a missing `FORCE_COLOR` follow stdout TTY detection. An empty `NO_COLOR` does not disable color. Emitted codes match chalk 6.0.0 at level 1, and `chalk` is no longer a dependency.
