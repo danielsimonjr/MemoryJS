@@ -1,11 +1,11 @@
 {
-  "totalFiles": 993,
+  "totalFiles": 995,
   "byDisposition": {
     "reachable": 397,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 560,
+    "test": 562,
     "tool": 10,
     "config": 2,
     "bench": 5,
@@ -15,7 +15,7 @@
     "benchmarks": 5,
     "examples": 15,
     "src": 401,
-    "tests": 560,
+    "tests": 562,
     "tools": 10,
     "config": 2
   },
@@ -5752,6 +5752,20 @@
       "area": "tests",
       "disposition": "test",
       "loc": 21
+    },
+    {
+      "file": "tests/unit/scripts/clean-dist.edges.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 114
+    },
+    {
+      "file": "tests/unit/scripts/clean-dist.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 22
     },
     {
       "file": "tests/unit/search/BasicSearch.test.ts",
