@@ -16,7 +16,7 @@ import {
   clearMapWithFlushRollback,
   deleteFromMapWithFlushRollback,
 } from '../../utils/mutateMapWithFlushRollback.js';
-import { Mutex } from 'async-mutex';
+import { RunExclusiveMutex } from '../../utils/RunExclusiveMutex.js';
 import {
   parseJsonlMapLines,
   serializeJsonlMap,
@@ -50,7 +50,7 @@ export abstract class MapFileTier<V> implements IIndexTier<string, V> {
   /** The loaded entries, or null until the first read or write. */
   protected cache: Map<string, V> | null = null;
 
-  protected readonly mutex = new Mutex();
+  protected readonly mutex = new RunExclusiveMutex();
 
   /** Returns the text that starts each warning from this tier. */
   protected abstract warnPrefix(): string;

@@ -1,9 +1,9 @@
 {
   "metadata": {
     "name": "@danielsimonjr/memoryjs",
-    "totalFiles": 402,
+    "totalFiles": 404,
     "totalModules": 12,
-    "totalExports": 2822
+    "totalExports": 2824
   },
   "entryPoints": [
     {
@@ -5909,14 +5909,7 @@
       },
       "src/agent/harness/InteractionLog.ts": {
         "description": "InteractionLog: an append-only JSONL sidecar of model turns, tool calls,",
-        "externalDependencies": [
-          {
-            "package": "async-mutex",
-            "imports": [
-              "Mutex"
-            ]
-          }
-        ],
+        "externalDependencies": [],
         "nodeDependencies": [
           {
             "module": "fs",
@@ -5940,6 +5933,13 @@
           }
         ],
         "internalDependencies": [
+          {
+            "file": "../../utils/RunExclusiveMutex.js",
+            "imports": [
+              "RunExclusiveMutex"
+            ],
+            "typeOnly": true
+          },
           {
             "file": "../../utils/sidecarPath.js",
             "imports": [
@@ -6081,14 +6081,7 @@
       },
       "src/agent/harness/InteractionLogBlobs.ts": {
         "description": "File helpers for InteractionLog: tolerant log reads, tail reads, exclusive blob writes",
-        "externalDependencies": [
-          {
-            "package": "async-mutex",
-            "imports": [
-              "Mutex"
-            ]
-          }
-        ],
+        "externalDependencies": [],
         "nodeDependencies": [
           {
             "module": "fs",
@@ -6104,6 +6097,12 @@
           }
         ],
         "internalDependencies": [
+          {
+            "file": "../../utils/RunExclusiveMutex.js",
+            "imports": [
+              "RunExclusiveMutex"
+            ]
+          },
           {
             "file": "../../utils/errors.js",
             "imports": [
@@ -16278,20 +16277,19 @@
       },
       "src/cli/formatters.ts": {
         "description": "CLI Output Formatters",
-        "externalDependencies": [
-          {
-            "package": "cli-table3",
-            "imports": [
-              "Table"
-            ]
-          }
-        ],
+        "externalDependencies": [],
         "nodeDependencies": [],
         "internalDependencies": [
           {
             "file": "./ansi.js",
             "imports": [
               "ansi"
+            ]
+          },
+          {
+            "file": "./plainTable.js",
+            "imports": [
+              "PlainTable"
             ]
           },
           {
@@ -16481,6 +16479,21 @@
         ],
         "constants": [
           "defaultOptions"
+        ]
+      },
+      "src/cli/plainTable.ts": {
+        "description": "Renders the bordered text tables the CLI formatters print.",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "PlainTable"
+        ],
+        "classes": [
+          "PlainTable"
+        ],
+        "interfaces": [
+          "PlainTableOptions"
         ]
       }
     },
@@ -16690,14 +16703,7 @@
       },
       "src/core/GraphStorage.ts": {
         "description": "Graph Storage",
-        "externalDependencies": [
-          {
-            "package": "async-mutex",
-            "imports": [
-              "Mutex"
-            ]
-          }
-        ],
+        "externalDependencies": [],
         "nodeDependencies": [
           {
             "module": "fs",
@@ -16725,6 +16731,12 @@
             "imports": [
               "durableWriteFile",
               "restrictModeFromStat"
+            ]
+          },
+          {
+            "file": "../utils/RunExclusiveMutex.js",
+            "imports": [
+              "RunExclusiveMutex"
             ]
           },
           {
@@ -17836,14 +17848,7 @@
       },
       "src/core/RefIndex.ts": {
         "description": "Ref Index",
-        "externalDependencies": [
-          {
-            "package": "async-mutex",
-            "imports": [
-              "Mutex"
-            ]
-          }
-        ],
+        "externalDependencies": [],
         "nodeDependencies": [
           {
             "module": "fs",
@@ -17853,6 +17858,12 @@
           }
         ],
         "internalDependencies": [
+          {
+            "file": "../utils/RunExclusiveMutex.js",
+            "imports": [
+              "RunExclusiveMutex"
+            ]
+          },
           {
             "file": "../utils/durableWriteFile.js",
             "imports": [
@@ -17957,12 +17968,6 @@
               "Database",
               "Statement"
             ]
-          },
-          {
-            "package": "async-mutex",
-            "imports": [
-              "Mutex"
-            ]
           }
         ],
         "nodeDependencies": [
@@ -17999,6 +18004,12 @@
             "imports": [
               "createNodeSqliteDatabaseCtor",
               "isNodeSqliteAvailable"
+            ]
+          },
+          {
+            "file": "../utils/RunExclusiveMutex.js",
+            "imports": [
+              "RunExclusiveMutex"
             ]
           },
           {
@@ -18292,14 +18303,7 @@
       },
       "src/core/columns/JsonlColumnStore.ts": {
         "description": "JsonlColumnStore — JSONL-sidecar-backed `IColumnStore<T>`",
-        "externalDependencies": [
-          {
-            "package": "async-mutex",
-            "imports": [
-              "Mutex"
-            ]
-          }
-        ],
+        "externalDependencies": [],
         "nodeDependencies": [
           {
             "module": "fs",
@@ -18309,6 +18313,12 @@
           }
         ],
         "internalDependencies": [
+          {
+            "file": "../../utils/RunExclusiveMutex.js",
+            "imports": [
+              "RunExclusiveMutex"
+            ]
+          },
           {
             "file": "../../utils/durableWriteFile.js",
             "imports": [
@@ -24668,14 +24678,7 @@
       },
       "src/search/tiered/MapFileTier.ts": {
         "description": "MapFileTier — shared base of the file-backed index tiers",
-        "externalDependencies": [
-          {
-            "package": "async-mutex",
-            "imports": [
-              "Mutex"
-            ]
-          }
-        ],
+        "externalDependencies": [],
         "nodeDependencies": [],
         "internalDependencies": [
           {
@@ -24683,6 +24686,12 @@
             "imports": [
               "clearMapWithFlushRollback",
               "deleteFromMapWithFlushRollback"
+            ]
+          },
+          {
+            "file": "../../utils/RunExclusiveMutex.js",
+            "imports": [
+              "RunExclusiveMutex"
             ]
           },
           {
@@ -26729,6 +26738,18 @@
         ],
         "constants": [
           "globalMemoryMonitor"
+        ]
+      },
+      "src/utils/RunExclusiveMutex.ts": {
+        "description": "FIFO mutex whose `runExclusive` has no timeout and no queue cap.",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "RunExclusiveMutex"
+        ],
+        "classes": [
+          "RunExclusiveMutex"
         ]
       },
       "src/utils/SchemaValidator.ts": {
@@ -29731,7 +29752,8 @@
           "src/cli/formatters.ts",
           "src/cli/index.ts",
           "src/cli/interactive.ts",
-          "src/cli/options.ts"
+          "src/cli/options.ts",
+          "src/cli/plainTable.ts"
         ]
       },
       {
@@ -29910,6 +29932,7 @@
           "src/utils/IIndexHealth.ts",
           "src/utils/IndexHealthMonitor.ts",
           "src/utils/MemoryMonitor.ts",
+          "src/utils/RunExclusiveMutex.ts",
           "src/utils/SchemaValidator.ts",
           "src/utils/WorkerPoolManager.ts",
           "src/utils/WorkerTaskManager.ts",
@@ -29970,32 +29993,32 @@
       "src/sqlite.ts",
       "src/workers/levenshteinWorker.ts"
     ],
-    "reachableCount": 402,
+    "reachableCount": 404,
     "dormantCount": 0,
     "orphaned": [],
     "testOnly": []
   },
   "statistics": {
-    "totalTypeScriptFiles": 402,
+    "totalTypeScriptFiles": 404,
     "totalModules": 12,
-    "totalLinesOfCode": 127111,
-    "totalExports": 2822,
-    "totalClasses": 278,
-    "totalInterfaces": 825,
+    "totalLinesOfCode": 127397,
+    "totalExports": 2824,
+    "totalClasses": 280,
+    "totalInterfaces": 826,
     "totalFunctions": 644,
     "totalTypeGuards": 43,
     "totalEnums": 4,
     "totalConstants": 181,
     "totalReExports": 1716,
-    "totalTypeOnlyImports": 866,
+    "totalTypeOnlyImports": 867,
     "runtimeCircularDeps": 0,
     "typeOnlyCircularDeps": 15,
     "entryRoots": 4,
-    "reachableFiles": 402,
+    "reachableFiles": 404,
     "dormantFiles": 0,
     "orphanedFiles": 0,
     "testOnlyFiles": 0,
     "unusedFilesCount": 0,
-    "unusedExportsCount": 118
+    "unusedExportsCount": 119
   }
 }

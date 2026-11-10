@@ -473,8 +473,8 @@ export class ObservationManager {
     // addObservations would otherwise race the snapshot vs save).
     // Supersede candidates are collected but NOT executed here —
     // supersede calls entityManager.createEntities/updateEntity
-    // which re-acquire the same mutex, and `async-mutex` doesn't
-    // support reentrance. Executing under the lock would deadlock.
+    // which re-acquire the same mutex, and `AsyncMutex` (`graphMutex`)
+    // doesn't support reentrance. Executing under the lock would deadlock.
     //
     // Phase 2 (unlocked) — run supersede for each candidate.
     // Each supersede call atomicaly creates the new-version entity

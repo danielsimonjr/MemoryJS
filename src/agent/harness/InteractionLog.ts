@@ -32,7 +32,7 @@
 import { promises as fs } from 'fs';
 import type { FileHandle } from 'fs/promises';
 import { join, basename, resolve } from 'path';
-import type { Mutex } from 'async-mutex';
+import type { RunExclusiveMutex } from '../../utils/RunExclusiveMutex.js';
 import { sidecarPath } from '../../utils/sidecarPath.js';
 import { durableAppendFile } from '../../utils/durableWriteFile.js';
 import { compileSelectRegex, matchSelectLines } from './InteractionLogRegex.js';
@@ -120,7 +120,7 @@ export class InteractionLog {
   /** Largest inline content size in bytes. */
   readonly maxInlineBytes: number;
 
-  private readonly mutex: Mutex;
+  private readonly mutex: RunExclusiveMutex;
   private state: LoadedState | undefined;
   private closed = false;
   private semantic: SemanticSimilarityProvider | undefined;

@@ -376,7 +376,7 @@ export class ProspectiveMemoryManager {
       const sessionPending = await this.getPending({ sessionId: options.sessionId });
       // Best-effort cap; not strictly serializable under concurrent callers
       // (Node.js single-threaded, but `await` interleaving allows race past
-      // the check). For production-grade serialization, wrap in async-mutex.
+      // the check). For production-grade serialization, wrap in a RunExclusiveMutex.
       if (sessionPending.length >= this.maxPendingPerSession) {
         throw new Error(
           `ProspectiveMemoryManager: session '${options.sessionId}' has reached the max pending cap (${this.maxPendingPerSession})`

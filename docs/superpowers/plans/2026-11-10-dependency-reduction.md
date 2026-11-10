@@ -705,6 +705,8 @@ export class RunExclusiveMutex {
 
 A synchronous throw inside `fn` must still reach the `finally`. The `async` executor does that because `await fn()` rejects. Do not add `isLocked`, `acquire`, `cancel`, or a queue limit.
 
+**Builder deviation (accepted):** Production may use an immediately invoked async function—`return (async () => { await previous; try { return await fn(); } finally { release(); } })()`—instead of `return previous.then(async () => { ... })`. The Sprint 4 challenger differential harness (13 scenarios vs `async-mutex` 0.5.0) verified identical FIFO order, error release, non-reentrancy, and microtask settle turns. Either shape is acceptable when `RunExclusiveMutex.test.ts` and `RunExclusiveMutex.challenger.test.ts` pin the timings.
+
 - [ ] **Step 4: Run the unit test**
 
 Run: `bunx vitest run tests/unit/utils/RunExclusiveMutex.test.ts`

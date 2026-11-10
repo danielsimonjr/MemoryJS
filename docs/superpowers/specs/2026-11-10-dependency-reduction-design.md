@@ -89,7 +89,9 @@ Call sites:
 
 `src/utils/AsyncMutex.ts` already exists and is the lock behind `graphMutex`. It is **not** a drop-in replacement. `AsyncMutex.acquire` rejects when the queue exceeds 1,000 waiters or when the head waiter exceeds 30 seconds. `async-mutex`'s `runExclusive` has no timeout and no queue cap. Storage writers depend on that. Sprint 4 adds a separate `RunExclusiveMutex` and does not route these call sites through `AsyncMutex`.
 
-`RunExclusiveMutex` is not reentrant. A `runExclusive` callback that calls `runExclusive` on the same instance deadlocks. That matches `async-mutex` 0.5.0. None of the production call sites re-enter the same instance. Do not add `acquire`, `isLocked`, `cancel`, or a queue cap.
+`RunExclusiveMutex` is not reentrant. A `runExclusive` callback that calls `runExclusive` on the same instance deadlocks. That matches `async-mutex` 0.5.0. None of the production call sites re-enter the same instance. Do not add `acquire`, `isLocked`, `cancel`, or a queue limit.
+
+The reference plan chains `previous.then(async () => { ... })`; shipped code may use an async IIFE that `await`s `previous` instead. The Sprint 4 challenger harness treated both as equivalent to `async-mutex` 0.5.0 for ordering, release-on-throw, and microtask settle timing (pinned in `tests/unit/utils/RunExclusiveMutex*.test.ts`).
 
 `tests/unit/core/EntityManager.legacyDelete.test.ts` is the exception. It does `graphMutex: new Mutex()`, and `EntityManager` calls `graphMutex.acquire()`, which `async-mutex`'s `Mutex` provides and `RunExclusiveMutex` must not. That test switches the fake to `new AsyncMutex()` from `src/utils/AsyncMutex.ts`. It does not construct `RunExclusiveMutex`.
 

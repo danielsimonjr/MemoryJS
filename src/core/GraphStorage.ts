@@ -13,7 +13,7 @@ import {
   durableWriteFile as durableWriteFileShared,
   restrictModeFromStat,
 } from '../utils/durableWriteFile.js';
-import { Mutex } from 'async-mutex';
+import { RunExclusiveMutex } from '../utils/RunExclusiveMutex.js';
 import type { KnowledgeGraph, Entity, Relation, ReadonlyKnowledgeGraph, IGraphStorage, LowercaseData } from '../types/index.js';
 import {
   clearAllSearchCaches,
@@ -229,7 +229,7 @@ export class GraphStorage implements IGraphStorage {
    * Mutex for thread-safe access to storage operations.
    * Prevents concurrent writes from corrupting the file or cache.
    */
-  private mutex = new Mutex();
+  private mutex = new RunExclusiveMutex();
 
   /**
    * Application-level write lock: serializes the whole

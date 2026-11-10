@@ -38,7 +38,7 @@ The codebase is organized into the following modules:
 
 - **adapters**: 11 files
 - **agent**: 177 files
-- **cli**: 32 files
+- **cli**: 33 files
 - **core**: 36 files
 - **features**: 18 files
 - **entry**: 1 file
@@ -46,7 +46,7 @@ The codebase is organized into the following modules:
 - **security**: 5 files
 - **root**: 1 file
 - **types**: 14 files
-- **utils**: 51 files
+- **utils**: 52 files
 - **workers**: 1 file
 
 ---
@@ -61,7 +61,7 @@ Seeded build/entry roots (package `exports`, `bin` targets, tsup entries, script
 - `src/sqlite.ts`
 - `src/workers/levenshteinWorker.ts`
 
-Reachable from a root: **402** of 402 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
+Reachable from a root: **404** of 404 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
 
 ---
 
@@ -1813,11 +1813,6 @@ Reachable from a root: **402** of 402 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/agent/harness/InteractionLog.ts` - InteractionLog: an append-only JSONL sidecar of model turns, tool calls,
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `async-mutex` | `Mutex` |
-
 **Node.js Built-in Dependencies:**
 | Module | Import |
 |--------|--------|
@@ -1828,6 +1823,7 @@ Reachable from a root: **402** of 402 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../../utils/RunExclusiveMutex.js` | `RunExclusiveMutex` | Import (type-only) |
 | `../../utils/sidecarPath.js` | `sidecarPath` | Import |
 | `../../utils/durableWriteFile.js` | `durableAppendFile` | Import |
 | `./InteractionLogRegex.js` | `compileSelectRegex, matchSelectLines` | Import |
@@ -1848,11 +1844,6 @@ Reachable from a root: **402** of 402 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/agent/harness/InteractionLogBlobs.ts` - File helpers for InteractionLog: tolerant log reads, tail reads, exclusive blob writes
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `async-mutex` | `Mutex` |
-
 **Node.js Built-in Dependencies:**
 | Module | Import |
 |--------|--------|
@@ -1862,6 +1853,7 @@ Reachable from a root: **402** of 402 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../../utils/RunExclusiveMutex.js` | `RunExclusiveMutex` | Import |
 | `../../utils/errors.js` | `ErrorCode` | Import |
 | `./InteractionLogFormat.js` | `InteractionLogError, truncateToBytes` | Import |
 
@@ -4373,15 +4365,11 @@ Reachable from a root: **402** of 402 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/cli/formatters.ts` - CLI Output Formatters
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `cli-table3` | `Table` |
-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
 | `./ansi.js` | `ansi` | Import |
+| `./plainTable.js` | `PlainTable` | Import |
 | `../types/types.js` | `Entity, Relation, PathResult, CentralityResult, ConnectedComponentsResult, ValidationReport` | Import (type-only) |
 | `../utils/entityUtils.js` | `escapeCsvCell` | Import |
 
@@ -4442,6 +4430,14 @@ Reachable from a root: **402** of 402 files. Dormant: **0** (0 orphaned, 0 test-
 - Interfaces: `GlobalOptions`
 - Functions: `parseGlobalOptions`, `createLogger`
 - Constants: `defaultOptions`
+
+---
+
+### `src/cli/plainTable.ts` - Renders the bordered text tables the CLI formatters print.
+
+**Exports:**
+- Classes: `PlainTable`
+- Interfaces: `PlainTableOptions`
 
 ---
 
@@ -4509,11 +4505,6 @@ Reachable from a root: **402** of 402 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/core/GraphStorage.ts` - Graph Storage
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `async-mutex` | `Mutex` |
-
 **Node.js Built-in Dependencies:**
 | Module | Import |
 |--------|--------|
@@ -4525,6 +4516,7 @@ Reachable from a root: **402** of 402 files. Dormant: **0** (0 orphaned, 0 test-
 |------|---------|------|
 | `../utils/graphCopy.js` | `borrowGraphView, deepCopyPlain` | Import |
 | `../utils/durableWriteFile.js` | `durableWriteFile, restrictModeFromStat` | Import |
+| `../utils/RunExclusiveMutex.js` | `RunExclusiveMutex` | Import |
 | `../types/index.js` | `KnowledgeGraph, Entity, Relation, ReadonlyKnowledgeGraph, IGraphStorage, LowercaseData` | Import (type-only) |
 | `../utils/searchCache.js` | `clearAllSearchCaches, bumpEntityGeneration, bumpRelationGeneration` | Import |
 | `../utils/indexes.js` | `NameIndex, TypeIndex, LowercaseCache, RelationIndex, ObservationIndex` | Import |
@@ -4745,11 +4737,6 @@ Reachable from a root: **402** of 402 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/core/RefIndex.ts` - Ref Index
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `async-mutex` | `Mutex` |
-
 **Node.js Built-in Dependencies:**
 | Module | Import |
 |--------|--------|
@@ -4758,6 +4745,7 @@ Reachable from a root: **402** of 402 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../utils/RunExclusiveMutex.js` | `RunExclusiveMutex` | Import |
 | `../utils/durableWriteFile.js` | `durableWriteFile` | Import |
 | `../utils/errors.js` | `RefConflictError` | Import |
 | `../utils/indexes.js` | `addToSetBucket, removeFromSetBucket` | Import |
@@ -4792,7 +4780,6 @@ Reachable from a root: **402** of 402 files. Dormant: **0** (0 orphaned, 0 test-
 |---------|--------|
 | `better-sqlite3` | `Database` |
 | `better-sqlite3` | `Database, Statement` |
-| `async-mutex` | `Mutex` |
 
 **Node.js Built-in Dependencies:**
 | Module | Import |
@@ -4806,6 +4793,7 @@ Reachable from a root: **402** of 402 files. Dormant: **0** (0 orphaned, 0 test-
 |------|---------|------|
 | `../utils/graphCopy.js` | `borrowGraphView, deepCopyPlain` | Import |
 | `./nodeSqliteAdapter.js` | `createNodeSqliteDatabaseCtor, isNodeSqliteAvailable` | Import |
+| `../utils/RunExclusiveMutex.js` | `RunExclusiveMutex` | Import |
 | `../types/index.js` | `KnowledgeGraph, Entity, Relation, ReadonlyKnowledgeGraph, IGraphStorage, LowercaseData` | Import (type-only) |
 | `../utils/searchCache.js` | `clearAllSearchCaches, bumpEntityGeneration, bumpRelationGeneration` | Import |
 | `../utils/indexes.js` | `NameIndex, RelationIndex, TypeIndex, computeLowercase` | Import |
@@ -4891,11 +4879,6 @@ Reachable from a root: **402** of 402 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/core/columns/JsonlColumnStore.ts` - JsonlColumnStore — JSONL-sidecar-backed `IColumnStore<T>`
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `async-mutex` | `Mutex` |
-
 **Node.js Built-in Dependencies:**
 | Module | Import |
 |--------|--------|
@@ -4904,6 +4887,7 @@ Reachable from a root: **402** of 402 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../../utils/RunExclusiveMutex.js` | `RunExclusiveMutex` | Import |
 | `../../utils/durableWriteFile.js` | `durableWriteFile` | Import |
 | `../../utils/jsonlMapFile.js` | `parseJsonlMapLines, serializeJsonlMap` | Import |
 | `../../utils/mutateMapWithFlushRollback.js` | `clearMapWithFlushRollback, deleteFromMapWithFlushRollback, mutateMapWithFlushRollback` | Import |
@@ -6629,15 +6613,11 @@ Reachable from a root: **402** of 402 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/search/tiered/MapFileTier.ts` - MapFileTier — shared base of the file-backed index tiers
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `async-mutex` | `Mutex` |
-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
 | `../../utils/mutateMapWithFlushRollback.js` | `clearMapWithFlushRollback, deleteFromMapWithFlushRollback` | Import |
+| `../../utils/RunExclusiveMutex.js` | `RunExclusiveMutex` | Import |
 | `../../utils/jsonlMapFile.js` | `parseJsonlMapLines, serializeJsonlMap, JsonlMapFormat` | Import |
 | `./ITieredIndex.js` | `IIndexTier` | Import (type-only) |
 
@@ -7014,6 +6994,13 @@ Reachable from a root: **402** of 402 files. Dormant: **0** (0 orphaned, 0 test-
 - Interfaces: `ComponentMemoryUsage`, `MemoryUsageStats`, `MemoryThresholds`, `MemoryAlert`
 - Types: `MemoryChangeCallback`
 - Constants: `globalMemoryMonitor`
+
+---
+
+### `src/utils/RunExclusiveMutex.ts` - FIFO mutex whose `runExclusive` has no timeout and no queue cap.
+
+**Exports:**
+- Classes: `RunExclusiveMutex`
 
 ---
 
@@ -7613,8 +7600,8 @@ Reachable from a root: **402** of 402 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/types/index` | 13 files | 70 files |
 | `src/types/agent-memory` | 3 files | 73 files |
 | `src/agent/index` | 70 files | 1 file |
+| `src/core/GraphStorage` | 17 files | 47 files |
 | `src/utils/index` | 37 files | 27 files |
-| `src/core/GraphStorage` | 16 files | 47 files |
 | `src/core/EntityManager` | 12 files | 48 files |
 | `src/search/index` | 51 files | 1 file |
 | `src/utils/errors` | 0 files | 42 files |
@@ -7634,9 +7621,9 @@ Reachable from a root: **402** of 402 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/cli/commands/index` | 24 files | 1 file |
 | `src/core/context/LearningFacade` | 22 files | 3 files |
 | `src/agent/ContextWindowManager` | 18 files | 6 files |
+| `src/cli/formatters` | 4 files | 20 files |
 | `src/core/RelationManager` | 6 files | 18 files |
 | `src/utils/envConfig` | 1 file | 23 files |
-| `src/cli/formatters` | 3 files | 20 files |
 | `src/core/context/AgentCognitionFacade` | 21 files | 1 file |
 | `src/search/SearchManager` | 17 files | 5 files |
 | `src/agent/learning/LearningTrace` | 10 files | 11 files |
@@ -7721,7 +7708,7 @@ graph TD
         N29[entity]
         N30[exclusion]
         N31[graph]
-        N32[...22 more]
+        N32[...23 more]
     end
 
     subgraph Core
@@ -7805,9 +7792,9 @@ graph TD
         N89[IIndexHealth]
         N90[IndexHealthMonitor]
         N91[MemoryMonitor]
-        N92[SchemaValidator]
-        N93[WorkerPoolManager]
-        N94[...41 more]
+        N92[RunExclusiveMutex]
+        N93[SchemaValidator]
+        N94[...42 more]
     end
 
     subgraph Workers
@@ -7872,6 +7859,7 @@ graph TD
     N33 --> N34
     N33 --> N53
     N35 --> N76
+    N36 --> N92
     N36 --> N76
     N36 --> N35
     N37 --> N76
@@ -7888,7 +7876,6 @@ graph TD
     N39 --> N41
     N39 --> N36
     N39 --> N33
-    N39 --> N40
 ```
 
 ---
@@ -7898,21 +7885,21 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 402 |
+| Total TypeScript Files | 404 |
 | Total Modules | 12 |
-| Total Lines of Code | 127111 |
-| Total Exports | 2822 |
+| Total Lines of Code | 127397 |
+| Total Exports | 2824 |
 | Total Re-exports | 1716 |
-| Total Classes | 278 |
-| Total Interfaces | 825 |
+| Total Classes | 280 |
+| Total Interfaces | 826 |
 | Total Functions | 644 |
 | Total Type Guards | 43 |
 | Total Enums | 4 |
-| Type-only Imports | 866 |
+| Type-only Imports | 867 |
 | Runtime Circular Deps | 0 |
 | Type-only Circular Deps | 15 |
 | Entry/Build Roots | 4 |
-| Reachable Files | 402 |
+| Reachable Files | 404 |
 | Dormant Files (orphaned / test-only) | 0 (0 / 0) |
 
 ---
