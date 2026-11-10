@@ -1,0 +1,2065 @@
+{
+  "commanderVersion": "15.0.0",
+  "program": {
+    "name": "memory",
+    "version": "4.6.0"
+  },
+  "help": {
+    "ROOT": "Usage: memory [options] [command]\n\nMemoryJS - Knowledge Graph CLI\n\nOptions:\n  -v, --version             Output the current version\n  -s, --storage <path>      Path to storage file (default: \"./memory.jsonl\")\n  --output-format <type>    Console output format (json|table|csv) (default:\n                            \"json\")\n  -q, --quiet               Suppress non-essential output\n  --verbose                 Enable verbose/debug output\n  -h, --help                display help for command\n\nCommands:\n  entity                    Manage entities (create, read, update, delete)\n  relation                  Manage relations between entities\n  search [options] <query>  Search entities and observations\n  observation               Manage entity observations\n  tag                       Manage entity tags and aliases\n  hierarchy                 Manage entity hierarchy (parent/child relationships)\n  graph                     Graph algorithms (shortest path, centrality,\n                            components)\n  import [options] <file>   Import data from file\n  export [options] <file>   Export data to file\n  stats                     Show knowledge graph statistics\n  archive [options]         Archive old or low-importance entities\n  compress [options]        Find and merge duplicate entities\n  validate                  Validate graph integrity\n  interactive|i             Start interactive REPL mode\n  exclude                   Manage do_not_remember exclusion rules\n  decision                  Manage decision-rationale records (ADR-equivalent)\n  project-context           Manage structured per-project knowledge\n                            (facts/conventions/commands/glossary)\n  tool-affordance           Inspect per-tool rolling outcome statistics\n  smoke [options]           Run a per-category end-to-end smoke test (~30 ops)\n                            against a fresh temp graph\n  diag                      One-shot diagnostic snapshot: memoryjs version,\n                            runtime, storage, env\n  env [options]             Print all memoryjs env vars with documented defaults\n                            and resolved values\n  health                    Run fast integrity checks (graph loads, distinct\n                            names, no orphan relations, no hierarchy cycles)\n  version                   Compact version line: memoryjs, node, platform\n  show <entity>             Verbose snapshot of one entity (observations,\n                            relations in/out, tags, hierarchy, timestamps)\n  tree [options] [root]     Hierarchy tree from a root entity (or all roots when\n                            omitted)\n  neighbors <entity>        Incoming + outgoing relations of one entity (with\n                            in/out degree counts)\n  size                      Graph size + storage footprint summary\n                            (entity/relation/observation counts, file bytes,\n                            line count)\n  heuristic                 Manage condition→action heuristic guidelines (add,\n                            match, reinforce, conflicts)\n  obs-dedup                 Cross-entity observation duplicate detection (exact\n                            and Jaccard similarity)\n  spell                     Spell-suggest queries against the graph vocabulary\n  check [options]           Detect orphan relations + missing parents +\n                            hierarchy cycles. Dry-run by default.\n  cache                     Inspect or bust the per-tier search caches (basic /\n                            ranked / boolean / fuzzy)\n  reindex [options]         Rebuild search-side indexes (TF-IDF/BM25 ranked +\n                            spell vocabulary).\n  audit                     Query the audit trail (provenance): filtered log,\n                            per-entity history, chain verification, stats\n  doctor [options]          Preflight checks for documented gotchas: node\n                            version, better-sqlite3 ABI, workers build, storage\n                            file, env lint, embedding provider\n  help [command]            display help for command\n",
+    "entity": "Usage: memory entity [options] [command]\n\nManage entities (create, read, update, delete)\n\nOptions:\n  -h, --help               display help for command\n\nCommands:\n  create [options] <name>  Create a new entity\n  get <name>               Get an entity by name\n  list [options]           List entities\n  update [options] <name>  Update an entity\n  delete <name>            Delete an entity\n  help [command]           display help for command\n",
+    "entity create": "Usage: memory entity create [options] <name>\n\nCreate a new entity\n\nOptions:\n  -t, --type <type>           Entity type (default: \"generic\")\n  -o, --observation <obs...>  Observations to add\n  --tags <tags...>            Tags to add\n  -i, --importance <n>        Importance score (0-10)\n  -h, --help                  display help for command\n",
+    "entity get": "Usage: memory entity get [options] <name>\n\nGet an entity by name\n\nOptions:\n  -h, --help  display help for command\n",
+    "entity list": "Usage: memory entity list [options]\n\nList entities\n\nOptions:\n  -t, --type <type>  Filter by entity type\n  --tags <tags...>   Filter by tags\n  -l, --limit <n>    Limit results\n  -h, --help         display help for command\n",
+    "entity update": "Usage: memory entity update [options] <name>\n\nUpdate an entity\n\nOptions:\n  -t, --type <type>           New entity type\n  -o, --observation <obs...>  Add observations\n  --tags <tags...>            Set tags\n  -i, --importance <n>        Set importance (0-10)\n  -h, --help                  display help for command\n",
+    "entity delete": "Usage: memory entity delete [options] <name>\n\nDelete an entity\n\nOptions:\n  -h, --help  display help for command\n",
+    "relation": "Usage: memory relation [options] [command]\n\nManage relations between entities\n\nOptions:\n  -h, --help                 display help for command\n\nCommands:\n  create <from> <type> <to>  Create a new relation\n  list [options]             List relations\n  delete <from> <type> <to>  Delete a relation\n  help [command]             display help for command\n",
+    "relation create": "Usage: memory relation create [options] <from> <type> <to>\n\nCreate a new relation\n\nOptions:\n  -h, --help  display help for command\n",
+    "relation list": "Usage: memory relation list [options]\n\nList relations\n\nOptions:\n  --from <entity>    Filter by source entity\n  --to <entity>      Filter by target entity\n  -t, --type <type>  Filter by relation type\n  -h, --help         display help for command\n",
+    "relation delete": "Usage: memory relation delete [options] <from> <type> <to>\n\nDelete a relation\n\nOptions:\n  -h, --help  display help for command\n",
+    "search": "Usage: memory search [options] <query>\n\nSearch entities and observations\n\nOptions:\n  -l, --limit <n>    Limit results (default: 10)\n  -t, --type <type>  Filter by entity type\n  --ranked           Use TF-IDF/BM25 ranked search\n  --boolean          Use boolean search (AND/OR/NOT)\n  --fuzzy            Use fuzzy search\n  --threshold <n>    Fuzzy search threshold (0-1) (default: 0.6)\n  --suggest          Get search suggestions instead of results\n  -h, --help         display help for command\n",
+    "observation": "Usage: memory observation [options] [command]\n\nManage entity observations\n\nOptions:\n  -h, --help                 display help for command\n\nCommands:\n  add <entity> <text...>     Add observation(s) to an entity\n  remove <entity> <text...>  Remove observation(s) from an entity\n  list <entity>              List observations for an entity\n  help [command]             display help for command\n",
+    "observation add": "Usage: memory observation add [options] <entity> <text...>\n\nAdd observation(s) to an entity\n\nOptions:\n  -h, --help  display help for command\n",
+    "observation remove": "Usage: memory observation remove [options] <entity> <text...>\n\nRemove observation(s) from an entity\n\nOptions:\n  -h, --help  display help for command\n",
+    "observation list": "Usage: memory observation list [options] <entity>\n\nList observations for an entity\n\nOptions:\n  -h, --help  display help for command\n",
+    "tag": "Usage: memory tag [options] [command]\n\nManage entity tags and aliases\n\nOptions:\n  -h, --help                           display help for command\n\nCommands:\n  add <entity> <tags...>               Add tags to an entity\n  remove <entity> <tags...>            Remove tags from an entity\n  alias [options] <alias> <canonical>  Create a tag alias\n  aliases                              List all tag aliases\n  help [command]                       display help for command\n",
+    "tag add": "Usage: memory tag add [options] <entity> <tags...>\n\nAdd tags to an entity\n\nOptions:\n  -h, --help  display help for command\n",
+    "tag remove": "Usage: memory tag remove [options] <entity> <tags...>\n\nRemove tags from an entity\n\nOptions:\n  -h, --help  display help for command\n",
+    "tag alias": "Usage: memory tag alias [options] <alias> <canonical>\n\nCreate a tag alias\n\nOptions:\n  -d, --description <desc>  Alias description\n  -h, --help                display help for command\n",
+    "tag aliases": "Usage: memory tag aliases [options]\n\nList all tag aliases\n\nOptions:\n  -h, --help  display help for command\n",
+    "hierarchy": "Usage: memory hierarchy [options] [command]\n\nManage entity hierarchy (parent/child relationships)\n\nOptions:\n  -h, --help                    display help for command\n\nCommands:\n  set-parent <entity> <parent>  Set parent of an entity (use \"none\" to remove)\n  children <entity>             List children of an entity\n  ancestors <entity>            List ancestors of an entity (parent to root)\n  descendants <entity>          List all descendants of an entity\n  roots                         List root entities (no parent)\n  help [command]                display help for command\n",
+    "hierarchy set-parent": "Usage: memory hierarchy set-parent [options] <entity> <parent>\n\nSet parent of an entity (use \"none\" to remove)\n\nOptions:\n  -h, --help  display help for command\n",
+    "hierarchy children": "Usage: memory hierarchy children [options] <entity>\n\nList children of an entity\n\nOptions:\n  -h, --help  display help for command\n",
+    "hierarchy ancestors": "Usage: memory hierarchy ancestors [options] <entity>\n\nList ancestors of an entity (parent to root)\n\nOptions:\n  -h, --help  display help for command\n",
+    "hierarchy descendants": "Usage: memory hierarchy descendants [options] <entity>\n\nList all descendants of an entity\n\nOptions:\n  -h, --help  display help for command\n",
+    "hierarchy roots": "Usage: memory hierarchy roots [options]\n\nList root entities (no parent)\n\nOptions:\n  -h, --help  display help for command\n",
+    "graph": "Usage: memory graph [options] [command]\n\nGraph algorithms (shortest path, centrality, components)\n\nOptions:\n  -h, --help                 display help for command\n\nCommands:\n  shortest-path <from> <to>  Find shortest path between two entities\n  centrality [options]       Calculate centrality metrics\n  components                 Find connected components\n  help [command]             display help for command\n",
+    "graph shortest-path": "Usage: memory graph shortest-path [options] <from> <to>\n\nFind shortest path between two entities\n\nOptions:\n  -h, --help  display help for command\n",
+    "graph centrality": "Usage: memory graph centrality [options]\n\nCalculate centrality metrics\n\nOptions:\n  -a, --algo <algorithm>  Algorithm: degree, betweenness, pagerank (default:\n                          \"degree\")\n  --top <n>               Number of top entities (default: 10)\n  -d, --direction <dir>   Direction for degree: in, out, both (default: \"both\")\n  --damping <n>           Damping factor for PageRank (default: 0.85)\n  -h, --help              display help for command\n",
+    "graph components": "Usage: memory graph components [options]\n\nFind connected components\n\nOptions:\n  -h, --help  display help for command\n",
+    "import": "Usage: memory import [options] <file>\n\nImport data from file\n\nOptions:\n  -f, --format <format>  File format (choices: \"json\", \"csv\", \"graphml\",\n                         default: \"json\")\n  --merge <strategy>     Merge strategy (replace|skip|merge|fail) (default:\n                         \"skip\")\n  -h, --help             display help for command\n",
+    "export": "Usage: memory export [options] <file>\n\nExport data to file\n\nOptions:\n  -f, --format <format>  Output format (choices: \"json\", \"csv\", \"graphml\",\n                         \"gexf\", \"dot\", \"markdown\", \"mermaid\", \"turtle\",\n                         \"rdf-xml\", \"json-ld\", default: \"json\")\n  -h, --help             display help for command\n",
+    "stats": "Usage: memory stats [options]\n\nShow knowledge graph statistics\n\nOptions:\n  -h, --help  display help for command\n",
+    "archive": "Usage: memory archive [options]\n\nArchive old or low-importance entities\n\nOptions:\n  --older-than <date>  Archive entities older than ISO date\n  --importance-lt <n>  Archive entities with importance below N (0-10)\n  --tags <tags...>     Archive entities with these tags\n  --dry-run            Preview without applying changes\n  -h, --help           display help for command\n",
+    "compress": "Usage: memory compress [options]\n\nFind and merge duplicate entities\n\nOptions:\n  --threshold <n>  Similarity threshold (0-1) (default: 0.8)\n  --dry-run        Preview without applying changes\n  -h, --help       display help for command\n",
+    "validate": "Usage: memory validate [options]\n\nValidate graph integrity\n\nOptions:\n  -h, --help  display help for command\n",
+    "interactive": "Usage: memory interactive|i [options]\n\nStart interactive REPL mode\n\nOptions:\n  -h, --help  display help for command\n",
+    "exclude": "Usage: memory exclude [options] [command]\n\nManage do_not_remember exclusion rules\n\nOptions:\n  -h, --help               display help for command\n\nCommands:\n  add [options] <pattern>  Add an exclusion rule (substring match)\n  list                     List all exclusion rules\n  remove <id>              Remove an exclusion rule (does NOT restore deleted\n                           memories)\n  help [command]           display help for command\n",
+    "exclude add": "Usage: memory exclude add [options] <pattern>\n\nAdd an exclusion rule (substring match)\n\nOptions:\n  --scope <scope>       Rule scope: 'future-only' | 'past-only' | 'both'\n                        (default: \"both\")\n  --entity-type <type>  Restrict to a single entity type\n  --reason <reason>     Free-text justification\n  -h, --help            display help for command\n",
+    "exclude list": "Usage: memory exclude list [options]\n\nList all exclusion rules\n\nOptions:\n  -h, --help  display help for command\n",
+    "exclude remove": "Usage: memory exclude remove [options] <id>\n\nRemove an exclusion rule (does NOT restore deleted memories)\n\nOptions:\n  -h, --help  display help for command\n",
+    "decision": "Usage: memory decision [options] [command]\n\nManage decision-rationale records (ADR-equivalent)\n\nOptions:\n  -h, --help             display help for command\n\nCommands:\n  propose [options]      Propose a new decision\n  accept <id>            Accept a proposed decision\n  reject [options] <id>  Reject a proposed decision\n  supersede <id> <by>    Mark an accepted decision as superseded by another\n  list [options]         List decisions, optionally filtered by status\n  find <query>           Find decisions whose context/decision/consequences\n                         match a substring\n  export [options] <id>  Render a decision as ADR-format markdown\n  import <path>          Parse an ADR markdown file and propose it as a decision\n  help [command]         display help for command\n",
+    "decision propose": "Usage: memory decision propose [options]\n\nPropose a new decision\n\nOptions:\n  --context <text>         Problem-space description\n  --decision <text>        The chosen path\n  --alternative <text...>  Alternative options considered (default: [])\n  --consequence <text...>  Anticipated consequences (default: [])\n  --supersedes <id>        Backward link to a prior decision\n  -h, --help               display help for command\n",
+    "decision accept": "Usage: memory decision accept [options] <id>\n\nAccept a proposed decision\n\nOptions:\n  -h, --help  display help for command\n",
+    "decision reject": "Usage: memory decision reject [options] <id>\n\nReject a proposed decision\n\nOptions:\n  --reason <text>  Why the decision is being rejected\n  -h, --help       display help for command\n",
+    "decision supersede": "Usage: memory decision supersede [options] <id> <by>\n\nMark an accepted decision as superseded by another\n\nOptions:\n  -h, --help  display help for command\n",
+    "decision list": "Usage: memory decision list [options]\n\nList decisions, optionally filtered by status\n\nOptions:\n  --status <status>  Filter: 'proposed' | 'accepted' | 'rejected' | 'superseded'\n  -h, --help         display help for command\n",
+    "decision find": "Usage: memory decision find [options] <query>\n\nFind decisions whose context/decision/consequences match a substring\n\nOptions:\n  -h, --help  display help for command\n",
+    "decision export": "Usage: memory decision export [options] <id>\n\nRender a decision as ADR-format markdown\n\nOptions:\n  --out <path>  Write to a file instead of stdout\n  -h, --help    display help for command\n",
+    "decision import": "Usage: memory decision import [options] <path>\n\nParse an ADR markdown file and propose it as a decision\n\nOptions:\n  -h, --help  display help for command\n",
+    "project-context": "Usage: memory project-context [options] [command]\n\nManage structured per-project knowledge (facts/conventions/commands/glossary)\n\nOptions:\n  -h, --help                                  display help for command\n\nCommands:\n  show <projectId>                            Show the project-context record as rendered prose\n  append-fact <projectId> <fact>              Append a fact to the project context (dedups)\n  append-convention <projectId> <convention>  Append a convention to the project context (dedups)\n  append-command [options] <projectId>        Append a documented project command\n  append-glossary [options] <projectId>       Append a glossary term to the project context\n  clear <projectId>                           Wipe all four arrays (facts/conventions/commands/glossary) — keeps the entity\n  help [command]                              display help for command\n",
+    "project-context show": "Usage: memory project-context show [options] <projectId>\n\nShow the project-context record as rendered prose\n\nOptions:\n  -h, --help  display help for command\n",
+    "project-context append-fact": "Usage: memory project-context append-fact [options] <projectId> <fact>\n\nAppend a fact to the project context (dedups)\n\nOptions:\n  -h, --help  display help for command\n",
+    "project-context append-convention": "Usage: memory project-context append-convention [options] <projectId> <convention>\n\nAppend a convention to the project context (dedups)\n\nOptions:\n  -h, --help  display help for command\n",
+    "project-context append-command": "Usage: memory project-context append-command [options] <projectId>\n\nAppend a documented project command\n\nOptions:\n  --name <name>        Command short name (e.g. \"test\")\n  --command <command>  Command line (e.g. \"npm test\")\n  --purpose <purpose>  What the command does\n  -h, --help           display help for command\n",
+    "project-context append-glossary": "Usage: memory project-context append-glossary [options] <projectId>\n\nAppend a glossary term to the project context\n\nOptions:\n  --term <term>              Domain term\n  --definition <definition>  Term definition\n  -h, --help                 display help for command\n",
+    "project-context clear": "Usage: memory project-context clear [options] <projectId>\n\nWipe all four arrays (facts/conventions/commands/glossary) — keeps the entity\n\nOptions:\n  -h, --help  display help for command\n",
+    "tool-affordance": "Usage: memory tool-affordance [options] [command]\n\nInspect per-tool rolling outcome statistics\n\nOptions:\n  -h, --help                display help for command\n\nCommands:\n  list                      List all tools with affordance records\n  show <toolName>           Show the full record for a single tool\n  stats <toolName>          Show flat stats: success_rate / total_calls /\n                            common_failure_modes / avg_duration_ms\n  suggest [options] <hint>  Suggest tools matching a task hint, ranked by\n                            success rate × recency\n  help [command]            display help for command\n",
+    "tool-affordance list": "Usage: memory tool-affordance list [options]\n\nList all tools with affordance records\n\nOptions:\n  -h, --help  display help for command\n",
+    "tool-affordance show": "Usage: memory tool-affordance show [options] <toolName>\n\nShow the full record for a single tool\n\nOptions:\n  -h, --help  display help for command\n",
+    "tool-affordance stats": "Usage: memory tool-affordance stats [options] <toolName>\n\nShow flat stats: success_rate / total_calls / common_failure_modes /\navg_duration_ms\n\nOptions:\n  -h, --help  display help for command\n",
+    "tool-affordance suggest": "Usage: memory tool-affordance suggest [options] <hint>\n\nSuggest tools matching a task hint, ranked by success rate × recency\n\nOptions:\n  --limit <n>  Maximum suggestions to return (default: \"5\")\n  -h, --help   display help for command\n",
+    "smoke": "Usage: memory smoke [options]\n\nRun a per-category end-to-end smoke test (~30 ops) against a fresh temp graph\n\nOptions:\n  -s, --storage <path>  Storage path for the smoke run (default: temp dir)\n  -k, --keep            Preserve the smoke graph after the run and print its\n                        path (default: cleanup)\n  -v, --verbose         Print each step as it runs (default: print summary only)\n  -h, --help            display help for command\n",
+    "diag": "Usage: memory diag [options]\n\nOne-shot diagnostic snapshot: memoryjs version, runtime, storage, env\n\nOptions:\n  -h, --help  display help for command\n",
+    "env": "Usage: memory env [options]\n\nPrint all memoryjs env vars with documented defaults and resolved values\n\nOptions:\n  --all       Include vars that are unset and have no documented default\n              override\n  -h, --help  display help for command\n",
+    "health": "Usage: memory health [options]\n\nRun fast integrity checks (graph loads, distinct names, no orphan relations, no\nhierarchy cycles)\n\nOptions:\n  -h, --help  display help for command\n",
+    "version": "Usage: memory version [options]\n\nCompact version line: memoryjs, node, platform\n\nOptions:\n  -h, --help  display help for command\n",
+    "show": "Usage: memory show [options] <entity>\n\nVerbose snapshot of one entity (observations, relations in/out, tags, hierarchy,\ntimestamps)\n\nOptions:\n  -h, --help  display help for command\n",
+    "tree": "Usage: memory tree [options] [root]\n\nHierarchy tree from a root entity (or all roots when omitted)\n\nOptions:\n  --ascii     Render as ASCII tree instead of JSON (overrides --output-format)\n  -h, --help  display help for command\n",
+    "neighbors": "Usage: memory neighbors [options] <entity>\n\nIncoming + outgoing relations of one entity (with in/out degree counts)\n\nOptions:\n  -h, --help  display help for command\n",
+    "size": "Usage: memory size [options]\n\nGraph size + storage footprint summary (entity/relation/observation counts, file\nbytes, line count)\n\nOptions:\n  -h, --help  display help for command\n",
+    "heuristic": "Usage: memory heuristic [options] [command]\n\nManage condition→action heuristic guidelines (add, match, reinforce, conflicts)\n\nOptions:\n  -h, --help                          display help for command\n\nCommands:\n  add [options] <condition> <action>  Add a heuristic guideline. Returns the\n                                      assigned id.\n  list                                List all heuristics\n  count                               Print the current heuristic count\n  get <id>                            Get a heuristic by id\n  match [options] <input...>          Match heuristics whose condition fits the\n                                      given input\n  reinforce <id>                      Reinforce a heuristic (bump confidence\n                                      toward 1)\n  contradict <id>                     Record a contradiction (decreases\n                                      confidence)\n  conflicts                           Detect heuristics with conflicting actions\n                                      for similar conditions\n  remove <id>                         Remove a heuristic by id\n  clear                               Remove all heuristics. Destructive; no\n                                      --dry-run yet.\n  help [command]                      display help for command\n",
+    "heuristic add": "Usage: memory heuristic add [options] <condition> <action>\n\nAdd a heuristic guideline. Returns the assigned id.\n\nOptions:\n  -p, --priority <n>    Priority (numeric; higher wins ties)\n  -c, --confidence <n>  Initial confidence 0–1\n  -i, --importance <n>  Importance 0–10\n  -a, --agent-id <id>   Owning agent ID\n  -h, --help            display help for command\n",
+    "heuristic list": "Usage: memory heuristic list [options]\n\nList all heuristics\n\nOptions:\n  -h, --help  display help for command\n",
+    "heuristic count": "Usage: memory heuristic count [options]\n\nPrint the current heuristic count\n\nOptions:\n  -h, --help  display help for command\n",
+    "heuristic get": "Usage: memory heuristic get [options] <id>\n\nGet a heuristic by id\n\nOptions:\n  -h, --help  display help for command\n",
+    "heuristic match": "Usage: memory heuristic match [options] <input...>\n\nMatch heuristics whose condition fits the given input\n\nOptions:\n  -l, --limit <n>      Max matches to return\n  -s, --min-score <n>  Minimum match score 0–1\n  -h, --help           display help for command\n",
+    "heuristic reinforce": "Usage: memory heuristic reinforce [options] <id>\n\nReinforce a heuristic (bump confidence toward 1)\n\nOptions:\n  -h, --help  display help for command\n",
+    "heuristic contradict": "Usage: memory heuristic contradict [options] <id>\n\nRecord a contradiction (decreases confidence)\n\nOptions:\n  -h, --help  display help for command\n",
+    "heuristic conflicts": "Usage: memory heuristic conflicts [options]\n\nDetect heuristics with conflicting actions for similar conditions\n\nOptions:\n  -h, --help  display help for command\n",
+    "heuristic remove": "Usage: memory heuristic remove [options] <id>\n\nRemove a heuristic by id\n\nOptions:\n  -h, --help  display help for command\n",
+    "heuristic clear": "Usage: memory heuristic clear [options]\n\nRemove all heuristics. Destructive; no --dry-run yet.\n\nOptions:\n  -h, --help  display help for command\n",
+    "obs-dedup": "Usage: memory obs-dedup [options] [command]\n\nCross-entity observation duplicate detection (exact and Jaccard similarity)\n\nOptions:\n  -h, --help              display help for command\n\nCommands:\n  find [options]          Find observations that appear verbatim across multiple\n                          entities\n  find-jaccard [options]  Find near-duplicate observations across entities by\n                          Jaccard similarity\n  help [command]          display help for command\n",
+    "obs-dedup find": "Usage: memory obs-dedup find [options]\n\nFind observations that appear verbatim across multiple entities\n\nOptions:\n  --entity-type <type>   Filter to one entityType (or comma-separated list)\n  --project-id <id>      Filter to one projectId\n  --session-id <id>      Filter to one sessionId\n  --min-occurrences <n>  Minimum occurrences per group (≥2)\n  --max-groups <n>       Maximum groups to return\n  -h, --help             display help for command\n",
+    "obs-dedup find-jaccard": "Usage: memory obs-dedup find-jaccard [options]\n\nFind near-duplicate observations across entities by Jaccard similarity\n\nOptions:\n  --entity-type <type>   Filter to one entityType (or comma-separated list)\n  --project-id <id>      Filter to one projectId\n  --session-id <id>      Filter to one sessionId\n  --min-occurrences <n>  Minimum occurrences per group (≥2)\n  --max-groups <n>       Maximum groups to return\n  -h, --help             display help for command\n",
+    "spell": "Usage: memory spell [options] [command]\n\nSpell-suggest queries against the graph vocabulary\n\nOptions:\n  -h, --help                 display help for command\n\nCommands:\n  suggest [options] <query>  Suggest corrections for a (possibly misspelled)\n                             query\n  rebuild                    Rebuild the spell-checker vocabulary index from the\n                             graph\n  size                       Print the current vocabulary size\n  help [command]             display help for command\n",
+    "spell suggest": "Usage: memory spell suggest [options] <query>\n\nSuggest corrections for a (possibly misspelled) query\n\nOptions:\n  -l, --limit <n>         Max suggestions to return\n  -s, --min-score <n>     Minimum match score 0–1\n  -d, --max-distance <n>  Maximum Levenshtein distance\n  -h, --help              display help for command\n",
+    "spell rebuild": "Usage: memory spell rebuild [options]\n\nRebuild the spell-checker vocabulary index from the graph\n\nOptions:\n  -h, --help  display help for command\n",
+    "spell size": "Usage: memory spell size [options]\n\nPrint the current vocabulary size\n\nOptions:\n  -h, --help  display help for command\n",
+    "check": "Usage: memory check [options]\n\nDetect orphan relations + missing parents + hierarchy cycles. Dry-run by\ndefault.\n\nOptions:\n  --apply     Actually delete orphan relations + clear missing parentIds (cycles\n              always left for human review)\n  -h, --help  display help for command\n",
+    "cache": "Usage: memory cache [options] [command]\n\nInspect or bust the per-tier search caches (basic / ranked / boolean / fuzzy)\n\nOptions:\n  -h, --help      display help for command\n\nCommands:\n  stats           Per-cache hits/misses/size/hitRate snapshot. Stats are\n                  process-local — fresh CLI invocations start at zero.\n  clear           Clear all four search caches. Idempotent; safe to call any\n                  time.\n  cleanup         Sweep expired entries (TTL) across all caches without dropping\n                  live entries.\n  help [command]  display help for command\n",
+    "cache stats": "Usage: memory cache stats [options]\n\nPer-cache hits/misses/size/hitRate snapshot. Stats are process-local — fresh CLI\ninvocations start at zero.\n\nOptions:\n  -h, --help  display help for command\n",
+    "cache clear": "Usage: memory cache clear [options]\n\nClear all four search caches. Idempotent; safe to call any time.\n\nOptions:\n  -h, --help  display help for command\n",
+    "cache cleanup": "Usage: memory cache cleanup [options]\n\nSweep expired entries (TTL) across all caches without dropping live entries.\n\nOptions:\n  -h, --help  display help for command\n",
+    "reindex": "Usage: memory reindex [options]\n\nRebuild search-side indexes (TF-IDF/BM25 ranked + spell vocabulary).\n\nOptions:\n  --ranked    Rebuild only the ranked-search (TF-IDF/BM25) index\n  --spell     Rebuild only the spell-checker vocabulary\n  -h, --help  display help for command\n",
+    "audit": "Usage: memory audit [options] [command]\n\nQuery the audit trail (provenance): filtered log, per-entity history, chain\nverification, stats\n\nOptions:\n  -h, --help                      display help for command\n\nCommands:\n  log [options]                   List audit entries with filters (default:\n                                  aligned lines; --json for piping)\n  history [options] <entityName>  Full chronological audit history for one\n                                  entity\n  verify [options]                Verify the audit log hash chain (tamper\n                                  evidence); exit code 1 when broken\n  stats [options]                 Audit log summary: entry counts by operation,\n                                  oldest/newest timestamps\n  help [command]                  display help for command\n",
+    "audit log": "Usage: memory audit log [options]\n\nList audit entries with filters (default: aligned lines; --json for piping)\n\nOptions:\n  --entity <name>  Filter by entity name (exact match)\n  --op <type>      Filter by operation type (choices: \"create\", \"update\",\n                   \"delete\", \"merge\", \"archive\")\n  --agent <id>     Filter by agent/user identifier\n  --since <time>   Only entries at/after this time (ISO 8601, or relative like\n                   \"2h\", \"7d\")\n  --until <time>   Only entries at/before this time (ISO 8601, or relative like\n                   \"2h\")\n  --text <substr>  Case-insensitive free-text match over serialized entries\n  --limit <n>      Keep only the most recent N matches\n  --file <path>    Audit log file (overrides MEMORY_AUDIT_LOG_FILE and the\n                   sidecar default)\n  --json           Emit entries as JSON\n  -h, --help       display help for command\n",
+    "audit history": "Usage: memory audit history [options] <entityName>\n\nFull chronological audit history for one entity\n\nOptions:\n  --file <path>  Audit log file (overrides MEMORY_AUDIT_LOG_FILE and the sidecar\n                 default)\n  --json         Emit entries as JSON\n  -h, --help     display help for command\n",
+    "audit verify": "Usage: memory audit verify [options]\n\nVerify the audit log hash chain (tamper evidence); exit code 1 when broken\n\nOptions:\n  --file <path>  Audit log file (overrides MEMORY_AUDIT_LOG_FILE and the sidecar\n                 default)\n  --json         Emit the full verification result as JSON\n  -h, --help     display help for command\n",
+    "audit stats": "Usage: memory audit stats [options]\n\nAudit log summary: entry counts by operation, oldest/newest timestamps\n\nOptions:\n  --file <path>  Audit log file (overrides MEMORY_AUDIT_LOG_FILE and the sidecar\n                 default)\n  --json         Emit stats as JSON\n  -h, --help     display help for command\n",
+    "doctor": "Usage: memory doctor [options]\n\nPreflight checks for documented gotchas: node version, better-sqlite3 ABI,\nworkers build, storage file, env lint, embedding provider\n\nOptions:\n  --json      Emit machine-readable JSON report\n  -h, --help  display help for command\n"
+  },
+  "invocations": [
+    {
+      "argv": [
+        "entity",
+        "create",
+        "Alice",
+        "-t",
+        "person",
+        "-i",
+        "7"
+      ],
+      "captured": [
+        {
+          "path": "memory entity create",
+          "args": [
+            "Alice"
+          ],
+          "opts": {
+            "type": "person",
+            "importance": 7
+          }
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "entity",
+        "create",
+        "Alice",
+        "-o",
+        "one",
+        "two",
+        "three"
+      ],
+      "captured": [
+        {
+          "path": "memory entity create",
+          "args": [
+            "Alice"
+          ],
+          "opts": {
+            "type": "generic",
+            "observation": [
+              "one",
+              "two",
+              "three"
+            ]
+          }
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "entity",
+        "create",
+        "Alice",
+        "--tags",
+        "a",
+        "b"
+      ],
+      "captured": [
+        {
+          "path": "memory entity create",
+          "args": [
+            "Alice"
+          ],
+          "opts": {
+            "type": "generic",
+            "tags": [
+              "a",
+              "b"
+            ]
+          }
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "entity",
+        "create",
+        "Alice"
+      ],
+      "captured": [
+        {
+          "path": "memory entity create",
+          "args": [
+            "Alice"
+          ],
+          "opts": {
+            "type": "generic"
+          }
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "entity",
+        "get",
+        "Alice"
+      ],
+      "captured": [
+        {
+          "path": "memory entity get",
+          "args": [
+            "Alice"
+          ],
+          "opts": {}
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "entity",
+        "list",
+        "-l",
+        "5",
+        "-t",
+        "person"
+      ],
+      "captured": [
+        {
+          "path": "memory entity list",
+          "args": [],
+          "opts": {
+            "limit": 5,
+            "type": "person"
+          }
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "entity",
+        "update",
+        "Alice",
+        "--tags",
+        "x"
+      ],
+      "captured": [
+        {
+          "path": "memory entity update",
+          "args": [
+            "Alice"
+          ],
+          "opts": {
+            "tags": [
+              "x"
+            ]
+          }
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "search",
+        "hello world",
+        "-l",
+        "3",
+        "--threshold",
+        "0.4"
+      ],
+      "captured": [
+        {
+          "path": "memory search",
+          "args": [
+            "hello world"
+          ],
+          "opts": {
+            "limit": 3,
+            "threshold": 0.4
+          }
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "search",
+        "x",
+        "--threshold=0.9"
+      ],
+      "captured": [
+        {
+          "path": "memory search",
+          "args": [
+            "x"
+          ],
+          "opts": {
+            "limit": 10,
+            "threshold": 0.9
+          }
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "search",
+        "x",
+        "--ranked",
+        "--fuzzy"
+      ],
+      "captured": [
+        {
+          "path": "memory search",
+          "args": [
+            "x"
+          ],
+          "opts": {
+            "limit": 10,
+            "threshold": 0.6,
+            "ranked": true,
+            "fuzzy": true
+          }
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "graph",
+        "centrality",
+        "--top",
+        "10",
+        "--damping",
+        "0.9"
+      ],
+      "captured": [
+        {
+          "path": "memory graph centrality",
+          "args": [],
+          "opts": {
+            "algo": "degree",
+            "top": 10,
+            "direction": "both",
+            "damping": 0.9
+          }
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "graph",
+        "shortest-path",
+        "a",
+        "b"
+      ],
+      "captured": [
+        {
+          "path": "memory graph shortest-path",
+          "args": [
+            "a",
+            "b"
+          ],
+          "opts": {}
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "relation",
+        "create",
+        "a",
+        "knows",
+        "b"
+      ],
+      "captured": [
+        {
+          "path": "memory relation create",
+          "args": [
+            "a",
+            "knows",
+            "b"
+          ],
+          "opts": {}
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "observation",
+        "add",
+        "Alice",
+        "obs one",
+        "obs two"
+      ],
+      "captured": [
+        {
+          "path": "memory observation add",
+          "args": [
+            "Alice",
+            [
+              "obs one",
+              "obs two"
+            ]
+          ],
+          "opts": {}
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "tag",
+        "add",
+        "Alice",
+        "x",
+        "y"
+      ],
+      "captured": [
+        {
+          "path": "memory tag add",
+          "args": [
+            "Alice",
+            [
+              "x",
+              "y"
+            ]
+          ],
+          "opts": {}
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "import",
+        "file.json"
+      ],
+      "captured": [
+        {
+          "path": "memory import",
+          "args": [
+            "file.json"
+          ],
+          "opts": {
+            "format": "json",
+            "merge": "skip"
+          }
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "import",
+        "file.json",
+        "-f",
+        "csv"
+      ],
+      "captured": [
+        {
+          "path": "memory import",
+          "args": [
+            "file.json"
+          ],
+          "opts": {
+            "format": "csv",
+            "merge": "skip"
+          }
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "export",
+        "out.csv",
+        "-f",
+        "csv"
+      ],
+      "captured": [
+        {
+          "path": "memory export",
+          "args": [
+            "out.csv"
+          ],
+          "opts": {
+            "format": "csv"
+          }
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "stats"
+      ],
+      "captured": [
+        {
+          "path": "memory stats",
+          "args": [],
+          "opts": {}
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "project-context",
+        "append-command",
+        "p1",
+        "--name",
+        "test",
+        "--command",
+        "npm test",
+        "--purpose",
+        "runs"
+      ],
+      "captured": [
+        {
+          "path": "memory project-context append-command",
+          "args": [
+            "p1"
+          ],
+          "opts": {
+            "name": "test",
+            "command": "npm test",
+            "purpose": "runs"
+          }
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "doctor",
+        "--json"
+      ],
+      "captured": [
+        {
+          "path": "memory doctor",
+          "args": [],
+          "opts": {
+            "json": true
+          }
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "reindex",
+        "--ranked"
+      ],
+      "captured": [
+        {
+          "path": "memory reindex",
+          "args": [],
+          "opts": {
+            "ranked": true
+          }
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "interactive"
+      ],
+      "captured": [
+        {
+          "path": "memory interactive",
+          "args": [],
+          "opts": {}
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "i"
+      ],
+      "captured": [
+        {
+          "path": "memory interactive",
+          "args": [],
+          "opts": {}
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "--quiet",
+        "stats"
+      ],
+      "captured": [
+        {
+          "path": "memory stats",
+          "args": [],
+          "opts": {}
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "-q",
+        "stats"
+      ],
+      "captured": [
+        {
+          "path": "memory stats",
+          "args": [],
+          "opts": {}
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "--output-format",
+        "table",
+        "stats"
+      ],
+      "captured": [
+        {
+          "path": "memory stats",
+          "args": [],
+          "opts": {}
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "--output-format=csv",
+        "stats"
+      ],
+      "captured": [
+        {
+          "path": "memory stats",
+          "args": [],
+          "opts": {}
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "stats",
+        "--",
+        "extra"
+      ],
+      "captured": [],
+      "written": [
+        "error: too many arguments for 'stats'. Expected 0 arguments but got 1: extra.\n"
+      ],
+      "errorMessage": "error: too many arguments for 'stats'. Expected 0 arguments but got 1: extra.",
+      "exitCode": 1
+    },
+    {
+      "argv": [
+        "heuristic",
+        "match",
+        "one",
+        "two",
+        "-l",
+        "4"
+      ],
+      "captured": [
+        {
+          "path": "memory heuristic match",
+          "args": [
+            [
+              "one",
+              "two"
+            ]
+          ],
+          "opts": {
+            "limit": 4
+          }
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "tree",
+        "--ascii"
+      ],
+      "captured": [
+        {
+          "path": "memory tree",
+          "args": [
+            null
+          ],
+          "opts": {
+            "ascii": true
+          }
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "obs-dedup",
+        "find",
+        "--min-occurrences",
+        "2"
+      ],
+      "captured": [
+        {
+          "path": "memory obs-dedup find",
+          "args": [],
+          "opts": {
+            "minOccurrences": 2
+          }
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "spell",
+        "suggest",
+        "q",
+        "-l",
+        "3",
+        "-s",
+        "0.5"
+      ],
+      "captured": [
+        {
+          "path": "memory spell suggest",
+          "args": [
+            "q"
+          ],
+          "opts": {
+            "limit": 3
+          }
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "cache",
+        "stats"
+      ],
+      "captured": [
+        {
+          "path": "memory cache stats",
+          "args": [],
+          "opts": {}
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "audit",
+        "log",
+        "--op",
+        "create"
+      ],
+      "captured": [
+        {
+          "path": "memory audit log",
+          "args": [],
+          "opts": {
+            "op": "create"
+          }
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "tool-affordance",
+        "suggest",
+        "hint",
+        "--limit",
+        "2"
+      ],
+      "captured": [
+        {
+          "path": "memory tool-affordance suggest",
+          "args": [
+            "hint"
+          ],
+          "opts": {
+            "limit": "2"
+          }
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "decision",
+        "propose",
+        "--context",
+        "c",
+        "--decision",
+        "d",
+        "--alternative",
+        "a1",
+        "a2"
+      ],
+      "captured": [
+        {
+          "path": "memory decision propose",
+          "args": [],
+          "opts": {
+            "alternative": [
+              "a1",
+              "a2"
+            ],
+            "consequence": [],
+            "context": "c",
+            "decision": "d"
+          }
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "exclude",
+        "add",
+        "pat",
+        "--scope",
+        "both"
+      ],
+      "captured": [
+        {
+          "path": "memory exclude add",
+          "args": [
+            "pat"
+          ],
+          "opts": {
+            "scope": "both"
+          }
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "hierarchy",
+        "set-parent",
+        "child",
+        "parent"
+      ],
+      "captured": [
+        {
+          "path": "memory hierarchy set-parent",
+          "args": [
+            "child",
+            "parent"
+          ],
+          "opts": {}
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "relation",
+        "list",
+        "--from",
+        "a"
+      ],
+      "captured": [
+        {
+          "path": "memory relation list",
+          "args": [],
+          "opts": {
+            "from": "a"
+          }
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    },
+    {
+      "argv": [
+        "graph",
+        "components"
+      ],
+      "captured": [
+        {
+          "path": "memory graph components",
+          "args": [],
+          "opts": {}
+        }
+      ],
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null
+    }
+  ],
+  "errors": [
+    {
+      "argv": [
+        "entity",
+        "create"
+      ],
+      "captured": [],
+      "written": [
+        "error: missing required argument 'name'\n"
+      ],
+      "errorMessage": "error: missing required argument 'name'",
+      "exitCode": 1
+    },
+    {
+      "argv": [
+        "nope"
+      ],
+      "captured": [],
+      "written": [
+        "error: unknown command 'nope'\n"
+      ],
+      "errorMessage": "error: unknown command 'nope'",
+      "exitCode": 1
+    },
+    {
+      "argv": [
+        "entity",
+        "nope"
+      ],
+      "captured": [],
+      "written": [
+        "error: unknown command 'nope'\n"
+      ],
+      "errorMessage": "error: unknown command 'nope'",
+      "exitCode": 1
+    },
+    {
+      "argv": [
+        "stats",
+        "--unknown-flag"
+      ],
+      "captured": [],
+      "written": [
+        "error: unknown option '--unknown-flag'\n"
+      ],
+      "errorMessage": "error: unknown option '--unknown-flag'",
+      "exitCode": 1
+    },
+    {
+      "argv": [
+        "project-context",
+        "append-command",
+        "p1"
+      ],
+      "captured": [],
+      "written": [
+        "error: required option '--name <name>' not specified\n"
+      ],
+      "errorMessage": "error: required option '--name <name>' not specified",
+      "exitCode": 1
+    },
+    {
+      "argv": [
+        "import",
+        "file.json",
+        "-f",
+        "bogus"
+      ],
+      "captured": [],
+      "written": [
+        "error: option '-f, --format <format>' argument 'bogus' is invalid. Allowed choices are json, csv, graphml.\n"
+      ],
+      "errorMessage": "error: option '-f, --format <format>' argument 'bogus' is invalid. Allowed choices are json, csv, graphml.",
+      "exitCode": 1
+    },
+    {
+      "argv": [
+        "compress",
+        "--threshold",
+        "NaN"
+      ],
+      "captured": [],
+      "written": [
+        "error: option '--threshold <n>' argument 'NaN' is invalid. Expected a finite number\n"
+      ],
+      "errorMessage": "error: option '--threshold <n>' argument 'NaN' is invalid. Expected a finite number",
+      "exitCode": 1
+    },
+    {
+      "argv": [
+        "search"
+      ],
+      "captured": [],
+      "written": [
+        "error: missing required argument 'query'\n"
+      ],
+      "errorMessage": "error: missing required argument 'query'",
+      "exitCode": 1
+    },
+    {
+      "argv": [
+        "interactive",
+        "--bad"
+      ],
+      "captured": [],
+      "written": [
+        "error: unknown option '--bad'\n"
+      ],
+      "errorMessage": "error: unknown option '--bad'",
+      "exitCode": 1
+    },
+    {
+      "argv": [
+        "entity",
+        "get"
+      ],
+      "captured": [],
+      "written": [
+        "error: missing required argument 'name'\n"
+      ],
+      "errorMessage": "error: missing required argument 'name'",
+      "exitCode": 1
+    },
+    {
+      "argv": [
+        "audit",
+        "log",
+        "--op",
+        "explode"
+      ],
+      "captured": [],
+      "written": [
+        "error: option '--op <type>' argument 'explode' is invalid. Allowed choices are create, update, delete, merge, archive.\n"
+      ],
+      "errorMessage": "error: option '--op <type>' argument 'explode' is invalid. Allowed choices are create, update, delete, merge, archive.",
+      "exitCode": 1
+    },
+    {
+      "argv": [
+        "search",
+        "x",
+        "--limit"
+      ],
+      "captured": [],
+      "written": [
+        "error: option '-l, --limit <n>' argument missing\n"
+      ],
+      "errorMessage": "error: option '-l, --limit <n>' argument missing",
+      "exitCode": 1
+    },
+    {
+      "argv": [
+        "stats",
+        "--storag",
+        "x"
+      ],
+      "captured": [],
+      "written": [
+        "error: unknown option '--storag'\n(Did you mean --storage?)\n"
+      ],
+      "errorMessage": "error: unknown option '--storag'\n(Did you mean --storage?)",
+      "exitCode": 1
+    },
+    {
+      "argv": [
+        "entity",
+        "list",
+        "--limt",
+        "3"
+      ],
+      "captured": [],
+      "written": [
+        "error: unknown option '--limt'\n(Did you mean --limit?)\n"
+      ],
+      "errorMessage": "error: unknown option '--limt'\n(Did you mean --limit?)",
+      "exitCode": 1
+    }
+  ],
+  "synthetic": [
+    {
+      "argv": [
+        "leaf",
+        "x"
+      ],
+      "record": {
+        "leaf": {
+          "mode": "fast"
+        },
+        "root": {
+          "storage": "./demo.jsonl",
+          "cache": true
+        }
+      },
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "leaf",
+        "x",
+        "-f"
+      ],
+      "record": {
+        "leaf": {
+          "mode": "fast",
+          "force": true
+        },
+        "root": {
+          "storage": "./demo.jsonl",
+          "cache": true
+        }
+      },
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "leaf",
+        "x",
+        "--force"
+      ],
+      "record": {
+        "leaf": {
+          "mode": "fast",
+          "force": true
+        },
+        "root": {
+          "storage": "./demo.jsonl",
+          "cache": true
+        }
+      },
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "leaf",
+        "x",
+        "-r",
+        "3"
+      ],
+      "record": {
+        "leaf": {
+          "mode": "fast",
+          "repeat": 3
+        },
+        "root": {
+          "storage": "./demo.jsonl",
+          "cache": true
+        }
+      },
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "leaf",
+        "x",
+        "-r",
+        "3",
+        "-r",
+        "4"
+      ],
+      "record": {
+        "leaf": {
+          "mode": "fast",
+          "repeat": 4
+        },
+        "root": {
+          "storage": "./demo.jsonl",
+          "cache": true
+        }
+      },
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "leaf",
+        "x",
+        "--mode=slow"
+      ],
+      "record": {
+        "leaf": {
+          "mode": "slow"
+        },
+        "root": {
+          "storage": "./demo.jsonl",
+          "cache": true
+        }
+      },
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "leaf",
+        "x",
+        "--mode",
+        "slow"
+      ],
+      "record": {
+        "leaf": {
+          "mode": "slow"
+        },
+        "root": {
+          "storage": "./demo.jsonl",
+          "cache": true
+        }
+      },
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "leaf",
+        "x",
+        "-fr",
+        "5"
+      ],
+      "record": {
+        "leaf": {
+          "mode": "fast",
+          "force": true,
+          "repeat": 5
+        },
+        "root": {
+          "storage": "./demo.jsonl",
+          "cache": true
+        }
+      },
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "leaf",
+        "x",
+        "-rf"
+      ],
+      "record": {
+        "leaf": {
+          "mode": "fast",
+          "repeat": null
+        },
+        "root": {
+          "storage": "./demo.jsonl",
+          "cache": true
+        }
+      },
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "leaf",
+        "x",
+        "-fr5"
+      ],
+      "record": {
+        "leaf": {
+          "mode": "fast",
+          "force": true,
+          "repeat": 5
+        },
+        "root": {
+          "storage": "./demo.jsonl",
+          "cache": true
+        }
+      },
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "--no-cache",
+        "leaf",
+        "x"
+      ],
+      "record": {
+        "leaf": {
+          "mode": "fast"
+        },
+        "root": {
+          "storage": "./demo.jsonl",
+          "cache": false
+        }
+      },
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "--cache",
+        "leaf",
+        "x"
+      ],
+      "record": null,
+      "written": [
+        "error: unknown option '--cache'\n(Did you mean --no-cache?)\n"
+      ],
+      "errorMessage": "error: unknown option '--cache'\n(Did you mean --no-cache?)",
+      "exitCode": 1,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "-c",
+        "leaf",
+        "x"
+      ],
+      "record": {
+        "leaf": {
+          "mode": "fast"
+        },
+        "root": {
+          "storage": "./demo.jsonl",
+          "cache": true,
+          "color": true
+        }
+      },
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "-s",
+        "/tmp/a",
+        "leaf",
+        "x"
+      ],
+      "record": {
+        "leaf": {
+          "mode": "fast"
+        },
+        "root": {
+          "storage": "/tmp/a",
+          "cache": true
+        }
+      },
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "--storage=/tmp/b",
+        "leaf",
+        "x"
+      ],
+      "record": {
+        "leaf": {
+          "mode": "fast"
+        },
+        "root": {
+          "storage": "/tmp/b",
+          "cache": true
+        }
+      },
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "-v",
+        "1",
+        "2",
+        "3",
+        "leaf",
+        "x"
+      ],
+      "record": null,
+      "written": [
+        "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+      ],
+      "errorMessage": "(outputHelp)",
+      "exitCode": 1,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "--values",
+        "4",
+        "--values",
+        "5",
+        "leaf",
+        "x"
+      ],
+      "record": null,
+      "written": [
+        "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+      ],
+      "errorMessage": "(outputHelp)",
+      "exitCode": 1,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "-n",
+        "alpha",
+        "-n",
+        "beta",
+        "leaf",
+        "x"
+      ],
+      "record": {
+        "leaf": {
+          "mode": "fast"
+        },
+        "root": {
+          "storage": "./demo.jsonl",
+          "cache": true,
+          "name": "beta"
+        }
+      },
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "--tag",
+        "a",
+        "--tag",
+        "b",
+        "leaf",
+        "x"
+      ],
+      "record": {
+        "leaf": {
+          "mode": "fast"
+        },
+        "root": {
+          "storage": "./demo.jsonl",
+          "cache": true,
+          "tag": "b"
+        }
+      },
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "-d",
+        "leaf",
+        "x"
+      ],
+      "record": null,
+      "written": [
+        "error: unknown command 'x'\n"
+      ],
+      "errorMessage": "error: unknown command 'x'",
+      "exitCode": 1,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "-d",
+        "3",
+        "leaf",
+        "x"
+      ],
+      "record": {
+        "leaf": {
+          "mode": "fast"
+        },
+        "root": {
+          "storage": "./demo.jsonl",
+          "cache": true,
+          "depth": "3"
+        }
+      },
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "leaf",
+        "--",
+        "x"
+      ],
+      "record": {
+        "leaf": {
+          "mode": "fast"
+        },
+        "root": {
+          "storage": "./demo.jsonl",
+          "cache": true
+        }
+      },
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "leaf",
+        "--",
+        "-f"
+      ],
+      "record": {
+        "leaf": {
+          "mode": "fast"
+        },
+        "root": {
+          "storage": "./demo.jsonl",
+          "cache": true
+        }
+      },
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "grouped",
+        "--",
+        "tail",
+        "more"
+      ],
+      "record": null,
+      "written": [
+        "error: too many arguments for 'grouped'. Expected 0 arguments but got 2: tail, more.\n"
+      ],
+      "errorMessage": "error: too many arguments for 'grouped'. Expected 0 arguments but got 2: tail, more.",
+      "exitCode": 1,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "required",
+        "--key",
+        "k"
+      ],
+      "record": {
+        "leaf": {
+          "key": "k"
+        },
+        "root": {
+          "storage": "./demo.jsonl",
+          "cache": true
+        }
+      },
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "choices",
+        "--level",
+        "high"
+      ],
+      "record": {
+        "leaf": {},
+        "root": {
+          "storage": "./demo.jsonl",
+          "cache": true
+        }
+      },
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "choices"
+      ],
+      "record": {
+        "leaf": {},
+        "root": {
+          "storage": "./demo.jsonl",
+          "cache": true
+        }
+      },
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "finite",
+        "--ratio",
+        "0.5"
+      ],
+      "record": {
+        "leaf": {},
+        "root": {
+          "storage": "./demo.jsonl",
+          "cache": true
+        }
+      },
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "aliased"
+      ],
+      "record": {
+        "leaf": {},
+        "root": {
+          "storage": "./demo.jsonl",
+          "cache": true
+        }
+      },
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "al"
+      ],
+      "record": {
+        "leaf": {},
+        "root": {
+          "storage": "./demo.jsonl",
+          "cache": true
+        }
+      },
+      "written": [],
+      "errorMessage": null,
+      "exitCode": null,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "leaf"
+      ],
+      "record": null,
+      "written": [
+        "error: missing required argument 'target'\n"
+      ],
+      "errorMessage": "error: missing required argument 'target'",
+      "exitCode": 1,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "leaf",
+        "x",
+        "--nope"
+      ],
+      "record": null,
+      "written": [
+        "error: unknown option '--nope'\n(Did you mean one of --mode, --name?)\n"
+      ],
+      "errorMessage": "error: unknown option '--nope'\n(Did you mean one of --mode, --name?)",
+      "exitCode": 1,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "grouped",
+        "--nope"
+      ],
+      "record": null,
+      "written": [
+        "error: unknown option '--nope'\n(Did you mean --name?)\n"
+      ],
+      "errorMessage": "error: unknown option '--nope'\n(Did you mean --name?)",
+      "exitCode": 1,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "required"
+      ],
+      "record": null,
+      "written": [
+        "error: required option '--key <key>' not specified\n"
+      ],
+      "errorMessage": "error: required option '--key <key>' not specified",
+      "exitCode": 1,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "choices",
+        "--level",
+        "medium"
+      ],
+      "record": null,
+      "written": [
+        "error: option '--level <level>' argument 'medium' is invalid. Allowed choices are low, high.\n"
+      ],
+      "errorMessage": "error: option '--level <level>' argument 'medium' is invalid. Allowed choices are low, high.",
+      "exitCode": 1,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "finite",
+        "--ratio",
+        "NaN"
+      ],
+      "record": null,
+      "written": [
+        "error: option '--ratio <n>' argument 'NaN' is invalid. Expected a finite number\n"
+      ],
+      "errorMessage": "error: option '--ratio <n>' argument 'NaN' is invalid. Expected a finite number",
+      "exitCode": 1,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "nope-command"
+      ],
+      "record": null,
+      "written": [
+        "error: unknown command 'nope-command'\n"
+      ],
+      "errorMessage": "error: unknown command 'nope-command'",
+      "exitCode": 1,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "grouped",
+        "extra"
+      ],
+      "record": null,
+      "written": [
+        "error: too many arguments for 'grouped'. Expected 0 arguments but got 1: extra.\n"
+      ],
+      "errorMessage": "error: too many arguments for 'grouped'. Expected 0 arguments but got 1: extra.",
+      "exitCode": 1,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "--help"
+      ],
+      "record": null,
+      "written": [
+        "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+      ],
+      "errorMessage": "(outputHelp)",
+      "exitCode": 0,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    },
+    {
+      "argv": [
+        "leaf",
+        "--help"
+      ],
+      "record": null,
+      "written": [
+        "Usage: demo leaf [options] <target>\n\nOptions:\n  -f, --force       Force it\n  -r, --repeat <n>  Repeat count\n  --mode <mode>     Mode (default: \"fast\")\n  -h, --help        display help for command\n"
+      ],
+      "errorMessage": "(outputHelp)",
+      "exitCode": 0,
+      "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
+    }
+  ],
+  "repeatedParse": [
+    {
+      "sequence": [
+        [
+          "entity",
+          "list",
+          "-l",
+          "2"
+        ],
+        [
+          "entity",
+          "list"
+        ],
+        [
+          "stats"
+        ],
+        [
+          "entity",
+          "list",
+          "--tags",
+          "a"
+        ]
+      ],
+      "captured": [
+        {
+          "path": "memory entity list",
+          "args": [],
+          "opts": {
+            "limit": 2
+          }
+        },
+        {
+          "path": "memory entity list",
+          "args": [],
+          "opts": {}
+        },
+        {
+          "path": "memory stats",
+          "args": [],
+          "opts": {}
+        },
+        {
+          "path": "memory entity list",
+          "args": [],
+          "opts": {
+            "tags": [
+              "a"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "sequence": [
+        [
+          "search",
+          "x",
+          "--ranked"
+        ],
+        [
+          "search",
+          "y"
+        ]
+      ],
+      "captured": [
+        {
+          "path": "memory search",
+          "args": [
+            "x"
+          ],
+          "opts": {
+            "limit": 10,
+            "threshold": 0.6,
+            "ranked": true
+          }
+        },
+        {
+          "path": "memory search",
+          "args": [
+            "y"
+          ],
+          "opts": {
+            "limit": 10,
+            "threshold": 0.6
+          }
+        }
+      ]
+    }
+  ],
+  "parseOptions": [
+    {
+      "argv": [
+        "--storage",
+        "x",
+        "entity",
+        "create",
+        "N",
+        "-t",
+        "person",
+        "--unknown",
+        "z"
+      ],
+      "operands": [
+        "entity",
+        "create",
+        "N"
+      ],
+      "unknown": [
+        "-t",
+        "person",
+        "--unknown",
+        "z"
+      ],
+      "opts": {
+        "storage": "x",
+        "outputFormat": "json"
+      },
+      "captured": []
+    },
+    {
+      "argv": [
+        "--output-format=table",
+        "stats"
+      ],
+      "operands": [
+        "stats"
+      ],
+      "unknown": [],
+      "opts": {
+        "storage": "./memory.jsonl",
+        "outputFormat": "table"
+      },
+      "captured": []
+    },
+    {
+      "argv": [
+        "-s",
+        "y",
+        "-q",
+        "entity",
+        "list"
+      ],
+      "operands": [
+        "entity",
+        "list"
+      ],
+      "unknown": [],
+      "opts": {
+        "storage": "y",
+        "outputFormat": "json",
+        "quiet": true
+      },
+      "captured": []
+    }
+  ],
+  "version": {
+    "argv": [
+      "--version"
+    ],
+    "captured": [],
+    "written": [
+      "4.6.0\n"
+    ],
+    "errorMessage": "4.6.0",
+    "exitCode": 0
+  },
+  "helpRoot": {
+    "argv": [
+      "--help"
+    ],
+    "captured": [],
+    "written": [
+      "Usage: memory [options] [command]\n\nMemoryJS - Knowledge Graph CLI\n\nOptions:\n  -v, --version             Output the current version\n  -s, --storage <path>      Path to storage file (default: \"./memory.jsonl\")\n  --output-format <type>    Console output format (json|table|csv) (default:\n                            \"json\")\n  -q, --quiet               Suppress non-essential output\n  --verbose                 Enable verbose/debug output\n  -h, --help                display help for command\n\nCommands:\n  entity                    Manage entities (create, read, update, delete)\n  relation                  Manage relations between entities\n  search [options] <query>  Search entities and observations\n  observation               Manage entity observations\n  tag                       Manage entity tags and aliases\n  hierarchy                 Manage entity hierarchy (parent/child relationships)\n  graph                     Graph algorithms (shortest path, centrality,\n                            components)\n  import [options] <file>   Import data from file\n  export [options] <file>   Export data to file\n  stats                     Show knowledge graph statistics\n  archive [options]         Archive old or low-importance entities\n  compress [options]        Find and merge duplicate entities\n  validate                  Validate graph integrity\n  interactive|i             Start interactive REPL mode\n  exclude                   Manage do_not_remember exclusion rules\n  decision                  Manage decision-rationale records (ADR-equivalent)\n  project-context           Manage structured per-project knowledge\n                            (facts/conventions/commands/glossary)\n  tool-affordance           Inspect per-tool rolling outcome statistics\n  smoke [options]           Run a per-category end-to-end smoke test (~30 ops)\n                            against a fresh temp graph\n  diag                      One-shot diagnostic snapshot: memoryjs version,\n                            runtime, storage, env\n  env [options]             Print all memoryjs env vars with documented defaults\n                            and resolved values\n  health                    Run fast integrity checks (graph loads, distinct\n                            names, no orphan relations, no hierarchy cycles)\n  version                   Compact version line: memoryjs, node, platform\n  show <entity>             Verbose snapshot of one entity (observations,\n                            relations in/out, tags, hierarchy, timestamps)\n  tree [options] [root]     Hierarchy tree from a root entity (or all roots when\n                            omitted)\n  neighbors <entity>        Incoming + outgoing relations of one entity (with\n                            in/out degree counts)\n  size                      Graph size + storage footprint summary\n                            (entity/relation/observation counts, file bytes,\n                            line count)\n  heuristic                 Manage condition→action heuristic guidelines (add,\n                            match, reinforce, conflicts)\n  obs-dedup                 Cross-entity observation duplicate detection (exact\n                            and Jaccard similarity)\n  spell                     Spell-suggest queries against the graph vocabulary\n  check [options]           Detect orphan relations + missing parents +\n                            hierarchy cycles. Dry-run by default.\n  cache                     Inspect or bust the per-tier search caches (basic /\n                            ranked / boolean / fuzzy)\n  reindex [options]         Rebuild search-side indexes (TF-IDF/BM25 ranked +\n                            spell vocabulary).\n  audit                     Query the audit trail (provenance): filtered log,\n                            per-entity history, chain verification, stats\n  doctor [options]          Preflight checks for documented gotchas: node\n                            version, better-sqlite3 ABI, workers build, storage\n                            file, env lint, embedding provider\n  help [command]            display help for command\n"
+    ],
+    "errorMessage": "(outputHelp)",
+    "exitCode": 0
+  }
+}

@@ -9,22 +9,22 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 1016
+**Total files**: 1022
 
 ## Disposition counts
 
 | Disposition | Count | Meaning |
 | --- | --: | --- |
-| `reachable` | 408 | A `src/` file in the module graph, reachable from a root. |
+| `reachable` | 409 | A `src/` file in the module graph, reachable from a root. |
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 572 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 577 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 5 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 15 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **1016** | |
+| **Total** | **1022** | |
 
 ## Per-area counts
 
@@ -33,8 +33,8 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `benchmarks` | 5 |
 | `config` | 2 |
 | `examples` | 15 |
-| `src` | 412 |
-| `tests` | 572 |
+| `src` | 413 |
+| `tests` | 577 |
 | `tools` | 10 |
 
 ## All files
@@ -281,6 +281,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/cli/index.ts` | src | build-entry | 204 |
 | `src/cli/interactive.ts` | src | reachable | 439 |
 | `src/cli/options.ts` | src | reachable | 58 |
+| `src/cli/parseArgs.ts` | src | reachable | 1545 |
 | `src/cli/plainTable.ts` | src | reachable | 242 |
 | `src/core/columns/IColumnStore.ts` | src | reachable | 177 |
 | `src/core/columns/JsonlColumnStore.ts` | src | reachable | 227 |
@@ -733,19 +734,24 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/cli/exclusion.test.ts` | tests | test | 71 |
 | `tests/unit/cli/formatters.test.ts` | tests | test | 738 |
 | `tests/unit/cli/graph.test.ts` | tests | test | 77 |
+| `tests/unit/cli/helpers/captureCliParity.ts` | tests | test | 312 |
 | `tests/unit/cli/helpers/cliTestHarness.ts` | tests | test | 114 |
+| `tests/unit/cli/helpers/syntheticProgram.ts` | tests | test | 173 |
 | `tests/unit/cli/heuristic.test.ts` | tests | test | 70 |
 | `tests/unit/cli/hierarchy.test.ts` | tests | test | 65 |
-| `tests/unit/cli/index.test.ts` | tests | test | 270 |
+| `tests/unit/cli/index.test.ts` | tests | test | 271 |
 | `tests/unit/cli/inspect.test.ts` | tests | test | 212 |
 | `tests/unit/cli/interactive.test.ts` | tests | test | 920 |
 | `tests/unit/cli/maintenance-cli.test.ts` | tests | test | 78 |
 | `tests/unit/cli/observation.test.ts` | tests | test | 66 |
 | `tests/unit/cli/observationDedup.test.ts` | tests | test | 60 |
 | `tests/unit/cli/options.test.ts` | tests | test | 313 |
+| `tests/unit/cli/parseArgsPinned.test.ts` | tests | test | 269 |
+| `tests/unit/cli/parseArgsSurfacePinned.test.ts` | tests | test | 89 |
 | `tests/unit/cli/plainTable.challenger.test.ts` | tests | test | 201 |
 | `tests/unit/cli/plainTable.test.ts` | tests | test | 127 |
 | `tests/unit/cli/projectContext.test.ts` | tests | test | 65 |
+| `tests/unit/cli/recorderDoc.test.ts` | tests | test | 49 |
 | `tests/unit/cli/search-extended.test.ts` | tests | test | 66 |
 | `tests/unit/cli/smoke.test.ts` | tests | test | 83 |
 | `tests/unit/cli/spell.test.ts` | tests | test | 72 |

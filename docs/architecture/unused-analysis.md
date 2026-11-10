@@ -10,9 +10,9 @@
 - **Dormant files** (runtime code on disk, unreachable from any entry/build root): 0
   - **Orphaned (reachable from nothing — delete/wire candidates)**: 0
   - **Test-only (exercised by a test, ships nothing)**: 0
-- **Potentially unused exports**: 128
+- **Potentially unused exports**: 135
   - **Unreferenced anywhere (deletion candidates)**: 3
-  - **Referenced in-module (type contracts / helpers backing live exports)**: 125
+  - **Referenced in-module (type contracts / helpers backing live exports)**: 132
 
 Seeded reachability roots (4):
 
@@ -267,6 +267,16 @@ support exports that ARE used, so they cannot be deleted in isolation.
 ### `src/cli/formatters.ts`
 
 - `OutputFormat` (type) — 8 in-file refs
+
+### `src/cli/parseArgs.ts`
+
+- `CommanderError` (class) — 4 in-file refs
+- `Argument` (class) — 3 in-file refs
+- `OutputConfiguration` (interface) — 5 in-file refs
+- `ParseOptions` (interface) — 4 in-file refs
+- `HelpContextOptions` (interface) — 4 in-file refs
+- `ParseOptionsResult` (interface) — 1 in-file ref
+- `OptionParseArg` (type) — 2 in-file refs
 
 ### `src/cli/plainTable.ts`
 

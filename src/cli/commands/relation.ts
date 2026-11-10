@@ -4,7 +4,7 @@
  * @module cli/commands/relation
  */
 
-import { Command } from 'commander';
+import { Command } from '../parseArgs.js';
 import { runAction } from './helpers.js';
 import { formatRelations, formatSuccess } from '../formatters.js';
 

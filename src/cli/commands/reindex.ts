@@ -16,7 +16,7 @@
  * @module cli/commands/reindex
  */
 
-import { Command } from 'commander';
+import { Command } from '../parseArgs.js';
 import { dirname } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { RankedSearch } from '../../search/RankedSearch.js';

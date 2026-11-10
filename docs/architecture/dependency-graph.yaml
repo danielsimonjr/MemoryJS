@@ -1,8 +1,8 @@
 metadata:
   name: "@danielsimonjr/memoryjs"
-  totalFiles: 412
+  totalFiles: 413
   totalModules: 12
-  totalExports: 2874
+  totalExports: 2879
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -10345,11 +10345,7 @@ modules:
         - ansi
     src/cli/commands/audit.ts:
       description: Audit CLI Commands — `memory audit` (R4a queryable provenance).
-      externalDependencies:
-        - package: commander
-          imports:
-            - Command
-            - Option
+      externalDependencies: []
       nodeDependencies:
         - module: path
           imports:
@@ -10359,6 +10355,10 @@ modules:
             - extname
             - join
       internalDependencies:
+        - file: ../parseArgs.js
+          imports:
+            - Command
+            - Option
         - file: ./helpers.js
           imports:
             - getOptions
@@ -10393,12 +10393,12 @@ modules:
         - AUDIT_OPERATIONS
     src/cli/commands/cache.ts:
       description: Cache CLI commands — `memory cache`.
-      externalDependencies:
-        - package: commander
-          imports:
-            - Command
+      externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../parseArgs.js
+          imports:
+            - Command
         - file: ../../utils/searchCache.js
           imports:
             - clearAllSearchCaches
@@ -10417,12 +10417,12 @@ modules:
         - registerCacheCommands
     src/cli/commands/check.ts:
       description: Graph repair CLI command — `memory check`.
-      externalDependencies:
-        - package: commander
-          imports:
-            - Command
+      externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../parseArgs.js
+          imports:
+            - Command
         - file: ../../core/ManagerContext.js
           imports:
             - ManagerContext
@@ -10437,10 +10437,7 @@ modules:
         - registerCheckCommand
     src/cli/commands/decision.ts:
       description: Decision CLI Commands — `memory decision` (Phase 3 Decision Rationale).
-      externalDependencies:
-        - package: commander
-          imports:
-            - Command
+      externalDependencies: []
       nodeDependencies:
         - module: fs
           imports:
@@ -10454,6 +10451,9 @@ modules:
           imports:
             - DecisionId
           typeOnly: true
+        - file: ../parseArgs.js
+          imports:
+            - Command
         - file: ../../agent/DecisionManager.js
           imports:
             - DecisionManager
@@ -10476,10 +10476,7 @@ modules:
         - registerDecisionCommands
     src/cli/commands/diag.ts:
       description: Diagnostic CLI commands.
-      externalDependencies:
-        - package: commander
-          imports:
-            - Command
+      externalDependencies: []
       nodeDependencies:
         - module: fs
           imports:
@@ -10498,6 +10495,9 @@ modules:
             - dirname
             - join
       internalDependencies:
+        - file: ../parseArgs.js
+          imports:
+            - Command
         - file: ../../core/ManagerContext.js
           imports:
             - ManagerContext
@@ -10517,10 +10517,7 @@ modules:
         - ENV_VAR_CATALOG
     src/cli/commands/doctor.ts:
       description: Preflight CLI command — `memory doctor` (R9).
-      externalDependencies:
-        - package: commander
-          imports:
-            - Command
+      externalDependencies: []
       nodeDependencies:
         - module: fs
           imports:
@@ -10541,6 +10538,9 @@ modules:
             - join
             - resolve
       internalDependencies:
+        - file: ../parseArgs.js
+          imports:
+            - Command
         - file: ./helpers.js
           imports:
             - getOptions
@@ -10585,12 +10585,12 @@ modules:
         - EXTRA_NUMERIC_VARS
     src/cli/commands/entity.ts:
       description: Entity CLI Commands
-      externalDependencies:
-        - package: commander
-          imports:
-            - Command
+      externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../parseArgs.js
+          imports:
+            - Command
         - file: ./helpers.js
           imports:
             - runAction
@@ -10606,12 +10606,12 @@ modules:
         - registerEntityCommands
     src/cli/commands/exclusion.ts:
       description: Exclusion CLI Commands — `memory exclude` (Phase 3 do_not_remember).
-      externalDependencies:
-        - package: commander
-          imports:
-            - Command
+      externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../parseArgs.js
+          imports:
+            - Command
         - file: ./helpers.js
           imports:
             - runAction
@@ -10628,12 +10628,12 @@ modules:
         - registerExclusionCommands
     src/cli/commands/graph.ts:
       description: Graph Algorithm CLI Commands
-      externalDependencies:
-        - package: commander
-          imports:
-            - Command
+      externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../parseArgs.js
+          imports:
+            - Command
         - file: ./helpers.js
           imports:
             - runAction
@@ -10649,12 +10649,12 @@ modules:
         - registerGraphCommands
     src/cli/commands/helpers.ts:
       description: CLI Command Helpers
-      externalDependencies:
-        - package: commander
-          imports:
-            - Command
+      externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../parseArgs.js
+          imports:
+            - Command
         - file: ../../core/ManagerContext.js
           imports:
             - ManagerContext
@@ -10683,12 +10683,12 @@ modules:
         - runAction
     src/cli/commands/heuristic.ts:
       description: Heuristic CLI commands — `memory heuristic` (Phase 3B.8).
-      externalDependencies:
-        - package: commander
-          imports:
-            - Command
+      externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../parseArgs.js
+          imports:
+            - Command
         - file: ./helpers.js
           imports:
             - runAction
@@ -10704,12 +10704,12 @@ modules:
         - registerHeuristicCommands
     src/cli/commands/hierarchy.ts:
       description: Hierarchy CLI Commands
-      externalDependencies:
-        - package: commander
-          imports:
-            - Command
+      externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../parseArgs.js
+          imports:
+            - Command
         - file: ./helpers.js
           imports:
             - runAction
@@ -10723,12 +10723,12 @@ modules:
         - registerHierarchyCommands
     src/cli/commands/index.ts:
       description: CLI Command Registry
-      externalDependencies:
-        - package: commander
-          imports:
-            - Command
+      externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../parseArgs.js
+          imports:
+            - Command
         - file: ./entity.js
           imports:
             - registerEntityCommands
@@ -10807,15 +10807,15 @@ modules:
         - registerCommands
     src/cli/commands/inspect.ts:
       description: Inspection CLI commands.
-      externalDependencies:
-        - package: commander
-          imports:
-            - Command
+      externalDependencies: []
       nodeDependencies:
         - module: fs
           imports:
             - promises
       internalDependencies:
+        - file: ../parseArgs.js
+          imports:
+            - Command
         - file: ../../core/ManagerContext.js
           imports:
             - ManagerContext
@@ -10838,11 +10838,7 @@ modules:
         - registerInspectCommands
     src/cli/commands/io.ts:
       description: Import/Export CLI Commands
-      externalDependencies:
-        - package: commander
-          imports:
-            - Command
-            - Option
+      externalDependencies: []
       nodeDependencies:
         - module: fs
           imports:
@@ -10852,6 +10848,10 @@ modules:
           imports:
             - resolve
       internalDependencies:
+        - file: ../parseArgs.js
+          imports:
+            - Command
+            - Option
         - file: ./helpers.js
           imports:
             - runAction
@@ -10867,13 +10867,13 @@ modules:
         - registerIOCommands
     src/cli/commands/maintenance.ts:
       description: Maintenance CLI Commands (stats, archive, compress, validate)
-      externalDependencies:
-        - package: commander
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../parseArgs.js
           imports:
             - Command
             - InvalidArgumentError
-      nodeDependencies: []
-      internalDependencies:
         - file: ./helpers.js
           imports:
             - runAction
@@ -10899,12 +10899,12 @@ modules:
         - registerMaintenanceCommands
     src/cli/commands/observation.ts:
       description: Observation CLI Commands
-      externalDependencies:
-        - package: commander
-          imports:
-            - Command
+      externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../parseArgs.js
+          imports:
+            - Command
         - file: ./helpers.js
           imports:
             - runAction
@@ -10919,12 +10919,12 @@ modules:
         - registerObservationCommands
     src/cli/commands/observationDedup.ts:
       description: Observation-dedup CLI commands — `memory obs-dedup`.
-      externalDependencies:
-        - package: commander
-          imports:
-            - Command
+      externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../parseArgs.js
+          imports:
+            - Command
         - file: ./helpers.js
           imports:
             - runAction
@@ -10934,12 +10934,12 @@ modules:
         - registerObservationDedupCommands
     src/cli/commands/projectContext.ts:
       description: Project Context CLI Commands — `memory project-context` (Phase 3 Type 2).
-      externalDependencies:
-        - package: commander
-          imports:
-            - Command
+      externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../parseArgs.js
+          imports:
+            - Command
         - file: ./helpers.js
           imports:
             - runAction
@@ -10956,10 +10956,7 @@ modules:
         - registerProjectContextCommands
     src/cli/commands/reindex.ts:
       description: Reindex CLI command — `memory reindex`.
-      externalDependencies:
-        - package: commander
-          imports:
-            - Command
+      externalDependencies: []
       nodeDependencies:
         - module: path
           imports:
@@ -10968,6 +10965,9 @@ modules:
           imports:
             - performance
       internalDependencies:
+        - file: ../parseArgs.js
+          imports:
+            - Command
         - file: ../../search/RankedSearch.js
           imports:
             - RankedSearch
@@ -10989,12 +10989,12 @@ modules:
         - registerReindexCommand
     src/cli/commands/relation.ts:
       description: Relation CLI Commands
-      externalDependencies:
-        - package: commander
-          imports:
-            - Command
+      externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../parseArgs.js
+          imports:
+            - Command
         - file: ./helpers.js
           imports:
             - runAction
@@ -11008,12 +11008,12 @@ modules:
         - registerRelationCommands
     src/cli/commands/search.ts:
       description: Search CLI Commands
-      externalDependencies:
-        - package: commander
-          imports:
-            - Command
+      externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../parseArgs.js
+          imports:
+            - Command
         - file: ./helpers.js
           imports:
             - getOptions
@@ -11033,10 +11033,7 @@ modules:
         - registerSearchCommands
     src/cli/commands/smoke.ts:
       description: Smoke CLI command.
-      externalDependencies:
-        - package: commander
-          imports:
-            - Command
+      externalDependencies: []
       nodeDependencies:
         - module: fs
           imports:
@@ -11051,6 +11048,9 @@ modules:
           imports:
             - performance
       internalDependencies:
+        - file: ../parseArgs.js
+          imports:
+            - Command
         - file: ../../core/ManagerContext.js
           imports:
             - ManagerContext
@@ -11064,12 +11064,12 @@ modules:
         - registerSmokeCommand
     src/cli/commands/spell.ts:
       description: Spell CLI commands — `memory spell`.
-      externalDependencies:
-        - package: commander
-          imports:
-            - Command
+      externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../parseArgs.js
+          imports:
+            - Command
         - file: ./helpers.js
           imports:
             - runAction
@@ -11079,12 +11079,12 @@ modules:
         - registerSpellCommands
     src/cli/commands/tag.ts:
       description: Tag CLI Commands
-      externalDependencies:
-        - package: commander
-          imports:
-            - Command
+      externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../parseArgs.js
+          imports:
+            - Command
         - file: ./helpers.js
           imports:
             - runAction
@@ -11098,12 +11098,12 @@ modules:
         - registerTagCommands
     src/cli/commands/toolAffordance.ts:
       description: Tool Affordance CLI Commands — `memory tool-affordance` (Phase Tool D).
-      externalDependencies:
-        - package: commander
-          imports:
-            - Command
+      externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../parseArgs.js
+          imports:
+            - Command
         - file: ./helpers.js
           imports:
             - getOptions
@@ -11190,10 +11190,7 @@ modules:
         - escapeCSV
     src/cli/index.ts:
       description: MemoryJS CLI
-      externalDependencies:
-        - package: commander
-          imports:
-            - Command
+      externalDependencies: []
       nodeDependencies:
         - module: fs
           imports:
@@ -11209,6 +11206,9 @@ modules:
             - dirname
             - join
       internalDependencies:
+        - file: ./parseArgs.js
+          imports:
+            - Command
         - file: ./commands/index.js
           imports:
             - registerCommands
@@ -11275,6 +11275,35 @@ modules:
         - createLogger
       constants:
         - defaultOptions
+    src/cli/parseArgs.ts:
+      description: In-repo CLI argument parser for the MemoryJS command tree.
+      externalDependencies: []
+      nodeDependencies:
+        - module: util
+          imports:
+            - stripVTControlCharacters
+        - module: path
+          imports:
+            - basename
+            - extname
+      internalDependencies: []
+      exports:
+        - CommanderError
+        - InvalidArgumentError
+        - Option
+        - Argument
+        - Command
+      classes:
+        - CommanderError
+        - InvalidArgumentError
+        - Option
+        - Argument
+        - Command
+      interfaces:
+        - OutputConfiguration
+        - ParseOptions
+        - HelpContextOptions
+        - ParseOptionsResult
     src/cli/plainTable.ts:
       description: Renders the bordered text tables the CLI formatters print.
       externalDependencies: []
@@ -21121,6 +21150,7 @@ dependencyGraph:
         - src/cli/index.ts
         - src/cli/interactive.ts
         - src/cli/options.ts
+        - src/cli/parseArgs.ts
         - src/cli/plainTable.ts
     - name: Core
       files:
@@ -21337,17 +21367,17 @@ reachability:
     - src/index.ts
     - src/sqlite.ts
     - src/workers/levenshteinWorker.ts
-  reachableCount: 412
+  reachableCount: 413
   dormantCount: 0
   orphaned: []
   testOnly: []
 statistics:
-  totalTypeScriptFiles: 412
+  totalTypeScriptFiles: 413
   totalModules: 12
-  totalLinesOfCode: 130124
-  totalExports: 2874
-  totalClasses: 280
-  totalInterfaces: 833
+  totalLinesOfCode: 131669
+  totalExports: 2879
+  totalClasses: 285
+  totalInterfaces: 837
   totalFunctions: 682
   totalTypeGuards: 49
   totalEnums: 4
@@ -21357,9 +21387,9 @@ statistics:
   runtimeCircularDeps: 0
   typeOnlyCircularDeps: 15
   entryRoots: 4
-  reachableFiles: 412
+  reachableFiles: 413
   dormantFiles: 0
   orphanedFiles: 0
   testOnlyFiles: 0
   unusedFilesCount: 0
-  unusedExportsCount: 128
+  unusedExportsCount: 135

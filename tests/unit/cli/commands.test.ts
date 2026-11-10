@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { Command } from 'commander';
+import { Command } from '../../../src/cli/parseArgs.js';
 import { errorLines } from './helpers/cliTestHarness.js';
 
 // Mock fs module

@@ -4,7 +4,7 @@
  * @module cli/commands/tag
  */
 
-import { Command } from 'commander';
+import { Command } from '../parseArgs.js';
 import { runAction } from './helpers.js';
 import { formatSuccess, escapeCSV } from '../formatters.js';
 

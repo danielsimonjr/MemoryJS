@@ -18,7 +18,7 @@
  * @module cli/commands/smoke
  */
 
-import { Command } from 'commander';
+import { Command } from '../parseArgs.js';
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';

@@ -6,7 +6,7 @@
  * @module cli/commands
  */
 
-import { Command } from 'commander';
+import { Command } from '../parseArgs.js';
 import { registerEntityCommands } from './entity.js';
 import { registerRelationCommands } from './relation.js';
 import { registerSearchCommands } from './search.js';

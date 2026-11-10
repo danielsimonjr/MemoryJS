@@ -4,7 +4,7 @@
  * @module cli/commands/maintenance
  */
 
-import { Command, InvalidArgumentError } from 'commander';
+import { Command, InvalidArgumentError } from '../parseArgs.js';
 import { runAction, getOptions, createContext, createLogger } from './helpers.js';
 import { formatValidation, formatSuccess, formatError } from '../formatters.js';
 import { IMPORTANCE_RANGE } from '../../utils/constants.js';

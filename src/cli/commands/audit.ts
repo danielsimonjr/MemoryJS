@@ -20,7 +20,7 @@
  */
 
 import { resolve, dirname, basename, extname, join } from 'node:path';
-import { Command, Option } from 'commander';
+import { Command, Option } from '../parseArgs.js';
 import { getOptions, createLogger } from './helpers.js';
 import { formatError } from '../formatters.js';
 import { validateFilePath } from '../../utils/entityUtils.js';

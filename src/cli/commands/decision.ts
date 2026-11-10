@@ -10,7 +10,7 @@
 import type { DecisionId } from '../../types/agent-memory.js';
 import { readFileSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
-import { Command } from 'commander';
+import { Command } from '../parseArgs.js';
 import { DecisionManager } from '../../agent/DecisionManager.js';
 import { runAction, getOptions, createContext, createLogger } from './helpers.js';
 import { formatSuccess, formatError } from '../formatters.js';

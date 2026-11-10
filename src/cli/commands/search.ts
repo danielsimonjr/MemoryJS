@@ -6,7 +6,7 @@
  * @module cli/commands/search
  */
 
-import { Command } from 'commander';
+import { Command } from '../parseArgs.js';
 import { getOptions, createContext, createLogger } from './helpers.js';
 import { formatSearchResults, formatError } from '../formatters.js';
 import type { Entity } from '../../types/types.js';

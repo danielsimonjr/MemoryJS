@@ -1,11 +1,11 @@
 {
-  "totalFiles": 1016,
+  "totalFiles": 1022,
   "byDisposition": {
-    "reachable": 408,
+    "reachable": 409,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 572,
+    "test": 577,
     "tool": 10,
     "config": 2,
     "bench": 5,
@@ -14,8 +14,8 @@
   "byArea": {
     "benchmarks": 5,
     "examples": 15,
-    "src": 412,
-    "tests": 572,
+    "src": 413,
+    "tests": 577,
     "tools": 10,
     "config": 2
   },
@@ -1699,6 +1699,13 @@
       "area": "src",
       "disposition": "reachable",
       "loc": 58
+    },
+    {
+      "file": "src/cli/parseArgs.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 1545
     },
     {
       "file": "src/cli/plainTable.ts",
@@ -4865,11 +4872,25 @@
       "loc": 77
     },
     {
+      "file": "tests/unit/cli/helpers/captureCliParity.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 312
+    },
+    {
       "file": "tests/unit/cli/helpers/cliTestHarness.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
       "loc": 114
+    },
+    {
+      "file": "tests/unit/cli/helpers/syntheticProgram.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 173
     },
     {
       "file": "tests/unit/cli/heuristic.test.ts",
@@ -4890,7 +4911,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 270
+      "loc": 271
     },
     {
       "file": "tests/unit/cli/inspect.test.ts",
@@ -4935,6 +4956,20 @@
       "loc": 313
     },
     {
+      "file": "tests/unit/cli/parseArgsPinned.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 269
+    },
+    {
+      "file": "tests/unit/cli/parseArgsSurfacePinned.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 89
+    },
+    {
       "file": "tests/unit/cli/plainTable.challenger.test.ts",
       "package": "(root)",
       "area": "tests",
@@ -4954,6 +4989,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 65
+    },
+    {
+      "file": "tests/unit/cli/recorderDoc.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 49
     },
     {
       "file": "tests/unit/cli/search-extended.test.ts",

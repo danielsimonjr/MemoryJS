@@ -17,7 +17,7 @@
  * @module cli/commands/diag
  */
 
-import { Command } from 'commander';
+import { Command } from '../parseArgs.js';
 import { promises as fs } from 'node:fs';
 import { performance } from 'node:perf_hooks';
 import { readFileSync } from 'node:fs';

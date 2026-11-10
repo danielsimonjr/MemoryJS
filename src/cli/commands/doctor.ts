@@ -21,7 +21,7 @@
  * @module cli/commands/doctor
  */
 
-import { Command } from 'commander';
+import { Command } from '../parseArgs.js';
 import { existsSync, constants as fsConstants } from 'node:fs';
 import { promises as fs } from 'node:fs';
 import { createRequire } from 'node:module';

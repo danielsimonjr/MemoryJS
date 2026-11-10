@@ -6,7 +6,7 @@
 
 import { readFileSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
-import { Command, Option } from 'commander';
+import { Command, Option } from '../parseArgs.js';
 import { runAction } from './helpers.js';
 import { formatSuccess } from '../formatters.js';
 import { validateFilePath } from '../../utils/entityUtils.js';

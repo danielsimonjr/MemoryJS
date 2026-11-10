@@ -38,7 +38,7 @@ The codebase is organized into the following modules:
 
 - **adapters**: 11 files
 - **agent**: 177 files
-- **cli**: 33 files
+- **cli**: 34 files
 - **core**: 36 files
 - **features**: 18 files
 - **entry**: 1 file
@@ -61,7 +61,7 @@ Seeded build/entry roots (package `exports`, `bin` targets, tsup entries, script
 - `src/sqlite.ts`
 - `src/workers/levenshteinWorker.ts`
 
-Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
+Reachable from a root: **413** of 413 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
 
 ---
 
@@ -3784,11 +3784,6 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/cli/commands/audit.ts` - Audit CLI Commands — `memory audit` (R4a queryable provenance).
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `commander` | `Command, Option` |
-
 **Node.js Built-in Dependencies:**
 | Module | Import |
 |--------|--------|
@@ -3797,6 +3792,7 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../parseArgs.js` | `Command, Option` | Import |
 | `./helpers.js` | `getOptions, createLogger` | Import |
 | `../formatters.js` | `formatError` | Import |
 | `../../utils/entityUtils.js` | `validateFilePath` | Import |
@@ -3810,14 +3806,10 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/cli/commands/cache.ts` - Cache CLI commands — `memory cache`.
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `commander` | `Command` |
-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../parseArgs.js` | `Command` | Import |
 | `../../utils/searchCache.js` | `clearAllSearchCaches, cleanupAllCaches, getAllCacheStats` | Import |
 | `./helpers.js` | `getOptions, createLogger` | Import |
 | `../formatters.js` | `formatError` | Import |
@@ -3829,14 +3821,10 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/cli/commands/check.ts` - Graph repair CLI command — `memory check`.
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `commander` | `Command` |
-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../parseArgs.js` | `Command` | Import |
 | `../../core/ManagerContext.js` | `ManagerContext` | Import |
 | `./helpers.js` | `runAction` | Import |
 
@@ -3846,11 +3834,6 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 ---
 
 ### `src/cli/commands/decision.ts` - Decision CLI Commands — `memory decision` (Phase 3 Decision Rationale).
-
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `commander` | `Command` |
 
 **Node.js Built-in Dependencies:**
 | Module | Import |
@@ -3862,6 +3845,7 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `../../types/agent-memory.js` | `DecisionId` | Import (type-only) |
+| `../parseArgs.js` | `Command` | Import |
 | `../../agent/DecisionManager.js` | `DecisionManager` | Import |
 | `./helpers.js` | `runAction, getOptions, createContext, createLogger` | Import |
 | `../formatters.js` | `formatSuccess, formatError` | Import |
@@ -3873,11 +3857,6 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 ---
 
 ### `src/cli/commands/diag.ts` - Diagnostic CLI commands.
-
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `commander` | `Command` |
 
 **Node.js Built-in Dependencies:**
 | Module | Import |
@@ -3891,6 +3870,7 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../parseArgs.js` | `Command` | Import |
 | `../../core/ManagerContext.js` | `ManagerContext` | Import |
 | `../../types/types.js` | `Entity` | Import (type-only) |
 | `./helpers.js` | `runAction` | Import |
@@ -3902,11 +3882,6 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 ---
 
 ### `src/cli/commands/doctor.ts` - Preflight CLI command — `memory doctor` (R9).
-
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `commander` | `Command` |
 
 **Node.js Built-in Dependencies:**
 | Module | Import |
@@ -3920,6 +3895,7 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../parseArgs.js` | `Command` | Import |
 | `./helpers.js` | `getOptions, createLogger` | Import |
 | `../formatters.js` | `formatError` | Import |
 | `./diag.js` | `ENV_VAR_CATALOG` | Import |
@@ -3934,14 +3910,10 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/cli/commands/entity.ts` - Entity CLI Commands
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `commander` | `Command` |
-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../parseArgs.js` | `Command` | Import |
 | `./helpers.js` | `runAction` | Import |
 | `../formatters.js` | `formatEntities, formatEntityDetail, formatSuccess, formatError` | Import |
 
@@ -3952,14 +3924,10 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/cli/commands/exclusion.ts` - Exclusion CLI Commands — `memory exclude` (Phase 3 do_not_remember).
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `commander` | `Command` |
-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../parseArgs.js` | `Command` | Import |
 | `./helpers.js` | `runAction, getOptions, createContext, createLogger` | Import |
 | `../formatters.js` | `formatSuccess, formatError` | Import |
 
@@ -3970,14 +3938,10 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/cli/commands/graph.ts` - Graph Algorithm CLI Commands
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `commander` | `Command` |
-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../parseArgs.js` | `Command` | Import |
 | `./helpers.js` | `runAction` | Import |
 | `../formatters.js` | `formatPath, formatCentrality, formatComponents, formatError` | Import |
 
@@ -3988,14 +3952,10 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/cli/commands/helpers.ts` - CLI Command Helpers
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `commander` | `Command` |
-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../parseArgs.js` | `Command` | Import |
 | `../../core/ManagerContext.js` | `ManagerContext` | Import |
 | `../options.js` | `parseGlobalOptions, createLogger, GlobalOptions` | Import |
 | `../config.js` | `findConfigFile, loadConfig, mergeCliConfig` | Import |
@@ -4008,14 +3968,10 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/cli/commands/heuristic.ts` - Heuristic CLI commands — `memory heuristic` (Phase 3B.8).
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `commander` | `Command` |
-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../parseArgs.js` | `Command` | Import |
 | `./helpers.js` | `runAction, getOptions, createContext, createLogger` | Import |
 | `../formatters.js` | `formatError` | Import |
 
@@ -4026,14 +3982,10 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/cli/commands/hierarchy.ts` - Hierarchy CLI Commands
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `commander` | `Command` |
-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../parseArgs.js` | `Command` | Import |
 | `./helpers.js` | `runAction` | Import |
 | `../formatters.js` | `formatEntities, formatSuccess` | Import |
 
@@ -4044,14 +3996,10 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/cli/commands/index.ts` - CLI Command Registry
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `commander` | `Command` |
-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../parseArgs.js` | `Command` | Import |
 | `./entity.js` | `registerEntityCommands` | Import |
 | `./relation.js` | `registerRelationCommands` | Import |
 | `./search.js` | `registerSearchCommands` | Import |
@@ -4084,11 +4032,6 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/cli/commands/inspect.ts` - Inspection CLI commands.
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `commander` | `Command` |
-
 **Node.js Built-in Dependencies:**
 | Module | Import |
 |--------|--------|
@@ -4097,6 +4040,7 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../parseArgs.js` | `Command` | Import |
 | `../../core/ManagerContext.js` | `ManagerContext` | Import |
 | `../../types/types.js` | `Entity, Relation` | Import (type-only) |
 | `./helpers.js` | `runAction` | Import |
@@ -4108,11 +4052,6 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/cli/commands/io.ts` - Import/Export CLI Commands
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `commander` | `Command, Option` |
-
 **Node.js Built-in Dependencies:**
 | Module | Import |
 |--------|--------|
@@ -4122,6 +4061,7 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../parseArgs.js` | `Command, Option` | Import |
 | `./helpers.js` | `runAction` | Import |
 | `../formatters.js` | `formatSuccess` | Import |
 | `../../utils/entityUtils.js` | `validateFilePath` | Import |
@@ -4133,14 +4073,10 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/cli/commands/maintenance.ts` - Maintenance CLI Commands (stats, archive, compress, validate)
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `commander` | `Command, InvalidArgumentError` |
-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../parseArgs.js` | `Command, InvalidArgumentError` | Import |
 | `./helpers.js` | `runAction, getOptions, createContext, createLogger` | Import |
 | `../formatters.js` | `formatValidation, formatSuccess, formatError` | Import |
 | `../../utils/constants.js` | `IMPORTANCE_RANGE` | Import |
@@ -4153,14 +4089,10 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/cli/commands/observation.ts` - Observation CLI Commands
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `commander` | `Command` |
-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../parseArgs.js` | `Command` | Import |
 | `./helpers.js` | `runAction` | Import |
 | `../formatters.js` | `formatSuccess, formatError, escapeCSV` | Import |
 
@@ -4171,14 +4103,10 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/cli/commands/observationDedup.ts` - Observation-dedup CLI commands — `memory obs-dedup`.
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `commander` | `Command` |
-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../parseArgs.js` | `Command` | Import |
 | `./helpers.js` | `runAction` | Import |
 
 **Exports:**
@@ -4188,14 +4116,10 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/cli/commands/projectContext.ts` - Project Context CLI Commands — `memory project-context` (Phase 3 Type 2).
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `commander` | `Command` |
-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../parseArgs.js` | `Command` | Import |
 | `./helpers.js` | `runAction, getOptions, createContext, createLogger` | Import |
 | `../formatters.js` | `formatSuccess, formatError` | Import |
 
@@ -4206,11 +4130,6 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/cli/commands/reindex.ts` - Reindex CLI command — `memory reindex`.
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `commander` | `Command` |
-
 **Node.js Built-in Dependencies:**
 | Module | Import |
 |--------|--------|
@@ -4220,6 +4139,7 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../parseArgs.js` | `Command` | Import |
 | `../../search/RankedSearch.js` | `RankedSearch` | Import |
 | `../../core/GraphStorage.js` | `GraphStorage` | Import (type-only) |
 | `./helpers.js` | `getOptions, createContext, createLogger` | Import |
@@ -4232,14 +4152,10 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/cli/commands/relation.ts` - Relation CLI Commands
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `commander` | `Command` |
-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../parseArgs.js` | `Command` | Import |
 | `./helpers.js` | `runAction` | Import |
 | `../formatters.js` | `formatRelations, formatSuccess` | Import |
 
@@ -4250,14 +4166,10 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/cli/commands/search.ts` - Search CLI Commands
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `commander` | `Command` |
-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../parseArgs.js` | `Command` | Import |
 | `./helpers.js` | `getOptions, createContext, createLogger` | Import |
 | `../formatters.js` | `formatSearchResults, formatError` | Import |
 | `../../types/types.js` | `Entity` | Import (type-only) |
@@ -4268,11 +4180,6 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 ---
 
 ### `src/cli/commands/smoke.ts` - Smoke CLI command.
-
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `commander` | `Command` |
 
 **Node.js Built-in Dependencies:**
 | Module | Import |
@@ -4285,6 +4192,7 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../parseArgs.js` | `Command` | Import |
 | `../../core/ManagerContext.js` | `ManagerContext` | Import |
 | `../formatters.js` | `formatSuccess, formatError` | Import |
 
@@ -4295,14 +4203,10 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/cli/commands/spell.ts` - Spell CLI commands — `memory spell`.
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `commander` | `Command` |
-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../parseArgs.js` | `Command` | Import |
 | `./helpers.js` | `runAction` | Import |
 
 **Exports:**
@@ -4312,14 +4216,10 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/cli/commands/tag.ts` - Tag CLI Commands
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `commander` | `Command` |
-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../parseArgs.js` | `Command` | Import |
 | `./helpers.js` | `runAction` | Import |
 | `../formatters.js` | `formatSuccess, escapeCSV` | Import |
 
@@ -4330,14 +4230,10 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/cli/commands/toolAffordance.ts` - Tool Affordance CLI Commands — `memory tool-affordance` (Phase Tool D).
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `commander` | `Command` |
-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../parseArgs.js` | `Command` | Import |
 | `./helpers.js` | `getOptions, createContext, createLogger` | Import |
 | `../formatters.js` | `formatError` | Import |
 
@@ -4382,11 +4278,6 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/cli/index.ts` - MemoryJS CLI
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `commander` | `Command` |
-
 **Node.js Built-in Dependencies:**
 | Module | Import |
 |--------|--------|
@@ -4398,6 +4289,7 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `./parseArgs.js` | `Command` | Import |
 | `./commands/index.js` | `registerCommands` | Import |
 | `../utils/logger.js` | `logger` | Import |
 
@@ -4431,6 +4323,21 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 - Interfaces: `GlobalOptions`
 - Functions: `parseGlobalOptions`, `createLogger`
 - Constants: `defaultOptions`
+
+---
+
+### `src/cli/parseArgs.ts` - In-repo CLI argument parser for the MemoryJS command tree.
+
+**Node.js Built-in Dependencies:**
+| Module | Import |
+|--------|--------|
+| `util` | `stripVTControlCharacters` |
+| `path` | `basename, extname` |
+
+**Exports:**
+- Classes: `CommanderError`, `InvalidArgumentError`, `Option`, `Argument`, `Command`
+- Interfaces: `OutputConfiguration`, `ParseOptions`, `HelpContextOptions`, `ParseOptionsResult`
+- Types: `OptionParseArg`
 
 ---
 
@@ -7720,11 +7627,12 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/agent/learning/RecursiveLearner` | 23 files | 7 files |
 | `src/utils/textSimilarity` | 0 files | 30 files |
 | `src/agent/bootstrap/Bootstrapper` | 25 files | 3 files |
-| `src/cli/commands/helpers` | 4 files | 23 files |
+| `src/cli/commands/helpers` | 5 files | 23 files |
+| `src/cli/parseArgs` | 0 files | 27 files |
 | `src/agent/ConsolidationPipeline` | 19 files | 7 files |
 | `src/agent/learning/types` | 5 files | 21 files |
+| `src/cli/commands/index` | 25 files | 1 file |
 | `src/core/context/SearchFacade` | 25 files | 1 file |
-| `src/cli/commands/index` | 24 files | 1 file |
 | `src/core/context/LearningFacade` | 22 files | 3 files |
 | `src/agent/ContextWindowManager` | 18 files | 6 files |
 | `src/cli/formatters` | 4 files | 20 files |
@@ -7740,7 +7648,6 @@ Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/core/ObservationManager` | 12 files | 8 files |
 | `src/features/IOManager` | 16 files | 4 files |
 | `src/types/proceduralGraph` | 0 files | 20 files |
-| `src/utils/constants` | 0 files | 20 files |
 
 ---
 
@@ -7814,7 +7721,7 @@ graph TD
         N29[entity]
         N30[exclusion]
         N31[graph]
-        N32[...23 more]
+        N32[...24 more]
     end
 
     subgraph Core
@@ -7991,13 +7898,13 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 412 |
+| Total TypeScript Files | 413 |
 | Total Modules | 12 |
-| Total Lines of Code | 130124 |
-| Total Exports | 2874 |
+| Total Lines of Code | 131669 |
+| Total Exports | 2879 |
 | Total Re-exports | 1716 |
-| Total Classes | 280 |
-| Total Interfaces | 833 |
+| Total Classes | 285 |
+| Total Interfaces | 837 |
 | Total Functions | 682 |
 | Total Type Guards | 49 |
 | Total Enums | 4 |
@@ -8005,7 +7912,7 @@ graph TD
 | Runtime Circular Deps | 0 |
 | Type-only Circular Deps | 15 |
 | Entry/Build Roots | 4 |
-| Reachable Files | 412 |
+| Reachable Files | 413 |
 | Dormant Files (orphaned / test-only) | 0 (0 / 0) |
 
 ---

@@ -4,7 +4,7 @@
  * @module cli/commands/entity
  */
 
-import { Command } from 'commander';
+import { Command } from '../parseArgs.js';
 import { runAction } from './helpers.js';
 import { formatEntities, formatEntityDetail, formatSuccess, formatError } from '../formatters.js';
 

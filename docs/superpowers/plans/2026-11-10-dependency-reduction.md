@@ -958,13 +958,15 @@ The build checker/fixer checks this sprint against the six requirements: custom-
 
 **Files:**
 - Create: `src/cli/parseArgs.ts`
-- Create: `tests/unit/cli/help.snapshot.test.ts`
+- Create: `tests/unit/cli/parseArgsPinned.test.ts`, `tests/unit/cli/parseArgsSurfacePinned.test.ts`, `tests/unit/cli/helpers/captureCliParity.ts`, `tests/unit/cli/helpers/syntheticProgram.ts`, `tests/unit/cli/fixtures/parseArgsPinned.json`, `tests/unit/cli/recorderDoc.test.ts`
 - Modify: `src/cli/index.ts`, `src/cli/commands/*.ts`, the CLI tests that construct `Command`
 
-- [ ] **Step 1: While commander is installed, snapshot `--help` for the root program and every subcommand the CLI registers.** Run the snapshots. Expected: PASS.
-- [ ] **Step 2: Implement `Command`, `Option`, and `InvalidArgumentError` for the methods those files call (`command`, `option`, `addOption`, `choices`, `requiredOption`, `action`, `alias`, `name`, `description`, `version`, `parse`, `parseAsync`, `opts`, `exitOverride`, `help`). Do not implement `argument` or `optsWithGlobals`; nothing in `src/` calls them. Do not implement other unused commander APIs.**
-- [ ] **Step 3: Switch imports. Re-run the snapshots against the new parser. They must still match the commander output captured in Step 1.**
-- [ ] **Step 4: Remove `commander` from `dependencies`. Run `bun install`. Re-run `bunx vitest run tests/unit/cli`. Expected: PASS.**
+Help snapshots live in `parseArgsPinned.json` and are replayed by `parseArgsPinned.test.ts` (root and every registered subcommand), not a separate `help.snapshot.test.ts`.
+
+- [x] **Step 1: While commander is installed, snapshot `--help` for the root program and every subcommand the CLI registers.** Run the snapshots. Expected: PASS.
+- [x] **Step 2: Implement `Command`, `Option`, and `InvalidArgumentError` for the methods those files call (`command`, `option`, `addOption`, `choices`, `requiredOption`, `action`, `alias`, `name`, `description`, `version`, `parse`, `parseAsync`, `opts`, `exitOverride`, `help`). Do not implement `argument` or `optsWithGlobals`; nothing in `src/` calls them. Do not implement other unused commander APIs.**
+- [x] **Step 3: Switch imports. Re-run the snapshots against the new parser. They must still match the commander output captured in Step 1.**
+- [x] **Step 4: Remove `commander` from `dependencies`. Run `bun install`. Re-run `bunx vitest run tests/unit/cli`. Expected: PASS.**
 
 ### Task 14: Sprint 6 verification
 

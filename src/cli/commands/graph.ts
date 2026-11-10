@@ -4,7 +4,7 @@
  * @module cli/commands/graph
  */
 
-import { Command } from 'commander';
+import { Command } from '../parseArgs.js';
 import { runAction } from './helpers.js';
 import { formatPath, formatCentrality, formatComponents, formatError } from '../formatters.js';
 
