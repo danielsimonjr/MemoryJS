@@ -139,7 +139,11 @@ export interface WorkerRegisterOptions {
  * the identifying facts; callers match on those.
  */
 export class CancellationError extends Error {
-  /** @param message - Defaults to `promise cancelled`. */
+  /**
+   * Create a cancellation error.
+   *
+   * @param message - Defaults to `promise cancelled`.
+   */
   constructor(message = 'promise cancelled') {
     super(message);
     this.name = 'CancellationError';
@@ -154,7 +158,11 @@ Object.defineProperty(CancellationError.prototype, 'constructor', {
 
 /** Rejection used when {@link PoolPromise.timeout} expires. */
 export class TimeoutError extends Error {
-  /** @param message - Defaults to `timeout exceeded`. */
+  /**
+   * Create a timeout error.
+   *
+   * @param message - Defaults to `timeout exceeded`.
+   */
   constructor(message = 'timeout exceeded') {
     super(message);
     this.name = 'TimeoutError';
@@ -175,7 +183,11 @@ Object.defineProperty(TimeoutError.prototype, 'constructor', {
  * a plain error there. Callers match this error by `instanceof`.
  */
 export class TerminateError extends Error {
-  /** @param message - Defaults to `worker terminated`. */
+  /**
+   * Create a worker-termination error.
+   *
+   * @param message - Defaults to `worker terminated`.
+   */
   constructor(message = 'worker terminated') {
     super(message);
   }
@@ -207,7 +219,10 @@ export class PoolPromise<T> implements PromiseLike<T> {
   private settleReject!: (error: unknown) => void;
 
   /**
-   * @param executor - Receives the settle functions, as `new Promise` does.
+   * Create a pending promise. The pool settles it; a caller that wants to settle
+   * one itself can pass an executor, as `new Promise` takes.
+   *
+   * @param executor - Receives the settle functions.
    */
   constructor(executor?: (resolve: (value: T) => void, reject: (error: unknown) => void) => void) {
     this.inner = new Promise<T>((resolve, reject) => {
@@ -241,6 +256,8 @@ export class PoolPromise<T> implements PromiseLike<T> {
   }
 
   /**
+   * Chain a value handler and an optional error handler.
+   *
    * @param onFulfilled - Value handler.
    * @param onRejected - Error handler.
    */
@@ -251,19 +268,31 @@ export class PoolPromise<T> implements PromiseLike<T> {
     return this.inner.then(onFulfilled, onRejected);
   }
 
-  /** @param onRejected - Error handler. */
+  /**
+   * Chain an error handler.
+   *
+   * @param onRejected - Error handler.
+   */
   catch<TResult = never>(
     onRejected?: ((reason: unknown) => TResult | PromiseLike<TResult>) | null,
   ): Promise<T | TResult> {
     return this.inner.catch(onRejected);
   }
 
-  /** @param onFinally - Runs on either settlement. */
+  /**
+   * Run a callback on either settlement.
+   *
+   * @param onFinally - Runs on either settlement.
+   */
   finally(onFinally?: (() => void) | null): Promise<T> {
     return this.inner.finally(onFinally ?? undefined);
   }
 
-  /** @param fn - Runs on either settlement. Alias of `finally` kept for compatibility. */
+  /**
+   * Run a callback on either settlement.
+   *
+   * @param fn - Runs on either settlement. Alias of `finally` kept for compatibility.
+   */
   always<TResult>(fn: () => TResult | PromiseLike<TResult>): Promise<T | TResult> {
     return this.inner.then(fn, fn);
   }
@@ -766,6 +795,8 @@ export class Pool {
   private taskCounter = 0;
 
   /**
+   * Create a pool.
+   *
    * @param script - Worker script path, or the options object when called as `pool(options)`.
    * @param options - Pool options.
    */
