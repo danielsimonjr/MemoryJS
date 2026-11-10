@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Remove `rimraf`, `chalk`, `async-mutex`, and `cli-table3` from `@danielsimonjr/memoryjs` by replacing the call sites this repo actually uses, and (only if Daniel accepts) make `chrono-node` an optional peer.
+**Goal:** Remove the runtime dependencies MemoryJS can replace, one sprint at a time, each with parity tests against the original before removal. Sprint order stays 1 through 9. Sprint 5 rebuilds chrono-node. Daniel decided on 2026-11-10 (9:13 AM CT) that commander, Zod, workerpool, and better-sqlite3 are rebuilt in Sprints 6–9. Sprint 9 stays gated on the Node 22.12 engines floor. Optional peers and the dev toolchain stay.
 
 **Architecture:** One sprint is one PR. Each sprint adds a focused module, pins its behavior with tests written against the old package, switches call sites, then deletes the dependency and regenerates `bun.lock`. Library public types do not change. `RunExclusiveMutex` is a new class; it does not wrap `AsyncMutex`.
 
@@ -16,7 +16,7 @@
 - `bun.lock` is the lockfile that changes. Do not add a root `package-lock.json`.
 - Public exports in `package.json` `exports` stay. No exported TypeScript name is removed or retyped.
 - `overrides.esbuild` stays `^0.28.1`.
-- `better-sqlite3` stays external in `tsup.config.ts`.
+- `better-sqlite3` stays external in both `tsup.config.ts` pipelines until the Sprint 9 major Daniel accepts. That PR drops both `external` entries.
 - Storage file formats, SQLite schema, and environment-variable names stay.
 - Each sprint is one PR. The builder is deepseek-v41-flash-1017. The challenger is glm-5p3-flash. The build reviewer is composer-2.5. The build checker/fixer is grok-4.6. The final PR reviewer is grok-4.7.
 - The build reviewer reconciles the challenger's findings, then hands the PR to the build checker/fixer. The build checker/fixer checks everything in the PR against this plan and fixes all remaining issues, then hands the PR to the final PR reviewer.
@@ -52,7 +52,8 @@ Handoff on every sprint: builder, then challenger, then the build reviewer recon
 | `src/cli/plainTable.ts` | 3 | `head` / `colWidths` / `wordWrap` / `push` / `toString`. `colWidths` include padding. |
 | `src/utils/RunExclusiveMutex.ts` | 4 | FIFO `runExclusive` with no timeout, no queue cap, and no reentrancy. |
 | Storage, column, tier, and interaction-log call sites | 4 | Construct `RunExclusiveMutex`. The legacy-delete test uses `AsyncMutex`. |
-| `src/search/TemporalQueryParser.ts` | 5 | Treat a missing `chrono-node` as "not parseable" plus one warning. |
+| `src/search/enDate/` | 5 | English date parsers and refiners. Replaces `chrono-node`. |
+| `src/search/TemporalQueryParser.ts` | 5 | Call the in-repo parser. Same results, including throws. |
 
 ## Sprint 1 — REBUILD `rimraf`
 
@@ -751,142 +752,178 @@ Expected: exit 0, and `rg` prints no matches. `src/utils/AsyncMutex.ts` still ex
 
 Challenger adds a test where 100 `runExclusive` callbacks append to an array and the array is `0..99`. That test must pass without fake timers.
 
-## Sprint 5 — MAKE OPTIONAL `chrono-node` (gated)
+## Sprint 5 — REBUILD `chrono-node`
 
-**Do not open this PR until Daniel has accepted the behavior change in writing.** If he declines, skip the sprint and leave `chrono-node` in `dependencies`. The decision then becomes KEEP.
+**Decision:** Daniel, 2026-11-10, 9:12 AM CT. Rebuild. Not an optional peer. Not gated. Not a 5.0.0.
+**Semver:** patch, and only after both oracles hold. No consumer-visible behavior change. `parseEnDate` is not exported from a package barrel. Changelog under `## [Unreleased]` says the English date parser is in-repo, custom phrases match the previous parser, and fallback phrases match chrono-node 2.9.1. Do not bump `package.json` `version` in this sprint unless the release process for that patch is already the PR's job.
+**Scope:** `src/search/enDate/` plus `TemporalQueryParser`. Comments in `TemporalSearch.ts`, `SearchManager.ts`, and `SearchFacade.ts` that name chrono-node are updated to name the in-repo parser. No other module imports chrono-node.
+**Acceptance:** `rg "chrono-node" src package.json bun.lock` finds no matches except a MIT attribution line if a pattern table was adapted. At reference `2026-01-15T12:00:00.000Z` with `TZ=UTC`, custom phrases return the same start and end instants as today's `TemporalQueryParser` (not as chrono). Fallback phrases return the same instants as chrono-node 2.9.1 after the same forward-date retry and the same single-result or multi-result range assembly. Text chrono returns no result for still returns `undefined`. A throw from today's `parse` or `parseDate` path still throws. The dependency is removed only after that parity run is green.
 
-**Semver:** not a patch. Default if Daniel accepts the behavior change and accepts it landing on every `^4.x` consumer: minor. If he wants `^4.5.0` consumers to keep today's chrono behavior, the release is `5.0.0` and this sprint waits for that major. Changelog must say: natural-language dates outside `TemporalQueryParser`'s custom patterns require the optional peer `chrono-node`. Without it, those phrases return `undefined` and the process emits one warning. Custom patterns (`last hour`, `past N days`, `this week`, `today`, `yesterday`, `N units ago`) stay dependency-free and keep their current results.
-
-**Flag:** this changes `searchByTime` for phrases such as `between Monday and Wednesday` and `since January 1` when the peer is not installed. `since <date>` throws today if chrono cannot load; the sprint returns `undefined` instead. Current `episodic-memory` `main` (`b1b0d8e`, 1.7.3) does not depend on MemoryJS: `^4.5.0` was added on `cursor/recursa-task0-memoryjs-dep-2f37` and removed in `6b5de905` (PR #35). A minor release still updates every other `^4.5.0` consumer. Daniel chooses minor, `5.0.0`, or skip.
-
-**Acceptance after accept:** `chrono-node` is under `peerDependencies` and `peerDependenciesMeta.chrono-node.optional` is true. It is not under `dependencies`. Custom-pattern tests pass with the module uninstalled. A chrono-only phrase returns `undefined` and warns once when the module is absent. When the module is installed, `between Monday and Wednesday` still returns a range.
-
-### Task 9: Missing-peer behavior
+### Task 9: Inventory and failing phrase tests
 
 **Files:**
-- Modify: `src/search/TemporalQueryParser.ts`
-- Modify: `tests/unit/search/TemporalQueryParser.test.ts` (create the file if the suite lives under another name; search `parseTemporalExpression` first and edit that file)
-- Modify: `package.json`, `bun.lock`
-- Modify: `CHANGELOG.md` with one minor-version note. Do not bump `package.json` `version` in this sprint unless the release process for that minor is already the PR's job. Default: changelog entry under `Unreleased`, version bump left to Daniel.
+- Create: `tests/unit/search/enDate.inventory.test.ts`
+- Modify: `tests/unit/search/TemporalQueryParser.test.ts` only if a phrase it already covers is missing from the inventory list
 
 **Interfaces:**
-- Consumes: existing `parse`, `parseDate`
-- Produces: no new exported function. `requireChronoSync` returns the module or `undefined` after one warning. `parseWithChrono` returns `undefined` when the module is missing.
+- Consumes: the installed `chrono-node` 2.9.1 and `TemporalQueryParser`
+- Produces: a checked-in list of phrases. No new production export yet.
 
-- [ ] **Step 1: Write the failing test**
+The inventory is the phrases below. The test parses each one with `TemporalQueryParser` at `new Date('2026-01-15T12:00:00.000Z')` and records `start.toISOString()` and `end.toISOString()`. Run the test with `TZ=UTC`.
+
+Custom phrases, already implemented in `parseCustomPattern`:
+
+- `last hour`, `past hour`, `the last hour`
+- `last week`, `past week`, `last month`, `past month`, `last year`, `past year`
+- `past 3 days`, `last 2 hours`, `in the past 5 minutes`
+- `this week`, `this month`, `this year`, `today`, `yesterday`
+- `3 days ago`, `1 hour ago`
+
+Chrono fallback phrases, used today by `parse` / `parseDate`:
+
+- `since yesterday`, `since January 1`, `since 2026-01-01`
+- `between Monday and Wednesday`, `Jan 1 to Jan 7`
+- `tomorrow`, `tonight`, `noon`, `next Friday`, `3 days from now`
+- `2026-01-15`, `2026-01-15T12:00:00Z`, `January 15, 2026`
+
+Unparseable, must stay `undefined` (chrono returns no result; the parser does not throw):
+
+- `not a date`
+- empty string after trim
+
+- [ ] **Step 1: Write the inventory test against the current parser**
+
+The test imports `chrono-node` only as a comment naming version 2.9.1. It calls `TemporalQueryParser`. On the first green run, record each custom phrase's `start.toISOString()` and `end.toISOString()` as expected values in the test. Later runs assert those strings. Fallback phrases in this file only assert a defined range here; Task 10 owns their chrono comparison. The two unparseable inputs return `undefined`. Do not assert custom phrases against `chrono.parse`.
+
+- [ ] **Step 2: Run it**
+
+Run: `TZ=UTC bunx vitest run tests/unit/search/enDate.inventory.test.ts`
+Expected: PASS against today's chrono-backed parser. This test is the inventory. It must stay green for the rest of the sprint.
+
+### Task 10: Parser, then parity against chrono-node
+
+**Files:**
+- Create: `src/search/enDate/types.ts`, `src/search/enDate/parsers.ts`, `src/search/enDate/refiners.ts`, `src/search/enDate/parseEnDate.ts`
+- Create: `tests/unit/search/enDate.parity.test.ts`
+
+**Interfaces:**
+- Consumes: nothing from chrono at runtime after Task 11. During this task the parity test imports both.
+- Produces:
 
 ```typescript
-import { describe, expect, it, vi } from 'vitest';
-import { TemporalQueryParser } from '../../../src/search/TemporalQueryParser.js';
+export interface EnDateResult {
+  start: Date;
+  end?: Date;
+  index: number;
+  text: string;
+}
+export function parseEnDate(text: string, ref: Date, options?: { forwardDate?: boolean }): EnDateResult[];
+export function parseEnDateStart(text: string, ref: Date, options?: { forwardDate?: boolean }): Date | undefined;
+```
 
-describe('TemporalQueryParser without chrono-node', () => {
-  it('still parses a custom pattern', () => {
-    const parser = new TemporalQueryParser();
-    const range = parser.parseTemporalExpression('last hour', new Date('2026-01-15T12:00:00Z'));
-    expect(range?.end.toISOString()).toBe('2026-01-15T12:00:00.000Z');
+`parseEnDate` follows chrono's shape: parsers propose components, refiners fill implied fields and merge ranges. Casual parsers cover today, tomorrow, yesterday, tonight, noon. Relative parsers cover `N units ago`, `in N units`, `next <weekday>`, `last <weekday>`, `this <week|month|year>`. Absolute parsers cover ISO dates, ISO instants, and `Month D, YYYY`. A range parser covers `between A and B` and `A to B`.
+
+- [ ] **Step 1: Write the parity test while chrono-node is still installed**
+
+```typescript
+import { describe, expect, it } from 'vitest';
+import * as chrono from 'chrono-node';
+import { parseEnDate, parseEnDateStart } from '../../../src/search/enDate/parseEnDate.js';
+
+const REF = new Date('2026-01-15T12:00:00.000Z');
+const PHRASES = [
+  'since yesterday', 'between Monday and Wednesday', 'Jan 1 to Jan 7',
+  'tomorrow', 'tonight', 'noon', 'next Friday', '3 days from now',
+  '2026-01-15', '2026-01-15T12:00:00Z', 'January 15, 2026',
+];
+
+describe('enDate parity with chrono-node 2.9.1', () => {
+  it('matches start and end at the fixed UTC reference', () => {
+    for (const phrase of PHRASES) {
+      const ours = parseEnDate(phrase, REF, { forwardDate: false });
+      const theirs = chrono.parse(phrase, REF, { forwardDate: false });
+      expect(ours.length > 0).toBe(theirs.length > 0);
+      if (ours[0] && theirs[0]) {
+        expect(ours[0].start.toISOString()).toBe(theirs[0].start.date().toISOString());
+        expect(ours[0].end?.toISOString() ?? null).toBe(theirs[0].end?.date().toISOString() ?? null);
+      }
+    }
   });
 
-  it('returns undefined and warns once when chrono cannot be loaded', async () => {
-    vi.resetModules();
-    vi.doMock('chrono-node', () => {
-      throw new Error('cannot find module');
-    });
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const { TemporalQueryParser: Parser } = await import('../../../src/search/TemporalQueryParser.js');
-    const parser = new Parser();
-    expect(parser.parseTemporalExpression('between Monday and Wednesday', new Date('2026-01-15T12:00:00Z'))).toBeUndefined();
-    expect(parser.parseTemporalExpression('Jan 1 to Jan 7', new Date('2026-01-15T12:00:00Z'))).toBeUndefined();
-    expect(warn).toHaveBeenCalledTimes(1);
-    warn.mockRestore();
-    vi.doUnmock('chrono-node');
+  it('matches parseDate for since-clauses', () => {
+    expect(parseEnDateStart('January 1', REF, { forwardDate: false })?.toISOString())
+      .toBe(chrono.parseDate('January 1', REF, { forwardDate: false })?.toISOString());
   });
 });
 ```
 
-The mock throws on import. The implementation must catch a failed `require` of `chrono-node` and a failed dynamic `import()`. If Vitest's `vi.doMock` cannot intercept `createRequire`, the test may inject the failure by setting no mock and running in a worktree where `chrono-node` is not installed (`bun remove chrono-node` after the custom-pattern test is already green). The uninstalled-package form is the acceptance test the checker runs:
+`PHRASES` is the fallback set only. Custom phrases stay in the inventory test. Add at least twenty more casual, relative, and ISO phrases that today's parser sends to chrono, including one phrase that needs the `{ forwardDate: true }` retry and one phrase chrono returns two results for. Also compare through `TemporalQueryParser.parse`, not only `parseEnDate`, so the reference-date end, the first-to-last span, and `isValidRange` stay in the oracle. Keep the reference date and `TZ=UTC`. If chrono returns no result, the in-repo parser returns no result. If `chrono.parse` throws on an input, do not catch it in the parser and do not map it to `undefined`. The parity test records that throw.
 
-```bash
-bun remove chrono-node
-bunx vitest run tests/unit/search/TemporalQueryParser.test.ts
-```
+- [ ] **Step 2: Run the parity test to verify it fails**
 
-Expected: custom patterns pass, chrono-only phrases are `undefined`.
+Run: `TZ=UTC bunx vitest run tests/unit/search/enDate.parity.test.ts`
+Expected: FAIL, module not found.
 
-- [ ] **Step 2: Run the new test to verify the missing-peer case fails**
+- [ ] **Step 3: Implement parsers and refiners**
 
-While `chrono-node` is still installed and the catch is not written, `between Monday and Wednesday` returns a range. Expected: FAIL on `toBeUndefined()`.
-
-- [ ] **Step 3: Catch the missing module**
-
-Inside `requireChronoSync` and `loadChrono`, catch the load error. Remember a module-level `chronoUnavailable = true`. On the first failure call:
+Write new code. Do not paste chrono-node's source. The file layout mirrors chrono (parsers, then refiners). If a weekday table or a month table is copied from chrono, put this header on that file:
 
 ```typescript
-console.warn(
-  'chrono-node is not installed; only built-in relative dates are parsed. ' +
-  'Install the optional peer: npm install chrono-node'
-);
+// Adapted from chrono-node (https://github.com/wanasit/chrono), MIT License.
+// Copyright (c) 2014 Wanasit Ranasinghe and contributors.
 ```
 
-Further calls skip the warning and skip the load. `parseWithChrono` returns `undefined` when the loader returns undefined. `since <date>` in `parseCustomPattern` returns `undefined` when `parseDate` is unavailable, instead of throwing.
+Also add the same copyright and the MIT license text to `THIRD_PARTY_NOTICES` when a table is copied. If no table is copied, do not add the notice.
 
-Do not change the successful-load path. `parse` and `parseDate` arguments stay `{ forwardDate: false }` with the existing forward retry.
+- [ ] **Step 4: Run parity**
 
-- [ ] **Step 4: Move the dependency**
+Run: `TZ=UTC bunx vitest run tests/unit/search/enDate.parity.test.ts tests/unit/search/enDate.inventory.test.ts`
+Expected: PASS. Do not remove `chrono-node` in this task.
 
-```json
-"peerDependencies": {
-  "@huggingface/transformers": "^4.3.1",
-  "chrono-node": "^2.9.1",
-  "pg": ">=8.0.0",
-  "yaml": ">=2.0.0"
-},
-"peerDependenciesMeta": {
-  "@huggingface/transformers": { "optional": true },
-  "chrono-node": { "optional": true },
-  "pg": { "optional": true },
-  "yaml": { "optional": true }
-}
-```
+### Task 11: Switch the call site, record results, then delete the dependency
 
-Remove `chrono-node` from `dependencies`. The other peer meta entries stay. Run `bun install`. Optional peers are not lockfile keys today; `chrono-node` should disappear from `bun.lock` `packages`.
+**Files:**
+- Modify: `src/search/TemporalQueryParser.ts`
+- Modify: `src/search/TemporalSearch.ts`, `src/search/SearchManager.ts`, `src/core/context/SearchFacade.ts` (comments only)
+- Modify: `tests/unit/search/enDate.parity.test.ts` so it no longer imports `chrono-node`. Replace each comparison with the ISO strings the green Task 10 run printed.
+- Modify: `package.json`, `bun.lock`, `CHANGELOG.md`
+- Create when a table was copied: `THIRD_PARTY_NOTICES`
 
-- [ ] **Step 5: Test both graphs**
+- [ ] **Step 1: Point `parseWithChrono` and `since` at `parseEnDate` / `parseEnDateStart`**
 
-With the peer absent:
+Keep the public methods. Keep `{ forwardDate: false }` and the forward retry. Keep the single-result range against the reference date, and the first-to-last range when there are two results. Delete `loadChrono`, `requireChronoSync`, and the `chrono-node` import. Do not wrap the new parser in `try/catch` that returns `undefined`.
 
-```bash
-bunx vitest run tests/unit/search/TemporalQueryParser.test.ts tests/unit/search/TemporalSearch.test.ts
-```
+- [ ] **Step 2: Re-run the inventory**
 
-Expected: PASS.
+Run: `TZ=UTC bunx vitest run tests/unit/search/enDate.inventory.test.ts tests/unit/search/TemporalQueryParser.test.ts tests/unit/search/TemporalSearch.test.ts`
+Expected: PASS, still with `chrono-node` installed, because the inventory test uses `TemporalQueryParser` and the parity test has not dropped its import yet.
 
-With the peer present (install it as a devDependency for this run only, then remove it before commit so it is not a hidden runtime dependency):
+- [ ] **Step 3: Freeze the corpus and remove the package**
 
-```bash
-bun add -d chrono-node@2.9.1
-bunx vitest run tests/unit/search/TemporalQueryParser.test.ts
-bun remove chrono-node
-```
+Replace the live chrono assertions with the ISO strings from the passing run. Delete the `chrono-node` import from tests. Delete `chrono-node` from `dependencies`. It must not be added to `devDependencies`. Run `bun install`. `bun.lock` must not contain `chrono-node`.
 
-Expected: the installed run still parses `between Monday and Wednesday` to a defined range. The committed `package.json` does not list `chrono-node` under `devDependencies` or `dependencies`.
+Run: `TZ=UTC bunx vitest run tests/unit/search/enDate.parity.test.ts tests/unit/search/enDate.inventory.test.ts`
+Expected: PASS without the package installed.
 
-- [ ] **Step 6: Changelog note**
+- [ ] **Step 4: Changelog**
 
-Under `## [Unreleased]` in `CHANGELOG.md`:
+Under `## [Unreleased]`:
 
 ```markdown
 ### Changed
-- `chrono-node` is an optional peer. Built-in phrases (`last hour`, `past N days`, `this week`, `today`, `yesterday`, `N units ago`) parse as before. Other natural-language dates need `npm install chrono-node`.
+- English natural-language dates are parsed in-repo. Results match chrono-node 2.9.1 for the supported phrases. `chrono-node` is no longer a dependency.
 ```
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add src/search/TemporalQueryParser.ts tests/unit/search/TemporalQueryParser.test.ts package.json bun.lock CHANGELOG.md
-git commit -m "feat: make chrono-node an optional peer"
+git add src/search/enDate src/search/TemporalQueryParser.ts src/search/TemporalSearch.ts src/search/SearchManager.ts src/core/context/SearchFacade.ts tests/unit/search package.json bun.lock CHANGELOG.md THIRD_PARTY_NOTICES
+git commit -m "feat: parse English dates without chrono-node"
 ```
 
-### Task 10: Sprint 5 verification
+Omit `THIRD_PARTY_NOTICES` from `git add` when no chrono text was adapted.
+
+### Task 12: Sprint 5 verification
 
 ```bash
 bun install --frozen-lockfile
@@ -894,10 +931,113 @@ bun run typecheck
 bun run lint
 bun run test:ci
 bun run build
-node -e "const p=require('./package.json'); if(p.dependencies['chrono-node']) process.exit(1); if(!p.peerDependenciesMeta['chrono-node'].optional) process.exit(1)"
+node -e "const p=require('./package.json'); if((p.dependencies||{})['chrono-node']||(p.devDependencies||{})['chrono-node']) process.exit(1)"
+rg "chrono-node" src package.json bun.lock
 ```
 
-Expected: exit 0.
+Expected: the node check exits 0. `rg` prints nothing, or only a MIT attribution line. `src/search/enDate/parseEnDate.ts` exists.
+
+The build checker/fixer checks this sprint against the six requirements: custom-phrase ISO inventory, chrono parity corpus at the fixed instant (including the forward retry and multi-result range), throw behavior unchanged, dependency removed only after parity, MIT notice when text is adapted, and patch semver with no behavior change and no new public export.
+
+## Sprint 6 — REBUILD `commander`
+
+**Decision:** Daniel, 2026-11-10, 9:13 AM CT. After Sprint 5. Lowest risk of the remaining runtime rebuilds: a mismatch is help text, not stored data.
+**Semver:** patch when every help snapshot matches commander 15.0.0. If a snapshot cannot match, stop and ask Daniel. Do not ship different help as a silent patch.
+**License:** MIT. Add the commander copyright to the file header or `THIRD_PARTY_NOTICES` only if text is adapted.
+**Acceptance:** `rg "from 'commander'" src tests package.json` finds no matches. `memory --help` and each command's `--help` match the recorded commander snapshots. Pipe mode still calls `parseAsync(args, { from: 'user' })`. `exitOverride`, `help`, `alias('i')` on the interactive command, option defaults, variadic arguments, and `choices` still behave as commander 15.0.0 did. `InvalidArgumentError` from `maintenance.ts` still rejects a non-finite number with the message `Expected a finite number`.
+
+### Task 13: Help snapshots, then the parser
+
+**Files:**
+- Create: `src/cli/parseArgs.ts`
+- Create: `tests/unit/cli/help.snapshot.test.ts`
+- Modify: `src/cli/index.ts`, `src/cli/commands/*.ts`, the CLI tests that construct `Command`
+
+- [ ] **Step 1: While commander is installed, snapshot `--help` for the root program and every subcommand the CLI registers.** Run the snapshots. Expected: PASS.
+- [ ] **Step 2: Implement `Command`, `Option`, and `InvalidArgumentError` for the methods those files call (`command`, `option`, `addOption`, `choices`, `requiredOption`, `action`, `alias`, `name`, `description`, `version`, `parse`, `parseAsync`, `opts`, `exitOverride`, `help`). Do not implement `argument` or `optsWithGlobals`; nothing in `src/` calls them. Do not implement other unused commander APIs.**
+- [ ] **Step 3: Switch imports. Re-run the snapshots against the new parser. They must still match the commander output captured in Step 1.**
+- [ ] **Step 4: Remove `commander` from `dependencies`. Run `bun install`. Re-run `bunx vitest run tests/unit/cli`. Expected: PASS.**
+
+### Task 14: Sprint 6 verification
+
+```bash
+bun install --frozen-lockfile
+bun run typecheck
+bun run lint
+bun run test:ci
+bun run build
+```
+
+Expected: exit 0. `package.json` has no `commander`.
+
+## Sprint 7 — REBUILD `zod`
+
+**Decision:** Daniel, 2026-11-10, 9:13 AM CT. After Sprint 6. Higher risk than the CLI because schemas guard stored data and MCP `invalid_args`.
+**Semver:** patch when inferred types and surfaced errors match Zod 4.6.7. No public field is added or removed.
+**License:** MIT. Notice only if Zod source is adapted.
+**Acceptance:** the inventory test lists every `z.` call in `src/`. `formatZodErrors` output matches Zod for the same failures. Recursa tool `safeParse` failures keep the same issue paths and messages. `z.infer` aliases in `src/utils/index.ts` still typecheck.
+
+### Task 15: Inventory, parity, then removal
+
+**Files:**
+- Create: `src/utils/schema.ts` (the subset validator; the name `zod` is not reused)
+- Create: `tests/unit/utils/schema.parity.test.ts`
+- Modify: every production importer listed in the spec
+
+- [ ] **Step 1: Write a test that fails if `src/` contains a `z.` method or a Zod type that is not in the inventory.** The inventory starts from the spec list (`object`, `array`, `string`, `regex`, `number`, `boolean`, `enum`, `literal`, `null`, `record`, `union`, `discriminatedUnion`, `tuple`, `unknown`, `iso.datetime`, `ZodType`, `output`, `toJSONSchema`, `strict`, `optional`, `nullable`, `min`, `max`, `int`, `finite`, `refine`, `safeParse`, `infer`, `ZodSchema`, `ZodError`). Add a method the grep finds. Do not implement a method the grep does not find.
+- [ ] **Step 2: Parity tests, with Zod still installed, compare `safeParse` success and failure for `src/utils/schemas.ts` and `src/adapters/recursaToolSchemas.ts`, including `.strict()` unknown keys, a reserved-key `.refine()`, `.nullable()`, `z.tuple`, `z.discriminatedUnion`, and `z.iso.datetime`.** Error messages that `formatZodErrors` or the MCP adapter show must be equal. `z.toJSONSchema` for one Recursa tool schema must match Zod's output for `{ io: 'input', unrepresentable: 'any' }`.
+- [ ] **Step 3: Implement only that surface. Switch imports. Keep `z.infer` as a type alias that reads the schema's output type.**
+- [ ] **Step 4: Remove `zod` from `dependencies` after Step 2 is green. Run `bun install`. Run `bun run typecheck` and the schema tests. Expected: PASS.**
+
+### Task 16: Sprint 7 verification
+
+Same verification block as Sprint 6. `package.json` has no `zod`.
+
+## Sprint 8 — REBUILD `@danielsimonjr/workerpool`
+
+**Decision:** Daniel, 2026-11-10, 9:13 AM CT. After Sprint 7.
+**Semver:** patch when fuzzy-search results and pool stats match. The public TypeScript exports do not change.
+**License:** Apache-2.0. Notice in `THIRD_PARTY_NOTICES` if any workerpool text is adapted.
+**Acceptance:** `WorkerPoolManager` uses `node:worker_threads`. `cpus`, `pool` (with a script and without one), `exec`, `timeout`, `cancel`, `stats`, `terminate` (with and without `force`), `worker`, `maxWorkers`, `workerType` including `'process'`, and `workerThreadOpts: { type: 'module' }` behave like workerpool 10.2.0. `rg "@danielsimonjr/workerpool" src package.json` finds no package import. Comment mentions may remain.
+
+### Task 17: Pool parity, then removal
+
+**Files:**
+- Create: `src/utils/threadPool.ts`
+- Create: `tests/unit/utils/threadPool.parity.test.ts`
+- Modify: `src/utils/WorkerPoolManager.ts`, `src/utils/WorkerTaskManager.ts`, `src/search/FuzzySearch.ts`, `src/workers/levenshteinWorker.ts`
+
+- [ ] **Step 1: A test runs the same Levenshtein batch through the installed workerpool and through `threadPool` and expects equal results, a working `timeout`, a working `cancel`, `terminate(true)` and `terminate()` with no argument, `pool(options)` with no script, and an ESM worker loaded with `workerThreadOpts: { type: 'module' }`.**
+- [ ] **Step 2: Implement the thin pool. One function per worker message. Keep `workerType: 'process'` because `WorkerPoolConfig` already accepts it. The default call sites pass `'thread'`.**
+- [ ] **Step 3: Switch call sites. Remove `@danielsimonjr/workerpool` only after Step 1 is green. Run `bun install` and the fuzzy-search unit tests. Expected: PASS.**
+
+### Task 18: Sprint 8 verification
+
+Same verification block as Sprint 6. `package.json` has no `@danielsimonjr/workerpool`.
+
+## Sprint 9 — REBUILD `better-sqlite3` (gated)
+
+**Decision:** Daniel, 2026-11-10, 9:13 AM CT. Last, because it is the storage engine.
+**Gate:** `node:sqlite` was added in 22.5.0 behind `--experimental-sqlite`, unflagged in 22.13.0 (`nodejs/node#55890`), and given FTS5 in 22.16.0 (`nodejs/node#57621`). `engines.node` is `>=22.12.0`. WAL is a default SQLite pragma and is not the FTS5 gap. The CI job name `ci` installs the newest Node 22 and Node 24, so a green matrix does not cover 22.12 through 22.15. This sprint is GATED on that fact. Ask Daniel. Do not bump `engines` here. Do not delete `better-sqlite3` here. A later major, only after Daniel accepts it, may set `engines.node` to `>=22.16.0` and then run the probe below.
+**Semver:** no release in this sprint while the gate is closed. The follow-up that bumps `engines.node` to `>=22.16.0` is a major. Query results, transactions, WAL, and pragmas must match better-sqlite3 13.0.3 before that major deletes the native module.
+**License:** MIT. Notice only if better-sqlite3 text is adapted.
+**Acceptance while gated:** the spec and this plan state the version facts, and `package.json` still depends on `better-sqlite3`. **Acceptance of the later major:** `SQLiteStorage` constructs `createNodeSqliteDatabaseCtor()` by default. A benchmark records rows/sec against the native module on one CI runner and is committed as a note in the PR, not as a flaky assertion. `better-sqlite3` and `@types/better-sqlite3` are gone from the root `package.json`. `scripts/rebuild-native.mjs` no longer lists it. `doctor.ts` no longer requires the addon. `scripts/node-runtime-smoke.mjs` no longer requires it. Both `tsup.config.ts` `external` entries drop it. `tools/migrate-from-jsonl-to-sqlite` is not edited. `SqliteProceduralGraphBacking` keeps calling `resolveSQLiteDatabaseCtor()`.
+
+### Task 19: Stability probe
+
+- [ ] **Step 1: Add `tests/unit/core/node-sqlite-probe.test.ts`.** It skips only when `isNodeSqliteAvailable()` is false, and when it skips it prints the Node version. On a pass it creates a temp database, sets `journal_mode = WAL`, creates an FTS5 table, inserts, queries, and rolls back a transaction.
+- [ ] **Step 2: Do not treat a pass on the six `ci` jobs as permission to delete `better-sqlite3`.** Those jobs run the newest Node 22. Record the probe's Node version. The sprint stays GATED until Daniel accepts `engines.node` `>=22.16.0`.
+
+### Task 20: Parity and removal, only in the major Daniel accepts after Task 19
+
+- [ ] **Step 1: Extend the existing SQLite tests so the same cases run on `node:sqlite` and on `better-sqlite3` while the native module is still installed.** Compare row sets, `changes`, pragma results, and a rolled-back write.
+- [ ] **Step 2: Make `resolveSQLiteDatabaseCtor` return the `node:sqlite` constructor first. Keep the native module load only until Step 1 is green, then delete it.**
+- [ ] **Step 3: Run one timed insert/select of 1,000 rows on both constructors and paste the numbers in the PR. Do not fail CI on the ratio.**
+- [ ] **Step 4: Remove `better-sqlite3` and `@types/better-sqlite3`. Run `bun install`, `bun run typecheck`, and `bunx vitest run tests/unit/core/SQLiteStorage.test.ts`. Expected: PASS.**
+
+### Task 21: Sprint 9 verification
+
+While this sprint is gated, verification is a docs check: `package.json` still lists `better-sqlite3`, and `engines.node` is still `>=22.12.0`. The verification block from Sprint 6, plus a `node -e` that exits 1 if `better-sqlite3` remains, runs only in the later major.
 
 ## Packages with no tasks
 
@@ -905,21 +1045,20 @@ The builder does not open a PR for these. The spec records why.
 
 | Package | Decision |
 |---|---|
-| `commander` | KEEP. CLI parser, help, and `InvalidArgumentError`. |
-| `zod` | KEEP. Public schemas and `formatZodErrors(ZodError)`. |
-| `better-sqlite3` | KEEP. Native speed and FTS5. The `node:sqlite` shim is not a replacement. |
-| `@danielsimonjr/workerpool` | KEEP. First-party worker protocol. |
-| `@huggingface/transformers`, `pg`, `yaml` | KEEP. Already optional peers. |
-| `@types/node`, `@types/better-sqlite3`, `typescript`, `tsup`, `tsx`, `vitest`, `@vitest/coverage-v8`, `oxlint`, `oxlint-tsgolint`, `oxc-parser` | KEEP. Toolchain. |
+| `@huggingface/transformers` | KEEP. Optional peer. Large model runtime. Already not installed by default. |
+| `pg` | KEEP. Optional peer. Postgres wire protocol. Already not installed by default. |
+| `yaml` | KEEP. Optional peer. YAML 1.2 grammar. Already not installed by default. |
+| `@types/node`, `typescript`, `tsup`, `tsx`, `vitest`, `@vitest/coverage-v8`, `oxlint`, `oxlint-tsgolint`, `oxc-parser` | KEEP. Dev toolchain. Not shipped. |
+| `@types/better-sqlite3` | KEEP until Sprint 9 completes. Removed with the native module if the gate passes. |
 | `overrides.esbuild` | KEEP. Security pin. |
 | `tools/*` | Out of scope. Not published. |
 
 ## Plan self-review
 
-- Spec decisions REBUILD and MAKE OPTIONAL each have a sprint. VENDOR has no sprint. KEEP has a table and no tasks.
+- Spec decisions that are REBUILD each have a sprint, including gated Sprint 9. MAKE OPTIONAL has no sprint. VENDOR has no sprint. Optional peers and the dev toolchain have no tasks.
 - Sprint 4's interface is `RunExclusiveMutex.runExclusive`, not `AsyncMutex.acquire`. The legacy-delete fake uses `AsyncMutex.acquire`.
 - Sprint 2's `ansi` keys match the call sites (`cyan`, `bold`, `green`, `red`, `yellow`, `gray`).
 - Sprint 3's `PlainTable` options match `formatters.ts` (`head`, `colWidths`, `wordWrap`). `colWidths` include the two padding cells.
-- Sprint 5 is gated and is the only task that edits `CHANGELOG.md`.
+- Sprint 5 rebuilds chrono-node with two oracles. Sprints 6–8 rebuild commander, Zod, and workerpool in that risk order. Sprint 9 stays gated because FTS5 needs Node 22.16.0 and the engines floor is 22.12.0. Sprints 5–8 may each add a changelog note. Sprint 9 adds one only in the major Daniel accepts. A behavior change is not allowed when parity holds.
 - No step says TBD. Verification commands are exact.
 - Per sprint the handoff is builder deepseek-v41-flash-1017, challenger glm-5p3-flash, build reviewer composer-2.5, build checker/fixer grok-4.6, final PR reviewer grok-4.7.
