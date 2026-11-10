@@ -1,11 +1,11 @@
 {
-  "totalFiles": 1028,
+  "totalFiles": 1030,
   "byDisposition": {
     "reachable": 410,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 582,
+    "test": 584,
     "tool": 10,
     "config": 2,
     "bench": 5,
@@ -15,7 +15,7 @@
     "benchmarks": 5,
     "examples": 15,
     "src": 414,
-    "tests": 582,
+    "tests": 584,
     "tools": 10,
     "config": 2
   },
@@ -2951,7 +2951,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1449
+      "loc": 1448
     },
     {
       "file": "src/utils/schemas.ts",
@@ -6853,6 +6853,13 @@
       "loc": 158
     },
     {
+      "file": "tests/unit/utils/helpers/captureSchemaSynthetic.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 67
+    },
+    {
       "file": "tests/unit/utils/helpers/schemaParityCases.ts",
       "package": "(root)",
       "area": "tests",
@@ -6865,6 +6872,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 99
+    },
+    {
+      "file": "tests/unit/utils/helpers/schemaSyntheticCases.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 216
     },
     {
       "file": "tests/unit/utils/ids.test.ts",
@@ -6997,7 +7011,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 165
+      "loc": 221
     },
     {
       "file": "tests/unit/utils/schemas.test.ts",

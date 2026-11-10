@@ -25,6 +25,7 @@ import * as recursaSupport from '../../../src/adapters/recursaToolSupport.js';
 import * as pgSchemas from '../../../src/agent/procedural/graph/ProceduralGraphSchemas.js';
 import { normalizeIssues } from './helpers/schemaParityFormat.js';
 import { CASES, ERROR_SHAPE_CASES, JSON_SCHEMA_CASES, OPS, type SchemaName } from './helpers/schemaParityCases.js';
+import { SYNTHETIC_INPUTS, buildSynthetic } from './helpers/schemaSyntheticCases.js';
 
 interface AnySchema {
   safeParse(input: unknown): { success: true; data: unknown } | { success: false; error: { name: string; issues: unknown[] } };
@@ -149,6 +150,61 @@ describe('schema parity with zod 4.6.7', () => {
     for (const name of JSON_SCHEMA_CASES) {
       expect(fixture.jsonSchemas.some((entry) => entry.schema === name), name).toBe(true);
     }
+  });
+});
+
+/**
+ * Synthetic schemas widen the claim to constructs the production schemas do not
+ * reach yet: nested strict objects, `.default()` inside an emitted schema,
+ * nullable records, length-exact strings, and union branches that disagree on
+ * type. They share the corpus inputs, so one `SYNTHETIC_INPUTS` list covers
+ * every schema and the fixture stays small.
+ */
+describe('synthetic schema parity with zod 4.6.7', () => {
+  const syntheticFixture = JSON.parse(
+    readFileSync(join(__dirname, 'fixtures', 'schemaSynthetic.json'), 'utf8'),
+  ) as {
+    zodVersion: string;
+    schemas: Array<{
+      schema: string;
+      jsonSchema: Record<string, unknown>;
+      results: Array<{ ok: boolean; data?: unknown; issues?: unknown[] }>;
+    }>;
+  };
+
+  const mine = buildSynthetic(z as never) as Record<string, AnySchema>;
+
+  it('was recorded from zod 4.6.7', () => {
+    expect(syntheticFixture.zodVersion).toBe('4.6.7');
+  });
+
+  it('builds every recorded synthetic schema', () => {
+    for (const entry of syntheticFixture.schemas) expect(mine[entry.schema], entry.schema).toBeDefined();
+    expect(Object.keys(mine).sort()).toEqual(syntheticFixture.schemas.map((entry) => entry.schema).sort());
+  });
+
+  it.each(syntheticFixture.schemas.map((entry) => entry.schema))('safeParse matches zod for synthetic %s', (name) => {
+    const entry = syntheticFixture.schemas.find((candidate) => candidate.schema === name)!;
+    expect(entry.results.length).toBe(SYNTHETIC_INPUTS.length);
+    for (let index = 0; index < SYNTHETIC_INPUTS.length; index++) {
+      const expected = entry.results[index]!;
+      const result = mine[name]!.safeParse(SYNTHETIC_INPUTS[index]);
+      expect(result.success, `${name} #${index}`).toBe(expected.ok);
+      if (expected.ok && result.success) {
+        expect(JSON.stringify(result.data), `${name} #${index}`).toBe(JSON.stringify(expected.data));
+      } else if (!expected.ok && !result.success) {
+        expect(JSON.stringify(normalizeIssues(result.error.issues)), `${name} #${index}`).toBe(
+          JSON.stringify(expected.issues),
+        );
+      }
+    }
+  });
+
+  it.each(syntheticFixture.schemas.map((entry) => entry.schema))('toJSONSchema matches zod for synthetic %s', (name) => {
+    const entry = syntheticFixture.schemas.find((candidate) => candidate.schema === name)!;
+    const out = z.toJSONSchema(mine[name]!, { io: 'input', unrepresentable: 'any' }) as Record<string, unknown>;
+    delete out.$schema;
+    expect(JSON.stringify(out)).toBe(JSON.stringify(entry.jsonSchema));
   });
 });
 

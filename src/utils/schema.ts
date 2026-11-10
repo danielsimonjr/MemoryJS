@@ -272,7 +272,6 @@ function applyCheck(check: CheckDef, payload: Payload): void {
     case 'minLength':
     case 'maxLength':
     case 'length': {
-      if (check.kind !== 'maxLength' && !hasLength(value)) return;
       if (!hasLength(value)) return;
       const measured = typeof value === 'string' ? codePointLength(value) : (value as { length: number }).length;
       const origin = typeof value === 'string' ? 'string' : 'array';
@@ -1377,10 +1376,10 @@ function jsonSchemaOfOne(schema: AnySchema): Record<string, unknown> {
       return json;
     }
     case 'default': {
-      const json = jsonSchemaOfOne(def.innerType);
       const serialized = JSON.stringify(typeof def.defaultValue === 'function' ? undefined : def.defaultValue);
-      json.default = serialized === undefined ? null : (JSON.parse(serialized) as unknown);
-      return json;
+      const value = serialized === undefined ? null : (JSON.parse(serialized) as unknown);
+      // Zod writes `default` ahead of the inner keywords.
+      return { default: value, ...jsonSchemaOfOne(def.innerType) };
     }
     default:
       return {};
