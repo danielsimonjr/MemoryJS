@@ -1,11 +1,11 @@
 {
-  "totalFiles": 1013,
+  "totalFiles": 1014,
   "byDisposition": {
     "reachable": 408,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 569,
+    "test": 570,
     "tool": 10,
     "config": 2,
     "bench": 5,
@@ -15,7 +15,7 @@
     "benchmarks": 5,
     "examples": 15,
     "src": 412,
-    "tests": 569,
+    "tests": 570,
     "tools": 10,
     "config": 2
   },
@@ -5927,6 +5927,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 1094
+    },
+    {
+      "file": "tests/unit/search/enDate.challenger.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 73
     },
     {
       "file": "tests/unit/search/enDate.inventory.test.ts",

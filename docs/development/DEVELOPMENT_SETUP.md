@@ -69,7 +69,7 @@ bun install
 ```
 
 This installs:
-- **Production dependencies**: `better-sqlite3`, `zod`, `chrono-node`, `commander`, `@danielsimonjr/workerpool`
+- **Production dependencies**: `better-sqlite3`, `zod`, `commander`, `@danielsimonjr/workerpool` (English date parsing is in-repo at `src/search/enDate/`; `chrono-node` was removed in Sprint 5)
 - **Dev dependencies**: `vitest`, `typescript`, `tsx`, `@types/*`
 
 ### 3. Build Project
