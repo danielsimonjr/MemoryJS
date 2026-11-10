@@ -143,10 +143,10 @@ export class FailureManager {
    * lost record is attributable on Windows/Dropbox EPERM races
    * (see CLAUDE.md > Gotchas > Windows atomic writes).
    *
-   * @throws {Error} if any of `context`, `attempted`, `failure_mode`,
+   * @throws Error if any of `context`, `attempted`, `failure_mode`,
    *   `root_cause`, or `applicability_hint` is empty / whitespace /
    *   non-string.
-   * @throws {Error} wrapping the underlying storage error if
+   * @throws Error wrapping the underlying storage error if
    *   `appendEntity` fails (disk full, EPERM, etc.)
    */
   async record(input: FailureInput, options: FailureEntityOptions = {}): Promise<FailureRecord> {
@@ -157,14 +157,14 @@ export class FailureManager {
   /**
    * Record several failures in one durable write.
    *
-   * Each record is validated and built exactly as {@link FailureManager.record} builds it; only the
+   * Each record is validated and built exactly as `record` builds it; only the
    * persistence step differs, so N lessons cost one append and one fsync rather than N. A round
    * that diagnoses many failed tasks is the caller that benefits: every failure used to be its own
    * append, which is the expensive operation on Windows.
    *
    * @param items - Input and options per failure, in order.
    * @returns The recorded failures, in the same order.
-   * @throws {Error} for the same reasons as `record`, naming the failure that was refused.
+   * @throws Error for the same reasons as `record`, naming the failure that was refused.
    */
   async recordMany(items: ReadonlyArray<{ input: FailureInput; options?: FailureEntityOptions }>): Promise<FailureRecord[]> {
     if (items.length === 0) return [];
