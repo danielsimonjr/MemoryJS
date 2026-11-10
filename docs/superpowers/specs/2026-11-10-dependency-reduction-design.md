@@ -144,13 +144,14 @@ JSON and CSV formatters must stay byte-identical. Tests pin the table cases Memo
 | Lockfile closure | 1 (the package bundles its parser) |
 | License | MIT |
 | Maintenance | Actively published (2.10.3 exists; lockfile pins 2.9.1). |
-| What the code uses | The only import is `src/search/TemporalQueryParser.ts`. It dynamic-imports `chrono-node` and falls back to a synchronous `createRequire`. Symbols used: `parse`, `parseDate`, result `.start.date()`, `.end.date()`, option `{ forwardDate: false }` then a retry with `{ forwardDate: true }`. |
+| What the code used (pre-Sprint 5) | The only import was `src/search/TemporalQueryParser.ts`. It dynamic-imported `chrono-node` and fell back to a synchronous `createRequire`. Symbols used: `parse`, `parseDate`, result `.start.date()`, `.end.date()`, option `{ forwardDate: false }` then a retry with `{ forwardDate: true }`. |
+| What the code uses (after Sprint 5) | `TemporalQueryParser` calls `parseEnDate` / `parseEnDateStart` from `src/search/enDate/`. No module imports `chrono-node`. Comments in `TemporalSearch.ts`, `SearchManager.ts`, and `SearchFacade.ts` name the in-repo parser. |
 
 Call sites that do not import the package, and that Sprint 5 updates only when a comment names it:
 
 - `src/search/TemporalSearch.ts` calls `parseTemporalExpressionAsync`.
-- `src/search/SearchManager.ts` `searchByTime` documents chrono in a comment.
-- `src/core/context/SearchFacade.ts` documents chrono in a comment.
+- `src/search/SearchManager.ts` `searchByTime` documents the in-repo English date parser.
+- `src/core/context/SearchFacade.ts` documents the in-repo English date parser.
 
 `parseCustomPattern` already handles these phrases without chrono: `in the past N <unit>`, `past N <unit>`, `last N <unit>`, `last|past hour|week|month|year` (optional leading `the`), `this week`, `this month`, `this year`, `today`, `yesterday`, and `N <unit> ago`. Units are second, minute, hour, day, week, month, year. `since <date>` calls `parseDate` and then uses the reference instant as the end. Everything else goes to `parseWithChrono`, including `between Monday and Wednesday` and `Jan 1 to Jan 7`. A single chrono result becomes a range with the reference date. Two or more results use the first start and the last start. Text chrono cannot parse returns `undefined`. A throw from the loader or from `parse` / `parseDate` still throws. Sprint 5 must not turn a throw into `undefined`.
 
@@ -164,6 +165,15 @@ Parity has two oracles, both at reference `2026-01-15T12:00:00.000Z` with `TZ=UT
 The dependency stays in `dependencies` until both oracles are green. Then it is deleted from `dependencies` and from `devDependencies`, and the green ISO strings are recorded so later runs do not need the package. `parseEnDate` stays an internal module. It is not added to a package barrel. `chrono-node` is MIT. Original code needs no copied license. If a pattern table or a snippet is adapted from chrono, that file and `THIRD_PARTY_NOTICES` keep the chrono copyright and the MIT license text.
 
 Semver is a patch when those oracles hold. No type signature changes. No optional peer. No 5.0.0. A new public export would be a minor and is out of this sprint.
+
+**Intentional deviations (recorded 2026-11-10, Sprint 5 implementation).** Both follow from doing all calendar math in UTC (`Date.UTC` / `getUTC*`, no `Intl` zone names), which this sprint's scope requires. Neither changes what the parity corpus asserts at `TZ=UTC`, and neither changes the instants MemoryJS returns for the custom patterns.
+
+- **Host timezone.** chrono-node resolves wall-clock fields in the host timezone (`new Date(year, month-1, day, ...)` plus `getTimezoneOffset()`), so the same phrase yields different instants under different host `TZ`. The in-repo parser resolves in UTC, so a phrase yields the same instant on every host. Before this sprint, every CI lane and the shipped default already ran the parser at `TZ=UTC` for the corpus; after it, results are stable regardless. Frozen expectations were recorded at `TZ=UTC`, and Vitest pins `TZ=UTC`.
+- **Zone abbreviations.** chrono-node maps a trailing abbreviation (`5pm EST`) through `TIMEZONE_ABBR_MAP`, whose daylight-saving rules for `CET`, `CT`, `ET`, `MT`, and `PT` are evaluated in local time. The in-repo parser keeps the same table but evaluates the DST windows in UTC, so a zone-abbreviation phrase can differ from chrono by the size of a local-time DST boundary shift. MemoryJS relies on no zone-abbreviation phrase; they are supported because chrono parsed them.
+- **PM day-part + bare `00` clock.** For inputs such as `night 00`, `evening 0:30`, or `afternoon 00 edt`, chrono-node 2.9.1 sets PM from the day-part word, then interprets bare `00`/`0:xx` in 12-hour form as noon (`2026-09-05T12:00:00.000Z` at `TZ=UTC` for the review reference). The in-repo parser treats `00` as 24-hour midnight (`00:00` / `00:30` UTC) and does not promote it to noon under a PM day-part. **Why:** midnight matches the numeric clock and the phrase better than noon after `night` or `evening`. Pinned in `tests/unit/search/enDate.challenger.test.ts` (build review 2026-11-10).
+- **Hyphenated weekday + `may`.** For `sat-may`, chrono-node 2.9.1 builds a range from the Saturday anchor to 1 May. At the review fixture (`2026-09-05T20:52:32.304Z`, `TZ=UTC`) that is `2026-09-05T12:00:00.000Z` → `2027-05-01T12:00:00.000Z` (at the parity reference `2026-01-15T12:00:00.000Z` chrono instead yields `2026-01-17T12:00:00.000Z` → `2026-05-01T12:00:00.000Z`). The in-repo parser keeps only the weekday (`sat` → Saturday noon on the reference week) and does not treat `may` as the month in this compound. Unambiguous month compounds such as `sat-june` still match chrono's range. **Why:** `may` is ambiguous (modal verb vs month); a Saturday-to-May-1 range from `sat-may` is not credible calendar semantics. Pinned in `tests/unit/search/enDate.challenger.test.ts`.
+
+The dependency is deleted from `dependencies` only after both oracles are green (and it was never added to `devDependencies`). The green ISO strings are recorded in the two test files so later runs do not need the package. `parseEnDate` stays an internal module and is not added to a package barrel. Weekday, month, unit, ordinal, timezone, and parser-expression tables were adapted from `chrono-node` (MIT), so `THIRD_PARTY_NOTICES` carries its copyright and license text and each adapted file names the origin.
 
 #### `commander` @ 15.0.0 — REBUILD (Sprint 6)
 

@@ -1,8 +1,8 @@
 metadata:
   name: "@danielsimonjr/memoryjs"
-  totalFiles: 404
+  totalFiles: 412
   totalModules: 12
-  totalExports: 2824
+  totalExports: 2874
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -15688,11 +15688,12 @@ modules:
     src/search/TemporalQueryParser.ts:
       description: Temporal Query Parser
       externalDependencies: []
-      nodeDependencies:
-        - module: module
+      nodeDependencies: []
+      internalDependencies:
+        - file: ./enDate/parseEnDate.js
           imports:
-            - createRequire
-      internalDependencies: []
+            - parseEnDate
+            - parseEnDateStart
       exports:
         - TemporalQueryParser
       classes:
@@ -15758,6 +15759,290 @@ modules:
       functions:
         - isEmbeddingStorage
         - createVectorStore
+    src/search/enDate/calendar.ts:
+      description: Calendar arithmetic for the in-repo English date parser.
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ./types.js
+          imports:
+            - Duration
+          typeOnly: true
+      exports:
+        - weekdayOf
+        - daysForwardToWeekday
+        - daysBackwardToWeekday
+        - daysToWeekday
+        - addDuration
+        - reverseDuration
+        - mostLikelyAdYear
+        - yearClosestToRef
+      functions:
+        - weekdayOf
+        - daysForwardToWeekday
+        - daysBackwardToWeekday
+        - daysToWeekday
+        - addDuration
+        - reverseDuration
+        - mostLikelyAdYear
+        - yearClosestToRef
+    src/search/enDate/components.ts:
+      description: Component bookkeeping for the in-repo English date parser.
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ./types.js
+          imports:
+            - ComponentKey
+            - Components
+            - Duration
+            - ParseContext
+          typeOnly: true
+        - file: ./calendar.js
+          imports:
+            - addDuration
+        - file: ./types.js
+          imports:
+            - MERIDIEM_AM
+            - MERIDIEM_PM
+      exports:
+        - createComponents
+        - getComponent
+        - assign
+        - imply
+        - isCertain
+        - unset
+        - isOnlyTime
+        - isOnlyDate
+        - isOnlyWeekday
+        - isDateWithUnknownYear
+        - isValidDate
+        - toDate
+        - startOfWeekUtc
+        - implySimilarDate
+        - assignSimilarDate
+        - implySimilarTime
+        - assignSimilarTime
+        - addDurationAsImplied
+        - createRelativeFromReference
+        - cloneComponents
+      functions:
+        - createComponents
+        - getComponent
+        - assign
+        - imply
+        - isCertain
+        - unset
+        - isOnlyTime
+        - isOnlyDate
+        - isOnlyWeekday
+        - isDateWithUnknownYear
+        - isValidDate
+        - toDate
+        - startOfWeekUtc
+        - implySimilarDate
+        - assignSimilarDate
+        - implySimilarTime
+        - assignSimilarTime
+        - addDurationAsImplied
+        - createRelativeFromReference
+        - cloneComponents
+    src/search/enDate/constants.ts:
+      description: Word tables and duration parsing for the in-repo English date parser.
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ./types.js
+          imports:
+            - Duration
+          typeOnly: true
+      exports:
+        - WEEKDAY_DICTIONARY
+        - FULL_MONTH_NAME_DICTIONARY
+        - MONTH_DICTIONARY
+        - TIME_UNIT_DICTIONARY_NO_ABBR
+        - TIME_UNIT_DICTIONARY
+        - NUMBER_PATTERN
+        - ORDINAL_NUMBER_PATTERN
+        - YEAR_PATTERN
+        - TIME_UNITS_PATTERN
+        - TIME_UNITS_NO_ABBR_PATTERN
+        - matchAnyPattern
+        - parseNumberPattern
+        - parseOrdinalNumberPattern
+        - parseYear
+        - parseDuration
+      functions:
+        - matchAnyPattern
+        - parseNumberPattern
+        - parseOrdinalNumberPattern
+        - parseYear
+        - parseDuration
+      constants:
+        - WEEKDAY_DICTIONARY
+        - FULL_MONTH_NAME_DICTIONARY
+        - MONTH_DICTIONARY
+        - TIME_UNIT_DICTIONARY_NO_ABBR
+        - TIME_UNIT_DICTIONARY
+        - NUMBER_PATTERN
+        - ORDINAL_NUMBER_PATTERN
+        - YEAR_PATTERN
+        - TIME_UNITS_PATTERN
+        - TIME_UNITS_NO_ABBR_PATTERN
+    src/search/enDate/parseEnDate.ts:
+      description: In-repo English natural-language date parser.
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ./types.js
+          imports:
+            - EnDateOptions
+            - EnDateResult
+            - ParseContext
+            - ParsedResult
+          typeOnly: true
+        - file: ./parsers.js
+          imports:
+            - createParsers
+            - EnParser
+        - file: ./refiners.js
+          imports:
+            - createRefiners
+            - EnRefiner
+        - file: ./components.js
+          imports:
+            - toDate
+      exports:
+        - parseEnDate
+        - parseEnDateStart
+      functions:
+        - parseEnDate
+        - parseEnDateStart
+    src/search/enDate/parsers.ts:
+      description: English date parsers for the in-repo date parser.
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ./types.js
+          imports:
+            - Components
+            - ParseContext
+            - ParsedResult
+          typeOnly: true
+        - file: ./types.js
+          imports:
+            - MERIDIEM_AM
+            - MERIDIEM_PM
+        - file: ./constants.js
+          imports:
+            - MONTH_DICTIONARY
+            - ORDINAL_NUMBER_PATTERN
+            - TIME_UNIT_DICTIONARY
+            - TIME_UNITS_PATTERN
+            - WEEKDAY_DICTIONARY
+            - YEAR_PATTERN
+            - matchAnyPattern
+            - parseDuration
+            - parseOrdinalNumberPattern
+            - parseYear
+        - file: ./components.js
+          imports:
+            - addDurationAsImplied
+            - assign
+            - assignSimilarDate
+            - assignSimilarTime
+            - createComponents
+            - createRelativeFromReference
+            - getComponent
+            - imply
+            - implySimilarTime
+            - unset
+        - file: ./calendar.js
+          imports:
+            - daysToWeekday
+            - reverseDuration
+            - yearClosestToRef
+      exports:
+        - createParsers
+      interfaces:
+        - EnParser
+      functions:
+        - createParsers
+    src/search/enDate/refiners.ts:
+      description: English date refiners for the in-repo date parser.
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ./types.js
+          imports:
+            - ComponentKey
+            - Components
+            - ParseContext
+            - ParsedResult
+          typeOnly: true
+        - file: ./types.js
+          imports:
+            - MERIDIEM_PM
+        - file: ./components.js
+          imports:
+            - assign
+            - assignSimilarDate
+            - cloneComponents
+            - createRelativeFromReference
+            - getComponent
+            - imply
+            - implySimilarDate
+            - isCertain
+            - isDateWithUnknownYear
+            - isOnlyDate
+            - isOnlyTime
+            - isOnlyWeekday
+            - isValidDate
+            - toDate
+        - file: ./calendar.js
+          imports:
+            - addDuration
+            - daysForwardToWeekday
+            - reverseDuration
+        - file: ./constants.js
+          imports:
+            - parseDuration
+            - parseYear
+        - file: ./timezones.js
+          imports:
+            - timezoneOffsetFor
+      exports:
+        - createRefiners
+      interfaces:
+        - EnRefiner
+      functions:
+        - createRefiners
+    src/search/enDate/timezones.ts:
+      description: Timezone abbreviation table for the in-repo English date parser.
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies: []
+      exports:
+        - timezoneOffsetFor
+      functions:
+        - timezoneOffsetFor
+    src/search/enDate/types.ts:
+      description: Internal value types for the in-repo English date parser.
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies: []
+      exports:
+        - MERIDIEM_AM
+        - MERIDIEM_PM
+      interfaces:
+        - EnDateResult
+        - EnDateOptions
+        - Components
+        - ParsedResult
+        - ParseContext
+      constants:
+        - MERIDIEM_AM
+        - MERIDIEM_PM
     src/search/ftsCandidates.ts:
       description: Full-text candidate lookup shared by the BM25 and ranked search paths.
       externalDependencies: []
@@ -20945,6 +21230,14 @@ dependencyGraph:
         - src/search/TemporalQueryParser.ts
         - src/search/TemporalSearch.ts
         - src/search/VectorStore.ts
+        - src/search/enDate/calendar.ts
+        - src/search/enDate/components.ts
+        - src/search/enDate/constants.ts
+        - src/search/enDate/parseEnDate.ts
+        - src/search/enDate/parsers.ts
+        - src/search/enDate/refiners.ts
+        - src/search/enDate/timezones.ts
+        - src/search/enDate/types.ts
         - src/search/ftsCandidates.ts
         - src/search/hybridLayers.ts
         - src/search/index.ts
@@ -21044,29 +21337,29 @@ reachability:
     - src/index.ts
     - src/sqlite.ts
     - src/workers/levenshteinWorker.ts
-  reachableCount: 404
+  reachableCount: 412
   dormantCount: 0
   orphaned: []
   testOnly: []
 statistics:
-  totalTypeScriptFiles: 404
+  totalTypeScriptFiles: 412
   totalModules: 12
-  totalLinesOfCode: 127489
-  totalExports: 2824
+  totalLinesOfCode: 130124
+  totalExports: 2874
   totalClasses: 280
-  totalInterfaces: 826
-  totalFunctions: 644
-  totalTypeGuards: 43
+  totalInterfaces: 833
+  totalFunctions: 682
+  totalTypeGuards: 49
   totalEnums: 4
-  totalConstants: 181
+  totalConstants: 193
   totalReExports: 1716
-  totalTypeOnlyImports: 867
+  totalTypeOnlyImports: 873
   runtimeCircularDeps: 0
   typeOnlyCircularDeps: 15
   entryRoots: 4
-  reachableFiles: 404
+  reachableFiles: 412
   dormantFiles: 0
   orphanedFiles: 0
   testOnlyFiles: 0
   unusedFilesCount: 0
-  unusedExportsCount: 119
+  unusedExportsCount: 128

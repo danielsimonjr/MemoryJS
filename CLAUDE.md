@@ -95,7 +95,7 @@ ctx.analyticsManager    // Graph statistics and validation
 ctx.compressionManager  // Duplicate detection, entity merging
 ctx.archiveManager      // Entity archival to compressed storage
 ctx.semanticSearch      // Vector similarity (requires embedding provider)
-ctx.temporalSearch      // Natural language time-range search (chrono-node)
+ctx.temporalSearch      // Natural language time-range search (in-repo English date parser)
 ctx.freshnessManager    // TTL/confidence freshness reporting
 ctx.auditLog            // governanceManager.auditLog (the AuditLog instance governance writes to)
 ctx.streamingExporter(path) // StreamingExporter factory bound to one output file: new instance per call, not cached
@@ -143,7 +143,7 @@ ctx.bootstrapper(deps)  // Recursa RS-10..RS-13 bootstrapper factory: map corpus
 - **Ranked search**: `RankedSearch` (TF-IDF via `TFIDFIndexManager`), `BM25Search` (Okapi BM25 with stopwords)
 - **Semantic search**: `SemanticSearch` + `EmbeddingService` + `IVectorStore` (`InMemoryVectorStore`, `SQLiteVectorStore`) / `QuantizedVectorStore` (requires embedding provider). With `SQLiteStorage`, `ctx.semanticSearch` uses `SQLiteVectorStore`. Vectors live in the `embeddings` table. `initialize()` loads them. Restarts skip unchanged entities. A change of `contentHash` (or of the embedding text, for an entity without one) triggers one re-embed. JSONL storage keeps `InMemoryVectorStore`.
 - **Hybrid search**: `HybridSearchManager` + `HybridScorer` + `SymbolicSearch` - combines semantic, lexical, symbolic, and (opt-in) graph-connectivity signals; `GraphRankPrior` provides cached normalized PageRank with one-hop neighbor expansion (`expandNeighbors`)
-- **Temporal search**: `TemporalQueryParser` (chrono-node NL time parsing) + `TemporalSearch` — `searchByTime()` on SearchManager
+- **Temporal search**: `TemporalQueryParser` (in-repo English date parsing) + `TemporalSearch` — `searchByTime()` on SearchManager
 - **LLM-planned search**: `LLMQueryPlanner` (NL → `StructuredQuery`) + `LLMSearchExecutor` — optional `LLMProvider`, keyword fallback
 - **N-gram index**: `NGramIndex` (trigram + Jaccard similarity) — pre-filter for `FuzzySearch` before Levenshtein
 - **Query optimization**: `QueryAnalyzer`/`QueryPlanner`, `QueryCostEstimator`, `QueryPlanCache`, `EarlyTerminationManager`, `ParallelSearchExecutor`

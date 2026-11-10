@@ -10,9 +10,9 @@
 - **Dormant files** (runtime code on disk, unreachable from any entry/build root): 0
   - **Orphaned (reachable from nothing — delete/wire candidates)**: 0
   - **Test-only (exercised by a test, ships nothing)**: 0
-- **Potentially unused exports**: 119
-  - **Unreferenced anywhere (deletion candidates)**: 0
-  - **Referenced in-module (type contracts / helpers backing live exports)**: 119
+- **Potentially unused exports**: 128
+  - **Unreferenced anywhere (deletion candidates)**: 3
+  - **Referenced in-module (type contracts / helpers backing live exports)**: 125
 
 Seeded reachability roots (4):
 
@@ -49,7 +49,17 @@ _None._
 Not imported by any other file AND not referenced within their own module — the true dead-code candidates. Verify each isn't consumed by a mechanism the
 parser can't see (dynamic access, docs examples, published-API contract) before deleting.
 
-_None._
+### `src/search/enDate/calendar.ts`
+
+- `mostLikelyAdYear` (function)
+
+### `src/search/enDate/components.ts`
+
+- `startOfWeekUtc` (function)
+
+### `src/search/enDate/constants.ts`
+
+- `TIME_UNITS_NO_ABBR_PATTERN` (constant)
 
 ## Referenced In-Module (type contracts / helpers backing live exports)
 
@@ -328,6 +338,18 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 - `CorrectedQuery` (interface) — 2 in-file refs
 - `CorrectQueryOptions` (interface) — 1 in-file ref
+
+### `src/search/enDate/calendar.ts`
+
+- `weekdayOf` (function) — 3 in-file refs
+- `daysBackwardToWeekday` (function) — 2 in-file refs
+
+### `src/search/enDate/constants.ts`
+
+- `parseNumberPattern` (function) — 1 in-file ref
+- `FULL_MONTH_NAME_DICTIONARY` (constant) — 1 in-file ref
+- `TIME_UNIT_DICTIONARY_NO_ABBR` (constant) — 2 in-file refs
+- `NUMBER_PATTERN` (constant) — 2 in-file refs
 
 ### `src/security/APIKeyStore.ts`
 

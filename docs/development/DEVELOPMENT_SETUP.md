@@ -1,8 +1,10 @@
 # Development Setup Guide
 
-**Last reviewed**: 2026-09-05. Bun is the package manager and script driver
-(`bun.lock`); Node remains the production runtime. Build commands still use
-`tsup` (ESM + CJS dual output); see [README.md § Development](../../README.md#development)
+**Last reviewed**: 2026-11-10. Bun is the development toolchain (package
+manager and script driver, `bun.lock`). Node is the production runtime for
+the published package. Published code is not required to run under Bun.
+Build commands still use `tsup` (ESM + CJS dual output); see
+[README.md § Development](../../README.md#development)
 for the full command list including `bun run audit:plans` and the
 dependency-graph generator.
 
@@ -27,8 +29,8 @@ Complete guide to setting up a MemoryJS development environment.
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| Bun | 1.4.x+ | Package manager and script driver (`bun.lock`) |
-| Node.js | 18.x+ | Production runtime for the published package / native addons |
+| Bun | 1.4.2+ | Dev toolchain: package manager and script driver (`bun.lock`) |
+| Node.js | 22.12.0+ | Production runtime for the published package / native addons |
 | Git | 2.x+ | Version control |
 
 ### Optional
@@ -42,8 +44,8 @@ Complete guide to setting up a MemoryJS development environment.
 ### Verify Installation
 
 ```bash
-bun --version    # Should be 1.4.x or higher
-node --version   # Should be 18.x or higher
+bun --version    # Should be 1.4.2 or higher
+node --version   # Should be 22.12.0 or higher
 git --version    # Should be 2.x or higher
 ```
 
@@ -69,7 +71,7 @@ bun install
 ```
 
 This installs:
-- **Production dependencies**: `better-sqlite3`, `zod`, `chrono-node`, `commander`, `@danielsimonjr/workerpool`
+- **Production dependencies**: `better-sqlite3`, `zod`, `commander`, `@danielsimonjr/workerpool` (English date parsing is in-repo at `src/search/enDate/`; `chrono-node` was removed in Sprint 5)
 - **Dev dependencies**: `vitest`, `typescript`, `tsx`, `@types/*`
 
 ### 3. Build Project

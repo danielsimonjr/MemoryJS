@@ -1337,7 +1337,7 @@ interface TemporalRange {
 }
 ```
 
-Uses `chrono-node` for expression parsing. Supports: "10 minutes ago", "last hour", "yesterday", "last week", ISO ranges.
+Uses the in-repo English date parser (`search/enDate`) for expression parsing. Supports: "10 minutes ago", "last hour", "yesterday", "last week", ISO ranges.
 
 ---
 
@@ -2102,10 +2102,10 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 
 | Claim | Value | Source |
 |---|---|---|
-| totalSourceFiles | 1017 | repo-tools map |
-| totalLinesOfCode | 303089 | repo-tools map |
-| totalExports | 3995 | repo-tools map |
-| reachableFiles | 404 | repo-tools map |
+| totalSourceFiles | 1028 | repo-tools map |
+| totalLinesOfCode | 306086 | repo-tools map |
+| totalExports | 4054 | repo-tools map |
+| reachableFiles | 412 | repo-tools map |
 | runtimeCircularDeps | 0 | repo-tools map |
 | typeOnlyCircularDeps | 39 | repo-tools map |
 
