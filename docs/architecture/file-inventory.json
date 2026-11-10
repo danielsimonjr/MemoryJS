@@ -1,11 +1,11 @@
 {
-  "totalFiles": 1038,
+  "totalFiles": 1037,
   "byDisposition": {
     "reachable": 411,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 591,
+    "test": 590,
     "tool": 10,
     "config": 2,
     "bench": 5,
@@ -15,7 +15,7 @@
     "benchmarks": 5,
     "examples": 15,
     "src": 415,
-    "tests": 591,
+    "tests": 590,
     "tools": 10,
     "config": 2
   },
@@ -3007,7 +3007,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 992
+      "loc": 1051
     },
     {
       "file": "src/utils/timing.ts",
@@ -3056,7 +3056,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 359
+      "loc": 360
     },
     {
       "file": "src/workers/levenshteinWorker.ts",
@@ -6871,7 +6871,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 48
+      "loc": 49
     },
     {
       "file": "tests/unit/utils/helpers/schemaParityCases.ts",
@@ -7119,13 +7119,6 @@
       "loc": 37
     },
     {
-      "file": "tests/unit/utils/threadPool.live.test.ts",
-      "package": "(root)",
-      "area": "tests",
-      "disposition": "test",
-      "loc": 93
-    },
-    {
       "file": "tests/unit/utils/threadPool.parity.test.ts",
       "package": "(root)",
       "area": "tests",
@@ -7137,7 +7130,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 419
+      "loc": 443
     },
     {
       "file": "tests/unit/utils/timing.test.ts",
@@ -7221,7 +7214,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 167
+      "loc": 163
     },
     {
       "file": "tools/chunking-for-files/chunking-for-files.ts",

@@ -12,8 +12,9 @@
  *   - Tasks go through the priority queue first (so high-priority tasks jump
  *     the line) and then dispatch to the named worker pool. Cancellation
  *     before dispatch is cheap (queue eviction); cancellation mid-execution
- *     is best-effort because `workerpool` doesn't expose hard-cancel and
- *     terminating a worker mid-task is destructive.
+ *     after dispatch is best-effort: `PoolPromise.cancel()` rejects the task and
+ *     eventually stops the worker, but a task already computing may finish unless
+ *     the timeout path runs.
  *   - The manager is *not* a singleton. Each `ManagerContext` (or test) gets
  *     its own. The underlying `WorkerPoolManager` is still a singleton —
  *     pools survive across managers and are reused.

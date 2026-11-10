@@ -76,25 +76,21 @@ describe('workerpool inventory', () => {
     expect(srcFiles.length).toBeGreaterThan(100);
   });
 
-  it('allows exactly one reference to the removed package: the live differential test', () => {
-    // `threadPool.live.test.ts` imports the package dynamically, skips itself when
-    // it is absent, and exists so a re-record can be checked against the real
-    // thing. Every other file must be free of it, and this assertion is an exact
-    // set so a second importer fails here rather than silently reinstating the
-    // dependency.
+  it('declares no static or dynamic import of the removed package specifier', () => {
     const importers: string[] = [];
     for (const dir of ['src', 'scripts', 'tests', 'benchmarks']) {
       for (const file of sourceFiles(join(ROOT, dir))) {
         // Raw source: a specifier is a string literal, which `codeOf` erases.
         // Comments that name the package stay allowed; only a real import of the
-        // specifier counts.
+        // specifier counts. Re-recording uses `WORKERPOOL_PATH` in
+        // `captureThreadPoolParity.ts`, not an in-repo dependency specifier.
         const source = readFileSync(file, 'utf8');
         const specifierUse =
           /(?:\bfrom\s*|\bimport\s*\(\s*|\brequire\s*\(\s*)(['"])@danielsimonjr\/workerpool\1/;
         if (specifierUse.test(source)) importers.push(relativePath(file));
       }
     }
-    expect(importers.sort()).toEqual(['tests/unit/utils/threadPool.live.test.ts']);
+    expect(importers).toEqual([]);
   });
 
   it('declares no dependency on the removed package', () => {

@@ -438,7 +438,7 @@ support exports that ARE used, so they cannot be deleted in isolation.
 ### `src/utils/threadPool.ts`
 
 - `WorkerPoolOptions` (interface) — 6 in-file refs
-- `PoolStats` (interface) — 1 in-file ref
+- `PoolStats` (interface) — 2 in-file refs
 - `ExecOptions` (interface) — 1 in-file ref
 - `WorkerRegisterOptions` (interface) — 1 in-file ref
 - `WorkerType` (type) — 3 in-file refs

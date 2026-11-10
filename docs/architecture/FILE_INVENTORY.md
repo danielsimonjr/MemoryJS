@@ -9,7 +9,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 1038
+**Total files**: 1037
 
 ## Disposition counts
 
@@ -19,12 +19,12 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 591 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 590 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 5 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 15 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **1038** | |
+| **Total** | **1037** | |
 
 ## Per-area counts
 
@@ -34,7 +34,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `config` | 2 |
 | `examples` | 15 |
 | `src` | 415 |
-| `tests` | 591 |
+| `tests` | 590 |
 | `tools` | 10 |
 
 ## All files
@@ -467,14 +467,14 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/utils/sidecarPath.ts` | src | reachable | 40 |
 | `src/utils/taskScheduler.ts` | src | reachable | 642 |
 | `src/utils/textSimilarity.ts` | src | reachable | 214 |
-| `src/utils/threadPool.ts` | src | reachable | 992 |
+| `src/utils/threadPool.ts` | src | reachable | 1051 |
 | `src/utils/timing.ts` | src | reachable | 100 |
 | `src/utils/tokenEstimate.ts` | src | reachable | 28 |
 | `src/utils/unrefInterval.ts` | src | reachable | 32 |
 | `src/utils/validation.ts` | src | reachable | 29 |
 | `src/utils/validators.ts` | src | reachable | 358 |
 | `src/utils/WorkerPoolManager.ts` | src | reachable | 404 |
-| `src/utils/WorkerTaskManager.ts` | src | reachable | 359 |
+| `src/utils/WorkerTaskManager.ts` | src | reachable | 360 |
 | `src/workers/levenshteinWorker.ts` | src | build-entry | 135 |
 | `tests/edge-cases/edge-cases.test.ts` | tests | test | 496 |
 | `tests/examples/examples.test.ts` | tests | test | 254 |
@@ -1019,7 +1019,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/utils/halfLife.test.ts` | tests | test | 27 |
 | `tests/unit/utils/helpers/captureSchemaParity.ts` | tests | test | 158 |
 | `tests/unit/utils/helpers/captureSchemaSynthetic.ts` | tests | test | 67 |
-| `tests/unit/utils/helpers/captureThreadPoolParity.ts` | tests | test | 48 |
+| `tests/unit/utils/helpers/captureThreadPoolParity.ts` | tests | test | 49 |
 | `tests/unit/utils/helpers/schemaParityCases.ts` | tests | test | 640 |
 | `tests/unit/utils/helpers/schemaParityFormat.ts` | tests | test | 99 |
 | `tests/unit/utils/helpers/schemaSyntheticCases.ts` | tests | test | 216 |
@@ -1055,9 +1055,8 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/utils/textSimilarity.test.ts` | tests | test | 147 |
 | `tests/unit/utils/textSimilarity.tokenSets.test.ts` | tests | test | 95 |
 | `tests/unit/utils/threadPool.challenger.test.ts` | tests | test | 37 |
-| `tests/unit/utils/threadPool.live.test.ts` | tests | test | 93 |
 | `tests/unit/utils/threadPool.parity.test.ts` | tests | test | 272 |
-| `tests/unit/utils/threadPool.test.ts` | tests | test | 419 |
+| `tests/unit/utils/threadPool.test.ts` | tests | test | 443 |
 | `tests/unit/utils/timing.test.ts` | tests | test | 192 |
 | `tests/unit/utils/tokenEstimate.test.ts` | tests | test | 40 |
 | `tests/unit/utils/unrefInterval.test.ts` | tests | test | 92 |
@@ -1069,7 +1068,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/utils/WorkerPoolManager.test.ts` | tests | test | 408 |
 | `tests/unit/utils/WorkerTaskManager.test.ts` | tests | test | 255 |
 | `tests/unit/workers/levenshteinWorker.test.ts` | tests | test | 425 |
-| `tests/unit/workers/WorkerPool.test.ts` | tests | test | 167 |
+| `tests/unit/workers/WorkerPool.test.ts` | tests | test | 163 |
 | `tools/chunking-for-files/chunking-for-files.ts` | tools | tool | 1255 |
 | `tools/compress-for-context/compress-for-context.ts` | tools | tool | 1461 |
 | `tools/create-dependency-graph/create-dependency-graph.ts` | tools | tool | 3833 |

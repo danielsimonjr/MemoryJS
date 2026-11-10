@@ -2,11 +2,12 @@
  * One-time recorder that froze `@danielsimonjr/workerpool` 10.2.0 behaviour for
  * the operations MemoryJS performs, before the package left `dependencies`.
  *
- * The package is no longer installed. To re-record after an intentional change,
- * install `@danielsimonjr/workerpool@10.2.0` into a scratch directory and point
- * `WORKERPOOL_PATH` at its `src/js/index.js`; the import stays dynamic so this
- * file never reintroduces a static import of the removed package. It is a
- * development aid, not part of the build or the test run.
+ * The package is not a repo dependency. To re-record after an intentional change,
+ * install `@danielsimonjr/workerpool@10.2.0` outside the repository (for example
+ * `npm install` in an empty temp directory) and point `WORKERPOOL_PATH` at that
+ * copy's `src/js/index.js`. The import is dynamic via `WORKERPOOL_PATH` only, so
+ * this file never reintroduces `@danielsimonjr/workerpool` as a dependency. It is
+ * a development aid, not part of the build or the test run.
  *
  *   WORKERPOOL_PATH=/path/to/node_modules/@danielsimonjr/workerpool/src/js/index.js \
  *     npx tsx tests/unit/utils/helpers/captureThreadPoolParity.ts \

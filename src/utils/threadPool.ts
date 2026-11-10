@@ -26,7 +26,10 @@
  *   the queue; the pool replaces it on the next `exec`.
  * - `.cancel()` rejects with an error named `CancellationError` and stops the
  *   worker if the task had started. A queued task is rejected without touching
- *   a worker.
+ *   a worker. After a running task times out or is cancelled, the very next
+ *   `exec` on that pool may reject once with `Error('Worker terminated')` while
+ *   the old worker slot is torn down; the following `exec` succeeds on a fresh
+ *   worker, matching workerpool 10.2.0's cleanup race.
  * - `terminate(true)` rejects in-flight tasks with `Error('Worker terminated')`
  *   and drops queued tasks; `terminate()` lets the in-flight task finish before
  *   the worker stops. Either way no worker handle outlives the promise, so the
@@ -46,8 +49,8 @@
  *   declares them and no code reads them.
  * - The abort-listener cleanup handshake (`addAbortListener`,
  *   `__workerpool-cleanup__`) is not implemented. MemoryJS registers no abort
- *   listeners, so 10.2.0's observable behaviour is the immediate worker stop
- *   this module performs on cancel or timeout.
+ *   listeners; cancel and timeout still stop the worker and may poison the
+ *   next submitted `exec` with `Error('Worker terminated')`, as documented above.
  * - `worker(methods)` installs the same protocol in the same places 10.2.0 does
  *   (a worker thread with a `parentPort`, or a forked child with an IPC
  *   channel), except in a plain main thread: 10.2.0 throws
@@ -105,7 +108,7 @@ export interface WorkerPoolOptions {
   workerTerminateTimeout?: number;
 }
 
-/** Runtime statistics, matching workerpool's `Pool.stats()` shape. */
+/** Runtime statistics for {@link Pool.stats}: the five fields MemoryJS reads. */
 export interface PoolStats {
   /** Workers that exist, busy or idle. */
   totalWorkers: number;
@@ -187,9 +190,12 @@ export class TerminateError extends Error {
    * Create a worker-termination error.
    *
    * @param message - Defaults to `worker terminated`.
+   * @param cause - Optional underlying error, as workerpool attaches on the
+   *   `error` event path.
    */
-  constructor(message = 'worker terminated') {
+  constructor(message = 'worker terminated', cause?: Error) {
     super(message);
+    if (cause !== undefined) this.cause = cause;
   }
 }
 
@@ -583,6 +589,13 @@ class WorkerSlot {
   private task: Task | null = null;
   private readonly buffered: unknown[] = [];
   private killRequested = false;
+  /** The task submitted right after cancel/timeout rejects once, then the worker is killed. */
+  private rejectNextAssignment = false;
+
+  /** Whether the slot is held out of {@link Pool.workers} for a poison reject. */
+  get needsPoisonReject(): boolean {
+    return this.rejectNextAssignment;
+  }
   private readonly exitWaiters: Array<() => void> = [];
   private readonly onIdle: () => void;
   private readonly terminateTimeout: number;
@@ -608,8 +621,8 @@ class WorkerSlot {
       });
       this.child = null;
       this.thread.on('message', (message: unknown) => { this.handleMessage(message); });
-      this.thread.on('messageerror', (error: Error) => { this.handleCrash(error.message); });
-      this.thread.on('error', (error: Error) => { this.handleCrash(error.message); });
+      this.thread.on('messageerror', (error: Error) => { this.handleCrash(error.message, error); });
+      this.thread.on('error', (error: Error) => { this.handleCrash(error.message, error); });
       this.thread.on('exit', (code: number) => { this.handleExit(code); });
     } else {
       this.thread = null;
@@ -620,7 +633,7 @@ class WorkerSlot {
           stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
         } as never);
       this.child.on('message', (message: unknown) => { this.handleMessage(message); });
-      this.child.on('error', (error: Error) => { this.handleCrash(error.message); });
+      this.child.on('error', (error: Error) => { this.handleCrash(error.message, error); });
       this.child.on('exit', (code: number | null, signal: string | null) => {
         this.handleExit(code ?? undefined, signal ?? undefined);
       });
@@ -650,10 +663,26 @@ class WorkerSlot {
 
   /** Hand a task to this worker. */
   assign(task: Task): void {
+    if (this.rejectNextAssignment) {
+      this.rejectNextAssignment = false;
+      task.slot = this;
+      task.promise.reject(new Error('Worker terminated'));
+      void this.stop(true);
+      return;
+    }
     this.task = task;
     task.slot = this;
     if (task.queuedTimeout !== null) task.promise.startTimer(task.queuedTimeout);
     this.send({ id: task.id, method: task.method, params: task.params });
+  }
+
+  /**
+   * A running task ended via cancel or timeout: the slot stays in the pool until
+   * torn down, but the next assignment rejects once, as workerpool does.
+   */
+  afterTaskAborted(): void {
+    this.detachTask();
+    this.rejectNextAssignment = true;
   }
 
   /** Release the current task without settling it (the caller already did). */
@@ -712,8 +741,8 @@ class WorkerSlot {
     this.onIdle();
   }
 
-  private handleCrash(message: string): void {
-    this.fail(new TerminateError(`Workerpool Worker error: ${message}`));
+  private handleCrash(message: string, cause?: Error): void {
+    this.fail(new TerminateError(`Workerpool Worker error: ${message}`, cause));
   }
 
   private handleExit(code: number | undefined, signal?: string): void {
@@ -725,16 +754,24 @@ class WorkerSlot {
         task.promise.reject(new Error('Worker terminated'));
       } else {
         const script = this.script ?? 'default';
+        const handle = this.child ?? this.thread;
+        const spawnArgs =
+          this.child && Array.isArray(this.child.spawnargs)
+            ? this.child.spawnargs
+            : undefined;
+        const spawnfile = this.child?.spawnfile;
+        const stdout = (handle as { stdout?: unknown } | null)?.stdout;
+        const stderr = (handle as { stderr?: unknown } | null)?.stderr;
         task.promise.reject(
           new TerminateError(
             'Workerpool Worker terminated Unexpectedly\n' +
             `    exitCode: \`${code}\`\n` +
             `    signalCode: \`${signal}\`\n` +
             `    workerpool.script: \`${script}\`\n` +
-            '    spawnArgs: `undefined`\n' +
-            '    spawnfile: `undefined`\n' +
-            '    stdout: `undefined`\n' +
-            '    stderr: `undefined`',
+            `    spawnArgs: \`${String(spawnArgs)}\`\n` +
+            `    spawnfile: \`${String(spawnfile)}\`\n` +
+            `    stdout: \`${String(stdout)}\`\n` +
+            `    stderr: \`${String(stderr)}\``,
           ),
         );
       }
@@ -791,6 +828,10 @@ export class Pool {
   private readonly options: WorkerPoolOptions;
   private readonly backend: 'thread' | 'process';
   private readonly workers: WorkerSlot[] = [];
+  /** Slot removed from {@link workers} while it finishes a cancel/timeout teardown. */
+  private drainingSlot: WorkerSlot | null = null;
+  /** Task ids already queued when the last running task aborted; they skip the poison reject. */
+  private poisonQueuedBeforeAbort = new Set<number>();
   private readonly queue: Task[] = [];
   private taskCounter = 0;
 
@@ -819,7 +860,7 @@ export class Pool {
     } else {
       this.maxWorkers = Math.max(cpus() - 1, 1);
     }
-    this.maxQueueSize = this.options.maxQueueSize ?? Infinity;
+    this.maxQueueSize = this.options.maxQueueSize || Infinity;
 
     const minWorkers = this.options.minWorkers;
     if (minWorkers !== undefined) {
@@ -832,12 +873,14 @@ export class Pool {
   }
 
   private static resolveBackend(type: WorkerType): 'thread' | 'process' {
-    if (type === 'thread' || type === 'process') return type;
-    if (type === 'web') throw new Error('WorkerPool: Web Workers not supported');
+    if (type === 'process') return 'process';
     return 'thread';
   }
 
   private createSlot(): WorkerSlot {
+    if (this.workerType === 'web') {
+      throw new Error('WorkerPool: Web Workers not supported');
+    }
     return new WorkerSlot(this.script, this.options, this.backend, () => { this.next(); });
   }
 
@@ -899,19 +942,26 @@ export class Pool {
       promise.then(detach, detach);
     }
 
-    // A cancelled or timed-out task leaves its worker in an unknown state (it
-    // may still be computing), so the worker is stopped and dropped from the
-    // pool rather than reused. workerpool does the same, and it is what stops a
-    // wedged task from blocking every later task in the queue.
+    // Cancel or timeout on a running task removes the worker from stats until
+    // teardown completes; the next exec rejects once with "Worker terminated".
     promise.then(undefined, (error: unknown) => {
       if (!(error instanceof CancellationError) && !(error instanceof TimeoutError)) return;
       const slot = task.slot;
       task.slot = null;
       if (!slot) return;
-      slot.detachTask();
+      slot.afterTaskAborted();
+      this.poisonQueuedBeforeAbort = new Set(this.queue.map((queued) => queued.id));
       const index = this.workers.indexOf(slot);
       if (index >= 0) this.workers.splice(index, 1);
-      void slot.stop(true).then(() => { this.next(); });
+      if (this.drainingSlot && this.drainingSlot !== slot) {
+        void this.drainingSlot.stop(true);
+      }
+      this.drainingSlot = slot;
+      void slot.stop(true).then(() => {
+        if (this.drainingSlot === slot) this.drainingSlot = null;
+        this.poisonQueuedBeforeAbort.clear();
+        this.next();
+      });
     });
 
     this.queue.push(task);
@@ -922,16 +972,23 @@ export class Pool {
   /** Dispatch queued tasks to idle workers, creating workers up to `maxWorkers`. */
   private next(): void {
     while (this.queue.length > 0) {
-      const slot = this.acquireWorker();
+      const task = this.queue[0]!;
+      const slot = this.acquireWorker(task);
       if (!slot) return;
-      const task = this.queue.shift()!;
+      this.queue.shift();
       if (!task.promise.pending) continue;
       slot.assign(task);
     }
   }
 
   /** An idle worker, a newly created one, or `null` when the pool is saturated. */
-  private acquireWorker(): WorkerSlot | null {
+  private acquireWorker(nextTask: Task): WorkerSlot | null {
+    if (
+      this.drainingSlot?.needsPoisonReject
+      && !this.poisonQueuedBeforeAbort.has(nextTask.id)
+    ) {
+      return this.drainingSlot;
+    }
     for (const slot of this.workers) {
       if (slot.available) return slot;
     }
@@ -948,7 +1005,9 @@ export class Pool {
   }
 
   /**
-   * Runtime statistics, matching workerpool's shape.
+   * Runtime statistics. Returns only the five {@link PoolStats} fields that
+   * MemoryJS reads; workerpool 10.2.0 also exposes `circuitState` and
+   * `estimatedQueueMemory`, which are not implemented here.
    *
    * @returns Worker and task counts.
    */

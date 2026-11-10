@@ -7,9 +7,9 @@
  * after the package is gone: every observation below is the removed package's
  * observed answer, not a description of the new implementation.
  *
- * `threadPool.live.test.ts` re-runs the same corpus against the installed
- * package when it happens to be present, so a re-record can be checked without
- * trusting this fixture blindly.
+ * Re-record with `captureThreadPoolParity.ts` and a scratch install of
+ * `@danielsimonjr/workerpool@10.2.0` (`WORKERPOOL_PATH`); this test replays the
+ * frozen JSON after the package is removed from the repo.
  *
  * The Levenshtein worker is loaded as a real ESM worker thread through `tsx`
  * (`workerThreadOpts: { type: 'module' }`), which is exactly the configuration

@@ -315,6 +315,22 @@ describe('threadPool', () => {
       }
     });
 
+    it('rejects the next exec once with "Worker terminated" after a timeout, then recovers', async () => {
+      const poolUnderTest = pool({ maxWorkers: 1 });
+      const add = (a: number, b: number) => a + b;
+      try {
+        await poolUnderTest.exec(add, [0, 0]);
+        await poolUnderTest.exec(sleep, [5000]).timeout(50).catch(() => {});
+        const poisoned = await poolUnderTest.exec(add, [2, 3])
+          .then(() => null, (reason: unknown) => reason as Error);
+        expect(poisoned).toBeInstanceOf(Error);
+        expect(poisoned!.message).toBe('Worker terminated');
+        expect(await poolUnderTest.exec(add, [4, 2])).toBe(6);
+      } finally {
+        await poolUnderTest.terminate(true);
+      }
+    });
+
     it('does not fire a timeout once the task finished', async () => {
       const poolUnderTest = pool({ maxWorkers: 1 });
       try {
@@ -357,8 +373,16 @@ describe('threadPool', () => {
       }
     });
 
-    it('refuses the browser backend', () => {
-      expect(() => pool({ workerType: 'web' })).toThrow(/Web Workers not supported/);
+    it('refuses the browser backend on first exec, not at construction', async () => {
+      const poolUnderTest = pool({ maxWorkers: 1, workerType: 'web' });
+      expect(poolUnderTest.workerType).toBe('web');
+      try {
+        await poolUnderTest.exec((n: number) => n, [1]);
+        expect.unreachable('exec should throw when creating a web worker');
+      } catch (error) {
+        expect((error as Error).message).toMatch(/Web Workers not supported/);
+      }
+      await poolUnderTest.terminate(true);
     });
   });
 
