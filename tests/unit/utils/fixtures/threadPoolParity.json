@@ -1,0 +1,295 @@
+{
+  "workerpoolVersion": "10.2.0",
+  "observations": {
+    "levenshtein": [
+      {
+        "label": "typo-name",
+        "results": [
+          {
+            "name": "Alice",
+            "score": 0.8,
+            "matchedIn": "name"
+          },
+          {
+            "name": "Alise",
+            "score": 1,
+            "matchedIn": "name"
+          }
+        ]
+      },
+      {
+        "label": "exact-name",
+        "results": [
+          {
+            "name": "Alice",
+            "score": 1,
+            "matchedIn": "name"
+          },
+          {
+            "name": "Alise",
+            "score": 1,
+            "matchedIn": "observation"
+          }
+        ]
+      },
+      {
+        "label": "type-match",
+        "results": [
+          {
+            "name": "Alice",
+            "score": 1,
+            "matchedIn": "type"
+          },
+          {
+            "name": "Alicia",
+            "score": 1,
+            "matchedIn": "type"
+          },
+          {
+            "name": "Bob",
+            "score": 1,
+            "matchedIn": "type"
+          },
+          {
+            "name": "Robert",
+            "score": 1,
+            "matchedIn": "type"
+          },
+          {
+            "name": "Alise",
+            "score": 1,
+            "matchedIn": "type"
+          },
+          {
+            "name": "Carol",
+            "score": 1,
+            "matchedIn": "type"
+          },
+          {
+            "name": "Dave",
+            "score": 1,
+            "matchedIn": "type"
+          },
+          {
+            "name": "Zed",
+            "score": 1,
+            "matchedIn": "type"
+          }
+        ]
+      },
+      {
+        "label": "observation-match",
+        "results": [
+          {
+            "name": "Alice",
+            "score": 1,
+            "matchedIn": "observation"
+          },
+          {
+            "name": "Engineer_Notes",
+            "score": 1,
+            "matchedIn": "name"
+          }
+        ]
+      },
+      {
+        "label": "misspelled-observation",
+        "results": [
+          {
+            "name": "Alice",
+            "score": 0.875,
+            "matchedIn": "observation"
+          }
+        ]
+      },
+      {
+        "label": "no-match",
+        "results": []
+      },
+      {
+        "label": "low-threshold",
+        "results": [
+          {
+            "name": "Alice",
+            "score": 0.4,
+            "matchedIn": "name"
+          },
+          {
+            "name": "Alicia",
+            "score": 0.5,
+            "matchedIn": "name"
+          },
+          {
+            "name": "Project_Alpha",
+            "score": 1,
+            "matchedIn": "name"
+          },
+          {
+            "name": "Alise",
+            "score": 0.4,
+            "matchedIn": "name"
+          },
+          {
+            "name": "Dave",
+            "score": 1,
+            "matchedIn": "observation"
+          }
+        ]
+      }
+    ],
+    "fuzzyChunks": [
+      {
+        "label": "typo-name",
+        "names": [
+          "Alice",
+          "Alise"
+        ]
+      },
+      {
+        "label": "observation",
+        "names": [
+          "Alice",
+          "Engineer_Notes"
+        ]
+      },
+      {
+        "label": "type",
+        "names": [
+          "Alicia",
+          "Project_Alpha"
+        ]
+      }
+    ],
+    "scriptless": {
+      "sum": 5,
+      "product": 42,
+      "parallel": [
+        2,
+        4,
+        6
+      ],
+      "statsKeys": [
+        "totalWorkers",
+        "busyWorkers",
+        "idleWorkers",
+        "pendingTasks",
+        "activeTasks"
+      ],
+      "stats": {
+        "totalWorkers": 1,
+        "busyWorkers": 0,
+        "idleWorkers": 1,
+        "pendingTasks": 0,
+        "activeTasks": 0
+      },
+      "afterStats": {
+        "totalWorkers": 2,
+        "busyWorkers": 0,
+        "idleWorkers": 2,
+        "pendingTasks": 0,
+        "activeTasks": 0
+      }
+    },
+    "failures": {
+      "thrown": {
+        "ctor": "Error",
+        "name": "Error",
+        "message": "kaboom",
+        "stackHead": "RangeError: kaboom"
+      },
+      "unknownMethod": {
+        "ctor": "Error",
+        "name": "Error",
+        "message": "Unknown method \"doesNotExist\""
+      },
+      "badParams": {
+        "ctor": "TypeError",
+        "name": "TypeError",
+        "message": "Array expected as argument \"params\""
+      },
+      "crash": {
+        "name": "Error",
+        "messageHead": "Workerpool Worker terminated Unexpectedly"
+      },
+      "afterCrash": 3,
+      "maxWorkersValidation": {
+        "ctor": "TypeError",
+        "name": "TypeError",
+        "message": "Option maxWorkers must be an integer number >= 1"
+      }
+    },
+    "timeoutAndCancel": {
+      "timeout": {
+        "ctor": "Error",
+        "name": "TimeoutError",
+        "message": "Promise timed out after 200 ms"
+      },
+      "afterTimeout": 12,
+      "statsAfterTimeout": {
+        "totalWorkers": 1,
+        "busyWorkers": 0,
+        "idleWorkers": 1,
+        "pendingTasks": 0,
+        "activeTasks": 0
+      },
+      "queuedTimeout": {
+        "rejected": 2,
+        "gapAtLeast150ms": true
+      },
+      "pendingBeforeCancel": true,
+      "cancel": {
+        "ctor": "Error",
+        "name": "CancellationError",
+        "message": "promise cancelled"
+      },
+      "pendingAfterCancel": false,
+      "rejectedAfterCancel": true,
+      "statsAfterCancel": {
+        "totalWorkers": 0,
+        "busyWorkers": 0,
+        "idleWorkers": 0,
+        "pendingTasks": 0,
+        "activeTasks": 0
+      },
+      "afterCancel": 5,
+      "queuedCancel": {
+        "ctor": "Error",
+        "name": "CancellationError",
+        "message": "promise cancelled"
+      },
+      "busySurvived": 300
+    },
+    "terminate": {
+      "forcedInflight": {
+        "error": {
+          "ctor": "Error",
+          "name": "Error",
+          "message": "Worker terminated"
+        }
+      },
+      "statsAfterForced": {
+        "totalWorkers": 0,
+        "busyWorkers": 0,
+        "idleWorkers": 0,
+        "pendingTasks": 0,
+        "activeTasks": 0
+      },
+      "gracefulInflight": 300,
+      "statsAfterGraceful": {
+        "totalWorkers": 0,
+        "busyWorkers": 0,
+        "idleWorkers": 0,
+        "pendingTasks": 0,
+        "activeTasks": 0
+      },
+      "queuedAtTerminate": {
+        "error": {
+          "ctor": "Error",
+          "name": "Error",
+          "message": "Pool terminated"
+        }
+      },
+      "headAtTerminate": 200
+    }
+  }
+}

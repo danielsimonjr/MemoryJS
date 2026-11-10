@@ -2,12 +2,12 @@
  * Levenshtein Worker
  *
  * Worker thread for calculating Levenshtein distances in parallel.
- * Uses workerpool for worker management.
+ * Registers its methods with the in-repo pool in `utils/threadPool.ts`.
  *
  * @module workers/levenshteinWorker
  */
 
-import workerpool from '@danielsimonjr/workerpool';
+import { worker } from '../utils/threadPool.js';
 import { FUZZY_SEARCH_LIMITS } from '../utils/constants.js';
 import { levenshteinDistance } from '../utils/searchAlgorithms.js';
 export { levenshteinDistance } from '../utils/searchAlgorithms.js';
@@ -127,8 +127,8 @@ export function searchEntities(data: WorkerInput): MatchResult[] {
   return results;
 }
 
-// Register worker methods with workerpool
-// Cast to satisfy workerpool's generic type signature
-workerpool.worker({
+// Register worker methods with the in-repo pool. Outside a pool worker (for
+// example when a unit test imports this module) this is a no-op.
+worker({
   searchEntities: searchEntities as (...args: unknown[]) => unknown,
 });
