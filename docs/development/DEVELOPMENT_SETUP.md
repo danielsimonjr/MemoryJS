@@ -71,7 +71,7 @@ bun install
 ```
 
 This installs:
-- **Production dependencies**: `better-sqlite3`, `zod`, `commander`, `@danielsimonjr/workerpool` (English date parsing is in-repo at `src/search/enDate/`; `chrono-node` was removed in Sprint 5)
+- **Production dependencies**: `better-sqlite3`, `zod`, `@danielsimonjr/workerpool` (English date parsing is in-repo at `src/search/enDate/` and CLI argument parsing is in-repo at `src/cli/parseArgs.ts`; `chrono-node` was removed in Sprint 5 and `commander` in Sprint 6)
 - **Dev dependencies**: `vitest`, `typescript`, `tsx`, `@types/*`
 
 ### 3. Build Project

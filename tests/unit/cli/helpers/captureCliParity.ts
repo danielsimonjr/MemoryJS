@@ -2,7 +2,7 @@
  * Capture commander 15.0.0 behavior for the MemoryJS CLI tree into pinned literals.
  *
  * Run once while commander is installed:
- *   npx tsx scripts/capture-cli-parity.ts tests/unit/cli/fixtures/parseArgsPinned.json
+ *   npx tsx tests/unit/cli/helpers/captureCliParity.ts tests/unit/cli/fixtures/parseArgsPinned.json
  *
  * `tests/unit/cli/parseArgsPinned.test.ts` replays this fixture through the
  * in-repo parser, so the recorded behavior keeps guarding the parser after
@@ -10,8 +10,8 @@
  */
 import { Command, Option, InvalidArgumentError } from 'commander';
 import { writeFileSync } from 'node:fs';
-import { registerCommands } from '../src/cli/commands/index.js';
-import { buildSyntheticProgram, SYNTHETIC_ARGV, type CommandLike } from '../tests/unit/cli/helpers/syntheticProgram.js';
+import { registerCommands } from '../../../src/cli/commands/index.js';
+import { buildSyntheticProgram, SYNTHETIC_ARGV, type CommandLike } from './syntheticProgram.js';
 
 interface Captured {
   path: string;

@@ -1,9 +1,9 @@
 {
   "metadata": {
     "name": "@danielsimonjr/memoryjs",
-    "totalFiles": 412,
+    "totalFiles": 413,
     "totalModules": 12,
-    "totalExports": 2873
+    "totalExports": 2878
   },
   "entryPoints": [
     {
@@ -14911,15 +14911,7 @@
       },
       "src/cli/commands/audit.ts": {
         "description": "Audit CLI Commands — `memory audit` (R4a queryable provenance).",
-        "externalDependencies": [
-          {
-            "package": "commander",
-            "imports": [
-              "Command",
-              "Option"
-            ]
-          }
-        ],
+        "externalDependencies": [],
         "nodeDependencies": [
           {
             "module": "path",
@@ -14933,6 +14925,13 @@
           }
         ],
         "internalDependencies": [
+          {
+            "file": "../parseArgs.js",
+            "imports": [
+              "Command",
+              "Option"
+            ]
+          },
           {
             "file": "./helpers.js",
             "imports": [
@@ -14984,16 +14983,15 @@
       },
       "src/cli/commands/cache.ts": {
         "description": "Cache CLI commands — `memory cache`.",
-        "externalDependencies": [
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
           {
-            "package": "commander",
+            "file": "../parseArgs.js",
             "imports": [
               "Command"
             ]
-          }
-        ],
-        "nodeDependencies": [],
-        "internalDependencies": [
+          },
           {
             "file": "../../utils/searchCache.js",
             "imports": [
@@ -15025,16 +15023,15 @@
       },
       "src/cli/commands/check.ts": {
         "description": "Graph repair CLI command — `memory check`.",
-        "externalDependencies": [
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
           {
-            "package": "commander",
+            "file": "../parseArgs.js",
             "imports": [
               "Command"
             ]
-          }
-        ],
-        "nodeDependencies": [],
-        "internalDependencies": [
+          },
           {
             "file": "../../core/ManagerContext.js",
             "imports": [
@@ -15059,14 +15056,7 @@
       },
       "src/cli/commands/decision.ts": {
         "description": "Decision CLI Commands — `memory decision` (Phase 3 Decision Rationale).",
-        "externalDependencies": [
-          {
-            "package": "commander",
-            "imports": [
-              "Command"
-            ]
-          }
-        ],
+        "externalDependencies": [],
         "nodeDependencies": [
           {
             "module": "fs",
@@ -15089,6 +15079,12 @@
               "DecisionId"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../parseArgs.js",
+            "imports": [
+              "Command"
+            ]
           },
           {
             "file": "../../agent/DecisionManager.js",
@@ -15128,14 +15124,7 @@
       },
       "src/cli/commands/diag.ts": {
         "description": "Diagnostic CLI commands.",
-        "externalDependencies": [
-          {
-            "package": "commander",
-            "imports": [
-              "Command"
-            ]
-          }
-        ],
+        "externalDependencies": [],
         "nodeDependencies": [
           {
             "module": "fs",
@@ -15171,6 +15160,12 @@
         ],
         "internalDependencies": [
           {
+            "file": "../parseArgs.js",
+            "imports": [
+              "Command"
+            ]
+          },
+          {
             "file": "../../core/ManagerContext.js",
             "imports": [
               "ManagerContext"
@@ -15203,14 +15198,7 @@
       },
       "src/cli/commands/doctor.ts": {
         "description": "Preflight CLI command — `memory doctor` (R9).",
-        "externalDependencies": [
-          {
-            "package": "commander",
-            "imports": [
-              "Command"
-            ]
-          }
-        ],
+        "externalDependencies": [],
         "nodeDependencies": [
           {
             "module": "fs",
@@ -15247,6 +15235,12 @@
           }
         ],
         "internalDependencies": [
+          {
+            "file": "../parseArgs.js",
+            "imports": [
+              "Command"
+            ]
+          },
           {
             "file": "./helpers.js",
             "imports": [
@@ -15306,16 +15300,15 @@
       },
       "src/cli/commands/entity.ts": {
         "description": "Entity CLI Commands",
-        "externalDependencies": [
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
           {
-            "package": "commander",
+            "file": "../parseArgs.js",
             "imports": [
               "Command"
             ]
-          }
-        ],
-        "nodeDependencies": [],
-        "internalDependencies": [
+          },
           {
             "file": "./helpers.js",
             "imports": [
@@ -15341,16 +15334,15 @@
       },
       "src/cli/commands/exclusion.ts": {
         "description": "Exclusion CLI Commands — `memory exclude` (Phase 3 do_not_remember).",
-        "externalDependencies": [
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
           {
-            "package": "commander",
+            "file": "../parseArgs.js",
             "imports": [
               "Command"
             ]
-          }
-        ],
-        "nodeDependencies": [],
-        "internalDependencies": [
+          },
           {
             "file": "./helpers.js",
             "imports": [
@@ -15377,16 +15369,15 @@
       },
       "src/cli/commands/graph.ts": {
         "description": "Graph Algorithm CLI Commands",
-        "externalDependencies": [
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
           {
-            "package": "commander",
+            "file": "../parseArgs.js",
             "imports": [
               "Command"
             ]
-          }
-        ],
-        "nodeDependencies": [],
-        "internalDependencies": [
+          },
           {
             "file": "./helpers.js",
             "imports": [
@@ -15412,16 +15403,15 @@
       },
       "src/cli/commands/helpers.ts": {
         "description": "CLI Command Helpers",
-        "externalDependencies": [
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
           {
-            "package": "commander",
+            "file": "../parseArgs.js",
             "imports": [
               "Command"
             ]
-          }
-        ],
-        "nodeDependencies": [],
-        "internalDependencies": [
+          },
           {
             "file": "../../core/ManagerContext.js",
             "imports": [
@@ -15466,16 +15456,15 @@
       },
       "src/cli/commands/heuristic.ts": {
         "description": "Heuristic CLI commands — `memory heuristic` (Phase 3B.8).",
-        "externalDependencies": [
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
           {
-            "package": "commander",
+            "file": "../parseArgs.js",
             "imports": [
               "Command"
             ]
-          }
-        ],
-        "nodeDependencies": [],
-        "internalDependencies": [
+          },
           {
             "file": "./helpers.js",
             "imports": [
@@ -15501,16 +15490,15 @@
       },
       "src/cli/commands/hierarchy.ts": {
         "description": "Hierarchy CLI Commands",
-        "externalDependencies": [
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
           {
-            "package": "commander",
+            "file": "../parseArgs.js",
             "imports": [
               "Command"
             ]
-          }
-        ],
-        "nodeDependencies": [],
-        "internalDependencies": [
+          },
           {
             "file": "./helpers.js",
             "imports": [
@@ -15534,16 +15522,15 @@
       },
       "src/cli/commands/index.ts": {
         "description": "CLI Command Registry",
-        "externalDependencies": [
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
           {
-            "package": "commander",
+            "file": "../parseArgs.js",
             "imports": [
               "Command"
             ]
-          }
-        ],
-        "nodeDependencies": [],
-        "internalDependencies": [
+          },
           {
             "file": "./entity.js",
             "imports": [
@@ -15698,14 +15685,7 @@
       },
       "src/cli/commands/inspect.ts": {
         "description": "Inspection CLI commands.",
-        "externalDependencies": [
-          {
-            "package": "commander",
-            "imports": [
-              "Command"
-            ]
-          }
-        ],
+        "externalDependencies": [],
         "nodeDependencies": [
           {
             "module": "fs",
@@ -15715,6 +15695,12 @@
           }
         ],
         "internalDependencies": [
+          {
+            "file": "../parseArgs.js",
+            "imports": [
+              "Command"
+            ]
+          },
           {
             "file": "../../core/ManagerContext.js",
             "imports": [
@@ -15750,15 +15736,7 @@
       },
       "src/cli/commands/io.ts": {
         "description": "Import/Export CLI Commands",
-        "externalDependencies": [
-          {
-            "package": "commander",
-            "imports": [
-              "Command",
-              "Option"
-            ]
-          }
-        ],
+        "externalDependencies": [],
         "nodeDependencies": [
           {
             "module": "fs",
@@ -15775,6 +15753,13 @@
           }
         ],
         "internalDependencies": [
+          {
+            "file": "../parseArgs.js",
+            "imports": [
+              "Command",
+              "Option"
+            ]
+          },
           {
             "file": "./helpers.js",
             "imports": [
@@ -15803,17 +15788,16 @@
       },
       "src/cli/commands/maintenance.ts": {
         "description": "Maintenance CLI Commands (stats, archive, compress, validate)",
-        "externalDependencies": [
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
           {
-            "package": "commander",
+            "file": "../parseArgs.js",
             "imports": [
               "Command",
               "InvalidArgumentError"
             ]
-          }
-        ],
-        "nodeDependencies": [],
-        "internalDependencies": [
+          },
           {
             "file": "./helpers.js",
             "imports": [
@@ -15855,16 +15839,15 @@
       },
       "src/cli/commands/observation.ts": {
         "description": "Observation CLI Commands",
-        "externalDependencies": [
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
           {
-            "package": "commander",
+            "file": "../parseArgs.js",
             "imports": [
               "Command"
             ]
-          }
-        ],
-        "nodeDependencies": [],
-        "internalDependencies": [
+          },
           {
             "file": "./helpers.js",
             "imports": [
@@ -15889,16 +15872,15 @@
       },
       "src/cli/commands/observationDedup.ts": {
         "description": "Observation-dedup CLI commands — `memory obs-dedup`.",
-        "externalDependencies": [
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
           {
-            "package": "commander",
+            "file": "../parseArgs.js",
             "imports": [
               "Command"
             ]
-          }
-        ],
-        "nodeDependencies": [],
-        "internalDependencies": [
+          },
           {
             "file": "./helpers.js",
             "imports": [
@@ -15915,16 +15897,15 @@
       },
       "src/cli/commands/projectContext.ts": {
         "description": "Project Context CLI Commands — `memory project-context` (Phase 3 Type 2).",
-        "externalDependencies": [
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
           {
-            "package": "commander",
+            "file": "../parseArgs.js",
             "imports": [
               "Command"
             ]
-          }
-        ],
-        "nodeDependencies": [],
-        "internalDependencies": [
+          },
           {
             "file": "./helpers.js",
             "imports": [
@@ -15951,14 +15932,7 @@
       },
       "src/cli/commands/reindex.ts": {
         "description": "Reindex CLI command — `memory reindex`.",
-        "externalDependencies": [
-          {
-            "package": "commander",
-            "imports": [
-              "Command"
-            ]
-          }
-        ],
+        "externalDependencies": [],
         "nodeDependencies": [
           {
             "module": "path",
@@ -15974,6 +15948,12 @@
           }
         ],
         "internalDependencies": [
+          {
+            "file": "../parseArgs.js",
+            "imports": [
+              "Command"
+            ]
+          },
           {
             "file": "../../search/RankedSearch.js",
             "imports": [
@@ -16011,16 +15991,15 @@
       },
       "src/cli/commands/relation.ts": {
         "description": "Relation CLI Commands",
-        "externalDependencies": [
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
           {
-            "package": "commander",
+            "file": "../parseArgs.js",
             "imports": [
               "Command"
             ]
-          }
-        ],
-        "nodeDependencies": [],
-        "internalDependencies": [
+          },
           {
             "file": "./helpers.js",
             "imports": [
@@ -16044,16 +16023,15 @@
       },
       "src/cli/commands/search.ts": {
         "description": "Search CLI Commands",
-        "externalDependencies": [
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
           {
-            "package": "commander",
+            "file": "../parseArgs.js",
             "imports": [
               "Command"
             ]
-          }
-        ],
-        "nodeDependencies": [],
-        "internalDependencies": [
+          },
           {
             "file": "./helpers.js",
             "imports": [
@@ -16086,14 +16064,7 @@
       },
       "src/cli/commands/smoke.ts": {
         "description": "Smoke CLI command.",
-        "externalDependencies": [
-          {
-            "package": "commander",
-            "imports": [
-              "Command"
-            ]
-          }
-        ],
+        "externalDependencies": [],
         "nodeDependencies": [
           {
             "module": "fs",
@@ -16122,6 +16093,12 @@
         ],
         "internalDependencies": [
           {
+            "file": "../parseArgs.js",
+            "imports": [
+              "Command"
+            ]
+          },
+          {
             "file": "../../core/ManagerContext.js",
             "imports": [
               "ManagerContext"
@@ -16144,16 +16121,15 @@
       },
       "src/cli/commands/spell.ts": {
         "description": "Spell CLI commands — `memory spell`.",
-        "externalDependencies": [
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
           {
-            "package": "commander",
+            "file": "../parseArgs.js",
             "imports": [
               "Command"
             ]
-          }
-        ],
-        "nodeDependencies": [],
-        "internalDependencies": [
+          },
           {
             "file": "./helpers.js",
             "imports": [
@@ -16170,16 +16146,15 @@
       },
       "src/cli/commands/tag.ts": {
         "description": "Tag CLI Commands",
-        "externalDependencies": [
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
           {
-            "package": "commander",
+            "file": "../parseArgs.js",
             "imports": [
               "Command"
             ]
-          }
-        ],
-        "nodeDependencies": [],
-        "internalDependencies": [
+          },
           {
             "file": "./helpers.js",
             "imports": [
@@ -16203,16 +16178,15 @@
       },
       "src/cli/commands/toolAffordance.ts": {
         "description": "Tool Affordance CLI Commands — `memory tool-affordance` (Phase Tool D).",
-        "externalDependencies": [
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
           {
-            "package": "commander",
+            "file": "../parseArgs.js",
             "imports": [
               "Command"
             ]
-          }
-        ],
-        "nodeDependencies": [],
-        "internalDependencies": [
+          },
           {
             "file": "./helpers.js",
             "imports": [
@@ -16339,14 +16313,7 @@
       },
       "src/cli/index.ts": {
         "description": "MemoryJS CLI",
-        "externalDependencies": [
-          {
-            "package": "commander",
-            "imports": [
-              "Command"
-            ]
-          }
-        ],
+        "externalDependencies": [],
         "nodeDependencies": [
           {
             "module": "fs",
@@ -16375,6 +16342,12 @@
           }
         ],
         "internalDependencies": [
+          {
+            "file": "./parseArgs.js",
+            "imports": [
+              "Command"
+            ]
+          },
           {
             "file": "./commands/index.js",
             "imports": [
@@ -16478,6 +16451,46 @@
         ],
         "constants": [
           "defaultOptions"
+        ]
+      },
+      "src/cli/parseArgs.ts": {
+        "description": "In-repo CLI argument parser for the MemoryJS command tree.",
+        "externalDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "util",
+            "imports": [
+              "stripVTControlCharacters"
+            ]
+          },
+          {
+            "module": "path",
+            "imports": [
+              "basename",
+              "extname"
+            ]
+          }
+        ],
+        "internalDependencies": [],
+        "exports": [
+          "CommanderError",
+          "InvalidArgumentError",
+          "Option",
+          "Argument",
+          "Command"
+        ],
+        "classes": [
+          "CommanderError",
+          "InvalidArgumentError",
+          "Option",
+          "Argument",
+          "Command"
+        ],
+        "interfaces": [
+          "OutputConfiguration",
+          "ParseOptions",
+          "HelpContextOptions",
+          "ParseOptionsResult"
         ]
       },
       "src/cli/plainTable.ts": {
@@ -30129,6 +30142,7 @@
           "src/cli/index.ts",
           "src/cli/interactive.ts",
           "src/cli/options.ts",
+          "src/cli/parseArgs.ts",
           "src/cli/plainTable.ts"
         ]
       },
@@ -30377,18 +30391,18 @@
       "src/sqlite.ts",
       "src/workers/levenshteinWorker.ts"
     ],
-    "reachableCount": 412,
+    "reachableCount": 413,
     "dormantCount": 0,
     "orphaned": [],
     "testOnly": []
   },
   "statistics": {
-    "totalTypeScriptFiles": 412,
+    "totalTypeScriptFiles": 413,
     "totalModules": 12,
-    "totalLinesOfCode": 129631,
-    "totalExports": 2873,
-    "totalClasses": 280,
-    "totalInterfaces": 833,
+    "totalLinesOfCode": 131176,
+    "totalExports": 2878,
+    "totalClasses": 285,
+    "totalInterfaces": 837,
     "totalFunctions": 681,
     "totalTypeGuards": 49,
     "totalEnums": 4,
@@ -30398,11 +30412,11 @@
     "runtimeCircularDeps": 0,
     "typeOnlyCircularDeps": 15,
     "entryRoots": 4,
-    "reachableFiles": 412,
+    "reachableFiles": 413,
     "dormantFiles": 0,
     "orphanedFiles": 0,
     "testOnlyFiles": 0,
     "unusedFilesCount": 0,
-    "unusedExportsCount": 128
+    "unusedExportsCount": 135
   }
 }

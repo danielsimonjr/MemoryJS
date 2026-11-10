@@ -15,6 +15,9 @@
  * @module cli/parseArgs
  */
 
+// Adapted from commander (https://github.com/tj/commander.js), MIT License.
+// Copyright (c) 2011 TJ Holowaychuk <tj@vision-media.ca>
+
 import { stripVTControlCharacters } from 'node:util';
 import { basename, extname } from 'node:path';
 
@@ -302,7 +305,7 @@ export interface HelpContextOptions {
 }
 
 /** Error options accepted by `Command.error`. */
-export interface ErrorOptions {
+interface CommandErrorOptions {
   code?: string;
   exitCode?: number;
 }
@@ -882,7 +885,7 @@ export class Command {
    * @param message - The message to print.
    * @param errorOptions - Optional `code` and `exitCode`.
    */
-  error(message: string, errorOptions?: ErrorOptions): never {
+  error(message: string, errorOptions?: CommandErrorOptions): never {
     this._outputConfiguration.outputError(`${message}\n`, this._outputConfiguration.writeErr);
     const exitCode = errorOptions?.exitCode ?? 1;
     const code = errorOptions?.code ?? 'commander.error';
