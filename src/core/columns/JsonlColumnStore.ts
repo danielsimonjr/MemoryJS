@@ -27,7 +27,7 @@
  */
 
 import { promises as fs } from 'fs';
-import { Mutex } from 'async-mutex';
+import { RunExclusiveMutex } from '../../utils/RunExclusiveMutex.js';
 import { durableWriteFile } from '../../utils/durableWriteFile.js';
 import { parseJsonlMapLines, serializeJsonlMap } from '../../utils/jsonlMapFile.js';
 import {
@@ -43,7 +43,7 @@ import type { IColumnStore } from './IColumnStore.js';
  * Concurrent mutations from separate PROCESSES against the same sidecar
  * path will still produce lost writes — that remains out of scope.
  *
- * In-process concurrency IS handled, via `async-mutex`, following the same
+ * In-process concurrency IS handled, via `RunExclusiveMutex`, following the same
  * pattern as `RefIndex`. It previously was not, and the class documented
  * the opposite: "in-process callers are fine because every mutation is
  * awaited end-to-end". That was false for this codebase's own primary
@@ -70,7 +70,7 @@ export class JsonlColumnStore<T> implements IColumnStore<T> {
    * the in-memory Map, so two overlapping mutations lose data even when they touch
    * different keys. Same reason `RefIndex` holds one.
    */
-  private readonly mutex = new Mutex();
+  private readonly mutex = new RunExclusiveMutex();
 
   /**
    * The IN-FLIGHT load, not just the finished one. Without this, two concurrent

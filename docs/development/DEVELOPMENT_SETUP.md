@@ -69,7 +69,7 @@ bun install
 ```
 
 This installs:
-- **Production dependencies**: `better-sqlite3`, `zod`, `async-mutex`
+- **Production dependencies**: `better-sqlite3`, `zod`, `chrono-node`, `commander`, `@danielsimonjr/workerpool`
 - **Dev dependencies**: `vitest`, `typescript`, `tsx`, `@types/*`
 
 ### 3. Build Project
