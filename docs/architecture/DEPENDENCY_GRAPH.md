@@ -38,7 +38,7 @@ The codebase is organized into the following modules:
 
 - **adapters**: 11 files
 - **agent**: 177 files
-- **cli**: 31 files
+- **cli**: 32 files
 - **core**: 36 files
 - **features**: 18 files
 - **entry**: 1 file
@@ -61,7 +61,7 @@ Seeded build/entry roots (package `exports`, `bin` targets, tsup entries, script
 - `src/sqlite.ts`
 - `src/workers/levenshteinWorker.ts`
 
-Reachable from a root: **401** of 401 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
+Reachable from a root: **402** of 402 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
 
 ---
 
@@ -3782,6 +3782,13 @@ Reachable from a root: **401** of 401 files. Dormant: **0** (0 orphaned, 0 test-
 
 ## Cli Dependencies
 
+### `src/cli/ansi.ts` - ANSI colors for the CLI.
+
+**Exports:**
+- Constants: `ansi`
+
+---
+
 ### `src/cli/commands/audit.ts` - Audit CLI Commands — `memory audit` (R4a queryable provenance).
 
 **External Dependencies:**
@@ -4370,11 +4377,11 @@ Reachable from a root: **401** of 401 files. Dormant: **0** (0 orphaned, 0 test-
 | Package | Import |
 |---------|--------|
 | `cli-table3` | `Table` |
-| `chalk` | `chalk` |
 
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `./ansi.js` | `ansi` | Import |
 | `../types/types.js` | `Entity, Relation, PathResult, CentralityResult, ConnectedComponentsResult, ValidationReport` | Import (type-only) |
 | `../utils/entityUtils.js` | `escapeCsvCell` | Import |
 
@@ -4409,11 +4416,6 @@ Reachable from a root: **401** of 401 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/cli/interactive.ts` - Interactive CLI Mode (REPL)
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `chalk` | `chalk` |
-
 **Node.js Built-in Dependencies:**
 | Module | Import |
 |--------|--------|
@@ -4424,6 +4426,7 @@ Reachable from a root: **401** of 401 files. Dormant: **0** (0 orphaned, 0 test-
 |------|---------|------|
 | `../core/ManagerContext.js` | `ManagerContext` | Import |
 | `./options.js` | `GlobalOptions` | Import (type-only) |
+| `./ansi.js` | `ansi` | Import |
 | `./commands/inspect.js` | `snapshotEntity, buildTree, renderTreeAscii, neighbors, buildSizeReport` | Dynamic import |
 | `./commands/check.js` | `detectIssues, applyFixes` | Dynamic import |
 | `../utils/searchCache.js` | `getAllCacheStats, clearAllSearchCaches` | Dynamic import |
@@ -7633,7 +7636,7 @@ Reachable from a root: **401** of 401 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/agent/ContextWindowManager` | 18 files | 6 files |
 | `src/core/RelationManager` | 6 files | 18 files |
 | `src/utils/envConfig` | 1 file | 23 files |
-| `src/cli/formatters` | 2 files | 20 files |
+| `src/cli/formatters` | 3 files | 20 files |
 | `src/core/context/AgentCognitionFacade` | 21 files | 1 file |
 | `src/search/SearchManager` | 17 files | 5 files |
 | `src/agent/learning/LearningTrace` | 10 files | 11 files |
@@ -7708,17 +7711,17 @@ graph TD
     end
 
     subgraph Cli
-        N22[audit]
-        N23[cache]
-        N24[check]
-        N25[decision]
-        N26[diag]
-        N27[doctor]
-        N28[entity]
-        N29[exclusion]
-        N30[graph]
-        N31[helpers]
-        N32[...21 more]
+        N22[ansi]
+        N23[audit]
+        N24[cache]
+        N25[check]
+        N26[decision]
+        N27[diag]
+        N28[doctor]
+        N29[entity]
+        N30[exclusion]
+        N31[graph]
+        N32[...22 more]
     end
 
     subgraph Core
@@ -7858,21 +7861,11 @@ graph TD
     N19 --> N73
     N20 --> N73
     N20 --> N15
-    N22 --> N31
-    N22 --> N46
-    N23 --> N31
-    N24 --> N39
-    N24 --> N31
-    N25 --> N73
-    N25 --> N31
-    N26 --> N39
-    N26 --> N31
-    N27 --> N31
-    N27 --> N26
-    N28 --> N31
-    N29 --> N31
-    N30 --> N31
-    N31 --> N39
+    N23 --> N46
+    N25 --> N39
+    N26 --> N73
+    N27 --> N39
+    N28 --> N27
     N33 --> N76
     N33 --> N36
     N33 --> N11
@@ -7886,6 +7879,16 @@ graph TD
     N37 --> N11
     N38 --> N76
     N38 --> N36
+    N39 --> N46
+    N39 --> N90
+    N39 --> N87
+    N39 --> N50
+    N39 --> N76
+    N39 --> N86
+    N39 --> N41
+    N39 --> N36
+    N39 --> N33
+    N39 --> N40
 ```
 
 ---
@@ -7895,10 +7898,10 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 401 |
+| Total TypeScript Files | 402 |
 | Total Modules | 12 |
-| Total Lines of Code | 126617 |
-| Total Exports | 2820 |
+| Total Lines of Code | 126710 |
+| Total Exports | 2821 |
 | Total Re-exports | 1716 |
 | Total Classes | 278 |
 | Total Interfaces | 825 |
@@ -7909,7 +7912,7 @@ graph TD
 | Runtime Circular Deps | 0 |
 | Type-only Circular Deps | 15 |
 | Entry/Build Roots | 4 |
-| Reachable Files | 401 |
+| Reachable Files | 402 |
 | Dormant Files (orphaned / test-only) | 0 (0 / 0) |
 
 ---

@@ -1,11 +1,11 @@
 {
-  "totalFiles": 995,
+  "totalFiles": 997,
   "byDisposition": {
-    "reachable": 397,
+    "reachable": 398,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 562,
+    "test": 563,
     "tool": 10,
     "config": 2,
     "bench": 5,
@@ -14,8 +14,8 @@
   "byArea": {
     "benchmarks": 5,
     "examples": 15,
-    "src": 401,
-    "tests": 562,
+    "src": 402,
+    "tests": 563,
     "tools": 10,
     "config": 2
   },
@@ -1475,6 +1475,13 @@
       "area": "src",
       "disposition": "reachable",
       "loc": 125
+    },
+    {
+      "file": "src/cli/ansi.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 93
     },
     {
       "file": "src/cli/commands/audit.ts",
@@ -4690,6 +4697,13 @@
       "loc": 446
     },
     {
+      "file": "tests/unit/cli/ansi.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 168
+    },
+    {
       "file": "tests/unit/cli/audit.test.ts",
       "package": "(root)",
       "area": "tests",
@@ -4806,7 +4820,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 925
+      "loc": 920
     },
     {
       "file": "tests/unit/cli/maintenance-cli.test.ts",

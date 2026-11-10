@@ -109,11 +109,11 @@ Consumers on `^4.5.0` do not import `async-mutex` through MemoryJS's public type
 
 The library entries do not import `chalk`. It is still a runtime `dependencies` entry, so every consumer installs it. The CLI is bundled by tsup from `src/cli/index.ts`, so an in-repo helper is bundled into `dist/cli` and disappears from consumer installs.
 
-Color behavior that must survive, matching chalk 6.0.0 (the `supports-color` rules chalk uses):
+Color behavior that must survive, matching chalk 6.0.0 (`supports-color` rules) except where this sprint's `NO_COLOR` contract overrides chalk (chalk 6 ignores `NO_COLOR`):
 
 - A non-empty `NO_COLOR` disables color, and it wins over `FORCE_COLOR`. An empty `NO_COLOR` does not disable color.
 - When `FORCE_COLOR` is absent, color is on only when `process.stdout.isTTY` is true.
-- `FORCE_COLOR=0` and `FORCE_COLOR=false` disable. `FORCE_COLOR=1`, `2`, or `3` enable. An empty `FORCE_COLOR` and `FORCE_COLOR=true` enable (level 1).
+- `FORCE_COLOR=0` and `FORCE_COLOR=false` disable. `FORCE_COLOR=1`, `2`, or `3` enable. An empty `FORCE_COLOR` and `FORCE_COLOR=true` enable (level 1). A pure digit string above 3 enables (chalk clamps to level 3). Whitespace-padded, comma-separated, fractional, and other non-digit `FORCE_COLOR` values are not numeric and fall back to TTY detection.
 - SGR codes at level 1: bold `1` closed by `22`; red `31`, green `32`, yellow `33`, cyan `36`, gray `90`, each closed by `39`.
 
 The parity test compares those strings to chalk while chalk is still installed. If chalk 6.0.0 disagrees, the helper changes, not the recorded expected strings.

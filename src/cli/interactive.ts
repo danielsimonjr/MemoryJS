@@ -9,7 +9,7 @@
 import * as readline from 'readline';
 import { ManagerContext } from '../core/ManagerContext.js';
 import type { GlobalOptions } from './options.js';
-import chalk from 'chalk';
+import { ansi } from './ansi.js';
 
 interface InteractiveContext {
   ctx: ManagerContext;
@@ -41,7 +41,7 @@ export async function startInteractiveMode(options: GlobalOptions): Promise<void
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
-    prompt: chalk.cyan('memory> '),
+    prompt: ansi.cyan('memory> '),
     completer: (line: string) => {
       const completions = [
         'entities', 'relations', 'search', 'get', 'stats',
@@ -54,8 +54,8 @@ export async function startInteractiveMode(options: GlobalOptions): Promise<void
     },
   });
 
-  console.log(chalk.green('MemoryJS Interactive Mode'));
-  console.log(chalk.gray('Type "help" for commands, "exit" to quit.\n'));
+  console.log(ansi.green('MemoryJS Interactive Mode'));
+  console.log(ansi.gray('Type "help" for commands, "exit" to quit.\n'));
 
   rl.prompt();
 
@@ -72,14 +72,14 @@ export async function startInteractiveMode(options: GlobalOptions): Promise<void
     try {
       await processCommand(trimmed, interactiveCtx, rl);
     } catch (error) {
-      console.error(chalk.red(`Error: ${(error as Error).message}`));
+      console.error(ansi.red(`Error: ${(error as Error).message}`));
     }
 
     rl.prompt();
   });
 
   rl.on('close', () => {
-    console.log(chalk.gray('\nGoodbye!'));
+    console.log(ansi.gray('\nGoodbye!'));
     process.exit(0);
   });
 }
@@ -115,7 +115,7 @@ async function processCommand(
       const entities = graph.entities;
       console.log(`\nEntities (${entities.length}):`);
       for (const e of entities.slice(0, 20)) {
-        console.log(`  ${chalk.cyan(e.name)} [${e.entityType}]`);
+        console.log(`  ${ansi.cyan(e.name)} [${e.entityType}]`);
       }
       if (entities.length > 20) {
         console.log(`  ... and ${entities.length - 20} more`);
@@ -126,14 +126,14 @@ async function processCommand(
     case 'get': {
       const name = args.join(' ');
       if (!name) {
-        console.log(chalk.yellow('Usage: get <entity-name>'));
+        console.log(ansi.yellow('Usage: get <entity-name>'));
         break;
       }
       const entity = await ctx.entityManager.getEntity(name);
       if (entity) {
         console.log(JSON.stringify(entity, null, 2));
       } else {
-        console.log(chalk.yellow(`Entity not found: ${name}`));
+        console.log(ansi.yellow(`Entity not found: ${name}`));
       }
       break;
     }
@@ -141,16 +141,16 @@ async function processCommand(
     case 'search': {
       const query = args.join(' ');
       if (!query) {
-        console.log(chalk.yellow('Usage: search <query>'));
+        console.log(ansi.yellow('Usage: search <query>'));
         break;
       }
       const result = await ctx.searchManager.searchNodes(query);
       console.log(`\nSearch results for "${query}":`);
       for (const entity of result.entities.slice(0, 10)) {
-        console.log(`  ${chalk.cyan(entity.name)} [${entity.entityType}]`);
+        console.log(`  ${ansi.cyan(entity.name)} [${entity.entityType}]`);
         if (entity.observations && entity.observations.length > 0) {
           const preview = entity.observations[0].substring(0, 60);
-          console.log(`    ${chalk.gray(preview)}${entity.observations[0].length > 60 ? '...' : ''}`);
+          console.log(`    ${ansi.gray(preview)}${entity.observations[0].length > 60 ? '...' : ''}`);
         }
       }
       if (result.entities.length > 10) {
@@ -162,20 +162,20 @@ async function processCommand(
     case 'relations': {
       const name = args.join(' ');
       if (!name) {
-        console.log(chalk.yellow('Usage: relations <entity-name>'));
+        console.log(ansi.yellow('Usage: relations <entity-name>'));
         break;
       }
       const relations = await ctx.relationManager.getRelations(name);
       if (relations.length === 0) {
-        console.log(chalk.yellow(`No relations found for: ${name}`));
+        console.log(ansi.yellow(`No relations found for: ${name}`));
         break;
       }
       console.log(`\nRelations for "${name}":`);
       for (const rel of relations) {
         if (rel.from === name) {
-          console.log(`  ${chalk.cyan(name)} --[${rel.relationType}]--> ${rel.to}`);
+          console.log(`  ${ansi.cyan(name)} --[${rel.relationType}]--> ${rel.to}`);
         } else {
-          console.log(`  ${rel.from} --[${rel.relationType}]--> ${chalk.cyan(name)}`);
+          console.log(`  ${rel.from} --[${rel.relationType}]--> ${ansi.cyan(name)}`);
         }
       }
       break;
@@ -194,7 +194,7 @@ async function processCommand(
     case 'tags': {
       const tagName = args.join(' ');
       if (!tagName) {
-        console.log(chalk.yellow('Usage: tags <entity-name>'));
+        console.log(ansi.yellow('Usage: tags <entity-name>'));
         break;
       }
       const tagEntity = await ctx.entityManager.getEntity(tagName);
@@ -202,14 +202,14 @@ async function processCommand(
         const tags = tagEntity.tags || [];
         console.log(`\nTags for "${tagName}": ${tags.length > 0 ? tags.join(', ') : 'None'}`);
       } else {
-        console.log(chalk.yellow(`Entity not found: ${tagName}`));
+        console.log(ansi.yellow(`Entity not found: ${tagName}`));
       }
       break;
     }
 
     case 'path': {
       if (args.length < 2) {
-        console.log(chalk.yellow('Usage: path <from> <to>'));
+        console.log(ansi.yellow('Usage: path <from> <to>'));
         break;
       }
       const [pathFrom, pathTo] = args;
@@ -220,7 +220,7 @@ async function processCommand(
           console.log(`  ${rel.from} --[${rel.relationType}]--> ${rel.to}`);
         }
       } else {
-        console.log(chalk.yellow(`No path found between "${pathFrom}" and "${pathTo}"`));
+        console.log(ansi.yellow(`No path found between "${pathFrom}" and "${pathTo}"`));
       }
       break;
     }
@@ -229,25 +229,25 @@ async function processCommand(
       const obsEntity = args[0];
       const obsText = args.slice(1).join(' ');
       if (!obsEntity || !obsText) {
-        console.log(chalk.yellow('Usage: observe <entity> <observation text>'));
+        console.log(ansi.yellow('Usage: observe <entity> <observation text>'));
         break;
       }
       await ctx.observationManager.addObservations([{
         entityName: obsEntity,
         contents: [obsText],
       }]);
-      console.log(chalk.green(`Added observation to ${obsEntity}`));
+      console.log(ansi.green(`Added observation to ${obsEntity}`));
       break;
     }
 
     case 'delete': {
       const delName = args.join(' ');
       if (!delName) {
-        console.log(chalk.yellow('Usage: delete <entity-name>'));
+        console.log(ansi.yellow('Usage: delete <entity-name>'));
         break;
       }
       await ctx.entityManager.deleteEntities([delName]);
-      console.log(chalk.green(`Deleted entity: ${delName}`));
+      console.log(ansi.green(`Deleted entity: ${delName}`));
       break;
     }
 
@@ -255,7 +255,7 @@ async function processCommand(
       const validFormats = ['json', 'csv', 'graphml', 'gexf', 'dot', 'markdown', 'mermaid', 'turtle', 'rdf-xml', 'json-ld'];
       const fmt = args[0] || 'json';
       if (!validFormats.includes(fmt)) {
-        console.log(chalk.yellow(`Invalid format: ${fmt}. Use: ${validFormats.join(', ')}`));
+        console.log(ansi.yellow(`Invalid format: ${fmt}. Use: ${validFormats.join(', ')}`));
         break;
       }
       const exportGraph = await ctx.storage.loadGraph();
@@ -274,7 +274,7 @@ async function processCommand(
     case 'show': {
       const name = args.join(' ');
       if (!name) {
-        console.log(chalk.yellow('Usage: show <entity-name>'));
+        console.log(ansi.yellow('Usage: show <entity-name>'));
         break;
       }
       const { snapshotEntity } = await import('./commands/inspect.js');
@@ -282,7 +282,7 @@ async function processCommand(
         const snap = await snapshotEntity(ctx, name);
         console.log(JSON.stringify(snap, null, 2));
       } catch (e) {
-        console.log(chalk.yellow((e as Error).message));
+        console.log(ansi.yellow((e as Error).message));
       }
       break;
     }
@@ -302,7 +302,7 @@ async function processCommand(
           }
         }
       } catch (e) {
-        console.log(chalk.yellow((e as Error).message));
+        console.log(ansi.yellow((e as Error).message));
       }
       break;
     }
@@ -310,7 +310,7 @@ async function processCommand(
     case 'neighbors': {
       const name = args.join(' ');
       if (!name) {
-        console.log(chalk.yellow('Usage: neighbors <entity-name>'));
+        console.log(ansi.yellow('Usage: neighbors <entity-name>'));
         break;
       }
       const { neighbors } = await import('./commands/inspect.js');
@@ -318,7 +318,7 @@ async function processCommand(
         const report = await neighbors(ctx, name);
         console.log(JSON.stringify(report, null, 2));
       } catch (e) {
-        console.log(chalk.yellow((e as Error).message));
+        console.log(ansi.yellow((e as Error).message));
       }
       break;
     }
@@ -371,7 +371,7 @@ async function processCommand(
     case 'spell': {
       const query = args.join(' ');
       if (!query) {
-        console.log(chalk.yellow('Usage: spell <query>'));
+        console.log(ansi.yellow('Usage: spell <query>'));
         break;
       }
       const suggestions = await ctx.spellChecker.suggest(query);
@@ -400,39 +400,39 @@ async function processCommand(
     }
 
     default:
-      console.log(chalk.yellow(`Unknown command: ${command}. Type "help" for available commands.`));
+      console.log(ansi.yellow(`Unknown command: ${command}. Type "help" for available commands.`));
   }
 }
 
 function showHelp(): void {
   console.log(`
-${chalk.green('Available Commands:')}
+${ansi.green('Available Commands:')}
 
-  ${chalk.cyan('entities')} / ${chalk.cyan('ls')}    List all entities
-  ${chalk.cyan('get <name>')}         Get entity details
-  ${chalk.cyan('search <query>')}     Search entities
-  ${chalk.cyan('relations <name>')}   Show relations for entity
-  ${chalk.cyan('tags <name>')}        Show tags for entity
-  ${chalk.cyan('path <from> <to>')}   Find shortest path
-  ${chalk.cyan('observe <e> <text>')} Add observation to entity
-  ${chalk.cyan('delete <name>')}      Delete entity
-  ${chalk.cyan('export [format]')}    Export graph to stdout
-  ${chalk.cyan('stats')}              Show graph statistics
-  ${chalk.cyan('show <name>')}        Verbose entity snapshot (obs + relations + hierarchy)
-  ${chalk.cyan('tree [root]')}        ASCII hierarchy tree (all roots if omitted)
-  ${chalk.cyan('neighbors <name>')}   Incoming + outgoing relations + degree counts
-  ${chalk.cyan('diag')} / ${chalk.cyan('health')}     Quick integrity summary
-  ${chalk.cyan('size')}               Graph + storage footprint
-  ${chalk.cyan('check [--apply]')}    Orphan + missing-parent + cycle detect/repair
-  ${chalk.cyan('heuristics')}         List all heuristics
-  ${chalk.cyan('spell <query>')}      Spell suggestions for a query
-  ${chalk.cyan('cache [clear]')}      Search-cache stats; "cache clear" to bust
-  ${chalk.cyan('reindex')}            Rebuild ranked-search + spell vocabulary
-  ${chalk.cyan('history')}            Show command history
-  ${chalk.cyan('clear')}              Clear screen
-  ${chalk.cyan('help')}               Show this help
-  ${chalk.cyan('exit')}               Exit interactive mode
+  ${ansi.cyan('entities')} / ${ansi.cyan('ls')}    List all entities
+  ${ansi.cyan('get <name>')}         Get entity details
+  ${ansi.cyan('search <query>')}     Search entities
+  ${ansi.cyan('relations <name>')}   Show relations for entity
+  ${ansi.cyan('tags <name>')}        Show tags for entity
+  ${ansi.cyan('path <from> <to>')}   Find shortest path
+  ${ansi.cyan('observe <e> <text>')} Add observation to entity
+  ${ansi.cyan('delete <name>')}      Delete entity
+  ${ansi.cyan('export [format]')}    Export graph to stdout
+  ${ansi.cyan('stats')}              Show graph statistics
+  ${ansi.cyan('show <name>')}        Verbose entity snapshot (obs + relations + hierarchy)
+  ${ansi.cyan('tree [root]')}        ASCII hierarchy tree (all roots if omitted)
+  ${ansi.cyan('neighbors <name>')}   Incoming + outgoing relations + degree counts
+  ${ansi.cyan('diag')} / ${ansi.cyan('health')}     Quick integrity summary
+  ${ansi.cyan('size')}               Graph + storage footprint
+  ${ansi.cyan('check [--apply]')}    Orphan + missing-parent + cycle detect/repair
+  ${ansi.cyan('heuristics')}         List all heuristics
+  ${ansi.cyan('spell <query>')}      Spell suggestions for a query
+  ${ansi.cyan('cache [clear]')}      Search-cache stats; "cache clear" to bust
+  ${ansi.cyan('reindex')}            Rebuild ranked-search + spell vocabulary
+  ${ansi.cyan('history')}            Show command history
+  ${ansi.cyan('clear')}              Clear screen
+  ${ansi.cyan('help')}               Show this help
+  ${ansi.cyan('exit')}               Exit interactive mode
 
-${chalk.gray('Tab completion available for entity names.')}
+${ansi.gray('Tab completion available for entity names.')}
 `);
 }
