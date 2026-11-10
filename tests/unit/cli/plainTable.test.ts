@@ -82,12 +82,12 @@ describe('PlainTable', () => {
     expect(lines[4]).toBe('| cd   |');
   });
 
-  it('does not wrap when wordWrap is omitted', () => {
+  it('truncates with an ellipsis when wordWrap is omitted and the cell is too wide', () => {
     const table = new PlainTable({ head: ['H'], colWidths: [6] });
     table.push(['one two']);
     const lines = table.toString().split('\n');
     expect(lines.length).toBe(5);
-    expect(lines[3]).toBe('| one two |');
+    expect(lines[3]).toBe('| one… |');
   });
 
   it('pads short cells to the column width and handles extra columns', () => {
