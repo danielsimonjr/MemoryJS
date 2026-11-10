@@ -720,9 +720,9 @@ Prior to this pass, `package.json` `exports` had only a `"."` entry and no `side
 
 `package.json` now declares `"sideEffects": false` (the only real module-scope side effect in the whole tree, `globalMemoryMonitor` in `src/utils/MemoryMonitor.ts`, was confirmed not to be relied on for implicit registration) and adds dedicated ESM/CJS dual-condition subpath exports: `./core`, `./search`, `./agent`, `./features`, `./utils`, `./types`, `./sqlite`, alongside the root `.` entry. Bundlers can now tree-shake unused managers and consumers can import only the subsystem they need (e.g. `import { EntityManager } from '@danielsimonjr/memoryjs/core'` skips the search/agent/features barrels entirely).
 
-### Lazy `chrono-node`
+### Lazy `chrono-node` (historical; dependency now removed)
 
-`TemporalQueryParser`'s top-level `import * as chrono from 'chrono-node'` became a lazy `await import('chrono-node')` at its actual call sites. `TemporalSearch.searchByTimeQuery` was already async, so no caller-visible signature change was needed. This removes the single heaviest external dependency from the default import path — warm root import dropped from ~220ms to ~150ms; the `./search` subpath alone imports in ~40ms.
+`TemporalQueryParser`'s top-level `import * as chrono from 'chrono-node'` became a lazy `await import('chrono-node')` at its actual call sites. `TemporalSearch.searchByTimeQuery` was already async, so no caller-visible signature change was needed. This removed the single heaviest external dependency from the default import path — warm root import dropped from ~220ms to ~150ms; the `./search` subpath alone imports in ~40ms. The dependency itself is now gone: `src/search/enDate/` is an in-repo English date parser, so the import cost is zero rather than deferred.
 
 ### Lazy SQLite via a registration pattern
 
@@ -887,7 +887,7 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 
 | Claim | Value | Source |
 |---|---|---|
-| totalSourceFiles | 1015 | repo-tools map |
+| totalSourceFiles | 1026 | repo-tools map |
 | totalModules | 7 | repo-tools map |
 | entryRoots | 12 | repo-tools map |
 | runtimeCircularDeps | 0 | repo-tools map |

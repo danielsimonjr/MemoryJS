@@ -1,41 +1,24 @@
 /**
- * S8 — verifies chrono-node is loaded lazily.
+ * TemporalQueryParser — the date parser is in-repo and synchronous.
  *
- * chrono-node is the heaviest external dependency on the default import
- * path. TemporalQueryParser must not load it at module scope: importing the
- * search barrel (and therefore the library root) should never evaluate
- * chrono-node; it should only load on the first parse that actually needs it.
- *
- * Mechanism: `vi.mock('chrono-node', factory)` — the factory only executes
- * when some module under test actually imports chrono-node. The hoisted flag
- * therefore records whether the dependency was evaluated.
- *
- * NOTE on ordering: tests in this file are order-dependent (module caches are
- * shared within the file). The "does not load" assertions must run before the
- * test that intentionally triggers the load. The sync `createRequire`
- * fallback path inside TemporalQueryParser bypasses vitest's mock registry,
- * so this file only asserts the dynamic-import path; sync behaviour is
- * covered by TemporalQueryParser.test.ts.
+ * This file replaces the old "chrono-node is loaded lazily" test. There is no
+ * parser module to load any more, so the property worth guarding is the
+ * opposite: importing the search barrel (and therefore the library root) pulls
+ * in no external date-parsing dependency, and parsing a phrase that used to
+ * require one now resolves without any dynamic import at all.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
-const state = vi.hoisted(() => ({ chronoEvaluated: false }));
+const REF = new Date('2026-01-15T12:00:00.000Z');
 
-vi.mock('chrono-node', async (importOriginal) => {
-  state.chronoEvaluated = true;
-  return await importOriginal<typeof import('chrono-node')>();
-});
-
-const REF = new Date('2024-06-15T14:30:00.000Z');
-
-describe('TemporalQueryParser lazy chrono-node loading (S8)', () => {
-  it('importing the search barrel does not load chrono-node', async () => {
-    await import('../../../src/search/index.js');
-    expect(state.chronoEvaluated).toBe(false);
+describe('TemporalQueryParser in-repo parser', () => {
+  it('importing the search barrel does not reach for an external date parser', async () => {
+    const barrel = await import('../../../src/search/index.js');
+    expect(typeof barrel.TemporalQueryParser).toBe('function');
   });
 
-  it('constructing the parser and parsing chrono-free custom patterns does not load chrono-node', async () => {
+  it('parses chrono-free custom patterns synchronously', async () => {
     const { TemporalQueryParser } = await import('../../../src/search/TemporalQueryParser.js');
     const parser = new TemporalQueryParser();
 
@@ -43,21 +26,28 @@ describe('TemporalQueryParser lazy chrono-node loading (S8)', () => {
       const range = await parser.parseTemporalExpressionAsync(expr, REF);
       expect(range, expr).toBeDefined();
     }
-
-    expect(state.chronoEvaluated).toBe(false);
   });
 
-  it('async parse of a chrono-requiring expression loads chrono-node on demand', async () => {
+  it('parses a range expression that used to need the external parser', async () => {
     const { TemporalQueryParser } = await import('../../../src/search/TemporalQueryParser.js');
     const parser = new TemporalQueryParser();
 
-    const range = await parser.parseTemporalExpressionAsync(
-      'between 2024-06-01 and 2024-06-10',
-      REF
-    );
+    const range = await parser.parseTemporalExpressionAsync('between 2024-06-01 and 2024-06-10', REF);
 
     expect(range).toBeDefined();
-    expect(range!.start.getFullYear()).toBe(2024);
-    expect(state.chronoEvaluated).toBe(true);
+    expect(range!.start.toISOString()).toBe('2024-06-01T12:00:00.000Z');
+    expect(range!.end.toISOString()).toBe('2024-06-10T12:00:00.000Z');
+  });
+
+  it('keeps the async and sync entry points in agreement', async () => {
+    const { TemporalQueryParser } = await import('../../../src/search/TemporalQueryParser.js');
+    const parser = new TemporalQueryParser();
+
+    for (const expr of ['last hour', 'next Friday', '2026-01-15T12:00:00Z', 'Jan 1 to Jan 7']) {
+      const sync = parser.parseTemporalExpression(expr, REF);
+      const async = await parser.parseTemporalExpressionAsync(expr, REF);
+      expect(async?.start.toISOString(), expr).toBe(sync?.start.toISOString());
+      expect(async?.end.toISOString(), expr).toBe(sync?.end.toISOString());
+    }
   });
 });

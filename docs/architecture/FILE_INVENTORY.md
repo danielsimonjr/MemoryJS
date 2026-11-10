@@ -9,22 +9,22 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 1003
+**Total files**: 1014
 
 ## Disposition counts
 
 | Disposition | Count | Meaning |
 | --- | --: | --- |
-| `reachable` | 400 | A `src/` file in the module graph, reachable from a root. |
+| `reachable` | 408 | A `src/` file in the module graph, reachable from a root. |
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 567 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 570 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 5 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 15 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **1003** | |
+| **Total** | **1014** | |
 
 ## Per-area counts
 
@@ -33,8 +33,8 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `benchmarks` | 5 |
 | `config` | 2 |
 | `examples` | 15 |
-| `src` | 404 |
-| `tests` | 567 |
+| `src` | 412 |
+| `tests` | 570 |
 | `tools` | 10 |
 
 ## All files
@@ -345,6 +345,14 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/search/EarlyTerminationManager.ts` | src | reachable | 394 |
 | `src/search/EmbeddingCache.ts` | src | reachable | 340 |
 | `src/search/EmbeddingService.ts` | src | reachable | 928 |
+| `src/search/enDate/calendar.ts` | src | reachable | 193 |
+| `src/search/enDate/components.ts` | src | reachable | 358 |
+| `src/search/enDate/constants.ts` | src | reachable | 310 |
+| `src/search/enDate/parseEnDate.ts` | src | reachable | 117 |
+| `src/search/enDate/parsers.ts` | src | reachable | 972 |
+| `src/search/enDate/refiners.ts` | src | reachable | 536 |
+| `src/search/enDate/timezones.ts` | src | reachable | 133 |
+| `src/search/enDate/types.ts` | src | reachable | 84 |
 | `src/search/EvidencePathBuilder.ts` | src | reachable | 222 |
 | `src/search/ftsCandidates.ts` | src | reachable | 50 |
 | `src/search/FuzzySearch.ts` | src | reachable | 659 |
@@ -381,7 +389,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/search/SemanticSearch.ts` | src | reachable | 586 |
 | `src/search/SpellChecker.ts` | src | reachable | 173 |
 | `src/search/SymbolicSearch.ts` | src | reachable | 165 |
-| `src/search/TemporalQueryParser.ts` | src | reachable | 417 |
+| `src/search/TemporalQueryParser.ts` | src | reachable | 349 |
 | `src/search/TemporalSearch.ts` | src | reachable | 174 |
 | `src/search/TFIDFEventSync.ts` | src | reachable | 420 |
 | `src/search/TFIDFIndexManager.ts` | src | reachable | 714 |
@@ -877,6 +885,9 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/search/EarlyTerminationManager.test.ts` | tests | test | 411 |
 | `tests/unit/search/EmbeddingCache.test.ts` | tests | test | 455 |
 | `tests/unit/search/EmbeddingService.test.ts` | tests | test | 1094 |
+| `tests/unit/search/enDate.challenger.test.ts` | tests | test | 76 |
+| `tests/unit/search/enDate.inventory.test.ts` | tests | test | 94 |
+| `tests/unit/search/enDate.parity.test.ts` | tests | test | 207 |
 | `tests/unit/search/EvidencePathBuilder.test.ts` | tests | test | 225 |
 | `tests/unit/search/FuzzySearch.test.ts` | tests | test | 1323 |
 | `tests/unit/search/FuzzySearchPerformance.test.ts` | tests | test | 102 |
@@ -937,7 +948,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/search/SpellChecker.test.ts` | tests | test | 132 |
 | `tests/unit/search/SQLiteFtsSearchIntegration.test.ts` | tests | test | 58 |
 | `tests/unit/search/SymbolicSearch.test.ts` | tests | test | 244 |
-| `tests/unit/search/TemporalQueryParser.lazy.test.ts` | tests | test | 64 |
+| `tests/unit/search/TemporalQueryParser.lazy.test.ts` | tests | test | 54 |
 | `tests/unit/search/TemporalQueryParser.test.ts` | tests | test | 279 |
 | `tests/unit/search/TemporalSearch.test.ts` | tests | test | 360 |
 | `tests/unit/search/TFIDFEventSync.test.ts` | tests | test | 742 |
@@ -1043,4 +1054,4 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tools/plan-doc-audit/audit.ts` | tools | tool | 419 |
 | `tools/segment-jsonl/segment-jsonl.ts` | tools | tool | 423 |
 | `tsup.config.ts` | config | config | 88 |
-| `vitest.config.ts` | config | config | 64 |
+| `vitest.config.ts` | config | config | 70 |
