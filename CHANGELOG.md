@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The CLI renders colors through `src/cli/ansi.ts`, a six-style in-repo painter (`cyan`, `bold`, `green`, `red`, `yellow`, `gray`), instead of `chalk`. Color is on when `FORCE_COLOR` is `1`, `2`, `3`, `true`, or empty, and off when `NO_COLOR` is non-empty or `FORCE_COLOR` is `0` or `false`; with neither set it follows stdout TTY detection. Emitted codes are unchanged, and `chalk` is no longer a dependency.
 - `bun run clean` deletes `dist/` through `scripts/clean-dist.mjs` (`node:fs` `rm` with `recursive` and `force`) instead of the `rimraf` dev dependency. The `clean` command removes `dist/` and exits 0 when it is already absent. `rimraf` and its `glob` / `minimatch` chain are no longer installed for development. The published tarball still omits `scripts/clean-dist.mjs` (not in `files`), but the shipped `package.json` `clean` script now points at that path—the same class of mismatch as before, when `clean` invoked `rimraf` without listing it as a runtime dependency.
 - The generated reports in `docs/architecture/` hold no package version and no date. `tools/create-dependency-graph` and `gen-duplicate-baseline.mjs` no longer write them, so a regeneration changes a report only when the code changes. `TEST_COVERAGE.md` and `test-coverage.json` were regenerated: their last run was several releases old.
 - `README.md` is stateless: the version line and the code-samples note at the top are gone. npm shows the version.

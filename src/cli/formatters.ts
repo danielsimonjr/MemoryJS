@@ -7,7 +7,7 @@
  */
 
 import Table from 'cli-table3';
-import chalk from 'chalk';
+import { ansi } from './ansi.js';
 import type { Entity, Relation, PathResult, CentralityResult, ConnectedComponentsResult, ValidationReport } from '../types/types.js';
 import { escapeCsvCell } from '../utils/entityUtils.js';
 
@@ -40,7 +40,7 @@ export function formatEntities(
 
     case 'table': {
       const table = new Table({
-        head: [chalk.cyan('Name'), chalk.cyan('Type'), chalk.cyan('Observations'), chalk.cyan('Tags')],
+        head: [ansi.cyan('Name'), ansi.cyan('Type'), ansi.cyan('Observations'), ansi.cyan('Tags')],
         colWidths: calculateColWidths(getTerminalWidth(), [0.25, 0.15, 0.4, 0.2]),
         wordWrap: true,
       });
@@ -88,7 +88,7 @@ export function formatRelations(
 
     case 'table': {
       const table = new Table({
-        head: [chalk.cyan('From'), chalk.cyan('Relation'), chalk.cyan('To')],
+        head: [ansi.cyan('From'), ansi.cyan('Relation'), ansi.cyan('To')],
         colWidths: calculateColWidths(getTerminalWidth(), [0.35, 0.3, 0.35]),
       });
 
@@ -128,7 +128,7 @@ export function formatSearchResults(
 
     case 'table': {
       const table = new Table({
-        head: [chalk.cyan('Name'), chalk.cyan('Type'), chalk.cyan('Score'), chalk.cyan('Observations')],
+        head: [ansi.cyan('Name'), ansi.cyan('Type'), ansi.cyan('Score'), ansi.cyan('Observations')],
         colWidths: calculateColWidths(getTerminalWidth(), [0.25, 0.15, 0.1, 0.5]),
         wordWrap: true,
       });
@@ -176,15 +176,15 @@ export function formatEntityDetail(
 
     case 'table': {
       const lines = [
-        `${chalk.bold('Name:')} ${entity.name}`,
-        `${chalk.bold('Type:')} ${entity.entityType}`,
-        `${chalk.bold('Importance:')} ${entity.importance ?? 'N/A'}`,
-        `${chalk.bold('Tags:')} ${(entity.tags || []).join(', ') || 'None'}`,
-        `${chalk.bold('Parent:')} ${entity.parentId || 'None'}`,
-        `${chalk.bold('Created:')} ${entity.createdAt || 'N/A'}`,
-        `${chalk.bold('Modified:')} ${entity.lastModified || 'N/A'}`,
+        `${ansi.bold('Name:')} ${entity.name}`,
+        `${ansi.bold('Type:')} ${entity.entityType}`,
+        `${ansi.bold('Importance:')} ${entity.importance ?? 'N/A'}`,
+        `${ansi.bold('Tags:')} ${(entity.tags || []).join(', ') || 'None'}`,
+        `${ansi.bold('Parent:')} ${entity.parentId || 'None'}`,
+        `${ansi.bold('Created:')} ${entity.createdAt || 'N/A'}`,
+        `${ansi.bold('Modified:')} ${entity.lastModified || 'N/A'}`,
         '',
-        chalk.bold('Observations:'),
+        ansi.bold('Observations:'),
         ...(entity.observations || []).map((o, i) => `  ${i + 1}. ${o}`),
       ];
       return lines.join('\n');
@@ -209,14 +209,14 @@ export function formatEntityDetail(
  * Format a success message.
  */
 export function formatSuccess(message: string): string {
-  return chalk.green('✓') + ' ' + message;
+  return ansi.green('✓') + ' ' + message;
 }
 
 /**
  * Format an error message.
  */
 export function formatError(message: string): string {
-  return chalk.red('✗') + ' ' + message;
+  return ansi.red('✗') + ' ' + message;
 }
 
 /**
@@ -233,11 +233,11 @@ export function formatPath(result: PathResult, format: OutputFormat): string {
     }
     default: {
       const lines = [
-        `${chalk.bold('Path')} (${result.length} hops):`,
+        `${ansi.bold('Path')} (${result.length} hops):`,
         result.path.join(' → '),
       ];
       if (result.relations.length > 0) {
-        lines.push('', chalk.bold('Relations:'));
+        lines.push('', ansi.bold('Relations:'));
         for (const rel of result.relations) {
           lines.push(`  ${rel.from} --[${rel.relationType}]--> ${rel.to}`);
         }
@@ -267,13 +267,13 @@ export function formatCentrality(result: CentralityResult, format: OutputFormat)
     }
     default: {
       const table = new Table({
-        head: [chalk.cyan('Rank'), chalk.cyan('Entity'), chalk.cyan('Score')],
+        head: [ansi.cyan('Rank'), ansi.cyan('Entity'), ansi.cyan('Score')],
         colWidths: calculateColWidths(getTerminalWidth(), [0.1, 0.6, 0.3]),
       });
       result.topEntities.forEach((e, i) => {
         table.push([String(i + 1), e.name, e.score.toFixed(4)]);
       });
-      return `${chalk.bold(`Centrality (${result.algorithm})`)}\n${table.toString()}`;
+      return `${ansi.bold(`Centrality (${result.algorithm})`)}\n${table.toString()}`;
     }
   }
 }
@@ -294,7 +294,7 @@ export function formatComponents(result: ConnectedComponentsResult, format: Outp
     }
     default: {
       const lines = [
-        `${chalk.bold('Connected Components')}: ${result.count} found`,
+        `${ansi.bold('Connected Components')}: ${result.count} found`,
         `Largest component size: ${result.largestComponentSize}`,
         '',
       ];
@@ -325,16 +325,16 @@ export function formatValidation(result: ValidationReport, format: OutputFormat)
       return [header, ...rows].join('\n');
     }
     default: {
-      const status = result.isValid ? chalk.green('✓ Valid') : chalk.red('✗ Invalid');
+      const status = result.isValid ? ansi.green('✓ Valid') : ansi.red('✗ Invalid');
       const lines = [
-        `${chalk.bold('Graph Validation')} — ${status}`,
+        `${ansi.bold('Graph Validation')} — ${status}`,
         `Errors: ${result.summary.totalErrors}  Warnings: ${result.summary.totalWarnings}`,
       ];
       for (const issue of result.issues) {
-        lines.push(`  ${chalk.red('ERROR')}: ${issue.message}`);
+        lines.push(`  ${ansi.red('ERROR')}: ${issue.message}`);
       }
       for (const warn of result.warnings) {
-        lines.push(`  ${chalk.yellow('WARN')}: ${warn.message}`);
+        lines.push(`  ${ansi.yellow('WARN')}: ${warn.message}`);
       }
       return lines.join('\n');
     }

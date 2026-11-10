@@ -9,22 +9,22 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 995
+**Total files**: 997
 
 ## Disposition counts
 
 | Disposition | Count | Meaning |
 | --- | --: | --- |
-| `reachable` | 397 | A `src/` file in the module graph, reachable from a root. |
+| `reachable` | 398 | A `src/` file in the module graph, reachable from a root. |
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 562 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 563 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 5 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 15 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **995** | |
+| **Total** | **997** | |
 
 ## Per-area counts
 
@@ -33,8 +33,8 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `benchmarks` | 5 |
 | `config` | 2 |
 | `examples` | 15 |
-| `src` | 401 |
-| `tests` | 562 |
+| `src` | 402 |
+| `tests` | 563 |
 | `tools` | 10 |
 
 ## All files
@@ -249,6 +249,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/world/index.ts` | src | reachable | 17 |
 | `src/agent/world/WorldModelManager.ts` | src | reachable | 128 |
 | `src/agent/world/WorldStateSnapshot.ts` | src | reachable | 125 |
+| `src/cli/ansi.ts` | src | reachable | 88 |
 | `src/cli/commands/audit.ts` | src | reachable | 286 |
 | `src/cli/commands/cache.ts` | src | reachable | 76 |
 | `src/cli/commands/check.ts` | src | reachable | 172 |
@@ -708,6 +709,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/WorkThreadManager.test.ts` | tests | test | 1209 |
 | `tests/unit/agent/WorldModel.test.ts` | tests | test | 176 |
 | `tests/unit/cli/actionFrame.test.ts` | tests | test | 446 |
+| `tests/unit/cli/ansi.test.ts` | tests | test | 102 |
 | `tests/unit/cli/audit.test.ts` | tests | test | 420 |
 | `tests/unit/cli/cache-reindex.test.ts` | tests | test | 157 |
 | `tests/unit/cli/check.test.ts` | tests | test | 165 |
@@ -724,7 +726,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/cli/hierarchy.test.ts` | tests | test | 65 |
 | `tests/unit/cli/index.test.ts` | tests | test | 270 |
 | `tests/unit/cli/inspect.test.ts` | tests | test | 212 |
-| `tests/unit/cli/interactive.test.ts` | tests | test | 925 |
+| `tests/unit/cli/interactive.test.ts` | tests | test | 920 |
 | `tests/unit/cli/maintenance-cli.test.ts` | tests | test | 78 |
 | `tests/unit/cli/observation.test.ts` | tests | test | 66 |
 | `tests/unit/cli/observationDedup.test.ts` | tests | test | 60 |

@@ -8,17 +8,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as readline from 'readline';
 import { EventEmitter } from 'events';
 
-// Mock chalk to return plain text
-vi.mock('chalk', () => ({
-  default: {
-    cyan: (s: string) => s,
-    green: (s: string) => s,
-    gray: (s: string) => s,
-    yellow: (s: string) => s,
-    red: (s: string) => s,
-  },
-}));
-
 // Mock ManagerContext
 const mockEntityManager = {
   getEntity: vi.fn(),
@@ -90,8 +79,12 @@ describe('CLI Interactive Mode', () => {
   let consoleClearSpy: ReturnType<typeof vi.spyOn>;
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
   let processExitSpy: ReturnType<typeof vi.spyOn>;
+  let previousNoColor: string | undefined;
 
   beforeEach(() => {
+    // The assertions below match plain text, so pin color off for this file.
+    previousNoColor = process.env.NO_COLOR;
+    process.env.NO_COLOR = '1';
     vi.clearAllMocks();
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     consoleClearSpy = vi.spyOn(console, 'clear').mockImplementation(() => {});
@@ -132,6 +125,8 @@ describe('CLI Interactive Mode', () => {
   });
 
   afterEach(() => {
+    if (previousNoColor === undefined) delete process.env.NO_COLOR;
+    else process.env.NO_COLOR = previousNoColor;
     consoleLogSpy.mockRestore();
     consoleClearSpy.mockRestore();
     consoleErrorSpy.mockRestore();

@@ -1,8 +1,8 @@
 metadata:
   name: "@danielsimonjr/memoryjs"
-  totalFiles: 401
+  totalFiles: 402
   totalModules: 12
-  totalExports: 2820
+  totalExports: 2821
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -10329,6 +10329,15 @@ modules:
         - WorldModelManager
         - WorldModelManagerOptions
   cli:
+    src/cli/ansi.ts:
+      description: ANSI colors for the CLI.
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies: []
+      exports:
+        - ansi
+      constants:
+        - ansi
     src/cli/commands/audit.ts:
       description: Audit CLI Commands — `memory audit` (R4a queryable provenance).
       externalDependencies:
@@ -11133,11 +11142,11 @@ modules:
         - package: cli-table3
           imports:
             - Table
-        - package: chalk
-          imports:
-            - chalk
       nodeDependencies: []
       internalDependencies:
+        - file: ./ansi.js
+          imports:
+            - ansi
         - file: ../types/types.js
           imports:
             - Entity
@@ -11204,10 +11213,7 @@ modules:
       exports: []
     src/cli/interactive.ts:
       description: Interactive CLI Mode (REPL)
-      externalDependencies:
-        - package: chalk
-          imports:
-            - chalk
+      externalDependencies: []
       nodeDependencies:
         - module: readline
           imports:
@@ -11220,6 +11226,9 @@ modules:
           imports:
             - GlobalOptions
           typeOnly: true
+        - file: ./ansi.js
+          imports:
+            - ansi
         - file: ./commands/inspect.js
           imports:
             - snapshotEntity
@@ -20768,6 +20777,7 @@ dependencyGraph:
         - src/agent/world/index.ts
     - name: Cli
       files:
+        - src/cli/ansi.ts
         - src/cli/commands/audit.ts
         - src/cli/commands/cache.ts
         - src/cli/commands/check.ts
@@ -21005,27 +21015,27 @@ reachability:
     - src/index.ts
     - src/sqlite.ts
     - src/workers/levenshteinWorker.ts
-  reachableCount: 401
+  reachableCount: 402
   dormantCount: 0
   orphaned: []
   testOnly: []
 statistics:
-  totalTypeScriptFiles: 401
+  totalTypeScriptFiles: 402
   totalModules: 12
-  totalLinesOfCode: 126617
-  totalExports: 2820
+  totalLinesOfCode: 126705
+  totalExports: 2821
   totalClasses: 278
   totalInterfaces: 825
   totalFunctions: 643
   totalTypeGuards: 43
   totalEnums: 4
-  totalConstants: 180
+  totalConstants: 181
   totalReExports: 1716
   totalTypeOnlyImports: 866
   runtimeCircularDeps: 0
   typeOnlyCircularDeps: 15
   entryRoots: 4
-  reachableFiles: 401
+  reachableFiles: 402
   dormantFiles: 0
   orphanedFiles: 0
   testOnlyFiles: 0
