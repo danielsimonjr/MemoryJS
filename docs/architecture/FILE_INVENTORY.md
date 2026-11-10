@@ -9,7 +9,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 999
+**Total files**: 1000
 
 ## Disposition counts
 
@@ -19,12 +19,12 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 564 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 565 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 5 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 15 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **999** | |
+| **Total** | **1000** | |
 
 ## Per-area counts
 
@@ -34,7 +34,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `config` | 2 |
 | `examples` | 15 |
 | `src` | 403 |
-| `tests` | 564 |
+| `tests` | 565 |
 | `tools` | 10 |
 
 ## All files
@@ -281,7 +281,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/cli/index.ts` | src | build-entry | 204 |
 | `src/cli/interactive.ts` | src | reachable | 439 |
 | `src/cli/options.ts` | src | reachable | 58 |
-| `src/cli/plainTable.ts` | src | reachable | 154 |
+| `src/cli/plainTable.ts` | src | reachable | 222 |
 | `src/core/columns/IColumnStore.ts` | src | reachable | 177 |
 | `src/core/columns/JsonlColumnStore.ts` | src | reachable | 227 |
 | `src/core/context/AgentBookkeepingFacade.ts` | src | reachable | 217 |
@@ -732,6 +732,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/cli/observation.test.ts` | tests | test | 66 |
 | `tests/unit/cli/observationDedup.test.ts` | tests | test | 60 |
 | `tests/unit/cli/options.test.ts` | tests | test | 313 |
+| `tests/unit/cli/plainTable.challenger.test.ts` | tests | test | 202 |
 | `tests/unit/cli/plainTable.test.ts` | tests | test | 110 |
 | `tests/unit/cli/projectContext.test.ts` | tests | test | 65 |
 | `tests/unit/cli/search-extended.test.ts` | tests | test | 66 |
