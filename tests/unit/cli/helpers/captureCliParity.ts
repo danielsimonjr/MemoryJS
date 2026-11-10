@@ -1,17 +1,35 @@
 /**
- * Capture commander 15.0.0 behavior for the MemoryJS CLI tree into pinned literals.
+ * One-time recorder that captured commander 15.0.0 behavior for the MemoryJS
+ * CLI tree as the pinned fixture the parser tests replay.
  *
- * Run once while commander is installed:
- *   npx tsx tests/unit/cli/helpers/captureCliParity.ts tests/unit/cli/fixtures/parseArgsPinned.json
+ * commander is no longer a dependency. To re-record after an intentional CLI
+ * change, install commander 15.0.0 into a scratch directory, point
+ * `COMMANDER_PATH` at its `index.js`, temporarily route `src/cli/` imports back
+ * to `'commander'`, and run:
  *
- * `tests/unit/cli/parseArgsPinned.test.ts` replays this fixture through the
- * in-repo parser, so the recorded behavior keeps guarding the parser after
- * commander is removed.
+ *   COMMANDER_PATH=/path/to/node_modules/commander/index.js \
+ *     npx tsx tests/unit/cli/helpers/captureCliParity.ts tests/unit/cli/fixtures/parseArgsPinned.json
+ *
+ * The import is dynamic on purpose: this file must not reintroduce a static
+ * `commander` import into the repository. It is a development aid, so it is not
+ * part of the build or the test run.
  */
-import { Command, Option, InvalidArgumentError } from 'commander';
 import { writeFileSync } from 'node:fs';
-import { registerCommands } from '../../../src/cli/commands/index.js';
+import { registerCommands } from '../../../../src/cli/commands/index.js';
 import { buildSyntheticProgram, SYNTHETIC_ARGV, type CommandLike } from './syntheticProgram.js';
+
+const commanderPath = process.env.COMMANDER_PATH;
+if (!commanderPath) {
+  throw new Error(
+    'Set COMMANDER_PATH to a commander@15.0.0 index.js before recording (see the header of this file).',
+  );
+}
+const commander = (await import(commanderPath)) as {
+  Command: new (name?: string) => never;
+  Option: new (flags: string, description?: string) => never;
+  InvalidArgumentError: new (message: string) => Error;
+};
+const { Command, Option, InvalidArgumentError } = commander;
 
 interface Captured {
   path: string;
@@ -221,6 +239,62 @@ for (const argv of SYNTHETIC_ARGV) synthetic.push(await captureSynthetic(argv));
 const version = await captureRun(['--version']);
 const helpRoot = await captureRun(['--help']);
 
+/** Reuse one program across several parses, the way pipe mode does. */
+async function captureRepeatedParse(
+  sequence: string[][],
+): Promise<{ sequence: string[][]; captured: Captured[] }> {
+  const captured: Captured[] = [];
+  const written: string[] = [];
+  const program = build(captured, written);
+  for (const argv of sequence) {
+    try {
+      await program.parseAsync(['node', 'memory', ...argv]);
+    } catch {
+      // Record what the action saw before the failure.
+    }
+  }
+  return { sequence, captured };
+}
+
+/** Call parseOptions directly on a fresh program, the way pipe mode primes globals. */
+function captureParseOptions(argv: string[]): {
+  argv: string[];
+  operands: string[];
+  unknown: string[];
+  opts: Record<string, unknown>;
+  captured: Captured[];
+} {
+  const captured: Captured[] = [];
+  const program = build(captured, []);
+  const parsed = program.parseOptions(argv);
+  return {
+    argv,
+    operands: parsed.operands,
+    unknown: parsed.unknown,
+    opts: JSON.parse(JSON.stringify(program.opts())) as Record<string, unknown>,
+    captured,
+  };
+}
+
+const repeatedParse = [
+  await captureRepeatedParse([
+    ['entity', 'list', '-l', '2'],
+    ['entity', 'list'],
+    ['stats'],
+    ['entity', 'list', '--tags', 'a'],
+  ]),
+  await captureRepeatedParse([
+    ['search', 'x', '--ranked'],
+    ['search', 'y'],
+  ]),
+];
+
+const parseOptions = [
+  captureParseOptions(['--storage', 'x', 'entity', 'create', 'N', '-t', 'person', '--unknown', 'z']),
+  captureParseOptions(['--output-format=table', 'stats']),
+  captureParseOptions(['-s', 'y', '-q', 'entity', 'list']),
+];
+
 const fixture = {
   commanderVersion: '15.0.0',
   program: { name: 'memory', version: '4.6.0' },
@@ -228,6 +302,8 @@ const fixture = {
   invocations,
   errors,
   synthetic,
+  repeatedParse,
+  parseOptions,
   version,
   helpRoot,
 };

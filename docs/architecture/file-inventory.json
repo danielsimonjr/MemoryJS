@@ -4862,7 +4862,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 236
+      "loc": 312
     },
     {
       "file": "tests/unit/cli/helpers/cliTestHarness.ts",
@@ -4946,7 +4946,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 215
+      "loc": 254
     },
     {
       "file": "tests/unit/cli/parseArgsSurfacePinned.test.ts",

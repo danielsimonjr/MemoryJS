@@ -1885,6 +1885,161 @@
       "help": "Usage: demo [options] [command]\n\nSynthetic demo program\n\nOptions:\n  -V, --version            output the version number\n  -s, --storage <path>     Storage path (default: \"./demo.jsonl\")\n  -c, --color              Enable color\n  --no-cache               Disable the cache\n  -n, --name <name>        A name\n  -v, --values <n...>      Repeatable numbers\n  --tag <tag>              A tag\n  -d, --depth [n]          Optional depth\n  -h, --help               display help for command\n\nCommands:\n  leaf [options] <target>\n  required [options]\n  choices [options]\n  finite [options]\n  grouped\n  aliased|al\n  help [command]           display help for command\n"
     }
   ],
+  "repeatedParse": [
+    {
+      "sequence": [
+        [
+          "entity",
+          "list",
+          "-l",
+          "2"
+        ],
+        [
+          "entity",
+          "list"
+        ],
+        [
+          "stats"
+        ],
+        [
+          "entity",
+          "list",
+          "--tags",
+          "a"
+        ]
+      ],
+      "captured": [
+        {
+          "path": "memory entity list",
+          "args": [],
+          "opts": {
+            "limit": 2
+          }
+        },
+        {
+          "path": "memory entity list",
+          "args": [],
+          "opts": {}
+        },
+        {
+          "path": "memory stats",
+          "args": [],
+          "opts": {}
+        },
+        {
+          "path": "memory entity list",
+          "args": [],
+          "opts": {
+            "tags": [
+              "a"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "sequence": [
+        [
+          "search",
+          "x",
+          "--ranked"
+        ],
+        [
+          "search",
+          "y"
+        ]
+      ],
+      "captured": [
+        {
+          "path": "memory search",
+          "args": [
+            "x"
+          ],
+          "opts": {
+            "limit": 10,
+            "threshold": 0.6,
+            "ranked": true
+          }
+        },
+        {
+          "path": "memory search",
+          "args": [
+            "y"
+          ],
+          "opts": {
+            "limit": 10,
+            "threshold": 0.6
+          }
+        }
+      ]
+    }
+  ],
+  "parseOptions": [
+    {
+      "argv": [
+        "--storage",
+        "x",
+        "entity",
+        "create",
+        "N",
+        "-t",
+        "person",
+        "--unknown",
+        "z"
+      ],
+      "operands": [
+        "entity",
+        "create",
+        "N"
+      ],
+      "unknown": [
+        "-t",
+        "person",
+        "--unknown",
+        "z"
+      ],
+      "opts": {
+        "storage": "x",
+        "outputFormat": "json"
+      },
+      "captured": []
+    },
+    {
+      "argv": [
+        "--output-format=table",
+        "stats"
+      ],
+      "operands": [
+        "stats"
+      ],
+      "unknown": [],
+      "opts": {
+        "storage": "./memory.jsonl",
+        "outputFormat": "table"
+      },
+      "captured": []
+    },
+    {
+      "argv": [
+        "-s",
+        "y",
+        "-q",
+        "entity",
+        "list"
+      ],
+      "operands": [
+        "entity",
+        "list"
+      ],
+      "unknown": [],
+      "opts": {
+        "storage": "y",
+        "outputFormat": "json",
+        "quiet": true
+      },
+      "captured": []
+    }
+  ],
   "version": {
     "argv": [
       "--version"

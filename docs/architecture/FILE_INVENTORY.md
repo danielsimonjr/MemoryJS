@@ -732,7 +732,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/cli/exclusion.test.ts` | tests | test | 71 |
 | `tests/unit/cli/formatters.test.ts` | tests | test | 738 |
 | `tests/unit/cli/graph.test.ts` | tests | test | 77 |
-| `tests/unit/cli/helpers/captureCliParity.ts` | tests | test | 236 |
+| `tests/unit/cli/helpers/captureCliParity.ts` | tests | test | 312 |
 | `tests/unit/cli/helpers/cliTestHarness.ts` | tests | test | 114 |
 | `tests/unit/cli/helpers/syntheticProgram.ts` | tests | test | 173 |
 | `tests/unit/cli/heuristic.test.ts` | tests | test | 70 |
@@ -744,7 +744,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/cli/observation.test.ts` | tests | test | 66 |
 | `tests/unit/cli/observationDedup.test.ts` | tests | test | 60 |
 | `tests/unit/cli/options.test.ts` | tests | test | 313 |
-| `tests/unit/cli/parseArgsPinned.test.ts` | tests | test | 215 |
+| `tests/unit/cli/parseArgsPinned.test.ts` | tests | test | 254 |
 | `tests/unit/cli/parseArgsSurfacePinned.test.ts` | tests | test | 89 |
 | `tests/unit/cli/plainTable.challenger.test.ts` | tests | test | 201 |
 | `tests/unit/cli/plainTable.test.ts` | tests | test | 127 |

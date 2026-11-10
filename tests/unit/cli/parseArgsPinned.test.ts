@@ -43,6 +43,14 @@ interface PinnedFixture {
   help: Record<string, string>;
   invocations: RecordedRun[];
   errors: RecordedRun[];
+  repeatedParse: Array<{ sequence: string[][]; captured: Captured[] }>;
+  parseOptions: Array<{
+    argv: string[];
+    operands: string[];
+    unknown: string[];
+    opts: Record<string, unknown>;
+    captured: Captured[];
+  }>;
   version: RecordedRun;
   helpRoot: RecordedRun;
 }
@@ -210,5 +218,36 @@ describe('parseArgs pinned behavior', () => {
     expect(ours.written).toEqual(fixture.helpRoot.written);
     expect(ours.written).toEqual([fixture.help.ROOT]);
     expect(ours.exitCode ?? null).toBe(fixture.helpRoot.exitCode);
+  });
+
+  describe('repeated parse on one program (pipe-mode reuse)', () => {
+    for (const recorded of fixture.repeatedParse) {
+      it(`resets state between parses for: ${recorded.sequence.map((a) => a.join(' ')).join(' | ')}`, async () => {
+        const captured: Captured[] = [];
+        const program = buildProgram(captured, []);
+        for (const argv of recorded.sequence) {
+          try {
+            await program.parseAsync(['node', 'memory', ...argv]);
+          } catch {
+            // The recorded run records whatever the action saw before a failure.
+          }
+        }
+        expect(asRecorded(captured)).toEqual(recorded.captured);
+      });
+    }
+  });
+
+  describe('parseOptions (the pipe-mode global priming call)', () => {
+    for (const recorded of fixture.parseOptions) {
+      it(`splits and stores like commander for: ${recorded.argv.join(' ')}`, () => {
+        const captured: Captured[] = [];
+        const program = buildProgram(captured, []);
+        const parsed = program.parseOptions(recorded.argv);
+        expect(parsed.operands).toEqual(recorded.operands);
+        expect(parsed.unknown).toEqual(recorded.unknown);
+        expect(asRecorded(program.opts())).toEqual(recorded.opts);
+        expect(captured).toEqual([]);
+      });
+    }
   });
 });
