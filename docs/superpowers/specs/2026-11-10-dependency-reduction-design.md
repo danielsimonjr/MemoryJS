@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-10
 **Status:** Proposed. This document is the spec. Implementation is later sprints, one PR each.
-**Target version:** patch releases on 4.x (current package version 4.6.0) for Sprints 1–4. Sprint 5 is a minor release when the in-repo date parser matches chrono-node. Daniel decided that on 2026-11-10 (9:12 AM CT). There is no optional-peer step and no 5.0.0 gate.
+**Target version:** patch releases on 4.x (current package version 4.6.0) for Sprints 1–4 and for any later sprint whose parity is byte-identical. Sprints 5–8 are minors when parity holds. Sprint 9 stays a minor only if `node:sqlite` is stable on Node 22 and 24 without a flag; a required engines bump is a major and stays gated. Daniel decided the chrono rebuild on 2026-11-10 (9:12 AM CT) and the KEEP-runtime rebuilds on 2026-11-10 (9:13 AM CT).
 **Package:** `@danielsimonjr/memoryjs`
 **Lockfile measured:** `bun.lock` lockfileVersion 2, 269 package entries, on master at the time of this spec.
 **Out of scope for code:** this run writes only this spec and `docs/superpowers/plans/2026-11-10-dependency-reduction.md`. No merge, tag, release, or publish.
@@ -14,7 +14,7 @@ Cut third-party packages MemoryJS installs and ships, without changing the publi
 ## Non-goals
 
 - Rewriting the test runner, the typechecker, the bundler, the linter, or the worker runtime.
-- Reimplementing Zod, Commander, or better-sqlite3. Sprint 5 does rebuild the English date phrases MemoryJS parses, using chrono-node's parser/refiner shape. It does not reimplement every chrono locale.
+- Reimplementing a package's whole surface when MemoryJS uses a subset. Sprints 5–9 rebuild that subset, each inspired by the original package, each with parity tests before the package is removed. Sprint 5 does not reimplement every chrono locale. Sprint 7 does not reimplement unused Zod methods.
 - Vendoring large packages. No dependency in this inventory is both small enough and license-clean enough that copying the upstream source is better than a narrow in-repo replacement or than keeping the package.
 - Changing `tools/*` packages. They are not part of the published `files` list (`dist`, `scripts/rebuild-native.mjs`, `README.md`, `LICENSE`).
 - A major version. Public exports, CLI flag names, storage formats, and environment variables stay as they are.
@@ -55,7 +55,7 @@ Runtime union of the eight `dependencies` entries: 15 lockfile packages. Dev uni
 
 ## Downstream consumers
 
-`package.json` `version` is `4.6.0`. A consumer ranged at `^4.5.0` receives patch and minor releases. Sprints 1–4 are patch: they do not change exported names, types, CLI flags, or on-disk formats. Sprint 5 is a minor because the public behavior stays the same once parity holds, and a minor is how that parser ships on 4.x.
+`package.json` `version` is `4.6.0`. A consumer ranged at `^4.5.0` receives patch and minor releases. Sprints 1–4 are patch: they do not change exported names, types, CLI flags, or on-disk formats. Sprints 5–8 ship as minors when parity holds, so `^4.5.0` consumers receive them and see the same behavior. Sprint 9 does not bump `engines.node` unless Daniel accepts a major.
 
 Checked on 2026-11-10 against `github.com/danielsimonjr/episodic-memory` branch `main` at `b1b0d8e3330b46f05fef02020cd82549029a1a07` (`episodic-memory` 1.7.3, committed 2026-11-07). Current `package.json` `dependencies` do **not** include `@danielsimonjr/memoryjs`. A Recursa branch, `cursor/recursa-task0-memoryjs-dep-2f37` (package 1.7.1), did add `@danielsimonjr/memoryjs` `^4.5.0`. Main removed it in `6b5de905` ("chore: drop the @danielsimonjr/memoryjs dependency", PR #35, 2026-11-06) after PR #34 replaced the adapter with a native knowledge store. The only `src/` hit on main is a comment in `src/learn/knowledge-store.ts` about that previous adapter. Nothing imports the package.
 
@@ -157,7 +157,7 @@ Parity is measured against chrono-node 2.9.1 at one fixed reference instant, `20
 
 Semver is a minor release when parity holds, because consumers see the same parse results. No type signature changes. No optional peer. No 5.0.0.
 
-#### `commander` @ 15.0.0 — KEEP
+#### `commander` @ 15.0.0 — REBUILD (Sprint 6)
 
 | | |
 |---|---|
@@ -167,9 +167,9 @@ Semver is a minor release when parity holds, because consumers see the same pars
 | Maintenance | 15.1.0 published 2026-11-09. Lockfile pins 15.0.0. Healthy. |
 | What the code uses | `Command` across `src/cli/index.ts` and `src/cli/commands/*.ts`. Also `Option` (`audit.ts`, `io.ts`) and `InvalidArgumentError` (`maintenance.ts`). Tests construct `Command` directly. |
 
-This is the CLI's argument parser, help text, and error type. Rebuilding it would rewrite every command's help and option handling. That is a behavior and support risk with little install-size win (one package, ~200 KB, CLI bundle only in practice, but it is a runtime dependency because the bin is part of the package). KEEP so CLI correctness stays with the maintained parser.
+Sprint 6 replaces this with an in-repo parser that covers every command, option, help string, and error behavior those files use. Help text is pinned by snapshot tests against commander 15.0.0 before the dependency is removed. The replacement is inspired by commander's command tree. It does not implement unused commander features. MIT notice if any commander text is adapted. Semver is a patch when every help snapshot matches; stop for Daniel if a snapshot cannot match. Risk is lower than Sprints 7–9 because a mismatch is visible CLI text, not stored data.
 
-#### `zod` @ 4.6.7 — KEEP
+#### `zod` @ 4.6.7 — REBUILD (Sprint 7)
 
 | | |
 |---|---|
@@ -177,15 +177,13 @@ This is the CLI's argument parser, help text, and error type. Rebuilding it woul
 | Lockfile closure | 1 (4.6.7 is pinned; `package.json` says `^4.6.6`) |
 | License | MIT |
 | Maintenance | Active. 4.6.7 published 2026-10-12. |
-| What the code uses | `z.object`, `z.array`, `z.string`, `z.number`, `z.enum`, `z.literal`, `z.record`, `.strict()`, `.safeParse()`, `z.infer`, `ZodSchema`, `ZodError`. |
+| What the code uses | Confirmed in source: `z.object`, `z.array`, `z.string`, `z.number`, `z.boolean`, `z.enum`, `z.literal`, `z.record`, `z.union`, `z.unknown`, `z.ZodType`, `z.output`, `.strict()`, `.optional()`, `.min()`, `.max()`, `.int()`, `.finite()`, `.refine()`, `.safeParse()`, `z.infer`. Also `ZodSchema` and `ZodError` in `src/utils/schemas.ts`. The sprint's first task re-greps `src/` and adds any method that grep finds and this list missed. It does not add methods the grep does not find. |
 
 Production call sites include `src/utils/schemas.ts` (entity, relation, import, and search schemas used by `EntityManager`, `RelationManager`, and `IOManager`), `src/adapters/recursaToolSchemas.ts`, `src/adapters/recursaToolSupport.ts`, `src/adapters/RecursaToolAdapter.ts`, `src/agent/procedural/graph/ProceduralGraphSchemas.ts`, `src/agent/evaluation/LLMRubricJudge.ts`, `src/agent/learning/{Diagnoser,KnowledgeEditor,RevisionReconcile,revisionMergeShared}.ts` (`RevisionMerger.ts` is type-only), and `src/agent/bootstrap/{ExplorationNotes,PracticeTaskGenerator}.ts`.
 
-`src/utils/index.ts` re-exports the schemas, the `z.infer` type aliases (`EntityInput`, `CreateEntityInput`, and the rest of that block), and `formatZodErrors(error: ZodError)`. Those aliases erase to plain types, but `formatZodErrors` names `ZodError` and the schema values are Zod objects at runtime. Removing Zod changes the public `utils` surface. Rebuilding even the subset MemoryJS uses (strict objects, trimmed strings, datetime strings, int ranges, enums, discriminated unions, error formatting) is a correctness risk on data that enters storage.
+`src/utils/index.ts` re-exports the schemas, the `z.infer` type aliases (`EntityInput`, `CreateEntityInput`, and the rest of that block), and `formatZodErrors(error: ZodError)`. Those aliases must still infer the same fields. Error text and issue shape that reach users or MCP tools (`invalid_args` from `safeParse`) must match Zod 4.6.7. MIT notice if any Zod source is adapted. Semver is a minor when that parity holds. `episodic-memory` depends on `zod` itself; MemoryJS's copy does not satisfy that dependency, and removing MemoryJS's copy does not remove theirs.
 
-KEEP. The 6 MB unpacked size is the cost of not drifting validation. `episodic-memory` depends on `zod` itself; MemoryJS's copy does not satisfy that dependency.
-
-#### `better-sqlite3` @ 13.0.3 — KEEP
+#### `better-sqlite3` @ 13.0.3 — REBUILD, gated (Sprint 9)
 
 | | |
 |---|---|
@@ -195,11 +193,11 @@ KEEP. The 6 MB unpacked size is the cost of not drifting validation. `episodic-m
 | Maintenance | 13.0.3 published 2026-08-05. Native addon. `postinstall` runs `scripts/rebuild-native.mjs`. |
 | What the code uses | Runtime `require('better-sqlite3')` inside `src/core/SQLiteStorage.ts` `resolveSQLiteDatabaseCtor`, with a `node:sqlite` fallback in `src/core/nodeSqliteAdapter.ts`. Type imports in `SQLiteStorage.ts` and `src/search/PartialIndexAdvisor.ts`. `src/cli/commands/doctor.ts` requires it for the ABI check. `scripts/node-runtime-smoke.mjs` requires it. `tsup.config.ts` externalizes it on both the library and the CLI pipelines. Tests open real databases. |
 
-`nodeSqliteAdapter.ts` documents itself as a compatibility shim, not a reimplementation: `node:sqlite`'s `changes` shape, `.pragma({ simple: true })` (first column of the first row), and non-nestable transactions differ from better-sqlite3. FTS5 search is a documented feature of `SQLiteStorage`. Dropping the native addon would make the fast path depend on a shim that the repo already refuses to treat as equivalent, and it would drop the prebuilt performance path.
+`nodeSqliteAdapter.ts` already maps `exec`, `prepare` (`run` / `get` / `all`), `pragma` (including `{ simple: true }` as the first column of the first row), `transaction`, and `close`. It normalizes bigint `changes` to a number. Its transactions are not nestable. `SQLiteStorage` does not nest them. FTS5, WAL, and the synchronous pragma are features the sprint must prove on `node:sqlite`, not assume.
 
-KEEP. Removing it would hurt performance and FTS correctness. The fallback stays for environments where the native binary cannot load. `tools/migrate-from-jsonl-to-sqlite` has its own `better-sqlite3` dependency and is out of scope. `episodic-memory` pins `better-sqlite3@13.0.3` on its own; do not bump MemoryJS's range in these sprints.
+Sprint 9 starts with a CI probe on the existing matrix (Ubuntu, macOS, and Windows; Node 22 and Node 24). The probe loads `node:sqlite` with no extra flag and runs one FTS5 query, one WAL pragma, and one transaction. If Node 22 needs `--experimental-sqlite` or the module is missing or unstable there, the sprint stops and is marked GATED. The only way forward is Daniel accepting an `engines.node` bump, and that bump is a major. The sprint does not apply the bump itself. If the probe passes on every required CI job, the rest of the sprint switches the default constructor to the adapter, benchmarks it against better-sqlite3, and deletes the native dependency only after those parity tests are green. `tools/migrate-from-jsonl-to-sqlite` keeps its own `better-sqlite3` and is out of scope. `episodic-memory` pins `better-sqlite3@13.0.3` on its own. MIT notice if any better-sqlite3 text is adapted. `@types/better-sqlite3` leaves with the runtime package when the sprint completes.
 
-#### `@danielsimonjr/workerpool` @ 10.2.0 — KEEP
+#### `@danielsimonjr/workerpool` @ 10.2.0 — REBUILD (Sprint 8)
 
 | | |
 |---|---|
@@ -211,30 +209,30 @@ KEEP. Removing it would hurt performance and FTS correctness. The fallback stays
 
 Call sites: `src/utils/WorkerPoolManager.ts`, `src/utils/WorkerTaskManager.ts` (cancel and pending), `src/search/FuzzySearch.ts`, `src/workers/levenshteinWorker.ts`. `parallelUtils.ts` and `taskScheduler.ts` mention workerpool in comments only.
 
-This is Daniel's package, not an incidental utility. The worker protocol (transfer, timeout, cancel, stats, process vs thread) is the feature. Rebuilding it inside MemoryJS would fork a library he already publishes and would risk fuzzy-search throughput. KEEP. A version bump to 10.2.2 is a dependency-hygiene change, not part of these sprints.
+Sprint 8 replaces that subset with a thin pool on `node:worker_threads`. The same names stay: `cpus`, `pool(path, options)`, `exec(method, args)` returning a promise with `timeout` and `cancel`, `stats`, `terminate(force)`, and `worker({...})`. Parity tests drive the current pool and the new pool on the Levenshtein worker before the dependency is removed. The Apache-2.0 notice stays in `THIRD_PARTY_NOTICES` if any workerpool text is adapted. Semver is a patch when the public TypeScript surface does not change and the fuzzy-search results match. This sprint is after Zod because a wrong pool drops throughput, while a wrong schema can store bad data, and both are after the CLI parser.
 
 ### Optional peer dependencies
 
-All three are already optional. Default installs do not fetch them. Decision for each is KEEP. No sprint moves them back to `dependencies`.
+All three stay optional peers. No sprint rebuilds them. Each one is a large spec or runtime that is already absent from a default install. Rebuilding it would copy that weight into the repo for a feature most consumers never turn on.
 
 #### `@huggingface/transformers` ^4.3.1 — KEEP
 
-Dynamic `import('@huggingface/transformers')` in `src/search/EmbeddingService.ts` (`pipeline` of the feature-extraction task, q8). Absent peer: local embeddings fail with an install hint; lexical search still works. Unpacked size of 4.3.2 (registry latest matching the range, not locked) is about 10 MB, plus model files downloaded at runtime, which are not part of the package. Apache-2.0. Actively published. `episodic-memory` depends on `^4.2.0` itself. Making the peer required would force that weight onto every MemoryJS consumer. Keeping it optional is the reduction.
+Dynamic `import('@huggingface/transformers')` in `src/search/EmbeddingService.ts` (`pipeline` of the feature-extraction task, q8). Absent peer: local embeddings fail with an install hint; lexical search still works. Unpacked size of 4.3.2 (registry latest matching the range, not locked) is about 10 MB, plus model files downloaded at runtime, which are not part of the package. Apache-2.0. The model runtime and the ONNX stack are the reason it stays optional and is not rebuilt. `episodic-memory` depends on `^4.2.0` itself.
 
 #### `pg` >=8.0.0 — KEEP
 
-`src/core/PostgreSQLStorage.ts` dynamic-imports `pg` and uses `Pool`. The storage is not the default (`MEMORY_STORAGE_TYPE` defaults to jsonl). Registry unpacked size of 8.23.1 is 102,632 bytes. MIT. Active. Consumers who enable Postgres install `pg`. MemoryJS must not bundle it.
+`src/core/PostgreSQLStorage.ts` dynamic-imports `pg` and uses `Pool`. The storage is not the default (`MEMORY_STORAGE_TYPE` defaults to jsonl). Registry unpacked size of 8.23.1 is 102,632 bytes. MIT. The wire protocol and the server-specific type codecs are the reason it stays optional and is not rebuilt. Consumers who enable Postgres install `pg`. MemoryJS must not bundle it.
 
 #### `yaml` >=2.0.0 — KEEP
 
-`src/agent/skills/SkillFormat.ts` uses `yaml.parse` on skill front matter when the peer is installed. Without it, front matter accepts JSON values only (the error string in that file says so). `SkillPublisher.ts` calls `loadOptionalYaml()`. ISC license. Registry unpacked size of 2.9.1 is 686,297 bytes. The peer is absent from `bun.lock` because it is optional and not installed. That is expected. Do not vendor `yaml` to parse a path that is already optional.
+`src/agent/skills/SkillFormat.ts` uses `yaml.parse` on skill front matter when the peer is installed. Without it, front matter accepts JSON values only (the error string in that file says so). `SkillPublisher.ts` calls `loadOptionalYaml()`. ISC license. Registry unpacked size of 2.9.1 is 686,297 bytes. The YAML 1.2 grammar is the reason it stays optional and is not rebuilt. The peer is absent from `bun.lock` because it is optional and not installed. That is expected.
 
 ### devDependencies
 
 | Package | Locked | Unpacked | Closure | Decision | Why |
 |---|---|---|---|---|---|
 | `rimraf` | 6.1.4 | 262,867 | 10 (`glob`, `package-json-from-dist`, …) | REBUILD | Used only as `rimraf dist` in the `clean` script. Node 22 `fs.rm(path, { recursive: true, force: true })` is the same operation. BlueOak-1.0.0. Actively published, but the transitive glob chain is the reason it was bumped (CHANGELOG notes GHSA-3g3m-2fjr-6pw4 and GHSA-g3hv-75wg-m249 via glob/minimatch). Deleting it removes that chain from the dev install. |
-| `@types/better-sqlite3` | 9.6.0 | (types) | 3 with `@types/node` | KEEP | Compiling `SQLiteStorage` needs the types while the native module stays. |
+| `@types/better-sqlite3` | 9.6.0 | (types) | 3 with `@types/node` | KEEP until Sprint 9 completes | Compiling `SQLiteStorage` needs the types while the native module stays. Sprint 9 removes it with `better-sqlite3` if the `node:sqlite` path is accepted. |
 | `@types/node` | 26.4.0 | (types) | 2 (`undici-types`) | KEEP | `engines.node` is `>=22.12.0`. The types are the Node API. |
 | `typescript` | 7.0.2 | 2,497,498 | 1 | KEEP | `typecheck` is `tsc --noEmit && tsc --noEmit -p tsconfig.probes.json`. TS 7 has no programmatic compiler API (`scripts/emit-dts.mjs` exists because of that). Replacing the compiler is not a dependency-diet task. Apache-2.0. |
 | `tsup` | 8.5.1 | 389,734 | 45 | KEEP | `build` is `tsup && node scripts/emit-dts.mjs && node scripts/check-exports.mjs`. The config has three pipelines (ESM split library, CJS library, CLI banner, workers). Replacing tsup rewrites the publishable bundle. MIT. |
@@ -250,7 +248,7 @@ Dynamic `import('@huggingface/transformers')` in `src/search/EmbeddingService.ts
 ### Overrides and native extras
 
 - `overrides.esbuild: ^0.28.1` — KEEP. It forces the esbuild that `tsup` and `tsx` load. It is a security pin, not a feature dependency. Sprints must not delete it when they edit `package.json`.
-- Native addon: `better-sqlite3` is the only native runtime dependency. `scripts/rebuild-native.mjs` lists `NATIVE = ['better-sqlite3']`. Optional peers do not ship native code of their own inside MemoryJS (`@huggingface/transformers` downloads ONNX runtimes when the consumer installs it). No sprint removes the postinstall script.
+- Native addon: `better-sqlite3` is the only native runtime dependency. `scripts/rebuild-native.mjs` lists `NATIVE = ['better-sqlite3']`. Optional peers do not ship native code of their own inside MemoryJS (`@huggingface/transformers` downloads ONNX runtimes when the consumer installs it). Only Sprint 9 may remove the native addon from that list, and only after the gate passes. The devDependency toolchain stays: it is not shipped.
 
 ### Tool packages (not published, no sprint)
 
@@ -267,7 +265,7 @@ Dynamic `import('@huggingface/transformers')` in `src/search/EmbeddingService.ts
 
 1. **Keep every runtime dependency.** Zero risk, zero reduction. Rejected. `rimraf`, `chalk`, `async-mutex`, and `cli-table3` are small, narrow, and not part of the library contract.
 2. **Vendor the large packages (zod, chrono-node, workerpool, better-sqlite3).** Copies their bugs and licenses into the repo and keeps the bytes. Rejected for every package.
-3. **Rebuild the narrow call sites, including an in-repo English date parser for chrono-node.** Chosen. Order is smallest and safest first. Chrono is last because it is the largest behavior surface.
+3. **Rebuild the narrow call sites, then the remaining runtime dependencies one sprint at a time.** Chosen. Order is smallest and safest first through Sprint 5, then commander, Zod, workerpool, and gated `node:sqlite`. Optional peers and the dev toolchain stay.
 
 ## Sprint order
 
@@ -278,6 +276,10 @@ Dynamic `import('@huggingface/transformers')` in `src/search/EmbeddingService.ts
 | 3 | `cli-table3` | REBUILD | CLI table text only. JSON/CSV identical. Safer than the mutex sprint. | patch, with a presentation note |
 | 4 | `async-mutex` | REBUILD | In-process write serialization. Parity with no timeout and no reentrancy. | patch |
 | 5 | `chrono-node` | REBUILD | English date parser with parity against chrono-node 2.9.1. Not gated. | minor when parity holds |
+| 6 | `commander` | REBUILD | CLI parse, help, and `InvalidArgumentError`. Lowest risk of the runtime rebuilds. | patch when help snapshots match |
+| 7 | `zod` | REBUILD | Schema subset, inferred types, and surfaced error shape. Higher risk than the CLI. | minor when parity holds |
+| 8 | `@danielsimonjr/workerpool` | REBUILD | `node:worker_threads` pool for the used API subset. | patch when results match |
+| 9 | `better-sqlite3` | REBUILD, gated | `node:sqlite` only if Node 22 and 24 need no flag. Highest risk. | minor if the gate passes; major only if Daniel accepts an engines bump |
 
 KEEP packages have no sprint.
 
@@ -299,7 +301,7 @@ These lines are binding on every sprint. The plan repeats them.
 
 ## Success criteria
 
-- After Sprints 1–5, root `devDependencies` no longer lists `rimraf`, and root `dependencies` and `devDependencies` no longer list `chalk`, `async-mutex`, `cli-table3`, or `chrono-node`.
+- After Sprints 1–8, root `devDependencies` no longer lists `rimraf`, and root `dependencies` and `devDependencies` no longer list `chalk`, `async-mutex`, `cli-table3`, `chrono-node`, `commander`, `zod`, or `@danielsimonjr/workerpool`. Sprint 9 removes `better-sqlite3` and `@types/better-sqlite3` only when its gate passes.
 - `bun.lock` no longer contains those keys or `rimraf`'s `glob` / `minimatch` chain unless some other direct dependency still pulls them (today none does).
 - `rg "from 'chalk'|from 'cli-table3'|from 'async-mutex'|from 'chrono-node'|rimraf" src package.json` finds no matches.
 - `bun run test:ci`, `bun run typecheck`, `bun run lint`, and `bun run build` exit 0.
@@ -311,5 +313,5 @@ These lines are binding on every sprint. The plan repeats them.
 - No package in `package.json` is missing a decision.
 - VENDOR is defined and unused on purpose.
 - `AsyncMutex` is distinguished from the `async-mutex` replacement so a builder cannot "reuse the existing mutex."
-- Sprint 5 rebuilds chrono-node. It is not optional and it is not a behavior change when the parity corpus is green.
+- Sprint 5 rebuilds chrono-node. Sprints 6–8 rebuild commander, Zod, and workerpool. Sprint 9 is gated on `node:sqlite` stability. Optional peers and the dev toolchain have no rebuild sprint.
 - Tool packages and the esbuild override are explicit keeps.

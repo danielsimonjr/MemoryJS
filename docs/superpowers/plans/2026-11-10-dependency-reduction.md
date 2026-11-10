@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Remove `rimraf`, `chalk`, `async-mutex`, `cli-table3`, and `chrono-node` from `@danielsimonjr/memoryjs` by replacing the call sites this repo actually uses. Sprint 5 replaces chrono-node with an in-repo English date parser. Daniel decided that on 2026-11-10 (9:12 AM CT). Parity holds, so the release is a minor and there is no optional peer and no 5.0.0.
+**Goal:** Remove the runtime dependencies MemoryJS can replace, one sprint at a time, each with parity tests against the original before removal. Sprints 1–5 are unchanged in order. Daniel decided on 2026-11-10 (9:13 AM CT) that commander, Zod, workerpool, and better-sqlite3 are rebuilt in Sprints 6–9. Optional peers and the dev toolchain stay.
 
 **Architecture:** One sprint is one PR. Each sprint adds a focused module, pins its behavior with tests written against the old package, switches call sites, then deletes the dependency and regenerates `bun.lock`. Library public types do not change. `RunExclusiveMutex` is a new class; it does not wrap `AsyncMutex`.
 
@@ -940,27 +940,126 @@ Expected: the node check exits 0. `rg` prints nothing, or only a MIT attribution
 
 The build checker/fixer checks this sprint against the six requirements: inventory, parity corpus at the fixed instant, throw behavior unchanged, dependency removed only after parity, MIT notice when text is adapted, and minor semver with no behavior change.
 
+## Sprint 6 — REBUILD `commander`
+
+**Decision:** Daniel, 2026-11-10, 9:13 AM CT. After Sprint 5. Lowest risk of the remaining runtime rebuilds: a mismatch is help text, not stored data.
+**Semver:** patch when every help snapshot matches commander 15.0.0. If a snapshot cannot match, stop and ask Daniel. Do not ship different help as a silent patch.
+**License:** MIT. Add the commander copyright to the file header or `THIRD_PARTY_NOTICES` only if text is adapted.
+**Acceptance:** `rg "from 'commander'" src tests package.json` finds no matches. `memory --help` and each command's `--help` match the recorded commander snapshots. `InvalidArgumentError` from `maintenance.ts` still rejects a non-finite number with the same message.
+
+### Task 13: Help snapshots, then the parser
+
+**Files:**
+- Create: `src/cli/parseArgs.ts`
+- Create: `tests/unit/cli/help.snapshot.test.ts`
+- Modify: `src/cli/index.ts`, `src/cli/commands/*.ts`, the CLI tests that construct `Command`
+
+- [ ] **Step 1: While commander is installed, snapshot `--help` for the root program and every subcommand the CLI registers.** Run the snapshots. Expected: PASS.
+- [ ] **Step 2: Implement `Command`, `Option`, and `InvalidArgumentError` for the methods those files call (`command`, `option`, `addOption`, `argument`, `action`, `parse`, `opts`, `optsWithGlobals`, `name`, `description`, `version`, `requiredOption`, `choices`). Do not implement unused commander APIs.**
+- [ ] **Step 3: Switch imports. Re-run the snapshots against the new parser. They must still match the commander output captured in Step 1.**
+- [ ] **Step 4: Remove `commander` from `dependencies`. Run `bun install`. Re-run `bunx vitest run tests/unit/cli`. Expected: PASS.**
+
+### Task 14: Sprint 6 verification
+
+```bash
+bun install --frozen-lockfile
+bun run typecheck
+bun run lint
+bun run test:ci
+bun run build
+```
+
+Expected: exit 0. `package.json` has no `commander`.
+
+## Sprint 7 — REBUILD `zod`
+
+**Decision:** Daniel, 2026-11-10, 9:13 AM CT. After Sprint 6. Higher risk than the CLI because schemas guard stored data and MCP `invalid_args`.
+**Semver:** minor when inferred types and surfaced errors match Zod 4.6.7. No public field is added or removed.
+**License:** MIT. Notice only if Zod source is adapted.
+**Acceptance:** the inventory test lists every `z.` call in `src/`. `formatZodErrors` output matches Zod for the same failures. Recursa tool `safeParse` failures keep the same issue paths and messages. `z.infer` aliases in `src/utils/index.ts` still typecheck.
+
+### Task 15: Inventory, parity, then removal
+
+**Files:**
+- Create: `src/utils/schema.ts` (the subset validator; the name `zod` is not reused)
+- Create: `tests/unit/utils/schema.parity.test.ts`
+- Modify: every production importer listed in the spec
+
+- [ ] **Step 1: Write a test that fails if `src/` contains a `z.` method or a Zod type that is not in the inventory.** The inventory starts from the spec list (`object`, `array`, `string`, `number`, `boolean`, `enum`, `literal`, `record`, `union`, `unknown`, `ZodType`, `output`, `strict`, `optional`, `min`, `max`, `int`, `finite`, `refine`, `safeParse`, `infer`, `ZodSchema`, `ZodError`). Add a method the grep finds. Do not implement a method the grep does not find.
+- [ ] **Step 2: Parity tests, with Zod still installed, compare `safeParse` success and failure for `src/utils/schemas.ts` and `src/adapters/recursaToolSchemas.ts`, including `.strict()` unknown keys and a reserved-key `.refine()`.** Error messages that `formatZodErrors` or the MCP adapter show must be equal.
+- [ ] **Step 3: Implement only that surface. Switch imports. Keep `z.infer` as a type alias that reads the schema's output type.**
+- [ ] **Step 4: Remove `zod` from `dependencies` after Step 2 is green. Run `bun install`. Run `bun run typecheck` and the schema tests. Expected: PASS.**
+
+### Task 16: Sprint 7 verification
+
+Same verification block as Sprint 6. `package.json` has no `zod`.
+
+## Sprint 8 — REBUILD `@danielsimonjr/workerpool`
+
+**Decision:** Daniel, 2026-11-10, 9:13 AM CT. After Sprint 7.
+**Semver:** patch when fuzzy-search results and pool stats match. The public TypeScript exports do not change.
+**License:** Apache-2.0. Notice in `THIRD_PARTY_NOTICES` if any workerpool text is adapted.
+**Acceptance:** `WorkerPoolManager` uses `node:worker_threads`. `cpus`, `pool`, `exec`, `timeout`, `cancel`, `stats`, `terminate`, and `worker` behave like workerpool 10.2.0 on the Levenshtein worker. `rg workerpool src package.json` finds no package import.
+
+### Task 17: Pool parity, then removal
+
+**Files:**
+- Create: `src/utils/threadPool.ts`
+- Create: `tests/unit/utils/threadPool.parity.test.ts`
+- Modify: `src/utils/WorkerPoolManager.ts`, `src/utils/WorkerTaskManager.ts`, `src/search/FuzzySearch.ts`, `src/workers/levenshteinWorker.ts`
+
+- [ ] **Step 1: A test runs the same Levenshtein batch through the installed workerpool and through `threadPool` and expects equal results, a working `timeout`, a working `cancel`, and `terminate(true)` that stops the workers.**
+- [ ] **Step 2: Implement the thin pool. One function per worker message. No process-pool mode unless a call site passes it (today the call sites use the thread default).**
+- [ ] **Step 3: Switch call sites. Remove `@danielsimonjr/workerpool` only after Step 1 is green. Run `bun install` and the fuzzy-search unit tests. Expected: PASS.**
+
+### Task 18: Sprint 8 verification
+
+Same verification block as Sprint 6. `package.json` has no `@danielsimonjr/workerpool`.
+
+## Sprint 9 — REBUILD `better-sqlite3` (gated)
+
+**Decision:** Daniel, 2026-11-10, 9:13 AM CT. Last, because it is the storage engine.
+**Gate:** Task 19 runs on the CI matrix (Ubuntu, macOS, Windows; Node 22 and Node 24) and loads `node:sqlite` with no extra Node flag. If any required job needs `--experimental-sqlite`, or the module is missing, or FTS5 / WAL / a transaction fails, stop. Mark the sprint GATED and ask Daniel. Bumping `engines.node` is a major. Do not bump it in this sprint. Do not delete `better-sqlite3` if the gate fails.
+**Semver:** minor when the gate passes and query results, transactions, WAL, and pragmas match better-sqlite3 13.0.3. Major only after Daniel accepts an engines bump, which is a different PR.
+**License:** MIT. Notice only if better-sqlite3 text is adapted.
+**Acceptance after a passing gate:** `SQLiteStorage` constructs `createNodeSqliteDatabaseCtor()` by default. A benchmark records rows/sec against the native module on one CI runner and is committed as a note in the PR, not as a flaky assertion. `better-sqlite3` and `@types/better-sqlite3` are gone from the root `package.json`. `scripts/rebuild-native.mjs` no longer lists it. `tools/migrate-from-jsonl-to-sqlite` is not edited.
+
+### Task 19: Stability probe
+
+- [ ] **Step 1: Add `tests/unit/core/node-sqlite-probe.test.ts`.** It skips only when `isNodeSqliteAvailable()` is false, and when it skips it prints the Node version. On a pass it creates a temp database, sets `journal_mode = WAL`, creates an FTS5 table, inserts, queries, and rolls back a transaction.
+- [ ] **Step 2: The build checker/fixer reads the six `ci` jobs. A skip or a failure on Node 22 gates the sprint. A pass on all six continues.**
+
+### Task 20: Parity and removal, only if Task 19 passed everywhere
+
+- [ ] **Step 1: Extend the existing SQLite tests so the same cases run on `node:sqlite` and on `better-sqlite3` while the native module is still installed.** Compare row sets, `changes`, pragma results, and a rolled-back write.
+- [ ] **Step 2: Make `resolveSQLiteDatabaseCtor` return the `node:sqlite` constructor first. Keep the native module load only until Step 1 is green, then delete it.**
+- [ ] **Step 3: Run one timed insert/select of 1,000 rows on both constructors and paste the numbers in the PR. Do not fail CI on the ratio.**
+- [ ] **Step 4: Remove `better-sqlite3` and `@types/better-sqlite3`. Run `bun install`, `bun run typecheck`, and `bunx vitest run tests/unit/core/SQLiteStorage.test.ts`. Expected: PASS.**
+
+### Task 21: Sprint 9 verification
+
+Same verification block as Sprint 6, and only after the gate passed. `node -e` exits 1 if `better-sqlite3` remains in `dependencies` or `devDependencies`.
+
 ## Packages with no tasks
 
 The builder does not open a PR for these. The spec records why.
 
 | Package | Decision |
 |---|---|
-| `commander` | KEEP. CLI parser, help, and `InvalidArgumentError`. |
-| `zod` | KEEP. Public schemas and `formatZodErrors(ZodError)`. |
-| `better-sqlite3` | KEEP. Native speed and FTS5. The `node:sqlite` shim is not a replacement. |
-| `@danielsimonjr/workerpool` | KEEP. First-party worker protocol. |
-| `@huggingface/transformers`, `pg`, `yaml` | KEEP. Already optional peers. |
-| `@types/node`, `@types/better-sqlite3`, `typescript`, `tsup`, `tsx`, `vitest`, `@vitest/coverage-v8`, `oxlint`, `oxlint-tsgolint`, `oxc-parser` | KEEP. Toolchain. |
+| `@huggingface/transformers` | KEEP. Optional peer. Large model runtime. Already not installed by default. |
+| `pg` | KEEP. Optional peer. Postgres wire protocol. Already not installed by default. |
+| `yaml` | KEEP. Optional peer. YAML 1.2 grammar. Already not installed by default. |
+| `@types/node`, `typescript`, `tsup`, `tsx`, `vitest`, `@vitest/coverage-v8`, `oxlint`, `oxlint-tsgolint`, `oxc-parser` | KEEP. Dev toolchain. Not shipped. |
+| `@types/better-sqlite3` | KEEP until Sprint 9 completes. Removed with the native module if the gate passes. |
 | `overrides.esbuild` | KEEP. Security pin. |
 | `tools/*` | Out of scope. Not published. |
 
 ## Plan self-review
 
-- Spec decisions that are REBUILD each have a sprint. MAKE OPTIONAL has no sprint. VENDOR has no sprint. KEEP has a table and no tasks.
+- Spec decisions that are REBUILD each have a sprint, including gated Sprint 9. MAKE OPTIONAL has no sprint. VENDOR has no sprint. Optional peers and the dev toolchain have no tasks.
 - Sprint 4's interface is `RunExclusiveMutex.runExclusive`, not `AsyncMutex.acquire`. The legacy-delete fake uses `AsyncMutex.acquire`.
 - Sprint 2's `ansi` keys match the call sites (`cyan`, `bold`, `green`, `red`, `yellow`, `gray`).
 - Sprint 3's `PlainTable` options match `formatters.ts` (`head`, `colWidths`, `wordWrap`). `colWidths` include the two padding cells.
-- Sprint 5 rebuilds chrono-node. It is not gated. It is the only sprint that edits `CHANGELOG.md`, and the note is a minor with no behavior change.
+- Sprint 5 rebuilds chrono-node. Sprints 6–8 rebuild commander, Zod, and workerpool in that risk order. Sprint 9 stops if `node:sqlite` needs a flag on Node 22. Sprints 5–9 may each add a changelog note. A behavior change is not allowed when parity holds.
 - No step says TBD. Verification commands are exact.
 - Per sprint the handoff is builder deepseek-v41-flash-1017, challenger glm-5p3-flash, build reviewer composer-2.5, build checker/fixer grok-4.6, final PR reviewer grok-4.7.
