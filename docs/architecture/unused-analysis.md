@@ -10,9 +10,9 @@
 - **Dormant files** (runtime code on disk, unreachable from any entry/build root): 0
   - **Orphaned (reachable from nothing — delete/wire candidates)**: 0
   - **Test-only (exercised by a test, ships nothing)**: 0
-- **Potentially unused exports**: 119
+- **Potentially unused exports**: 118
   - **Unreferenced anywhere (deletion candidates)**: 0
-  - **Referenced in-module (type contracts / helpers backing live exports)**: 119
+  - **Referenced in-module (type contracts / helpers backing live exports)**: 118
 
 Seeded reachability roots (4):
 
@@ -324,10 +324,6 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 - `CorrectedQuery` (interface) — 2 in-file refs
 - `CorrectQueryOptions` (interface) — 1 in-file ref
-
-### `src/search/SemanticSearch.ts`
-
-- `SemanticSearchOptions` (interface) — 1 in-file ref
 
 ### `src/security/APIKeyStore.ts`
 

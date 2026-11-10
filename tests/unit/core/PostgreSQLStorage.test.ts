@@ -28,6 +28,7 @@ interface MemRow extends Record<string, unknown> {
 const memEntities = new Map<string, MemRow>();
 const memRelations: MemRow[] = [];
 const statementLog: string[] = [];
+const insertParameterCounts: number[] = [];
 let failEntityInsert = false;
 
 // Mock the `pg` module. The implementation parses the SQL coarsely (good
@@ -55,45 +56,52 @@ vi.mock('pg', () => {
       if (trimmed.startsWith('INSERT INTO ENTITIES')) {
         // The class always inserts in the column order declared in ENTITY_COLUMNS.
         // `name` is the first positional param.
-        const name = params[0] as string;
+        for (let offset = 0; offset < params.length; offset += 22) {
+        const values = params.slice(offset, offset + 22);
+        const name = values[0] as string;
         const row: MemRow = {
           name,
-          entity_type: params[1],
-          observations: params[2],
-          parent_id: params[3],
-          tags: params[4],
-          importance: params[5],
-          created_at: params[6],
-          last_modified: params[7],
-          ttl: params[8],
-          confidence: params[9],
-          project_id: params[10],
-          version: params[11],
-          parent_entity_name: params[12],
-          root_entity_name: params[13],
-          is_latest: params[14],
-          superseded_by: params[15],
-          content_hash: params[16],
-          valid_from: params[17],
-          valid_until: params[18],
-          observation_meta: params[19],
-          lifecycle_status: params[20],
-          extra: params[21],
+          entity_type: values[1],
+          observations: values[2],
+          parent_id: values[3],
+          tags: values[4],
+          importance: values[5],
+          created_at: values[6],
+          last_modified: values[7],
+          ttl: values[8],
+          confidence: values[9],
+          project_id: values[10],
+          version: values[11],
+          parent_entity_name: values[12],
+          root_entity_name: values[13],
+          is_latest: values[14],
+          superseded_by: values[15],
+          content_hash: values[16],
+          valid_from: values[17],
+          valid_until: values[18],
+          observation_meta: values[19],
+          lifecycle_status: values[20],
+          extra: values[21],
         };
         memEntities.set(name, row);
+        }
         return { rows: [], rowCount: 1 };
       }
       if (trimmed.startsWith('INSERT INTO RELATIONS')) {
+        for (let offset = 0; offset < params.length; offset += 10) {
+        const values = params.slice(offset, offset + 10);
         const row: MemRow = {
-          from_name: params[0],
-          to_name: params[1],
-          relation_type: params[2],
+          from_name: values[0],
+          to_name: values[1],
+          relation_type: values[2], metadata: values[3], created_at: values[4], last_modified: values[5],
+          weight: values[6], confidence: values[7], properties: values[8], extra: values[9],
         };
         // Dedup on PK
         const exists = memRelations.find(
           (r) => r.from_name === row.from_name && r.to_name === row.to_name && r.relation_type === row.relation_type,
         );
         if (!exists) memRelations.push(row);
+        }
         return { rows: [], rowCount: 1 };
       }
       if (trimmed.startsWith('SELECT * FROM ENTITIES')) {
@@ -140,6 +148,7 @@ vi.mock('pg', () => {
         query: async <R = unknown>(sql: string, params: unknown[] = []) => {
           const head = sql.trim().split(/\s+/)[0]!.toUpperCase();
           statementLog.push(head);
+          if (head === 'INSERT') insertParameterCounts.push(params.length);
           if (head === 'BEGIN' || head === 'COMMIT' || head === 'ROLLBACK') {
             return { rows: [] as R[], rowCount: 0 };
           }
@@ -164,6 +173,7 @@ describe('PostgreSQLStorage', () => {
   beforeEach(() => {
     memEntities.clear();
     memRelations.length = 0;
+    insertParameterCounts.length = 0;
     storage = new PostgreSQLStorage('postgres://test:test@localhost:5432/test');
   });
 
@@ -228,6 +238,18 @@ describe('PostgreSQLStorage', () => {
       expect(storage.getRelationsFor('A')[0].to).toBe('B');
     });
 
+    it('round-trips all relation fields through PostgreSQL hydration', async () => {
+      const relation: Relation = {
+        from: 'A', to: 'B', relationType: 'r', weight: 0.5, confidence: 0.8,
+        createdAt: '2026-01-01T00:00:00.000Z', lastModified: '2026-01-02T00:00:00.000Z',
+        metadata: { source: 'test' }, properties: { custom: { strength: 0.9 } },
+      };
+      await storage.appendRelation(relation);
+      storage.clearCache();
+      await storage.ensureLoaded();
+      expect(storage.getRelationsFrom('A')).toEqual([relation]);
+    });
+
     it('appendRelation is idempotent (ON CONFLICT DO NOTHING)', async () => {
       await storage.appendEntity({ name: 'A', entityType: 't', observations: [] });
       await storage.appendEntity({ name: 'B', entityType: 't', observations: [] });
@@ -266,6 +288,92 @@ describe('PostgreSQLStorage', () => {
       expect(storage.getEntityByName('old')).toBeUndefined();
       expect(storage.getEntityByName('A')?.observations).toEqual(['fresh']);
       expect(storage.getRelationsFor('A')).toHaveLength(1);
+    });
+
+    it('normalizes duplicate graph keys with database conflict semantics', async () => {
+      await storage.saveGraph({
+        entities: [
+          { name: 'A', entityType: 'old', observations: [] },
+          { name: 'B', entityType: 'other', observations: [] },
+          { name: 'A', entityType: 'new', observations: ['latest'] },
+        ],
+        relations: [
+          { from: 'A', to: 'B', relationType: 'r', weight: 0.2 },
+          { from: 'A', to: 'B', relationType: 'r', weight: 0.9 },
+        ],
+      });
+      expect(storage.cachedGraph?.entities).toHaveLength(2);
+      expect(storage.getEntityByName('A')?.entityType).toBe('new');
+      expect(storage.getEntitiesByType('old')).toEqual([]);
+      expect(storage.getRelationsFrom('A')).toHaveLength(1);
+      expect(storage.getRelationsFrom('A')[0].weight).toBe(0.2);
+      const before = await storage.getGraphForMutation();
+      storage.clearCache();
+      expect(await storage.getGraphForMutation()).toEqual(before);
+    });
+
+    it('cannot overwrite canonical fields or prototypes through stored extra data', async () => {
+      memEntities.set('A', {
+        name: 'A', entity_type: 'note', observations: [],
+        extra: JSON.parse('{"name":"evil","entityType":"evil","__proto__":{"polluted":true},"constructor":"evil","extension":"ok"}'),
+      });
+      memRelations.push({
+        from_name: 'A', to_name: 'B', relation_type: 'r',
+        extra: JSON.parse('{"from":"evil","to":"evil","relationType":"evil","__proto__":{"polluted":true},"constructor":"evil","extension":"ok"}'),
+      });
+      await storage.ensureLoaded();
+      const entity = storage.getEntityByName('A')!;
+      const relation = storage.getRelationsFrom('A')[0];
+      expect(entity).toMatchObject({ name: 'A', entityType: 'note', extension: 'ok' });
+      expect(relation).toMatchObject({ from: 'A', to: 'B', relationType: 'r', extension: 'ok' });
+      for (const record of [entity, relation]) {
+        expect(Object.getPrototypeOf(record)).toBe(Object.prototype);
+        expect(Object.hasOwn(record, '__proto__')).toBe(false);
+        expect(Object.hasOwn(record, 'constructor')).toBe(false);
+      }
+    });
+
+    it('duplicate relation appends preserve the first stored metadata before and after reload', async () => {
+      const first = { from: 'A', to: 'B', relationType: 'r', weight: 0.1, metadata: { source: 'first' } };
+      await storage.appendRelation(first);
+      await storage.appendRelation({ ...first, weight: 0.9, metadata: { source: 'second' } });
+      expect(storage.getRelationsFrom('A')).toEqual([first]);
+      storage.clearCache();
+      await storage.ensureLoaded();
+      expect(storage.getRelationsFrom('A')).toEqual([first]);
+    });
+
+    it('bulk replacement bounds parameters and uses chunks instead of per-row round trips', async () => {
+      const entities = Array.from({ length: 2501 }, (_, i) => ({ name: `E${i}`, entityType: 't', observations: [] }));
+      const relations = entities.slice(1).map(entity => ({ from: 'E0', to: entity.name, relationType: 'r' }));
+      await storage.saveGraph({ entities, relations });
+      expect(insertParameterCounts).toEqual([22000, 22000, 11022, 10000, 10000, 5000]);
+      storage.clearCache();
+      await storage.ensureLoaded();
+      expect(storage.cachedGraph?.entities).toHaveLength(2501);
+      expect(storage.getRelationsFrom('E0')).toHaveLength(2500);
+      expect(storage.getEntityByName('E2500')).toBeDefined();
+    });
+
+    it('keeps derived indexes coherent on replacement, type changes, cache clear, and reload', async () => {
+      await storage.appendEntity({ name: 'A', entityType: 'old', observations: ['Before'] });
+      await storage.appendEntity({ name: 'B', entityType: 'other', observations: [] });
+      await storage.appendEntity({ name: 'A', entityType: 'new', observations: ['After'] });
+      expect(storage.getEntitiesByType('old')).toEqual([]);
+      expect(storage.getEntitiesByType('new').map(entity => entity.name)).toEqual(['A']);
+      expect(storage.getEntityTypes()).toEqual(['new', 'other']);
+      const observations = ['Changed'];
+      await storage.updateEntity('A', { entityType: 'other', observations });
+      observations.push('caller mutation');
+      expect(storage.getEntityByName('A')?.observations).toEqual(['Changed']);
+      expect(storage.getLowercased('A')?.observations).toEqual(['changed']);
+      expect(storage.getEntitiesByType('other').map(entity => entity.name)).toEqual(['A', 'B']);
+      storage.clearCache();
+      expect(storage.getLowercased('A')).toBeUndefined();
+      expect(storage.getEntityTypes()).toEqual([]);
+      await storage.ensureLoaded();
+      expect(storage.getEntitiesByType('other').map(entity => entity.name)).toEqual(['A', 'B']);
+      expect(storage.getLowercased('A')?.observations).toEqual(['changed']);
     });
 
     it('saveGraph runs the replace inside one database transaction', async () => {

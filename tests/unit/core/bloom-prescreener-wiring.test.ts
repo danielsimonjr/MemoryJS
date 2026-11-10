@@ -3,7 +3,8 @@
  *
  * - Disabled by default: no screener constructed, nothing attached.
  * - Enabled with MEMORY_FUZZY_BLOOM_PRESCREEN='true': attached to the
- *   fuzzy searcher, lazily built on the first search, cleared on writes.
+ *   fuzzy searcher; built only after explicit approximate prefilter opt-in,
+ *   then lazily rebuilt after writes.
  * - Parity: fuzzy results with the screener equal results without it,
  *   including a typo query (the Levenshtein fallback must still find it).
  */
@@ -100,7 +101,7 @@ describe('CMP-2 ctx.bloomPreScreener (MEMORY_FUZZY_BLOOM_PRESCREEN)', () => {
     expect(ctx.bloomPreScreener).toBeNull();
   });
 
-  it('attaches when enabled, builds on first search, clears on write, rebuilds on next search', async () => {
+  it('attaches without affecting exact mode; builds and rebuilds only after approximate opt-in', async () => {
     setEnv('true');
     const ctx = newCtx();
     await ctx.entityManager.createEntities(buildFixture());
@@ -110,6 +111,9 @@ describe('CMP-2 ctx.bloomPreScreener (MEMORY_FUZZY_BLOOM_PRESCREEN)', () => {
     expect(ctx.searchManager.fuzzySearcher.hasBloomPreScreener()).toBe(true);
     expect(screener!.isBuilt()).toBe(false);
 
+    await ctx.searchManager.fuzzySearcher.fuzzySearch('Alice Zeta');
+    expect(screener!.isBuilt()).toBe(false);
+    ctx.searchManager.fuzzySearcher.setApproximatePrefilter(true);
     await ctx.searchManager.fuzzySearcher.fuzzySearch('Alice Zeta');
     expect(screener!.isBuilt()).toBe(true);
 
@@ -168,7 +172,7 @@ describe('CMP-2 ctx.bloomPreScreener (MEMORY_FUZZY_BLOOM_PRESCREEN)', () => {
     expect(second).not.toBe(first);
   });
 
-  it('documented trade-off: screened fuzzy search is approximate (drops typo match when a literal token exists)', async () => {
+  it('preserves typo recall when attached and loses it only after explicit approximate opt-in', async () => {
     const fixture = [
       { name: 'Alice', entityType: 'person', observations: ['zeta team lead'] },
       { name: 'Bundle', entityType: 'thing', observations: ['alise token here'] },
@@ -187,6 +191,12 @@ describe('CMP-2 ctx.bloomPreScreener (MEMORY_FUZZY_BLOOM_PRESCREEN)', () => {
     const p = await plainFuzzy.fuzzySearch('Alise');
     const s = await screenedFuzzy.fuzzySearch('Alise');
     expect(p.entities.map((e) => e.name).sort()).toEqual(['Alice', 'Bundle']);
-    expect(s.entities.map((e) => e.name).sort()).toEqual(['Bundle']);
+    expect(s.entities.map((e) => e.name).sort()).toEqual(['Alice', 'Bundle']);
+    screenedFuzzy.setApproximatePrefilter(true);
+    const approximate = await screenedFuzzy.fuzzySearch('Alise');
+    expect(approximate.entities.map((e) => e.name).sort()).toEqual(['Bundle']);
+    screenedFuzzy.setApproximatePrefilter(false);
+    expect((await screenedFuzzy.fuzzySearch('Alise')).entities.map(e => e.name).sort())
+      .toEqual(['Alice', 'Bundle']);
   });
 });

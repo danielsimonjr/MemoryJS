@@ -16,6 +16,8 @@ export { levenshteinDistance } from '../utils/searchAlgorithms.js';
  * Input data structure for the worker.
  */
 export interface WorkerInput {
+  /** Internal bounded, lowercase payload; external callers retain normalization by default. */
+  normalized?: boolean;
   /** Search query string */
   query: string;
   /** Array of entities to search */
@@ -84,7 +86,7 @@ export function searchEntities(data: WorkerInput): MatchResult[] {
 
   for (const entity of entities) {
     // Check name similarity
-    const nameLower = entity.nameLower
+    const nameLower = data.normalized ? entity.nameLower.slice(0, FUZZY_SEARCH_LIMITS.MAX_NAME_LENGTH) : entity.nameLower
       .slice(0, FUZZY_SEARCH_LIMITS.MAX_NAME_LENGTH)
       .toLowerCase();
     const nameScore = similarity(queryLower, nameLower, threshold);
@@ -95,7 +97,8 @@ export function searchEntities(data: WorkerInput): MatchResult[] {
 
     if (entity.entityTypeLower !== undefined) {
       const typeScore = similarity(queryLower,
-        entity.entityTypeLower.slice(0, FUZZY_SEARCH_LIMITS.MAX_NAME_LENGTH).toLowerCase(), threshold);
+        data.normalized ? entity.entityTypeLower.slice(0, FUZZY_SEARCH_LIMITS.MAX_NAME_LENGTH) :
+          entity.entityTypeLower.slice(0, FUZZY_SEARCH_LIMITS.MAX_NAME_LENGTH).toLowerCase(), threshold);
       if (typeScore >= threshold) {
         results.push({ name: entity.name, score: typeScore, matchedIn: 'type' });
         continue;
@@ -104,7 +107,7 @@ export function searchEntities(data: WorkerInput): MatchResult[] {
 
     // Check observations
     for (const obs of entity.observations) {
-      const observation = obs
+      const observation = data.normalized ? obs.slice(0, FUZZY_SEARCH_LIMITS.MAX_OBSERVATION_LENGTH) : obs
         .slice(0, FUZZY_SEARCH_LIMITS.MAX_OBSERVATION_LENGTH)
         .toLowerCase();
       let obsScore = similarity(queryLower, observation, threshold);

@@ -142,7 +142,7 @@ const ctx = new ManagerContext('./memory.jsonl');
 | `toolCallObserver` | `ToolCallObserver` | Canonical producer pipeline for `toolAffordanceManager` (`observeStart` / `observeComplete` / `observeError`). `@internal` |
 | `agentMemory(config?)` | `AgentMemoryManager` | **Method, not a getter.** Agent Memory System facade; `config` overrides the env-var defaults and re-instantiates the cached facade |
 | `queryNaturalLanguage(text)` | `Promise<Entity[]>` | **Method.** LLM-planned NL query decomposition; uses the default no-LLM planner unless a custom `llmQueryPlanner()` was initialised. The LLM provider is configured in code (`llmQueryPlanner()`), not by an env var |
-| `bloomPreScreener` | `BloomPreScreener \| null` | Bloom-filter pre-screen for `FuzzySearch` (`@experimental`). `null` unless `MEMORY_FUZZY_BLOOM_PRESCREEN='true'`; built lazily on the first fuzzy search and cleared on entity events. Approximate (speed over recall): typo queries can miss matches when another entity contains the literal token |
+| `bloomPreScreener` | `BloomPreScreener \| null` | Bloom-filter pre-screen for `FuzzySearch` (`@experimental`). `null` unless `MEMORY_FUZZY_BLOOM_PRESCREEN='true'`. Attachment preserves exact recall. Explicit `ctx.searchManager.fuzzySearcher.setApproximatePrefilter(true)` enables lazy building and recall-losing candidate rejection; writes clear the filter |
 | `createProceduralGraph(config)` | `Promise<ProceduralGraphManager>` | **Factory, not a lazy getter** (`@experimental`). See note below. |
 
 Procedural Graph is created via `createProceduralGraph(config)`, not a `ctx.proceduralGraph` getter:
@@ -2608,8 +2608,8 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 
 | Claim | Value | Source |
 |---|---|---|
-| totalExports | 3984 | repo-tools map |
-| totalSourceFiles | 995 | repo-tools map |
+| totalExports | 3990 | repo-tools map |
+| totalSourceFiles | 1004 | repo-tools map |
 
 The figures below come from `bun run tools:deps` and `bun run tools:deps:full`. These generators read `src/` only. The gate does not check these figures. Read them in `dependency-summary.compact.json` and `TEST_COVERAGE.md`.
 

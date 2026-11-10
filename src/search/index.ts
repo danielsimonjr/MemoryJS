@@ -58,10 +58,13 @@ export {
   type SQLiteStorageWithEmbeddings,
 } from './VectorStore.js';
 
+export { LSHVectorStore, type LSHVectorStoreOptions } from './LSHVectorStore.js';
+
 // Phase 4 Sprint 12: Semantic Search Manager
 export {
   SemanticSearch,
   entityToText,
+  type SemanticSearchOptions,
 } from './SemanticSearch.js';
 
 // Phase 10 Sprint 3: TF-IDF Index Manager and Event Sync

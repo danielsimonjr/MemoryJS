@@ -49,7 +49,7 @@ Every entry point below is exercised by a runnable file in [`examples/`](example
 Install with `bun add @danielsimonjr/memoryjs`.
 
 npm and pnpm consumers can install the same package from the npm registry. Subpath imports keep load footprints
-small (`sideEffects` is `false`): `/sqlite`, `/core`, `/search`, `/agent`, `/features`, `/utils`, `/types`,
+small; SQLite registration and generated shared chunks are retained as side effects: `/sqlite`, `/core`, `/search`, `/agent`, `/features`, `/utils`, `/types`,
 `/adapters` and `/security` are available next to the root entry point.
 
 Requirements: Node.js 22.12.0 or later at runtime; Bun 1.4.2 or later for development (`bun.lock` is authoritative).
@@ -213,6 +213,11 @@ const hybrid = await ctx.hybridSearchManager.search(graph, 'runtime', {
 Full example: [`examples/02-search.ts`](examples/02-search.ts)
 
 `ctx.semanticSearch` is `null` when no embedding provider is available, so check it before a semantic query.
+
+For opt-in approximate vector retrieval and reusable semantic entity lookups, see
+[Approximate vector search](docs/guides/APPROXIMATE_VECTOR_SEARCH.md). Exact vector search remains the default.
+TF-IDF snapshot/journal persistence and direct-edit compatibility are described in
+[TF-IDF index persistence](docs/guides/TFIDF_INDEX_PERSISTENCE.md).
 
 ## Graph Algorithms
 

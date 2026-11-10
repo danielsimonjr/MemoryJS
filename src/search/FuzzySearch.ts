@@ -7,17 +7,18 @@
  * @module search/FuzzySearch
  */
 
-import type { Entity, KnowledgeGraph } from '../types/index.js';
+import type { Entity, KnowledgeGraph, LowercaseData } from '../types/index.js';
 import type { GraphStorage } from '../core/GraphStorage.js';
 import type { CachePressureCoordinator } from '../utils/CachePressureCoordinator.js';
 import { levenshteinDistance } from '../utils/index.js';
 import { logger } from '../utils/logger.js';
-import { cleanupExpiredEntries, evictOldest } from '../utils/searchCache.js';
+import { cleanupExpiredEntries, evictOldest, getGraphGenerations } from '../utils/searchCache.js';
 import { FUZZY_SEARCH_LIMITS, SEARCH_LIMITS } from '../utils/constants.js';
 import { SearchFilterChain, type SearchFilters } from './SearchFilterChain.js';
 import { NGramIndex } from './NGramIndex.js';
 import type { BloomPreScreener } from './BloomPreScreener.js';
 import { collectInducedRelations } from './inducedSubgraph.js';
+import type { WorkerInput } from '../workers/levenshteinWorker.js';
 import workerpool, { type Pool } from '@danielsimonjr/workerpool';
 import { fileURLToPath } from 'url';
 import { dirname, join, normalize } from 'path';
@@ -38,6 +39,8 @@ interface FuzzyCacheEntry {
   entityNames: string[];
   /** Entity count when cache was created (for invalidation) */
   entityCount: number;
+  /** Storage mutation generation; count alone misses same-size updates. */
+  entityGeneration: number;
   /** Timestamp when cached */
   timestamp: number;
 }
@@ -63,13 +66,17 @@ const WORKER_MIN_ENTITIES = 500;
  */
 const WORKER_MAX_THRESHOLD = 0.8;
 
+/** Amortize worker scheduling over useful text, rather than host CPU count alone. */
+const WORKER_TARGET_CHARACTERS = 64 * 1024;
+const WORKER_MIN_CHUNK_ENTITIES = 250;
+
 /**
  * Match result from worker.
  */
 interface MatchResult {
   name: string;
   score: number;
-  matchedIn: 'name' | 'observation';
+  matchedIn: 'name' | 'type' | 'observation';
 }
 
 /**
@@ -83,15 +90,14 @@ export interface FuzzySearchOptions {
    */
   useWorkerPool?: boolean;
 
-  /**
-   * Optional NGramIndex to use as a prefilter before Levenshtein scoring.
-   * When provided, only documents that share at least one n-gram with the
-   * query (above `ngramThreshold`) are passed to the full fuzzy match.
-   * This is a pure performance optimisation — results should be identical
-   * to running without the prefilter (the Levenshtein step re-validates
-   * every candidate).
-   */
+  /** Optional NGramIndex used only with approximatePrefilter enabled. */
   ngramIndex?: NGramIndex;
+
+  /**
+   * Allow n-gram/Bloom candidate rejection, which can lose valid fuzzy matches.
+   * Default false: exact recall is retained even when indexes are attached.
+   */
+  approximatePrefilter?: boolean;
 
   /**
    * Jaccard similarity threshold used when querying the NGramIndex prefilter.
@@ -122,6 +128,9 @@ export class FuzzySearch {
    */
   private workerPool: Pool | null = null;
 
+  /** Storage replaces lowercase records on mutation; old payloads are collected automatically. */
+  private workerEntityCache = new WeakMap<LowercaseData, WorkerInput['entities'][number]>();
+
   /**
    * Phase 7 Sprint 3: Path to the worker script.
    */
@@ -144,17 +153,12 @@ export class FuzzySearch {
    * Feature 6: Jaccard threshold for NGramIndex prefilter queries.
    */
   private ngramThreshold: number;
+  private approximatePrefilter: boolean;
   private cachePressure?: CachePressureCoordinator;
 
   /**
-   * Optional Bloom pre-screener. When attached via
-   * `setBloomPreScreener`, the candidate-set is intersected with the
-   * pre-screener's `intersectCandidates(query)` BEFORE the Levenshtein
-   * scan — entities whose Bloom filter says a query term is absent
-   * are skipped without a downstream comparison.
-   *
-   * Opt-in: callers must build the screener and attach it explicitly;
-   * default behaviour (no screener) matches the pre-Phase-3 path.
+   * Optional exact-token pre-screener. Candidate rejection is approximate
+   * for fuzzy matching and only runs with approximatePrefilter enabled.
    */
   private bloomPreScreener: BloomPreScreener | null = null;
 
@@ -162,6 +166,7 @@ export class FuzzySearch {
     this.useWorkerPool = options.useWorkerPool ?? true;
     this.ngramIndex = options.ngramIndex ?? null;
     this.ngramThreshold = options.ngramThreshold ?? 0.1;
+    this.approximatePrefilter = options.approximatePrefilter ?? false;
     this.cachePressure = options.cachePressure;
     this.cachePressure?.register(this);
     // Resolve the Levenshtein worker across every build layout. The worker
@@ -251,11 +256,11 @@ export class FuzzySearch {
   }
 
   /**
-   * Feature 6: Set (or replace) the NGramIndex prefilter.
+   * Set (or replace) the index used in approximatePrefilter mode.
    *
    * The index should already be populated with the same documents that are
-   * stored in the backing `GraphStorage`. Setting this to `null` disables
-   * the prefilter and reverts to a full corpus scan.
+   * stored in the backing `GraphStorage`. This heuristic is inactive unless
+   * approximatePrefilter is enabled. Setting null disables the heuristic.
    *
    * @param index - Populated NGramIndex, or null to disable prefiltering.
    * @param threshold - Optional Jaccard threshold override (default: 0.1).
@@ -266,6 +271,12 @@ export class FuzzySearch {
     if (threshold !== undefined) {
       this.ngramThreshold = threshold;
     }
+  }
+
+  /** Explicitly allow recall-losing n-gram/Bloom rejection (disabled by default). */
+  setApproximatePrefilter(enabled: boolean): void {
+    this.approximatePrefilter = enabled;
+    this.clearCache();
   }
 
   /**
@@ -296,8 +307,8 @@ export class FuzzySearch {
   /**
    * Attach a `BloomPreScreener` for opt-in candidate pre-screening.
    * Pass `null` to detach. The screener narrows the candidate set
-   * before the Levenshtein scan; correctness is preserved because
-   * Levenshtein re-validates every candidate.
+   * before the Levenshtein scan only in approximatePrefilter mode.
+   * Verification removes false positives, but cannot restore excluded matches.
    */
   setBloomPreScreener(screener: BloomPreScreener | null): void {
     this.bloomPreScreener = screener;
@@ -356,13 +367,14 @@ export class FuzzySearch {
 
     const graph = await this.storage.loadGraph();
     const queryLower = query.toLowerCase();
+    const entityGeneration = getGraphGenerations(this.storage).entity;
 
     // Phase 4 Sprint 3: Generate cache key and check cache
     const cacheKey = this.generateCacheKey(query, threshold, tags, minImportance, maxImportance, offset, limit, projectId);
     const cached = this.fuzzyResultCache.get(cacheKey);
 
     // Check if cache is valid (entity count hasn't changed)
-    if (cached && cached.entityCount === graph.entities.length) {
+    if (cached && cached.entityCount === graph.entities.length && cached.entityGeneration === entityGeneration) {
       const now = Date.now();
       if (now - cached.timestamp < FUZZY_CACHE_TTL_MS) {
         // Return cached results
@@ -373,14 +385,20 @@ export class FuzzySearch {
       }
     }
 
-    // Feature 6: Apply NGramIndex prefilter to reduce candidate set.
-    // This is a pure performance optimisation — the Levenshtein step below
-    // re-validates every candidate so results are identical with or without it.
-    let candidateEntities: readonly Entity[] = graph.entities;
-    if (this.ngramIndex) {
+    // Resolve version visibility from the complete graph before narrowing candidates.
+    const filters: SearchFilters = { tags, minImportance, maxImportance, projectId };
+    const versionContext = {
+      visibleSupersededNames: SearchFilterChain.publishedAncestorsOfDraftHeads(graph.entities),
+    };
+    const eligibleEntities = SearchFilterChain.applyFilters(graph.entities, filters, versionContext);
+
+    // These heuristics cannot prove rejection under substring/word fuzzy
+    // semantics. Use them only when the caller explicitly accepts recall loss.
+    let candidateEntities: readonly Entity[] = eligibleEntities;
+    if (this.approximatePrefilter && this.ngramIndex) {
       const candidateIds = new Set(this.ngramIndex.query(query, this.ngramThreshold));
       if (candidateIds.size > 0) {
-        candidateEntities = graph.entities.filter(e => candidateIds.has(e.name));
+        candidateEntities = candidateEntities.filter(e => candidateIds.has(e.name));
       }
       // If the NGramIndex returns zero candidates, fall back to full scan to
       // avoid missing results (can happen for very short queries or very high
@@ -397,10 +415,10 @@ export class FuzzySearch {
     // find tolerant matches the Bloom filter couldn't see.
     // Lazy build: a write clears the screener (see ManagerContext wiring), so
     // the first search after a write rebuilds it from the current graph.
-    if (this.bloomPreScreener && !this.bloomPreScreener.isBuilt() && graph.entities.length > 0) {
+    if (this.approximatePrefilter && this.bloomPreScreener && !this.bloomPreScreener.isBuilt() && graph.entities.length > 0) {
       await this.bloomPreScreener.build();
     }
-    if (this.bloomPreScreener && this.bloomPreScreener.isBuilt()) {
+    if (this.approximatePrefilter && this.bloomPreScreener && this.bloomPreScreener.isBuilt()) {
       const screened = new Set(this.bloomPreScreener.intersectCandidates(query));
       if (screened.size > 0 && screened.size < candidateEntities.length) {
         candidateEntities = candidateEntities.filter((e) => screened.has(e.name));
@@ -423,21 +441,15 @@ export class FuzzySearch {
       fuzzyMatched = this.performFuzzyMatch(candidateEntities, queryLower, threshold);
     }
 
-    // Apply tag and importance filters using SearchFilterChain
-    const filters: SearchFilters = { tags, minImportance, maxImportance, projectId };
-    const versionContext = {
-      visibleSupersededNames: SearchFilterChain.publishedAncestorsOfDraftHeads(graph.entities),
-    };
-    const filteredEntities = SearchFilterChain.applyFilters(fuzzyMatched, filters, versionContext);
-
     // Apply pagination using SearchFilterChain
     const pagination = SearchFilterChain.validatePagination(offset, limit);
-    const paginatedEntities = SearchFilterChain.paginate(filteredEntities, pagination);
+    const paginatedEntities = SearchFilterChain.paginate(fuzzyMatched, pagination);
 
     // Phase 4 Sprint 3: Cache the results
     this.fuzzyResultCache.set(cacheKey, {
       entityNames: paginatedEntities.map(e => e.name),
       entityCount: graph.entities.length,
+      entityGeneration,
       timestamp: Date.now(),
     });
     this.cachePressure?.evictIfOverBudget();
@@ -551,43 +563,29 @@ export class FuzzySearch {
     entities: Entity[]
   ): Promise<Entity[]> {
     try {
-      // Initialize worker pool lazily using workerpool
+      const prepared = entities.map(entity => this.prepareWorkerEntity(entity));
+      const textCharacters = prepared.reduce((sum, entity) => sum + entity.nameLower.length +
+        (entity.entityTypeLower?.length ?? 0) + entity.observations.reduce((n, obs) => n + obs.length, 0), 0);
+      const numWorkers = Math.max(1, Math.min(
+        Math.max(1, workerpool.cpus - 1),
+        Math.ceil(entities.length / WORKER_MIN_CHUNK_ENTITIES),
+        Math.ceil(textCharacters / WORKER_TARGET_CHARACTERS),
+      ));
+      // Start only as many workers as the first workload can use. Later larger
+      // searches can queue chunks on this pool without oversubscribing the host.
       if (!this.workerPool) {
-        // Enable ESM module support for Node.js 20+
-        // The 'type: module' option is needed for ESM workers but may not be in @types/node
         const workerThreadOpts = { type: 'module' } as Record<string, unknown>;
         this.workerPool = workerpool.pool(this.workerPath, {
-          maxWorkers: Math.max(1, workerpool.cpus - 1),
+          maxWorkers: numWorkers,
           workerType: 'thread',
           workerThreadOpts,
         });
       }
-
-      // Split entities into chunks based on CPU count
-      const numWorkers = Math.max(1, workerpool.cpus - 1);
-      const chunkSize = Math.ceil(entities.length / numWorkers);
-      const chunks: Entity[][] = [];
-      for (let i = 0; i < entities.length; i += chunkSize) {
-        chunks.push(entities.slice(i, i + chunkSize));
+      const chunkSize = Math.max(1, Math.ceil(entities.length / numWorkers));
+      const workerInputs: WorkerInput[] = [];
+      for (let i = 0; i < prepared.length; i += chunkSize) {
+        workerInputs.push({ query, threshold, normalized: true, entities: prepared.slice(i, i + chunkSize) });
       }
-
-      // Prepare worker inputs with lowercased data
-      const workerInputs = chunks.map(chunk => ({
-        query,
-        threshold,
-        entities: chunk.map(e => ({
-          name: e.name,
-          entityTypeLower: e.entityType.slice(0, FUZZY_SEARCH_LIMITS.MAX_NAME_LENGTH).toLowerCase(),
-          nameLower: this.truncateField(
-            e.name.slice(0, FUZZY_SEARCH_LIMITS.MAX_NAME_LENGTH).toLowerCase(),
-            FUZZY_SEARCH_LIMITS.MAX_NAME_LENGTH
-          ),
-          observations: e.observations.map(o => this.truncateField(
-            o.slice(0, FUZZY_SEARCH_LIMITS.MAX_OBSERVATION_LENGTH).toLowerCase(),
-            FUZZY_SEARCH_LIMITS.MAX_OBSERVATION_LENGTH
-          )),
-        })),
-      }));
 
       // Execute all chunks in parallel using workerpool with timeout
       const WORKER_TIMEOUT_MS = 30000; // 30 seconds
@@ -628,6 +626,22 @@ export class FuzzySearch {
       );
       return [];
     }
+  }
+
+  /** Build a bounded payload once per immutable storage lowercase record. */
+  private prepareWorkerEntity(entity: Entity): WorkerInput['entities'][number] {
+    const lower = this.storage.getLowercased(entity.name);
+    const cached = lower && this.workerEntityCache.get(lower);
+    if (cached && cached.name === entity.name) return cached;
+    const prepared = {
+      name: entity.name,
+      nameLower: this.truncateField(lower?.name ?? entity.name.toLowerCase(), FUZZY_SEARCH_LIMITS.MAX_NAME_LENGTH),
+      entityTypeLower: this.truncateField(lower?.entityType ?? entity.entityType.toLowerCase(), FUZZY_SEARCH_LIMITS.MAX_NAME_LENGTH),
+      observations: (lower?.observations ?? entity.observations.map(o => o.toLowerCase()))
+        .map(o => this.truncateField(o, FUZZY_SEARCH_LIMITS.MAX_OBSERVATION_LENGTH)),
+    };
+    if (lower) this.workerEntityCache.set(lower, prepared);
+    return prepared;
   }
 
   /**

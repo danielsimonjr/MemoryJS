@@ -123,55 +123,27 @@ describe('TFIDFIndexManager IDF and add/update pins', () => {
     expect(stateOf(first)).toBe(stateOf(second));
   });
 
-  it('addDocument and updateDocument differ in IDF key order inside a batch when terms are unchanged', () => {
-    // addDocument marks the batch dirty even when no term changed. The full pass
-    // at endIdfBatch() rebuilds the IDF map, so its key order changes.
+  it('keeps stable IDF key order for unchanged terms inside a batch', () => {
     const same = { name: 'B', entityType: 'note', observations: ['gamma beta'] };
-
     first.beginIdfBatch();
-    try {
-      first.addDocument(same);
-    } finally {
-      first.endIdfBatch();
-    }
+    first.addDocument(same);
+    first.endIdfBatch();
     second.beginIdfBatch();
-    try {
-      second.updateDocument(same);
-    } finally {
-      second.endIdfBatch();
-    }
-
-    expect(stateOf(first)).not.toBe(stateOf(second));
-    expect(Array.from(first.getIndex()!.idf.keys())).toStrictEqual([
-      'a',
-      'note',
-      'alpha',
-      'beta',
-      'gamma',
-      'c',
-      'delta',
-      'b',
-    ]);
-    expect(Array.from(second.getIndex()!.idf.keys())).toStrictEqual([
-      'a',
-      'note',
-      'alpha',
-      'beta',
-      'b',
-      'gamma',
-      'c',
-      'delta',
-    ]);
+    second.updateDocument(same);
+    second.endIdfBatch();
+    // Lazy statistics no longer rebuild the whole vocabulary merely because
+    // a batch closed. Existing key order therefore remains stable.
+    expect(stateOf(first)).toBe(stateOf(second));
+    expect([...first.getIndex()!.idf.keys()]).toEqual(['a', 'note', 'alpha', 'beta', 'b', 'gamma', 'c', 'delta']);
   });
 
-  it('recalculates every term from the document frequency map, including a zero count, on a new document', () => {
-    // A zero count is only reachable through a damaged index file. The full
-    // pass writes log(N / 0) for it, which is Infinity.
+  it('does not introduce invalid zero-frequency terms into the IDF map', () => {
+    // Corrupt private statistics must not introduce a non-finite public score.
     (first as any).documentFrequency.set('zeta', 0);
 
     first.addDocument({ name: 'D', entityType: 'note', observations: ['epsilon'] });
 
-    expect(first.getIndex()!.idf.get('zeta')).toBe(Infinity);
+    expect(first.getIndex()!.idf.has('zeta')).toBe(false);
     expect(first.getIndex()!.idf.get('epsilon')).toBe(1.3862943611198906);
   });
 });
