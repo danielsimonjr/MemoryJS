@@ -1,11 +1,11 @@
 {
-  "totalFiles": 1037,
+  "totalFiles": 1038,
   "byDisposition": {
     "reachable": 411,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 590,
+    "test": 591,
     "tool": 10,
     "config": 2,
     "bench": 5,
@@ -15,7 +15,7 @@
     "benchmarks": 5,
     "examples": 15,
     "src": 415,
-    "tests": 590,
+    "tests": 591,
     "tools": 10,
     "config": 2
   },
@@ -7110,6 +7110,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 95
+    },
+    {
+      "file": "tests/unit/utils/threadPool.challenger.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 37
     },
     {
       "file": "tests/unit/utils/threadPool.live.test.ts",

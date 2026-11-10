@@ -9,7 +9,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 1037
+**Total files**: 1038
 
 ## Disposition counts
 
@@ -19,12 +19,12 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 590 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 591 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 5 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 15 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **1037** | |
+| **Total** | **1038** | |
 
 ## Per-area counts
 
@@ -34,7 +34,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `config` | 2 |
 | `examples` | 15 |
 | `src` | 415 |
-| `tests` | 590 |
+| `tests` | 591 |
 | `tools` | 10 |
 
 ## All files
@@ -1054,6 +1054,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/utils/taskScheduler.test.ts` | tests | test | 1118 |
 | `tests/unit/utils/textSimilarity.test.ts` | tests | test | 147 |
 | `tests/unit/utils/textSimilarity.tokenSets.test.ts` | tests | test | 95 |
+| `tests/unit/utils/threadPool.challenger.test.ts` | tests | test | 37 |
 | `tests/unit/utils/threadPool.live.test.ts` | tests | test | 93 |
 | `tests/unit/utils/threadPool.parity.test.ts` | tests | test | 272 |
 | `tests/unit/utils/threadPool.test.ts` | tests | test | 419 |
