@@ -4701,7 +4701,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 171
+      "loc": 168
     },
     {
       "file": "tests/unit/cli/audit.test.ts",

@@ -709,7 +709,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/WorkThreadManager.test.ts` | tests | test | 1209 |
 | `tests/unit/agent/WorldModel.test.ts` | tests | test | 176 |
 | `tests/unit/cli/actionFrame.test.ts` | tests | test | 446 |
-| `tests/unit/cli/ansi.test.ts` | tests | test | 171 |
+| `tests/unit/cli/ansi.test.ts` | tests | test | 168 |
 | `tests/unit/cli/audit.test.ts` | tests | test | 420 |
 | `tests/unit/cli/cache-reindex.test.ts` | tests | test | 157 |
 | `tests/unit/cli/check.test.ts` | tests | test | 165 |
