@@ -459,7 +459,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/utils/relationHelpers.ts` | src | reachable | 286 |
 | `src/utils/relationValidation.ts` | src | reachable | 257 |
 | `src/utils/RunExclusiveMutex.ts` | src | reachable | 44 |
-| `src/utils/schema.ts` | src | reachable | 1635 |
+| `src/utils/schema.ts` | src | reachable | 1641 |
 | `src/utils/schemas.ts` | src | reachable | 812 |
 | `src/utils/SchemaValidator.ts` | src | reachable | 373 |
 | `src/utils/searchAlgorithms.ts` | src | reachable | 252 |
@@ -1038,7 +1038,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/utils/relationValidation.test.ts` | tests | test | 507 |
 | `tests/unit/utils/RunExclusiveMutex.challenger.test.ts` | tests | test | 200 |
 | `tests/unit/utils/RunExclusiveMutex.test.ts` | tests | test | 237 |
-| `tests/unit/utils/schema.challenger.test.ts` | tests | test | 240 |
+| `tests/unit/utils/schema.challenger.test.ts` | tests | test | 268 |
 | `tests/unit/utils/schema.inventory.test.ts` | tests | test | 231 |
 | `tests/unit/utils/schema.parity.test.ts` | tests | test | 221 |
 | `tests/unit/utils/schemas.test.ts` | tests | test | 894 |

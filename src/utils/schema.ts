@@ -993,6 +993,8 @@ function enumerableValues(schema: AnySchema): ReadonlySet<unknown> | undefined {
       return new Set(def.values);
     case 'enum':
       return new Set(def.values);
+    case 'null':
+      return new Set([null]);
     case 'union': {
       const collected = new Set<unknown>();
       for (const option of def.options) {
@@ -1023,8 +1025,9 @@ function enumerableValues(schema: AnySchema): ReadonlySet<unknown> | undefined {
 function recordKeyValues(keyType: AnySchema): readonly (string | number)[] | undefined {
   const values = enumerableValues(keyType);
   if (!values) return undefined;
-  const keys = [...values].filter((value): value is string | number => typeof value === 'string' || typeof value === 'number');
-  return keys.length > 0 ? keys : undefined;
+  // An empty list is still a fixed key set: boolean and null literals enumerate, but none of
+  // them are object keys, so every present key is unrecognized (Zod 4.6.7).
+  return [...values].filter((value): value is string | number => typeof value === 'string' || typeof value === 'number');
 }
 
 /**
@@ -1545,7 +1548,7 @@ function jsonSchemaOfOne(schema: AnySchema, io: 'input' | 'output' = 'input'): R
       json.additionalProperties = jsonSchemaOfOne(def.valueType, io);
       const keys = recordKeyValues(def.keyType);
       const omittableOnInput = io === 'input' && inputOptin(def.valueType) !== undefined;
-      if (keys && !omittableOnInput) json.required = keys.map(String);
+      if (keys && keys.length > 0 && !omittableOnInput) json.required = keys.map(String);
       return json;
     }
     case 'union': {
@@ -1563,8 +1566,11 @@ function jsonSchemaOfOne(schema: AnySchema, io: 'input' | 'output' = 'input'): R
       return json;
     }
     case 'default': {
-      const serialized = JSON.stringify(typeof def.defaultValue === 'function' ? undefined : def.defaultValue);
-      const value = serialized === undefined ? null : (JSON.parse(serialized) as unknown);
+      const raw = typeof def.defaultValue === 'function' ? (def.defaultValue as () => unknown)() : def.defaultValue;
+      const serialized = JSON.stringify(raw);
+      // Zod's serializer rejects a default that JSON cannot encode, including `undefined`.
+      if (serialized === undefined) throw new SyntaxError('"undefined" is not valid JSON');
+      const value = JSON.parse(serialized) as unknown;
       // Zod writes `default` ahead of the inner keywords.
       return { default: value, ...jsonSchemaOfOne(def.innerType, io) };
     }

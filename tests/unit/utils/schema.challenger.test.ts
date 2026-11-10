@@ -225,6 +225,34 @@ describe('schema challenger — divergences from zod 4.6.7', () => {
     ).toThrow('Invalid discriminated union option at index "0"');
   });
 
+  it('record() with a boolean or null key schema treats every string key as unrecognized', () => {
+    // zod 4.6.7: z.literal(true) and z.null() enumerate, but only string/number
+    // values become required keys, so { true: 1 } is unrecognized_keys.
+    expect(issues(z.record(z.literal(true), z.number()).safeParse({ true: 1 }))).toEqual([
+      { code: 'unrecognized_keys', path: [], message: 'Unrecognized key: "true"' },
+    ]);
+    expect(issues(z.record(z.union([z.literal('a'), z.null()]), z.number()).safeParse({}))).toEqual([
+      { code: 'invalid_type', path: ['a'], message: 'Invalid input: expected number, received undefined' },
+    ]);
+    expect(issues(z.record(z.union([z.literal('a'), z.null()]), z.number()).safeParse({ null: 1 }))).toEqual([
+      { code: 'invalid_type', path: ['a'], message: 'Invalid input: expected number, received undefined' },
+      { code: 'unrecognized_keys', path: [], message: 'Unrecognized key: "null"' },
+    ]);
+    expect(z.toJSONSchema(z.record(z.union([z.literal('a'), z.null()]), z.number()), { io: 'input' })).toMatchObject({
+      required: ['a'],
+      propertyNames: { anyOf: [{ type: 'string', const: 'a' }, { type: 'null' }] },
+    });
+  });
+
+  it('toJSONSchema invokes a function default before serializing it', () => {
+    // zod 4.6.7 calls the default factory; a literal undefined default throws.
+    const schema = z.object({ n: z.number() }).default(() => ({ n: 4 }));
+    expect(z.toJSONSchema(schema, { io: 'input', unrepresentable: 'any' }).default).toEqual({ n: 4 });
+    expect(() => z.toJSONSchema(z.string().default(() => undefined as unknown as string), { io: 'input' })).toThrow(
+      '"undefined" is not valid JSON',
+    );
+  });
+
   it('invalid_type messages match zod for an object whose prototype chain carries a non-function constructor', () => {
     // zod 4.6.7's parsedType rule is `"constructor" in obj && obj.constructor`
     // → return obj.constructor.name (possibly undefined). For an input whose
