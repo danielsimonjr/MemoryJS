@@ -2205,7 +2205,7 @@ Reachable from a root: **402** of 402 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `../FailureManager.js` | `FailureManager` | Import (type-only) |
+| `../FailureManager.js` | `FailureManager, FailureInput` | Import (type-only) |
 | `../AgentReflectionManager.js` | `AgentReflectionManager` | Import (type-only) |
 | `../harness/InteractionLog.js` | `InteractionLog` | Import (type-only) |
 | `../procedural/graph/CompletionProvider.js` | `PGCompletionProvider` | Import (type-only) |
@@ -4524,7 +4524,7 @@ Reachable from a root: **402** of 402 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `../utils/graphCopy.js` | `borrowGraphView, deepCopyPlain` | Import |
-| `../utils/durableWriteFile.js` | `durableWriteFile, restrictSensitiveFilePermissions` | Import |
+| `../utils/durableWriteFile.js` | `durableWriteFile, restrictModeFromStat` | Import |
 | `../types/index.js` | `KnowledgeGraph, Entity, Relation, ReadonlyKnowledgeGraph, IGraphStorage, LowercaseData` | Import (type-only) |
 | `../utils/searchCache.js` | `clearAllSearchCaches, bumpEntityGeneration, bumpRelationGeneration` | Import |
 | `../utils/indexes.js` | `NameIndex, TypeIndex, LowercaseCache, RelationIndex, ObservationIndex` | Import |
@@ -7162,7 +7162,7 @@ Reachable from a root: **402** of 402 files. Dormant: **0** (0 orphaned, 0 test-
 
 **Exports:**
 - Classes: `DurableReplaceError`
-- Functions: `writeSyncedTmp`, `durableWriteFile`, `renameOver`, `syncParentDirectory`, `durableAppendFile`, `restrictSensitiveFilePermissions`
+- Functions: `writeSyncedTmp`, `durableWriteFile`, `renameOver`, `syncParentDirectory`, `durableAppendFile`, `restrictSensitiveFilePermissions`, `restrictModeFromStat`
 
 ---
 
@@ -7900,12 +7900,12 @@ graph TD
 |----------|-------|
 | Total TypeScript Files | 402 |
 | Total Modules | 12 |
-| Total Lines of Code | 126710 |
-| Total Exports | 2821 |
+| Total Lines of Code | 127111 |
+| Total Exports | 2822 |
 | Total Re-exports | 1716 |
 | Total Classes | 278 |
 | Total Interfaces | 825 |
-| Total Functions | 643 |
+| Total Functions | 644 |
 | Total Type Guards | 43 |
 | Total Enums | 4 |
 | Type-only Imports | 866 |

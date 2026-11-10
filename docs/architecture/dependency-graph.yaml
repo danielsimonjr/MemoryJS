@@ -2,7 +2,7 @@ metadata:
   name: "@danielsimonjr/memoryjs"
   totalFiles: 402
   totalModules: 12
-  totalExports: 2821
+  totalExports: 2822
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -6112,6 +6112,7 @@ modules:
         - file: ../FailureManager.js
           imports:
             - FailureManager
+            - FailureInput
           typeOnly: true
         - file: ../AgentReflectionManager.js
           imports:
@@ -11427,7 +11428,7 @@ modules:
         - file: ../utils/durableWriteFile.js
           imports:
             - durableWriteFile
-            - restrictSensitiveFilePermissions
+            - restrictModeFromStat
         - file: ../types/index.js
           imports:
             - KnowledgeGraph
@@ -18606,6 +18607,7 @@ modules:
         - syncParentDirectory
         - durableAppendFile
         - restrictSensitiveFilePermissions
+        - restrictModeFromStat
         - DurableReplaceError
       classes:
         - DurableReplaceError
@@ -18616,6 +18618,7 @@ modules:
         - syncParentDirectory
         - durableAppendFile
         - restrictSensitiveFilePermissions
+        - restrictModeFromStat
     src/utils/entityUtils.ts:
       description: Entity Utilities
       externalDependencies: []
@@ -21022,11 +21025,11 @@ reachability:
 statistics:
   totalTypeScriptFiles: 402
   totalModules: 12
-  totalLinesOfCode: 126710
-  totalExports: 2821
+  totalLinesOfCode: 127111
+  totalExports: 2822
   totalClasses: 278
   totalInterfaces: 825
-  totalFunctions: 643
+  totalFunctions: 644
   totalTypeGuards: 43
   totalEnums: 4
   totalConstants: 181
