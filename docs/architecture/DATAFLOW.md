@@ -1834,7 +1834,7 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 
 | Claim | Value | Source |
 |---|---|---|
-| totalSourceFiles | 1004 | repo-tools map |
+| totalSourceFiles | 1007 | repo-tools map |
 | reachableFiles | 401 | repo-tools map |
 | dormantFiles | 0 | repo-tools map |
 | runtimeCircularDeps | 0 | repo-tools map |
