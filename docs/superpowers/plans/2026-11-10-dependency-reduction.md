@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Remove `rimraf`, `chalk`, `async-mutex`, and `cli-table3` from `@danielsimonjr/memoryjs` by replacing the call sites this repo actually uses, and (only if Daniel accepts) make `chrono-node` an optional peer.
+**Goal:** Remove `rimraf`, `chalk`, `async-mutex`, `cli-table3`, and `chrono-node` from `@danielsimonjr/memoryjs` by replacing the call sites this repo actually uses. Sprint 5 replaces chrono-node with an in-repo English date parser. Daniel decided that on 2026-11-10 (9:12 AM CT). Parity holds, so the release is a minor and there is no optional peer and no 5.0.0.
 
 **Architecture:** One sprint is one PR. Each sprint adds a focused module, pins its behavior with tests written against the old package, switches call sites, then deletes the dependency and regenerates `bun.lock`. Library public types do not change. `RunExclusiveMutex` is a new class; it does not wrap `AsyncMutex`.
 
@@ -52,7 +52,8 @@ Handoff on every sprint: builder, then challenger, then the build reviewer recon
 | `src/cli/plainTable.ts` | 3 | `head` / `colWidths` / `wordWrap` / `push` / `toString`. `colWidths` include padding. |
 | `src/utils/RunExclusiveMutex.ts` | 4 | FIFO `runExclusive` with no timeout, no queue cap, and no reentrancy. |
 | Storage, column, tier, and interaction-log call sites | 4 | Construct `RunExclusiveMutex`. The legacy-delete test uses `AsyncMutex`. |
-| `src/search/TemporalQueryParser.ts` | 5 | Treat a missing `chrono-node` as "not parseable" plus one warning. |
+| `src/search/enDate/` | 5 | English date parsers and refiners. Replaces `chrono-node`. |
+| `src/search/TemporalQueryParser.ts` | 5 | Call the in-repo parser. Same results, including throws. |
 
 ## Sprint 1 — REBUILD `rimraf`
 
@@ -751,142 +752,179 @@ Expected: exit 0, and `rg` prints no matches. `src/utils/AsyncMutex.ts` still ex
 
 Challenger adds a test where 100 `runExclusive` callbacks append to an array and the array is `0..99`. That test must pass without fake timers.
 
-## Sprint 5 — MAKE OPTIONAL `chrono-node` (gated)
+## Sprint 5 — REBUILD `chrono-node`
 
-**Do not open this PR until Daniel has accepted the behavior change in writing.** If he declines, skip the sprint and leave `chrono-node` in `dependencies`. The decision then becomes KEEP.
+**Decision:** Daniel, 2026-11-10, 9:12 AM CT. Rebuild. Not an optional peer. Not gated. Not a 5.0.0.
+**Semver:** minor, and only after parity holds. No consumer-visible behavior change. Changelog under `## [Unreleased]` says the English date parser is in-repo and results match chrono-node 2.9.1. Do not bump `package.json` `version` in this sprint unless the release process for that minor is already the PR's job.
+**Scope:** `src/search/enDate/` plus `TemporalQueryParser`. Comments in `TemporalSearch.ts`, `SearchManager.ts`, and `SearchFacade.ts` that name chrono-node are updated to name the in-repo parser. No other module imports chrono-node.
+**Acceptance:** `rg "chrono-node" src package.json bun.lock` finds no matches except a MIT attribution line if a pattern table was adapted. Custom phrases and the chrono fallback phrases return the same start and end instants as chrono-node 2.9.1 at reference `2026-01-15T12:00:00.000Z` with `TZ=UTC`. Text chrono cannot parse still returns `undefined`. A throw from today's `parse` or `parseDate` path still throws. The dependency is removed only after that parity run is green.
 
-**Semver:** not a patch. Default if Daniel accepts the behavior change and accepts it landing on every `^4.x` consumer: minor. If he wants `^4.5.0` consumers to keep today's chrono behavior, the release is `5.0.0` and this sprint waits for that major. Changelog must say: natural-language dates outside `TemporalQueryParser`'s custom patterns require the optional peer `chrono-node`. Without it, those phrases return `undefined` and the process emits one warning. Custom patterns (`last hour`, `past N days`, `this week`, `today`, `yesterday`, `N units ago`) stay dependency-free and keep their current results.
-
-**Flag:** this changes `searchByTime` for phrases such as `between Monday and Wednesday` and `since January 1` when the peer is not installed. `since <date>` throws today if chrono cannot load; the sprint returns `undefined` instead. Current `episodic-memory` `main` (`b1b0d8e`, 1.7.3) does not depend on MemoryJS: `^4.5.0` was added on `cursor/recursa-task0-memoryjs-dep-2f37` and removed in `6b5de905` (PR #35). A minor release still updates every other `^4.5.0` consumer. Daniel chooses minor, `5.0.0`, or skip.
-
-**Acceptance after accept:** `chrono-node` is under `peerDependencies` and `peerDependenciesMeta.chrono-node.optional` is true. It is not under `dependencies`. Custom-pattern tests pass with the module uninstalled. A chrono-only phrase returns `undefined` and warns once when the module is absent. When the module is installed, `between Monday and Wednesday` still returns a range.
-
-### Task 9: Missing-peer behavior
+### Task 9: Inventory and failing phrase tests
 
 **Files:**
-- Modify: `src/search/TemporalQueryParser.ts`
-- Modify: `tests/unit/search/TemporalQueryParser.test.ts` (create the file if the suite lives under another name; search `parseTemporalExpression` first and edit that file)
-- Modify: `package.json`, `bun.lock`
-- Modify: `CHANGELOG.md` with one minor-version note. Do not bump `package.json` `version` in this sprint unless the release process for that minor is already the PR's job. Default: changelog entry under `Unreleased`, version bump left to Daniel.
+- Create: `tests/unit/search/enDate.inventory.test.ts`
+- Modify: `tests/unit/search/TemporalQueryParser.test.ts` only if a phrase it already covers is missing from the inventory list
 
 **Interfaces:**
-- Consumes: existing `parse`, `parseDate`
-- Produces: no new exported function. `requireChronoSync` returns the module or `undefined` after one warning. `parseWithChrono` returns `undefined` when the module is missing.
+- Consumes: the installed `chrono-node` 2.9.1 and `TemporalQueryParser`
+- Produces: a checked-in list of phrases. No new production export yet.
 
-- [ ] **Step 1: Write the failing test**
+The inventory is the phrases below. The test parses each one with `TemporalQueryParser` at `new Date('2026-01-15T12:00:00.000Z')` and records `start.toISOString()` and `end.toISOString()`. Run the test with `TZ=UTC`.
+
+Custom phrases, already implemented in `parseCustomPattern`:
+
+- `last hour`, `past hour`, `the last hour`
+- `last week`, `past week`, `last month`, `past month`, `last year`, `past year`
+- `past 3 days`, `last 2 hours`, `in the past 5 minutes`
+- `this week`, `this month`, `this year`, `today`, `yesterday`
+- `3 days ago`, `1 hour ago`
+
+Chrono fallback phrases, used today by `parse` / `parseDate`:
+
+- `since yesterday`, `since January 1`, `since 2026-01-01`
+- `between Monday and Wednesday`, `Jan 1 to Jan 7`
+- `tomorrow`, `tonight`, `noon`, `next Friday`, `3 days from now`
+- `2026-01-15`, `2026-01-15T12:00:00Z`, `January 15, 2026`
+
+Unparseable, must stay `undefined` (chrono returns no result; the parser does not throw):
+
+- `not a date`
+- empty string after trim
+
+- [ ] **Step 1: Write the inventory test against the current parser**
+
+The test imports `chrono-node` only as a comment naming version 2.9.1. It calls `TemporalQueryParser`. It asserts each custom and fallback phrase returns a defined range, and the two unparseable inputs return `undefined`.
+
+- [ ] **Step 2: Run it**
+
+Run: `TZ=UTC bunx vitest run tests/unit/search/enDate.inventory.test.ts`
+Expected: PASS against today's chrono-backed parser. This test is the inventory. It must stay green for the rest of the sprint.
+
+### Task 10: Parser, then parity against chrono-node
+
+**Files:**
+- Create: `src/search/enDate/types.ts`, `src/search/enDate/parsers.ts`, `src/search/enDate/refiners.ts`, `src/search/enDate/parseEnDate.ts`
+- Create: `tests/unit/search/enDate.parity.test.ts`
+
+**Interfaces:**
+- Consumes: nothing from chrono at runtime after Task 11. During this task the parity test imports both.
+- Produces:
 
 ```typescript
-import { describe, expect, it, vi } from 'vitest';
-import { TemporalQueryParser } from '../../../src/search/TemporalQueryParser.js';
+export interface EnDateResult {
+  start: Date;
+  end?: Date;
+  index: number;
+  text: string;
+}
+export function parseEnDate(text: string, ref: Date, options?: { forwardDate?: boolean }): EnDateResult[];
+export function parseEnDateStart(text: string, ref: Date, options?: { forwardDate?: boolean }): Date | undefined;
+```
 
-describe('TemporalQueryParser without chrono-node', () => {
-  it('still parses a custom pattern', () => {
-    const parser = new TemporalQueryParser();
-    const range = parser.parseTemporalExpression('last hour', new Date('2026-01-15T12:00:00Z'));
-    expect(range?.end.toISOString()).toBe('2026-01-15T12:00:00.000Z');
+`parseEnDate` follows chrono's shape: parsers propose components, refiners fill implied fields and merge ranges. Casual parsers cover today, tomorrow, yesterday, tonight, noon. Relative parsers cover `N units ago`, `in N units`, `next <weekday>`, `last <weekday>`, `this <week|month|year>`. Absolute parsers cover ISO dates, ISO instants, and `Month D, YYYY`. A range parser covers `between A and B` and `A to B`.
+
+- [ ] **Step 1: Write the parity test while chrono-node is still installed**
+
+```typescript
+import { describe, expect, it } from 'vitest';
+import * as chrono from 'chrono-node';
+import { parseEnDate, parseEnDateStart } from '../../../src/search/enDate/parseEnDate.js';
+
+const REF = new Date('2026-01-15T12:00:00.000Z');
+const PHRASES = [
+  'last hour', 'past 3 days', 'this week', 'today', 'yesterday', '3 days ago',
+  'since yesterday', 'between Monday and Wednesday', 'Jan 1 to Jan 7',
+  'tomorrow', 'tonight', 'noon', 'next Friday', '3 days from now',
+  '2026-01-15', '2026-01-15T12:00:00Z', 'January 15, 2026',
+];
+
+describe('enDate parity with chrono-node 2.9.1', () => {
+  it('matches start and end at the fixed UTC reference', () => {
+    for (const phrase of PHRASES) {
+      const ours = parseEnDate(phrase, REF, { forwardDate: false });
+      const theirs = chrono.parse(phrase, REF, { forwardDate: false });
+      expect(ours.length > 0).toBe(theirs.length > 0);
+      if (ours[0] && theirs[0]) {
+        expect(ours[0].start.toISOString()).toBe(theirs[0].start.date().toISOString());
+        expect(ours[0].end?.toISOString() ?? null).toBe(theirs[0].end?.date().toISOString() ?? null);
+      }
+    }
   });
 
-  it('returns undefined and warns once when chrono cannot be loaded', async () => {
-    vi.resetModules();
-    vi.doMock('chrono-node', () => {
-      throw new Error('cannot find module');
-    });
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const { TemporalQueryParser: Parser } = await import('../../../src/search/TemporalQueryParser.js');
-    const parser = new Parser();
-    expect(parser.parseTemporalExpression('between Monday and Wednesday', new Date('2026-01-15T12:00:00Z'))).toBeUndefined();
-    expect(parser.parseTemporalExpression('Jan 1 to Jan 7', new Date('2026-01-15T12:00:00Z'))).toBeUndefined();
-    expect(warn).toHaveBeenCalledTimes(1);
-    warn.mockRestore();
-    vi.doUnmock('chrono-node');
+  it('matches parseDate for since-clauses', () => {
+    expect(parseEnDateStart('January 1', REF, { forwardDate: false })?.toISOString())
+      .toBe(chrono.parseDate('January 1', REF, { forwardDate: false })?.toISOString());
   });
 });
 ```
 
-The mock throws on import. The implementation must catch a failed `require` of `chrono-node` and a failed dynamic `import()`. If Vitest's `vi.doMock` cannot intercept `createRequire`, the test may inject the failure by setting no mock and running in a worktree where `chrono-node` is not installed (`bun remove chrono-node` after the custom-pattern test is already green). The uninstalled-package form is the acceptance test the checker runs:
+Add at least twenty more casual, relative, and ISO phrases to `PHRASES` before calling the test done. Keep the reference date and `TZ=UTC`. If chrono returns no result, the in-repo parser returns no result. If `chrono.parse` throws on an input, do not catch it in the parser and do not map it to `undefined`. The parity test records that throw.
 
-```bash
-bun remove chrono-node
-bunx vitest run tests/unit/search/TemporalQueryParser.test.ts
-```
+- [ ] **Step 2: Run the parity test to verify it fails**
 
-Expected: custom patterns pass, chrono-only phrases are `undefined`.
+Run: `TZ=UTC bunx vitest run tests/unit/search/enDate.parity.test.ts`
+Expected: FAIL, module not found.
 
-- [ ] **Step 2: Run the new test to verify the missing-peer case fails**
+- [ ] **Step 3: Implement parsers and refiners**
 
-While `chrono-node` is still installed and the catch is not written, `between Monday and Wednesday` returns a range. Expected: FAIL on `toBeUndefined()`.
-
-- [ ] **Step 3: Catch the missing module**
-
-Inside `requireChronoSync` and `loadChrono`, catch the load error. Remember a module-level `chronoUnavailable = true`. On the first failure call:
+Write new code. Do not paste chrono-node's source. The file layout mirrors chrono (parsers, then refiners). If a weekday table or a month table is copied from chrono, put this header on that file:
 
 ```typescript
-console.warn(
-  'chrono-node is not installed; only built-in relative dates are parsed. ' +
-  'Install the optional peer: npm install chrono-node'
-);
+// Adapted from chrono-node (https://github.com/wanasit/chrono), MIT License.
+// Copyright (c) 2014 Wanasit Ranasinghe and contributors.
 ```
 
-Further calls skip the warning and skip the load. `parseWithChrono` returns `undefined` when the loader returns undefined. `since <date>` in `parseCustomPattern` returns `undefined` when `parseDate` is unavailable, instead of throwing.
+Also add the same notice to `THIRD_PARTY_NOTICES` if that file is created. If no table is copied, do not add the notice.
 
-Do not change the successful-load path. `parse` and `parseDate` arguments stay `{ forwardDate: false }` with the existing forward retry.
+- [ ] **Step 4: Run parity**
 
-- [ ] **Step 4: Move the dependency**
+Run: `TZ=UTC bunx vitest run tests/unit/search/enDate.parity.test.ts tests/unit/search/enDate.inventory.test.ts`
+Expected: PASS. Do not remove `chrono-node` in this task.
 
-```json
-"peerDependencies": {
-  "@huggingface/transformers": "^4.3.1",
-  "chrono-node": "^2.9.1",
-  "pg": ">=8.0.0",
-  "yaml": ">=2.0.0"
-},
-"peerDependenciesMeta": {
-  "@huggingface/transformers": { "optional": true },
-  "chrono-node": { "optional": true },
-  "pg": { "optional": true },
-  "yaml": { "optional": true }
-}
-```
+### Task 11: Switch the call site, record results, then delete the dependency
 
-Remove `chrono-node` from `dependencies`. The other peer meta entries stay. Run `bun install`. Optional peers are not lockfile keys today; `chrono-node` should disappear from `bun.lock` `packages`.
+**Files:**
+- Modify: `src/search/TemporalQueryParser.ts`
+- Modify: `src/search/TemporalSearch.ts`, `src/search/SearchManager.ts`, `src/core/context/SearchFacade.ts` (comments only)
+- Modify: `tests/unit/search/enDate.parity.test.ts` so it no longer imports `chrono-node`. Replace each comparison with the ISO strings the green Task 10 run printed.
+- Modify: `package.json`, `bun.lock`, `CHANGELOG.md`
+- Create when a table was copied: `THIRD_PARTY_NOTICES`
 
-- [ ] **Step 5: Test both graphs**
+- [ ] **Step 1: Point `parseWithChrono` and `since` at `parseEnDate` / `parseEnDateStart`**
 
-With the peer absent:
+Keep the public methods. Keep `{ forwardDate: false }` and the forward retry. Keep the single-result range against the reference date, and the first-to-last range when there are two results. Delete `loadChrono`, `requireChronoSync`, and the `chrono-node` import. Do not wrap the new parser in `try/catch` that returns `undefined`.
 
-```bash
-bunx vitest run tests/unit/search/TemporalQueryParser.test.ts tests/unit/search/TemporalSearch.test.ts
-```
+- [ ] **Step 2: Re-run the inventory**
 
-Expected: PASS.
+Run: `TZ=UTC bunx vitest run tests/unit/search/enDate.inventory.test.ts tests/unit/search/TemporalQueryParser.test.ts tests/unit/search/TemporalSearch.test.ts`
+Expected: PASS, still with `chrono-node` installed, because the inventory test uses `TemporalQueryParser` and the parity test has not dropped its import yet.
 
-With the peer present (install it as a devDependency for this run only, then remove it before commit so it is not a hidden runtime dependency):
+- [ ] **Step 3: Freeze the corpus and remove the package**
 
-```bash
-bun add -d chrono-node@2.9.1
-bunx vitest run tests/unit/search/TemporalQueryParser.test.ts
-bun remove chrono-node
-```
+Replace the live chrono assertions with the ISO strings from the passing run. Delete the `chrono-node` import from tests. Delete `chrono-node` from `dependencies`. It must not be added to `devDependencies`. Run `bun install`. `bun.lock` must not contain `chrono-node`.
 
-Expected: the installed run still parses `between Monday and Wednesday` to a defined range. The committed `package.json` does not list `chrono-node` under `devDependencies` or `dependencies`.
+Run: `TZ=UTC bunx vitest run tests/unit/search/enDate.parity.test.ts tests/unit/search/enDate.inventory.test.ts`
+Expected: PASS without the package installed.
 
-- [ ] **Step 6: Changelog note**
+- [ ] **Step 4: Changelog**
 
-Under `## [Unreleased]` in `CHANGELOG.md`:
+Under `## [Unreleased]`:
 
 ```markdown
 ### Changed
-- `chrono-node` is an optional peer. Built-in phrases (`last hour`, `past N days`, `this week`, `today`, `yesterday`, `N units ago`) parse as before. Other natural-language dates need `npm install chrono-node`.
+- English natural-language dates are parsed in-repo. Results match chrono-node 2.9.1 for the supported phrases. `chrono-node` is no longer a dependency.
 ```
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add src/search/TemporalQueryParser.ts tests/unit/search/TemporalQueryParser.test.ts package.json bun.lock CHANGELOG.md
-git commit -m "feat: make chrono-node an optional peer"
+git add src/search/enDate src/search/TemporalQueryParser.ts src/search/TemporalSearch.ts src/search/SearchManager.ts src/core/context/SearchFacade.ts tests/unit/search package.json bun.lock CHANGELOG.md THIRD_PARTY_NOTICES
+git commit -m "feat: parse English dates without chrono-node"
 ```
 
-### Task 10: Sprint 5 verification
+Omit `THIRD_PARTY_NOTICES` from `git add` when no chrono text was adapted.
+
+### Task 12: Sprint 5 verification
 
 ```bash
 bun install --frozen-lockfile
@@ -894,10 +932,13 @@ bun run typecheck
 bun run lint
 bun run test:ci
 bun run build
-node -e "const p=require('./package.json'); if(p.dependencies['chrono-node']) process.exit(1); if(!p.peerDependenciesMeta['chrono-node'].optional) process.exit(1)"
+node -e "const p=require('./package.json'); if((p.dependencies||{})['chrono-node']||(p.devDependencies||{})['chrono-node']) process.exit(1)"
+rg "chrono-node" src package.json bun.lock
 ```
 
-Expected: exit 0.
+Expected: the node check exits 0. `rg` prints nothing, or only a MIT attribution line. `src/search/enDate/parseEnDate.ts` exists.
+
+The build checker/fixer checks this sprint against the six requirements: inventory, parity corpus at the fixed instant, throw behavior unchanged, dependency removed only after parity, MIT notice when text is adapted, and minor semver with no behavior change.
 
 ## Packages with no tasks
 
@@ -916,10 +957,10 @@ The builder does not open a PR for these. The spec records why.
 
 ## Plan self-review
 
-- Spec decisions REBUILD and MAKE OPTIONAL each have a sprint. VENDOR has no sprint. KEEP has a table and no tasks.
+- Spec decisions that are REBUILD each have a sprint. MAKE OPTIONAL has no sprint. VENDOR has no sprint. KEEP has a table and no tasks.
 - Sprint 4's interface is `RunExclusiveMutex.runExclusive`, not `AsyncMutex.acquire`. The legacy-delete fake uses `AsyncMutex.acquire`.
 - Sprint 2's `ansi` keys match the call sites (`cyan`, `bold`, `green`, `red`, `yellow`, `gray`).
 - Sprint 3's `PlainTable` options match `formatters.ts` (`head`, `colWidths`, `wordWrap`). `colWidths` include the two padding cells.
-- Sprint 5 is gated and is the only task that edits `CHANGELOG.md`.
+- Sprint 5 rebuilds chrono-node. It is not gated. It is the only sprint that edits `CHANGELOG.md`, and the note is a minor with no behavior change.
 - No step says TBD. Verification commands are exact.
 - Per sprint the handoff is builder deepseek-v41-flash-1017, challenger glm-5p3-flash, build reviewer composer-2.5, build checker/fixer grok-4.6, final PR reviewer grok-4.7.

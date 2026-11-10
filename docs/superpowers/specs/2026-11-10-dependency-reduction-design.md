@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-10
 **Status:** Proposed. This document is the spec. Implementation is later sprints, one PR each.
-**Target version:** patch releases on 4.x (current package version 4.6.0), except Sprint 5, which is a flagged behavior change and stays unshipped until Daniel accepts it.
+**Target version:** patch releases on 4.x (current package version 4.6.0) for Sprints 1–4. Sprint 5 is a minor release when the in-repo date parser matches chrono-node. Daniel decided that on 2026-11-10 (9:12 AM CT). There is no optional-peer step and no 5.0.0 gate.
 **Package:** `@danielsimonjr/memoryjs`
 **Lockfile measured:** `bun.lock` lockfileVersion 2, 269 package entries, on master at the time of this spec.
 **Out of scope for code:** this run writes only this spec and `docs/superpowers/plans/2026-11-10-dependency-reduction.md`. No merge, tag, release, or publish.
@@ -14,7 +14,7 @@ Cut third-party packages MemoryJS installs and ships, without changing the publi
 ## Non-goals
 
 - Rewriting the test runner, the typechecker, the bundler, the linter, or the worker runtime.
-- Reimplementing Zod, Commander, chrono-node's natural-language grammar, or better-sqlite3.
+- Reimplementing Zod, Commander, or better-sqlite3. Sprint 5 does rebuild the English date phrases MemoryJS parses, using chrono-node's parser/refiner shape. It does not reimplement every chrono locale.
 - Vendoring large packages. No dependency in this inventory is both small enough and license-clean enough that copying the upstream source is better than a narrow in-repo replacement or than keeping the package.
 - Changing `tools/*` packages. They are not part of the published `files` list (`dist`, `scripts/rebuild-native.mjs`, `README.md`, `LICENSE`).
 - A major version. Public exports, CLI flag names, storage formats, and environment variables stay as they are.
@@ -55,7 +55,7 @@ Runtime union of the eight `dependencies` entries: 15 lockfile packages. Dev uni
 
 ## Downstream consumers
 
-`package.json` `version` is `4.6.0`. A consumer ranged at `^4.5.0` receives patch and minor releases. Sprints 1–4 are patch: they do not change exported names, types, CLI flags, or on-disk formats. Sprint 5, if shipped as a minor, is also in range for `^4.5.0`. Shipping it as 5.0.0 is the only way to leave those consumers on the current chrono behavior. That choice is Daniel's.
+`package.json` `version` is `4.6.0`. A consumer ranged at `^4.5.0` receives patch and minor releases. Sprints 1–4 are patch: they do not change exported names, types, CLI flags, or on-disk formats. Sprint 5 is a minor because the public behavior stays the same once parity holds, and a minor is how that parser ships on 4.x.
 
 Checked on 2026-11-10 against `github.com/danielsimonjr/episodic-memory` branch `main` at `b1b0d8e3330b46f05fef02020cd82549029a1a07` (`episodic-memory` 1.7.3, committed 2026-11-07). Current `package.json` `dependencies` do **not** include `@danielsimonjr/memoryjs`. A Recursa branch, `cursor/recursa-task0-memoryjs-dep-2f37` (package 1.7.1), did add `@danielsimonjr/memoryjs` `^4.5.0`. Main removed it in `6b5de905` ("chore: drop the @danielsimonjr/memoryjs dependency", PR #35, 2026-11-06) after PR #34 replaced the adapter with a native knowledge store. The only `src/` hit on main is a comment in `src/learn/knowledge-store.ts` about that previous adapter. Nothing imports the package.
 
@@ -133,7 +133,7 @@ Width measurement strips ANSI (`CSI … m`) and then uses the same rules as `str
 
 JSON and CSV formatters must stay byte-identical. Tests pin the table cases MemoryJS renders rather than the whole `cli-table3` matrix. Borders can still differ in glyph choice from cli-table3. That presentation limit is called out in Sprint 3 so Daniel can reject the sprint if a consumer snapshots table output.
 
-#### `chrono-node` @ 2.9.1 — MAKE OPTIONAL (Sprint 5, flagged)
+#### `chrono-node` @ 2.9.1 — REBUILD (Sprint 5)
 
 | | |
 |---|---|
@@ -141,15 +141,21 @@ JSON and CSV formatters must stay byte-identical. Tests pin the table cases Memo
 | Lockfile closure | 1 (the package bundles its parser) |
 | License | MIT |
 | Maintenance | Actively published (2.10.3 exists; lockfile pins 2.9.1). |
-| What the code uses | `src/search/TemporalQueryParser.ts` only. Dynamic `import('chrono-node')` and a synchronous `createRequire` fallback. Symbols used: `parse`, `parseDate`, result `.start.date()`, `.end.date()`. |
+| What the code uses | The only import is `src/search/TemporalQueryParser.ts`. It dynamic-imports `chrono-node` and falls back to a synchronous `createRequire`. Symbols used: `parse`, `parseDate`, result `.start.date()`, `.end.date()`, option `{ forwardDate: false }` then a retry with `{ forwardDate: true }`. |
 
-Custom patterns in `parseCustomPattern` already handle the relative phrases (`last hour`, `past N days`, `this week`, `today`, `yesterday`, `N units ago`) without chrono. Chrono is the fallback for everything else, including `since <date>` and ranges such as `between Monday and Wednesday`. The module is lazy, but it is still a hard dependency, so it is installed for every consumer and tsup can still bundle it into chunks that load the parser.
+Call sites that do not import the package, and that Sprint 5 updates only when a comment names it:
 
-Making it an optional peer removes ~3.5 MB from the default install. It also changes runtime behavior: a chrono-only phrase currently returns a `ParsedTemporalRange`; without the peer it must return `undefined` (the same value the parser already uses for text it cannot parse) and emit one `console.warn` per process. `parseCustomPattern`'s `since <date>` branch calls `requireChronoSync().parseDate` today, so a missing module throws. The sprint catches that and returns `undefined` instead of throwing. That is a behavior change for `TemporalQueryParser`, `TemporalSearch.searchByTime`, and `SearchManager.searchByTime`.
+- `src/search/TemporalSearch.ts` calls `parseTemporalExpressionAsync`.
+- `src/search/SearchManager.ts` `searchByTime` documents chrono in a comment.
+- `src/core/context/SearchFacade.ts` documents chrono in a comment.
 
-**Flag for Daniel.** Sprint 5 does not ship unless Daniel accepts that change. If he does not, the decision flips to KEEP and the sprint is skipped. No type signature changes either way. Consumers who need the fallback run `npm install chrono-node@^2.9.1`. Current `episodic-memory` main does not depend on MemoryJS (see Downstream consumers), so this sprint does not change that repo's install. He also chooses the version: a minor still updates every `^4.5.0` consumer; `5.0.0` does not.
+`parseCustomPattern` already handles these phrases without chrono: `in the past N <unit>`, `past N <unit>`, `last N <unit>`, `last|past hour|week|month|year` (optional leading `the`), `this week`, `this month`, `this year`, `today`, `yesterday`, and `N <unit> ago`. Units are second, minute, hour, day, week, month, year. `since <date>` calls `parseDate` and then uses the reference instant as the end. Everything else goes to `parseWithChrono`, including `between Monday and Wednesday` and `Jan 1 to Jan 7`. A single chrono result becomes a range with the reference date. Two or more results use the first start and the last start. Text chrono cannot parse returns `undefined`. A throw from the loader or from `parse` / `parseDate` still throws. Sprint 5 must not turn a throw into `undefined`.
 
-Do not rebuild chrono. The grammar is the product. A partial reimplementation would hurt correctness.
+Daniel decided on 2026-11-10 (9:12 AM CT) to rebuild this instead of making the package optional. The replacement is an in-repo English parser organized as chrono-node is organized: small parsers plus refiners, covering casual, relative, and absolute forms. Scope is every phrase MemoryJS accepts today, plus the common English casual, relative, and ISO forms chrono parses (`tomorrow`, `tonight`, `noon`, `next Friday`, `3 days from now`, `2026-01-15`, `2026-01-15T12:00:00Z`, month-name dates, and weekday ranges). It is not a port of every chrono locale.
+
+Parity is measured against chrono-node 2.9.1 at one fixed reference instant, `2026-01-15T12:00:00.000Z`, with the process timezone UTC. The dependency stays in `dependencies` until those tests are green. Then it is deleted from `dependencies` and from `devDependencies`, and the green results are recorded so later runs do not need the package. `chrono-node` is MIT. Original code needs no copied license. If a pattern table or a snippet is adapted from chrono, that file or `THIRD_PARTY_NOTICES` keeps the chrono copyright and MIT notice.
+
+Semver is a minor release when parity holds, because consumers see the same parse results. No type signature changes. No optional peer. No 5.0.0.
 
 #### `commander` @ 15.0.0 — KEEP
 
@@ -261,7 +267,7 @@ Dynamic `import('@huggingface/transformers')` in `src/search/EmbeddingService.ts
 
 1. **Keep every runtime dependency.** Zero risk, zero reduction. Rejected. `rimraf`, `chalk`, `async-mutex`, and `cli-table3` are small, narrow, and not part of the library contract.
 2. **Vendor the large packages (zod, chrono-node, workerpool, better-sqlite3).** Copies their bugs and licenses into the repo and keeps the bytes. Rejected for every package.
-3. **Rebuild only the narrow call sites, and make chrono optional behind an explicit accept.** Chosen. Order is smallest and safest first.
+3. **Rebuild the narrow call sites, including an in-repo English date parser for chrono-node.** Chosen. Order is smallest and safest first. Chrono is last because it is the largest behavior surface.
 
 ## Sprint order
 
@@ -271,7 +277,7 @@ Dynamic `import('@huggingface/transformers')` in `src/search/EmbeddingService.ts
 | 2 | `chalk` | REBUILD | CLI colors. Library API untouched. | patch |
 | 3 | `cli-table3` | REBUILD | CLI table text only. JSON/CSV identical. Safer than the mutex sprint. | patch, with a presentation note |
 | 4 | `async-mutex` | REBUILD | In-process write serialization. Parity with no timeout and no reentrancy. | patch |
-| 5 | `chrono-node` | MAKE OPTIONAL | Flagged behavior change. Skip if Daniel declines. | minor only if he accepts it landing on `^4.x`; otherwise 5.0.0 or skip |
+| 5 | `chrono-node` | REBUILD | English date parser with parity against chrono-node 2.9.1. Not gated. | minor when parity holds |
 
 KEEP packages have no sprint.
 
@@ -293,17 +299,17 @@ These lines are binding on every sprint. The plan repeats them.
 
 ## Success criteria
 
-- After Sprints 1–4, root `devDependencies` no longer lists `rimraf`, and root `dependencies` no longer lists `chalk`, `async-mutex`, or `cli-table3`.
-- `bun.lock` no longer contains those four keys or `rimraf`'s `glob` / `minimatch` chain unless some other direct dependency still pulls them (today none does).
-- `rg "from 'chalk'|from 'cli-table3'|from 'async-mutex'|rimraf" src package.json` finds no matches.
+- After Sprints 1–5, root `devDependencies` no longer lists `rimraf`, and root `dependencies` and `devDependencies` no longer list `chalk`, `async-mutex`, `cli-table3`, or `chrono-node`.
+- `bun.lock` no longer contains those keys or `rimraf`'s `glob` / `minimatch` chain unless some other direct dependency still pulls them (today none does).
+- `rg "from 'chalk'|from 'cli-table3'|from 'async-mutex'|from 'chrono-node'|rimraf" src package.json` finds no matches.
 - `bun run test:ci`, `bun run typecheck`, `bun run lint`, and `bun run build` exit 0.
 - Exported type names from `src/utils/index.ts` and the CLI's command names are unchanged.
-- Sprint 5 is either skipped, or merged only with Daniel's acceptance recorded in the PR (including minor versus 5.0.0), and `chrono-node` is then an optional peer rather than a dependency.
+- Sprint 5's recorded parity corpus matches chrono-node 2.9.1 at `2026-01-15T12:00:00.000Z` in UTC, and text that chrono cannot parse still returns `undefined` instead of throwing.
 
 ## Spec self-review
 
 - No package in `package.json` is missing a decision.
 - VENDOR is defined and unused on purpose.
 - `AsyncMutex` is distinguished from the `async-mutex` replacement so a builder cannot "reuse the existing mutex."
-- Sprint 5 is the only behavior change, and it is gated.
+- Sprint 5 rebuilds chrono-node. It is not optional and it is not a behavior change when the parity corpus is green.
 - Tool packages and the esbuild override are explicit keeps.
