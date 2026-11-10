@@ -1,0 +1,47 @@
+name: TEMP recursa perf probe
+
+# TEMPORARY diagnostic workflow for the Windows recursa-timeout investigation.
+# Deleted before merge. Runs the same instrumented probe on Linux and Windows so the
+# per-phase timings can be compared directly.
+
+on:
+  push:
+    branches: [cursor/windows-recursa-timeout-e914]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: probe (${{ matrix.os }}, ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: [22]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: ${{ matrix.node }}
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: '1.4.2'
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Probe (3 runs)
+        shell: bash
+        run: |
+          for i in 1 2 3; do
+            echo "===== run $i ====="
+            bunx tsx scripts/recursa-perf-probe.ts
+          done
+
+      - name: Probe under vitest (the real test file)
+        run: bunx vitest run tests/integration/agent/recursa-loop.test.ts --reporter=verbose
