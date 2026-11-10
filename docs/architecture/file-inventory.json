@@ -1705,7 +1705,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 222
+      "loc": 225
     },
     {
       "file": "src/core/columns/IColumnStore.ts",
@@ -4778,7 +4778,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 726
+      "loc": 738
     },
     {
       "file": "tests/unit/cli/graph.test.ts",
@@ -4862,7 +4862,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 202
+      "loc": 201
     },
     {
       "file": "tests/unit/cli/plainTable.test.ts",

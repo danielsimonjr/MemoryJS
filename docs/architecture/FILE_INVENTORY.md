@@ -281,7 +281,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/cli/index.ts` | src | build-entry | 204 |
 | `src/cli/interactive.ts` | src | reachable | 439 |
 | `src/cli/options.ts` | src | reachable | 58 |
-| `src/cli/plainTable.ts` | src | reachable | 222 |
+| `src/cli/plainTable.ts` | src | reachable | 225 |
 | `src/core/columns/IColumnStore.ts` | src | reachable | 177 |
 | `src/core/columns/JsonlColumnStore.ts` | src | reachable | 227 |
 | `src/core/context/AgentBookkeepingFacade.ts` | src | reachable | 217 |
@@ -720,7 +720,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/cli/diag.test.ts` | tests | test | 194 |
 | `tests/unit/cli/doctor.test.ts` | tests | test | 419 |
 | `tests/unit/cli/exclusion.test.ts` | tests | test | 71 |
-| `tests/unit/cli/formatters.test.ts` | tests | test | 726 |
+| `tests/unit/cli/formatters.test.ts` | tests | test | 738 |
 | `tests/unit/cli/graph.test.ts` | tests | test | 77 |
 | `tests/unit/cli/helpers/cliTestHarness.ts` | tests | test | 114 |
 | `tests/unit/cli/heuristic.test.ts` | tests | test | 70 |
@@ -732,7 +732,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/cli/observation.test.ts` | tests | test | 66 |
 | `tests/unit/cli/observationDedup.test.ts` | tests | test | 60 |
 | `tests/unit/cli/options.test.ts` | tests | test | 313 |
-| `tests/unit/cli/plainTable.challenger.test.ts` | tests | test | 202 |
+| `tests/unit/cli/plainTable.challenger.test.ts` | tests | test | 201 |
 | `tests/unit/cli/plainTable.test.ts` | tests | test | 110 |
 | `tests/unit/cli/projectContext.test.ts` | tests | test | 65 |
 | `tests/unit/cli/search-extended.test.ts` | tests | test | 66 |
