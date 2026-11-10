@@ -2188,7 +2188,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 533
+      "loc": 536
     },
     {
       "file": "src/search/enDate/timezones.ts",
@@ -5933,7 +5933,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 73
+      "loc": 76
     },
     {
       "file": "tests/unit/search/enDate.inventory.test.ts",

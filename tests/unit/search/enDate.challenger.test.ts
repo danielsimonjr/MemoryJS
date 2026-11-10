@@ -49,12 +49,15 @@ describe('Sprint 5 enDate challenger pins', () => {
 
   describe('F2: hyphenated weekday-month with May (intentional deviation)', () => {
     /**
-     * chrono-node: `sat-may` becomes a range from Saturday to 1 May (treating `may`
-     * as the month). Ours: `may` is lexically ambiguous (modal vs month); we only
-     * resolve the weekday (`sat`). Unambiguous months still range-match chrono
+     * chrono-node: `sat-may` becomes a range from Saturday noon to 1 May noon
+     * (treating `may` as the month). At this review reference that is
+     * 2026-09-05T12:00:00.000Z → 2027-05-01T12:00:00.000Z. At the parity
+     * reference (2026-01-15) chrono instead yields 2026-01-17 → 2026-05-01.
+     * Ours: `may` is lexically ambiguous (modal vs month); we only resolve
+     * the weekday (`sat`). Unambiguous months still range-match chrono
      * (see sat-june control).
      */
-    it('pins sat-may as weekday-only (chrono range: 2026-01-17 → 2026-05-01 noon)', () => {
+    it('pins sat-may as weekday-only (chrono range: 2026-09-05 → 2027-05-01 noon)', () => {
       const results = parseEnDate('sat-may', REF);
       expect(results).toHaveLength(1);
       expect(results[0].text).toBe('sat');

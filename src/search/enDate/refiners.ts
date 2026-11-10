@@ -12,6 +12,9 @@
  * @internal
  */
 
+// Adapted from chrono-node (https://github.com/wanasit/chrono), MIT License.
+// Copyright (c) 2014 Wanasit Ranasinghe and contributors.
+
 import type { ComponentKey, Components, ParseContext, ParsedResult } from './types.js';
 import { MERIDIEM_PM } from './types.js';
 import {

@@ -350,7 +350,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/search/enDate/constants.ts` | src | reachable | 310 |
 | `src/search/enDate/parseEnDate.ts` | src | reachable | 117 |
 | `src/search/enDate/parsers.ts` | src | reachable | 972 |
-| `src/search/enDate/refiners.ts` | src | reachable | 533 |
+| `src/search/enDate/refiners.ts` | src | reachable | 536 |
 | `src/search/enDate/timezones.ts` | src | reachable | 133 |
 | `src/search/enDate/types.ts` | src | reachable | 84 |
 | `src/search/EvidencePathBuilder.ts` | src | reachable | 222 |
@@ -885,7 +885,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/search/EarlyTerminationManager.test.ts` | tests | test | 411 |
 | `tests/unit/search/EmbeddingCache.test.ts` | tests | test | 455 |
 | `tests/unit/search/EmbeddingService.test.ts` | tests | test | 1094 |
-| `tests/unit/search/enDate.challenger.test.ts` | tests | test | 73 |
+| `tests/unit/search/enDate.challenger.test.ts` | tests | test | 76 |
 | `tests/unit/search/enDate.inventory.test.ts` | tests | test | 94 |
 | `tests/unit/search/enDate.parity.test.ts` | tests | test | 207 |
 | `tests/unit/search/EvidencePathBuilder.test.ts` | tests | test | 225 |
