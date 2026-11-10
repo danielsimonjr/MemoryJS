@@ -423,11 +423,11 @@ support exports that ARE used, so they cannot be deleted in isolation.
 - `MessageParams` (type) — 13 in-file refs
 - `RefineParams` (type) — 2 in-file refs
 - `SchemaShape` (type) — 11 in-file refs
-- `AnySchema` (type) — 59 in-file refs
+- `AnySchema` (type) — 60 in-file refs
 - `ObjectOutput` (type) — 1 in-file ref
 - `infer` (type) — 6 in-file refs
 - `output` (type) — 11 in-file refs
-- `input` (type) — 82 in-file refs
+- `input` (type) — 83 in-file refs
 - `ZodType` (type) — 1 in-file ref
 
 ### `src/utils/searchCache.ts`

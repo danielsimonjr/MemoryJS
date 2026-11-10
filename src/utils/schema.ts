@@ -112,6 +112,8 @@ const NUMBER_MAX_SAFE = Number.MAX_SAFE_INTEGER;
 const NUMBER_MIN_SAFE = Number.MIN_SAFE_INTEGER;
 /** Numeric-string object keys retried as numbers for record key schemas, matching Zod 4.6.7. */
 const NUMERIC_KEY_PATTERN = /^-?\d+(?:\.\d+)?$/;
+/** Integer-string propertyNames pattern Zod emits for `z.number().int()` record keys. */
+const INTEGER_KEY_PATTERN = /^-?\d+$/;
 
 /** `String()` rendering Zod uses inside messages. */
 function stringifyPrimitive(value: unknown): string {
@@ -980,15 +982,88 @@ export class ObjectSchema<S extends SchemaShape = SchemaShape> extends BaseSchem
   }
 }
 
-/** Fixed record keys when the key schema is a literal or enum, as in Zod 4.6.7. */
-function recordKeyValues(keyType: AnySchema): readonly (string | number)[] | undefined {
-  const keyDef = keyType.def;
-  if (keyDef.kind === 'literal') {
-    const values = keyDef.values.filter((value): value is string | number => typeof value === 'string' || typeof value === 'number');
-    return values.length > 0 ? values : undefined;
+/**
+ * Discrete values a schema enumerates (`literal`, `enum`, and unions of those),
+ * matching Zod's `_zod.values`. Wrappers contribute `undefined` / `null`.
+ */
+function enumerableValues(schema: AnySchema): ReadonlySet<unknown> | undefined {
+  const def = schema.def;
+  switch (def.kind) {
+    case 'literal':
+      return new Set(def.values);
+    case 'enum':
+      return new Set(def.values);
+    case 'union': {
+      const collected = new Set<unknown>();
+      for (const option of def.options) {
+        const values = enumerableValues(option);
+        if (!values) return undefined;
+        for (const value of values) collected.add(value);
+      }
+      return collected;
+    }
+    case 'optional': {
+      const inner = enumerableValues(def.innerType);
+      if (!inner) return undefined;
+      return new Set([...inner, undefined]);
+    }
+    case 'nullable': {
+      const inner = enumerableValues(def.innerType);
+      if (!inner) return undefined;
+      return new Set([...inner, null]);
+    }
+    case 'default':
+      return enumerableValues(def.innerType);
+    default:
+      return undefined;
   }
-  if (keyDef.kind === 'enum') return keyDef.values;
-  return undefined;
+}
+
+/** Fixed record keys when the key schema enumerates string/number values, as in Zod 4.6.7. */
+function recordKeyValues(keyType: AnySchema): readonly (string | number)[] | undefined {
+  const values = enumerableValues(keyType);
+  if (!values) return undefined;
+  const keys = [...values].filter((value): value is string | number => typeof value === 'string' || typeof value === 'number');
+  return keys.length > 0 ? keys : undefined;
+}
+
+/**
+ * Re-express a record's `propertyNames` over the numeric-string form JSON object
+ * keys actually have, matching Zod 4.6.7's `stringifyKeyNames`.
+ */
+function stringifyRecordKeySchema(json: Record<string, unknown>): Record<string, unknown> {
+  if (Array.isArray(json.anyOf)) {
+    const branches = json.anyOf as unknown[];
+    const mapped = branches.map((branch) => stringifyRecordKeySchema(branch as Record<string, unknown>));
+    if (mapped.some((branch, index) => branch !== branches[index])) {
+      return { ...json, anyOf: mapped };
+    }
+  }
+  if (Array.isArray(json.oneOf)) {
+    const branches = json.oneOf as unknown[];
+    const mapped = branches.map((branch) => stringifyRecordKeySchema(branch as Record<string, unknown>));
+    if (mapped.some((branch, index) => branch !== branches[index])) {
+      return { ...json, oneOf: mapped };
+    }
+  }
+  const types = Array.isArray(json.type) ? json.type : [json.type];
+  const numericType = !types.includes('string') && types.some((type) => type === 'number' || type === 'integer');
+  const values: unknown[] | undefined = Array.isArray(json.enum)
+    ? json.enum
+    : json.const !== undefined
+      ? [json.const]
+      : undefined;
+  if (!numericType && !values?.some((value) => typeof value === 'number')) return json;
+  const { minimum: _minimum, maximum: _maximum, exclusiveMinimum: _exclusiveMinimum, exclusiveMaximum: _exclusiveMaximum, multipleOf: _multipleOf, format: _format, ...rest } = json;
+  if (Array.isArray(rest.enum)) {
+    rest.enum = rest.enum.map((value) => (typeof value === 'number' ? String(value) : value));
+  } else if (typeof rest.const === 'number') {
+    rest.const = String(rest.const);
+  }
+  if (!numericType) return rest;
+  rest.type = 'string';
+  if (!values) rest.pattern = (types.includes('number') ? NUMERIC_KEY_PATTERN : INTEGER_KEY_PATTERN).source;
+  return rest;
 }
 
 /** Validate one record object key, including Zod's numeric-string retry. */
@@ -1466,8 +1541,11 @@ function jsonSchemaOfOne(schema: AnySchema, io: 'input' | 'output' = 'input'): R
     }
     case 'record': {
       const json: Record<string, unknown> = { type: 'object' };
-      json.propertyNames = jsonSchemaOfOne(def.keyType, io);
+      json.propertyNames = stringifyRecordKeySchema(jsonSchemaOfOne(def.keyType, io));
       json.additionalProperties = jsonSchemaOfOne(def.valueType, io);
+      const keys = recordKeyValues(def.keyType);
+      const omittableOnInput = io === 'input' && inputOptin(def.valueType) !== undefined;
+      if (keys && !omittableOnInput) json.required = keys.map(String);
       return json;
     }
     case 'union': {

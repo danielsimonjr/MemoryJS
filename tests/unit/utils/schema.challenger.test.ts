@@ -93,6 +93,120 @@ describe('schema challenger — divergences from zod 4.6.7', () => {
     expect((result as { data: unknown }).data).toEqual({ '1': 1 });
   });
 
+  it('record() numeric-string retry matches zod\'s /^-?\\d+(?:\\.\\d+)?$/ (not Number() on every string)', () => {
+    const schema = z.record(z.number(), z.number());
+    const accepted = ['1', '-1', '1.5', '-0', '01', '1.0', '-01', '9007199254740993'];
+    const rejected = ['1e3', ' 1', '+1', '1.', '.5', 'Infinity', 'NaN', '0x10', '1E3', '1e+3', '+0', '2.'];
+    for (const key of accepted) {
+      const result = schema.safeParse({ [key]: 1 });
+      expect(result.success, key).toBe(true);
+    }
+    for (const key of rejected) {
+      expect(schema.safeParse({ [key]: 1 }).success, key).toBe(false);
+    }
+    const ints = z.record(z.number().int(), z.number());
+    expect(ints.safeParse({ '1': 1 }).success).toBe(true);
+    expect(ints.safeParse({ '1.5': 1 }).success).toBe(false);
+    const positives = z.record(z.number().positive(), z.number());
+    expect(positives.safeParse({ '1': 1 }).success).toBe(true);
+    expect(positives.safeParse({ '0': 1 }).success).toBe(false);
+    expect(positives.safeParse({ '-1': 1 }).success).toBe(false);
+  });
+
+  it('record() with a union of mixed string/number literals requires every key (zod semantics)', () => {
+    const schema = z.record(z.union([z.literal(1), z.literal('a')]), z.number());
+    expect(schema.safeParse({ 1: 1, a: 2 }).success).toBe(true);
+    expect(issues(schema.safeParse({ a: 2 }))).toEqual([
+      { code: 'invalid_type', path: [1], message: 'Invalid input: expected number, received undefined' },
+    ]);
+    expect(issues(schema.safeParse({ 1: 1, a: 2, b: 3 }))).toEqual([
+      { code: 'unrecognized_keys', path: [], message: 'Unrecognized key: "b"' },
+    ]);
+  });
+
+  it('toJSONSchema record keys stringify numbers and list enumerable keys as required', () => {
+    expect(z.toJSONSchema(z.record(z.number(), z.boolean()), { io: 'input', unrepresentable: 'any' }).propertyNames).toEqual({
+      type: 'string',
+      pattern: '^-?\\d+(?:\\.\\d+)?$',
+    });
+    expect(z.toJSONSchema(z.record(z.number().int(), z.boolean()), { io: 'input', unrepresentable: 'any' }).propertyNames).toEqual({
+      type: 'string',
+      pattern: '^-?\\d+$',
+    });
+    expect(z.toJSONSchema(z.record(z.literal(1), z.number()), { io: 'input', unrepresentable: 'any' })).toEqual({
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
+      type: 'object',
+      propertyNames: { type: 'string', const: '1' },
+      additionalProperties: { type: 'number' },
+      required: ['1'],
+    });
+    expect(
+      z.toJSONSchema(z.record(z.union([z.literal(1), z.literal('a')]), z.number()), { io: 'input', unrepresentable: 'any' }),
+    ).toEqual({
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
+      type: 'object',
+      propertyNames: { anyOf: [{ type: 'string', const: '1' }, { type: 'string', const: 'a' }] },
+      additionalProperties: { type: 'number' },
+      required: ['1', 'a'],
+    });
+    const optionalValues = z.record(z.enum(['a', 'b']), z.string().optional());
+    expect(z.toJSONSchema(optionalValues, { io: 'input', unrepresentable: 'any' }).required).toBeUndefined();
+    expect(z.toJSONSchema(optionalValues, { io: 'output', unrepresentable: 'any' }).required).toEqual(['a', 'b']);
+  });
+
+  it('refine() path concatenates through nested objects and arrays', () => {
+    const schema = z.object({
+      items: z.array(
+        z.object({
+          n: z.string().refine((v) => v !== 'bad', { message: 'no', path: ['nested'] }),
+        }),
+      ),
+    });
+    expect(issues(schema.safeParse({ items: [{ n: 'bad' }] }))).toEqual([
+      { code: 'custom', path: ['items', 0, 'n', 'nested'], message: 'no' },
+    ]);
+  });
+
+  it('toJSONSchema io:"output" nested defaults stay required and passthrough keeps additionalProperties', () => {
+    const schema = z.object({
+      inner: z.object({
+        d: z.string().default('x'),
+        o: z.string().optional(),
+      }).passthrough(),
+      outer: z.string().default('y'),
+    });
+    expect(z.toJSONSchema(schema, { io: 'output', unrepresentable: 'any' })).toEqual({
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
+      type: 'object',
+      properties: {
+        inner: {
+          type: 'object',
+          properties: {
+            d: { default: 'x', type: 'string' },
+            o: { type: 'string' },
+          },
+          required: ['d'],
+          additionalProperties: {},
+        },
+        outer: { default: 'y', type: 'string' },
+      },
+      required: ['inner', 'outer'],
+      additionalProperties: false,
+    });
+  });
+
+  it('discriminatedUnion duplicate error throws from safeParse, not construction', () => {
+    let schema: ReturnType<typeof z.discriminatedUnion>;
+    expect(() => {
+      schema = z.discriminatedUnion('t', [
+        z.object({ t: z.literal('a'), x: z.string() }),
+        z.object({ t: z.literal('a'), y: z.number() }),
+      ]);
+    }).not.toThrow();
+    expect(() => schema.safeParse({ t: 'a', x: 's' })).toThrow('Duplicate discriminator value "a"');
+    expect(() => schema.parse({ t: 'a', x: 's' })).toThrow('Duplicate discriminator value "a"');
+  });
+
   it('discriminatedUnion() throws on a duplicate discriminator value (zod semantics)', () => {
     // zod 4.6.7 throws `Duplicate discriminator value "a"` out of safeParse.
     const schema = z.discriminatedUnion('t', [
