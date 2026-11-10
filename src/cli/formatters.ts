@@ -6,8 +6,8 @@
  * @module cli/formatters
  */
 
-import Table from 'cli-table3';
 import { ansi } from './ansi.js';
+import { PlainTable } from './plainTable.js';
 import type { Entity, Relation, PathResult, CentralityResult, ConnectedComponentsResult, ValidationReport } from '../types/types.js';
 import { escapeCsvCell } from '../utils/entityUtils.js';
 
@@ -39,7 +39,7 @@ export function formatEntities(
       return JSON.stringify(entities, null, 2);
 
     case 'table': {
-      const table = new Table({
+      const table = new PlainTable({
         head: [ansi.cyan('Name'), ansi.cyan('Type'), ansi.cyan('Observations'), ansi.cyan('Tags')],
         colWidths: calculateColWidths(getTerminalWidth(), [0.25, 0.15, 0.4, 0.2]),
         wordWrap: true,
@@ -87,7 +87,7 @@ export function formatRelations(
       return JSON.stringify(relations, null, 2);
 
     case 'table': {
-      const table = new Table({
+      const table = new PlainTable({
         head: [ansi.cyan('From'), ansi.cyan('Relation'), ansi.cyan('To')],
         colWidths: calculateColWidths(getTerminalWidth(), [0.35, 0.3, 0.35]),
       });
@@ -127,7 +127,7 @@ export function formatSearchResults(
       return JSON.stringify(results, null, 2);
 
     case 'table': {
-      const table = new Table({
+      const table = new PlainTable({
         head: [ansi.cyan('Name'), ansi.cyan('Type'), ansi.cyan('Score'), ansi.cyan('Observations')],
         colWidths: calculateColWidths(getTerminalWidth(), [0.25, 0.15, 0.1, 0.5]),
         wordWrap: true,
@@ -266,7 +266,7 @@ export function formatCentrality(result: CentralityResult, format: OutputFormat)
       return [header, ...rows].join('\n');
     }
     default: {
-      const table = new Table({
+      const table = new PlainTable({
         head: [ansi.cyan('Rank'), ansi.cyan('Entity'), ansi.cyan('Score')],
         colWidths: calculateColWidths(getTerminalWidth(), [0.1, 0.6, 0.3]),
       });

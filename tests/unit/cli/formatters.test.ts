@@ -12,6 +12,7 @@ import {
   formatEntityDetail,
   formatSuccess,
   formatError,
+  formatCentrality,
 } from '../../../src/cli/formatters.js';
 import type { Entity, Relation } from '../../../src/types/types.js';
 
@@ -611,6 +612,114 @@ describe('CLI Formatters', () => {
       const { escapeCSV } = await import('../../../src/cli/formatters.js');
       expect(escapeCSV(null as unknown as string)).toBe('');
       expect(escapeCSV(undefined as unknown as string)).toBe('');
+    });
+  });
+
+  // Sprint 3 pins: PlainTable renders the CLI tables, and JSON/CSV stay
+  // byte-identical to what cli-table3 shipped beside them.
+  describe('PlainTable snapshots (Sprint 3)', () => {
+    let originalColumns: number | undefined;
+
+    beforeEach(() => {
+      originalColumns = process.stdout.columns;
+      Object.defineProperty(process.stdout, 'columns', { value: 80, configurable: true });
+    });
+
+    afterEach(() => {
+      Object.defineProperty(process.stdout, 'columns', {
+        value: originalColumns,
+        configurable: true,
+      });
+    });
+
+    const entities: Entity[] = [
+      {
+        name: 'Entity1',
+        entityType: 'person',
+        observations: ['Observation 1', 'Observation 2'],
+        tags: ['tag1', 'tag2'],
+      },
+      {
+        name: 'Entity2',
+        entityType: 'organization',
+        observations: ['Observation A'],
+        tags: [],
+      },
+    ];
+    const relations: Relation[] = [
+      { from: 'Entity1', to: 'Entity2', relationType: 'works_for' },
+      { from: 'Entity2', to: 'Entity3', relationType: 'owns' },
+    ];
+
+    it('formatEntities table output is pinned', () => {
+      expect(formatEntities(entities, 'table')).toBe([
+        '+-------------------+-----------+------------------------------+---------------+',
+        '| Name              | Type      | Observations                 | Tags          |',
+        '+-------------------+-----------+------------------------------+---------------+',
+        '| Entity1           | person    | Observation 1; Observation 2 | tag1, tag2    |',
+        '| Entity2           | organizat | Observation A                |               |',
+        '|                   | ion       |                              |               |',
+        '+-------------------+-----------+------------------------------+---------------+',
+      ].join('\n'));
+    });
+
+    it('formatRelations table output is pinned', () => {
+      expect(formatRelations(relations, 'table')).toBe([
+        '+--------------------------+----------------------+--------------------------+',
+        '| From                     | Relation             | To                       |',
+        '+--------------------------+----------------------+--------------------------+',
+        '| Entity1                  | works_for            | Entity2                  |',
+        '| Entity2                  | owns                 | Entity3                  |',
+        '+--------------------------+----------------------+--------------------------+',
+      ].join('\n'));
+    });
+
+    it('formatSearchResults table output is pinned', () => {
+      expect(formatSearchResults([{ entity: entities[0], score: 0.95 }, { entity: entities[1], score: 0.75 }], 'table')).toBe([
+        '+-------------------+-----------+----------+--------------------------------------+',
+        '| Name              | Type      | Score    | Observations                         |',
+        '+-------------------+-----------+----------+--------------------------------------+',
+        '| Entity1           | person    | 0.950    | Observation 1; Observation 2         |',
+        '| Entity2           | organizat | 0.750    | Observation A                        |',
+        '|                   | ion       |          |                                      |',
+        '+-------------------+-----------+----------+--------------------------------------+',
+      ].join('\n'));
+    });
+
+    it('formatCentrality table output is pinned', () => {
+      expect(formatCentrality({
+        algorithm: 'degree',
+        topEntities: [{ name: 'A', score: 0.9 }],
+      }, 'table')).toBe([
+        'Centrality (degree)',
+        '+----------+---------------------------------------------+----------------------+',
+        '| Rank     | Entity                                      | Score                |',
+        '+----------+---------------------------------------------+----------------------+',
+        '| 1        | A                                           | 0.9000               |',
+        '+----------+---------------------------------------------+----------------------+',
+      ].join('\n'));
+    });
+
+    it('JSON output is byte-identical to JSON.stringify', () => {
+      expect(formatEntities(entities, 'json')).toBe(JSON.stringify(entities, null, 2));
+      expect(formatRelations(relations, 'json')).toBe(JSON.stringify(relations, null, 2));
+      const results = [{ entity: entities[0], score: 0.95 }];
+      expect(formatSearchResults(results, 'json')).toBe(JSON.stringify(results, null, 2));
+      expect(formatCentrality({ algorithm: 'degree', topEntities: [] }, 'json'))
+        .toBe(JSON.stringify({ algorithm: 'degree', topEntities: [] }, null, 2));
+    });
+
+    it('CSV output is byte-identical', () => {
+      expect(formatEntities(entities, 'csv')).toBe([
+        'name,entityType,observations,tags',
+        'Entity1,person,Observation 1; Observation 2,"tag1, tag2"',
+        'Entity2,organization,Observation A,',
+      ].join('\n'));
+      expect(formatRelations(relations, 'csv')).toBe([
+        'from,relationType,to',
+        'Entity1,works_for,Entity2',
+        'Entity2,owns,Entity3',
+      ].join('\n'));
     });
   });
 });
