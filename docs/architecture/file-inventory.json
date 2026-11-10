@@ -3007,7 +3007,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 961
+      "loc": 992
     },
     {
       "file": "src/utils/timing.ts",

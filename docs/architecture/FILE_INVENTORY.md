@@ -467,7 +467,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/utils/sidecarPath.ts` | src | reachable | 40 |
 | `src/utils/taskScheduler.ts` | src | reachable | 642 |
 | `src/utils/textSimilarity.ts` | src | reachable | 214 |
-| `src/utils/threadPool.ts` | src | reachable | 961 |
+| `src/utils/threadPool.ts` | src | reachable | 992 |
 | `src/utils/timing.ts` | src | reachable | 100 |
 | `src/utils/tokenEstimate.ts` | src | reachable | 28 |
 | `src/utils/unrefInterval.ts` | src | reachable | 32 |
