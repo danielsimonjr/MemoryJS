@@ -38,7 +38,7 @@ The codebase is organized into the following modules:
 
 - **adapters**: 11 files
 - **agent**: 177 files
-- **cli**: 32 files
+- **cli**: 33 files
 - **core**: 36 files
 - **features**: 18 files
 - **entry**: 1 file
@@ -61,7 +61,7 @@ Seeded build/entry roots (package `exports`, `bin` targets, tsup entries, script
 - `src/sqlite.ts`
 - `src/workers/levenshteinWorker.ts`
 
-Reachable from a root: **402** of 402 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
+Reachable from a root: **403** of 403 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
 
 ---
 
@@ -4373,15 +4373,11 @@ Reachable from a root: **402** of 402 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/cli/formatters.ts` - CLI Output Formatters
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `cli-table3` | `Table` |
-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
 | `./ansi.js` | `ansi` | Import |
+| `./plainTable.js` | `PlainTable` | Import |
 | `../types/types.js` | `Entity, Relation, PathResult, CentralityResult, ConnectedComponentsResult, ValidationReport` | Import (type-only) |
 | `../utils/entityUtils.js` | `escapeCsvCell` | Import |
 
@@ -4442,6 +4438,14 @@ Reachable from a root: **402** of 402 files. Dormant: **0** (0 orphaned, 0 test-
 - Interfaces: `GlobalOptions`
 - Functions: `parseGlobalOptions`, `createLogger`
 - Constants: `defaultOptions`
+
+---
+
+### `src/cli/plainTable.ts` - Renders the bordered text tables the CLI formatters print.
+
+**Exports:**
+- Classes: `PlainTable`
+- Interfaces: `PlainTableOptions`
 
 ---
 
@@ -7634,9 +7638,9 @@ Reachable from a root: **402** of 402 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/cli/commands/index` | 24 files | 1 file |
 | `src/core/context/LearningFacade` | 22 files | 3 files |
 | `src/agent/ContextWindowManager` | 18 files | 6 files |
+| `src/cli/formatters` | 4 files | 20 files |
 | `src/core/RelationManager` | 6 files | 18 files |
 | `src/utils/envConfig` | 1 file | 23 files |
-| `src/cli/formatters` | 3 files | 20 files |
 | `src/core/context/AgentCognitionFacade` | 21 files | 1 file |
 | `src/search/SearchManager` | 17 files | 5 files |
 | `src/agent/learning/LearningTrace` | 10 files | 11 files |
@@ -7721,7 +7725,7 @@ graph TD
         N29[entity]
         N30[exclusion]
         N31[graph]
-        N32[...22 more]
+        N32[...23 more]
     end
 
     subgraph Core
@@ -7898,13 +7902,13 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 402 |
+| Total TypeScript Files | 403 |
 | Total Modules | 12 |
-| Total Lines of Code | 126710 |
-| Total Exports | 2821 |
+| Total Lines of Code | 126952 |
+| Total Exports | 2822 |
 | Total Re-exports | 1716 |
-| Total Classes | 278 |
-| Total Interfaces | 825 |
+| Total Classes | 279 |
+| Total Interfaces | 826 |
 | Total Functions | 643 |
 | Total Type Guards | 43 |
 | Total Enums | 4 |
@@ -7912,7 +7916,7 @@ graph TD
 | Runtime Circular Deps | 0 |
 | Type-only Circular Deps | 15 |
 | Entry/Build Roots | 4 |
-| Reachable Files | 402 |
+| Reachable Files | 403 |
 | Dormant Files (orphaned / test-only) | 0 (0 / 0) |
 
 ---

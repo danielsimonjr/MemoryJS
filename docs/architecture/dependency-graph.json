@@ -1,9 +1,9 @@
 {
   "metadata": {
     "name": "@danielsimonjr/memoryjs",
-    "totalFiles": 402,
+    "totalFiles": 403,
     "totalModules": 12,
-    "totalExports": 2821
+    "totalExports": 2822
   },
   "entryPoints": [
     {
@@ -16277,20 +16277,19 @@
       },
       "src/cli/formatters.ts": {
         "description": "CLI Output Formatters",
-        "externalDependencies": [
-          {
-            "package": "cli-table3",
-            "imports": [
-              "Table"
-            ]
-          }
-        ],
+        "externalDependencies": [],
         "nodeDependencies": [],
         "internalDependencies": [
           {
             "file": "./ansi.js",
             "imports": [
               "ansi"
+            ]
+          },
+          {
+            "file": "./plainTable.js",
+            "imports": [
+              "PlainTable"
             ]
           },
           {
@@ -16480,6 +16479,21 @@
         ],
         "constants": [
           "defaultOptions"
+        ]
+      },
+      "src/cli/plainTable.ts": {
+        "description": "Renders the bordered text tables the CLI formatters print.",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "PlainTable"
+        ],
+        "classes": [
+          "PlainTable"
+        ],
+        "interfaces": [
+          "PlainTableOptions"
         ]
       }
     },
@@ -29728,7 +29742,8 @@
           "src/cli/formatters.ts",
           "src/cli/index.ts",
           "src/cli/interactive.ts",
-          "src/cli/options.ts"
+          "src/cli/options.ts",
+          "src/cli/plainTable.ts"
         ]
       },
       {
@@ -29967,18 +29982,18 @@
       "src/sqlite.ts",
       "src/workers/levenshteinWorker.ts"
     ],
-    "reachableCount": 402,
+    "reachableCount": 403,
     "dormantCount": 0,
     "orphaned": [],
     "testOnly": []
   },
   "statistics": {
-    "totalTypeScriptFiles": 402,
+    "totalTypeScriptFiles": 403,
     "totalModules": 12,
-    "totalLinesOfCode": 126710,
-    "totalExports": 2821,
-    "totalClasses": 278,
-    "totalInterfaces": 825,
+    "totalLinesOfCode": 126952,
+    "totalExports": 2822,
+    "totalClasses": 279,
+    "totalInterfaces": 826,
     "totalFunctions": 643,
     "totalTypeGuards": 43,
     "totalEnums": 4,
@@ -29988,11 +30003,11 @@
     "runtimeCircularDeps": 0,
     "typeOnlyCircularDeps": 15,
     "entryRoots": 4,
-    "reachableFiles": 402,
+    "reachableFiles": 403,
     "dormantFiles": 0,
     "orphanedFiles": 0,
     "testOnlyFiles": 0,
     "unusedFilesCount": 0,
-    "unusedExportsCount": 118
+    "unusedExportsCount": 119
   }
 }

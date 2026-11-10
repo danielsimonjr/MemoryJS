@@ -1,11 +1,11 @@
 {
-  "totalFiles": 997,
+  "totalFiles": 1000,
   "byDisposition": {
-    "reachable": 398,
+    "reachable": 399,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 563,
+    "test": 565,
     "tool": 10,
     "config": 2,
     "bench": 5,
@@ -14,8 +14,8 @@
   "byArea": {
     "benchmarks": 5,
     "examples": 15,
-    "src": 402,
-    "tests": 563,
+    "src": 403,
+    "tests": 565,
     "tools": 10,
     "config": 2
   },
@@ -1699,6 +1699,13 @@
       "area": "src",
       "disposition": "reachable",
       "loc": 58
+    },
+    {
+      "file": "src/cli/plainTable.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 242
     },
     {
       "file": "src/core/columns/IColumnStore.ts",
@@ -4771,7 +4778,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 617
+      "loc": 738
     },
     {
       "file": "tests/unit/cli/graph.test.ts",
@@ -4849,6 +4856,20 @@
       "area": "tests",
       "disposition": "test",
       "loc": 313
+    },
+    {
+      "file": "tests/unit/cli/plainTable.challenger.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 201
+    },
+    {
+      "file": "tests/unit/cli/plainTable.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 127
     },
     {
       "file": "tests/unit/cli/projectContext.test.ts",
