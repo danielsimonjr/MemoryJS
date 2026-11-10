@@ -3,14 +3,14 @@
  *
  * Every expectation below was captured by running the REAL `zod@4.6.7`
  * package (installed outside the repository) on the same schema and input.
- * Each test currently FAILS against `src/utils/schema.ts`, demonstrating a
- * parity defect found by the Sprint 7 build challenger on 2026-11-10.
+ * The Sprint 7 build challenger filed these as latent divergences on
+ * 2026-11-10; build review (same day) fixed each one in `src/utils/schema.ts`
+ * so behaviour matches zod for the implemented subset.
  *
- * None of the divergences is reachable from the schemas `src/` builds today
+ * None of the scenarios is reachable from the schemas `src/` builds today
  * (a 48,000-case differential fuzz over every exported production schema,
- * with JSON-shaped inputs, found no active divergence), so all findings are
- * latent. The expectations are written as zod-recorded literals so the test
- * runs without `zod` installed.
+ * with JSON-shaped inputs, found no active divergence). The expectations stay
+ * zod-recorded literals so the test runs without `zod` installed.
  *
  * @module tests/unit/utils/schema.challenger
  */

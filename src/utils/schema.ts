@@ -110,6 +110,8 @@ const DATE_SOURCE =
 const DATETIME_SOURCE = `^${DATE_SOURCE}T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$`;
 const NUMBER_MAX_SAFE = Number.MAX_SAFE_INTEGER;
 const NUMBER_MIN_SAFE = Number.MIN_SAFE_INTEGER;
+/** Numeric-string object keys retried as numbers for record key schemas, matching Zod 4.6.7. */
+const NUMERIC_KEY_PATTERN = /^-?\d+(?:\.\d+)?$/;
 
 /** `String()` rendering Zod uses inside messages. */
 function stringifyPrimitive(value: unknown): string {
@@ -130,16 +132,17 @@ function parsedType(data: unknown): string {
   if (type === 'object') {
     if (data === null) return 'null';
     if (Array.isArray(data)) return 'array';
-    const obj = data as { constructor?: { name?: string } };
-    if (obj && Object.getPrototypeOf(obj) !== Object.prototype && obj.constructor?.name) {
-      return obj.constructor.name;
+    const obj = data as { constructor?: unknown };
+    if (obj && Object.getPrototypeOf(obj) !== Object.prototype && 'constructor' in obj && obj.constructor) {
+      return (obj.constructor as { name?: string }).name as string;
     }
   }
   return type;
 }
 
 /** Zod maps `nan` to `NaN` for display and prints non-finite numbers literally. */
-function typeName(type: string, input?: unknown): string {
+function typeName(type: string | undefined, input?: unknown): string {
+  if (type === undefined) return 'undefined';
   if (type === 'number' && typeof input === 'number' && !Number.isFinite(input)) return String(input);
   return type === 'nan' ? 'NaN' : type;
 }
@@ -433,6 +436,15 @@ function sizeCaps(checks: readonly CheckDef[]): Array<[number, CheckDef]> {
 /** Accepted options for a message-carrying check. */
 export type MessageParams = string | { message?: string };
 
+/** Options for {@link BaseSchema.refine}, including Zod's `path` override. */
+export type RefineParams = string | { message?: string; path?: readonly PropertyKey[] };
+
+function refineParams(params: RefineParams | undefined): { message?: string; path?: readonly PropertyKey[] } {
+  if (params === undefined) return {};
+  if (typeof params === 'string') return { message: params };
+  return { message: params.message, path: params.path };
+}
+
 /** Resolve a message option to its string, if any. */
 function messageOf(params: MessageParams | undefined): string | undefined {
   if (params === undefined) return undefined;
@@ -559,8 +571,12 @@ export abstract class BaseSchema<Out = unknown, In = unknown> {
    * @param fn - Predicate; a falsy result is an issue.
    * @param params - Optional message.
    */
-  refine(fn: (value: Out) => unknown, params?: MessageParams): this {
-    return this._withChecks([...this.checks, { kind: 'refine', fn: fn as (value: unknown) => unknown, message: messageOf(params) }]);
+  refine(fn: (value: Out) => unknown, params?: RefineParams): this {
+    const resolved = refineParams(params);
+    return this._withChecks([
+      ...this.checks,
+      { kind: 'refine', fn: fn as (value: unknown) => unknown, message: resolved.message, path: resolved.path },
+    ]);
   }
 
   /** Rebuild this schema with a different check list. */
@@ -964,6 +980,29 @@ export class ObjectSchema<S extends SchemaShape = SchemaShape> extends BaseSchem
   }
 }
 
+/** Fixed record keys when the key schema is a literal or enum, as in Zod 4.6.7. */
+function recordKeyValues(keyType: AnySchema): readonly (string | number)[] | undefined {
+  const keyDef = keyType.def;
+  if (keyDef.kind === 'literal') {
+    const values = keyDef.values.filter((value): value is string | number => typeof value === 'string' || typeof value === 'number');
+    return values.length > 0 ? values : undefined;
+  }
+  if (keyDef.kind === 'enum') return keyDef.values;
+  return undefined;
+}
+
+/** Validate one record object key, including Zod's numeric-string retry. */
+function parseRecordKey(keyType: AnySchema, key: PropertyKey): Payload {
+  const keyChild: Payload = { value: key, issues: [] };
+  keyType._run(keyChild);
+  if (typeof key === 'string' && NUMERIC_KEY_PATTERN.test(key) && keyChild.issues.length > 0) {
+    const retry: Payload = { value: Number(key), issues: [] };
+    keyType._run(retry);
+    if (retry.issues.length === 0) return retry;
+  }
+  return keyChild;
+}
+
 /** A record schema with a dynamic key set. */
 export class RecordSchema<V extends AnySchema> extends BaseSchema<Record<string, V['__out']>> {
   /** Create a record schema. */
@@ -983,12 +1022,54 @@ export class RecordSchema<V extends AnySchema> extends BaseSchema<Record<string,
       pushIssue(payload, issue, undefined);
       return;
     }
+    const fixedKeys = recordKeyValues(keyType);
     const out: Record<string, unknown> = {};
+    if (fixedKeys) {
+      const recordKeys = new Set<string>();
+      for (const key of fixedKeys) {
+        recordKeys.add(typeof key === 'number' ? key.toString() : key);
+        if (key === '__proto__') continue;
+        const keyChild = parseRecordKey(keyType, key);
+        if (keyChild.issues.length > 0) {
+          pushIssue(
+            payload,
+            makeIssue({
+              code: 'invalid_key',
+              origin: 'record',
+              issues: keyChild.issues.map((entry) => entry.issue),
+              input: key,
+              path: [key],
+              message: 'Invalid key in record',
+            }),
+            undefined,
+          );
+          continue;
+        }
+        const outKey = keyChild.value;
+        if (outKey === '__proto__') continue;
+        const valueChild: Payload = { value: (input as Record<PropertyKey, unknown>)[key], issues: [] };
+        valueType._run(valueChild);
+        if (valueChild.issues.length > 0) {
+          payload.issues.push(...prefixIssues(valueChild.issues, key));
+        }
+        out[String(outKey)] = valueChild.value;
+      }
+      const unrecognized: string[] = [];
+      for (const key in input) {
+        if (!recordKeys.has(key)) unrecognized.push(key);
+      }
+      if (unrecognized.length > 0) {
+        const issue = makeIssue({ code: 'unrecognized_keys', keys: unrecognized, input, message: '' });
+        issue.message = defaultMessage(issue);
+        pushIssue(payload, issue, true);
+      }
+      payload.value = out;
+      return;
+    }
     for (const key of Reflect.ownKeys(input)) {
       if (key === '__proto__') continue;
       if (!Object.prototype.propertyIsEnumerable.call(input, key)) continue;
-      const keyChild: Payload = { value: key, issues: [] };
-      keyType._run(keyChild);
+      const keyChild = parseRecordKey(keyType, key);
       if (keyChild.issues.length > 0) {
         pushIssue(
           payload,
@@ -1056,9 +1137,18 @@ export class UnionSchema<O extends readonly AnySchema[]> extends BaseSchema<O[nu
 
 /** A union that selects its branch from a discriminator property. */
 export class DiscriminatedUnionSchema<O extends readonly AnySchema[]> extends BaseSchema<O[number]['__out']> {
+  private _optionsMap: Map<unknown, AnySchema> | undefined;
+
   /** Create a discriminated union schema. */
   constructor(def: Def = { kind: 'discriminatedUnion', discriminator: '', options: [] }, checks: readonly CheckDef[] = []) {
     super(def, checks);
+    const { discriminator, options } = def as { discriminator: string; options: readonly AnySchema[] };
+    options.forEach((option, index) => {
+      const optionDef = option.def as { kind: string; shape?: SchemaShape };
+      if (optionDef.kind !== 'object' || !optionDef.shape || !Object.prototype.hasOwnProperty.call(optionDef.shape, discriminator)) {
+        throw new Error(`Invalid discriminated union option at index "${index}"`);
+      }
+    });
   }
 
   protected _parse(payload: Payload): void {
@@ -1070,7 +1160,7 @@ export class DiscriminatedUnionSchema<O extends readonly AnySchema[]> extends Ba
       pushIssue(payload, issue, undefined);
       return;
     }
-    const map = discriminatorMap(discriminator, options);
+    const map = this._discriminatorMap(discriminator, options);
     const value = input[discriminator];
     const option = map.get(value);
     if (option) {
@@ -1093,10 +1183,17 @@ export class DiscriminatedUnionSchema<O extends readonly AnySchema[]> extends Ba
       undefined,
     );
   }
+
+  /** Lazy-built lookup map; throws on duplicate discriminator literals at first parse. */
+  private _discriminatorMap(discriminator: string, options: readonly AnySchema[]): Map<unknown, AnySchema> {
+    if (this._optionsMap) return this._optionsMap;
+    this._optionsMap = buildDiscriminatorMap(discriminator, options);
+    return this._optionsMap;
+  }
 }
 
 /** Discriminator value to branch map, built the way Zod builds `optionsMap`. */
-function discriminatorMap(discriminator: string, options: readonly AnySchema[]): Map<unknown, AnySchema> {
+function buildDiscriminatorMap(discriminator: string, options: readonly AnySchema[]): Map<unknown, AnySchema> {
   const map = new Map<unknown, AnySchema>();
   for (const option of options) {
     const def = option.def as { kind: string; shape?: SchemaShape };
@@ -1107,7 +1204,12 @@ function discriminatorMap(discriminator: string, options: readonly AnySchema[]):
     if (fieldDef.kind !== 'literal' && fieldDef.kind !== 'enum') {
       throw new Error(`Invalid discriminated union discriminator "${discriminator}"`);
     }
-    for (const value of fieldDef.values ?? []) map.set(value, option);
+    for (const value of fieldDef.values ?? []) {
+      if (map.has(value)) {
+        throw new Error(`Duplicate discriminator value "${String(value)}"`);
+      }
+      map.set(value, option);
+    }
   }
   return map;
 }
@@ -1191,9 +1293,14 @@ export class DefaultSchema<I extends AnySchema> extends BaseSchema<I['__out']> {
   }
 }
 
-/** Resolve a schema's `undefined` behaviour for JSON Schema `required` lists. */
+/** Resolve a schema's `undefined` behaviour for JSON Schema `required` lists (input direction). */
 function inputOptin(schema: AnySchema): 'optional' | 'defaulted' | undefined {
   return schema.optin;
+}
+
+/** Whether a field is required in the output JSON Schema shape (Zod `optout` rule). */
+function outputRequired(schema: AnySchema): boolean {
+  return schema.optout === undefined;
 }
 
 /** Aggregate the JSON Schema constraints a schema's checks describe. */
@@ -1278,7 +1385,7 @@ function compactTypeUnion(json: Record<string, unknown>): void {
 }
 
 /** Emit the JSON Schema body for one schema. */
-function jsonSchemaOfOne(schema: AnySchema): Record<string, unknown> {
+function jsonSchemaOfOne(schema: AnySchema, io: 'input' | 'output' = 'input'): Record<string, unknown> {
   const def = schema.def;
   switch (def.kind) {
     case 'string': {
@@ -1328,11 +1435,11 @@ function jsonSchemaOfOne(schema: AnySchema): Record<string, unknown> {
       if (agg.minimum !== undefined) json.minItems = agg.minimum;
       if (agg.maximum !== undefined) json.maxItems = agg.maximum;
       json.type = 'array';
-      json.items = jsonSchemaOfOne(def.element);
+      json.items = jsonSchemaOfOne(def.element, io);
       return json;
     }
     case 'tuple': {
-      const prefixItems = def.items.map((item) => jsonSchemaOfOne(item));
+      const prefixItems = def.items.map((item) => jsonSchemaOfOne(item, io));
       const json: Record<string, unknown> = { type: 'array', prefixItems, items: false };
       const minItems = def.items.length;
       if (minItems > 0) json.minItems = minItems;
@@ -1347,31 +1454,33 @@ function jsonSchemaOfOne(schema: AnySchema): Record<string, unknown> {
       const properties = json.properties as Record<string, unknown>;
       const required: string[] = [];
       for (const key of Object.keys(def.shape)) {
-        properties[key] = jsonSchemaOfOne(def.shape[key]!);
-        if (inputOptin(def.shape[key]!) === undefined) required.push(key);
+        properties[key] = jsonSchemaOfOne(def.shape[key]!, io);
+        const isRequired = io === 'output' ? outputRequired(def.shape[key]!) : inputOptin(def.shape[key]!) === undefined;
+        if (isRequired) required.push(key);
       }
       if (required.length > 0) json.required = required;
       if (def.mode === 'strict') json.additionalProperties = false;
       else if (def.mode === 'passthrough') json.additionalProperties = {};
+      else if (io === 'output') json.additionalProperties = false;
       return json;
     }
     case 'record': {
       const json: Record<string, unknown> = { type: 'object' };
-      json.propertyNames = jsonSchemaOfOne(def.keyType);
-      json.additionalProperties = jsonSchemaOfOne(def.valueType);
+      json.propertyNames = jsonSchemaOfOne(def.keyType, io);
+      json.additionalProperties = jsonSchemaOfOne(def.valueType, io);
       return json;
     }
     case 'union': {
-      const json: Record<string, unknown> = { anyOf: def.options.map((option) => jsonSchemaOfOne(option)) };
+      const json: Record<string, unknown> = { anyOf: def.options.map((option) => jsonSchemaOfOne(option, io)) };
       compactTypeUnion(json);
       return json;
     }
     case 'discriminatedUnion':
-      return { oneOf: def.options.map((option) => jsonSchemaOfOne(option)) };
+      return { oneOf: def.options.map((option) => jsonSchemaOfOne(option, io)) };
     case 'optional':
-      return jsonSchemaOfOne(def.innerType);
+      return jsonSchemaOfOne(def.innerType, io);
     case 'nullable': {
-      const json: Record<string, unknown> = { anyOf: [jsonSchemaOfOne(def.innerType), { type: 'null' }] };
+      const json: Record<string, unknown> = { anyOf: [jsonSchemaOfOne(def.innerType, io), { type: 'null' }] };
       compactTypeUnion(json);
       return json;
     }
@@ -1379,7 +1488,7 @@ function jsonSchemaOfOne(schema: AnySchema): Record<string, unknown> {
       const serialized = JSON.stringify(typeof def.defaultValue === 'function' ? undefined : def.defaultValue);
       const value = serialized === undefined ? null : (JSON.parse(serialized) as unknown);
       // Zod writes `default` ahead of the inner keywords.
-      return { default: value, ...jsonSchemaOfOne(def.innerType) };
+      return { default: value, ...jsonSchemaOfOne(def.innerType, io) };
     }
     default:
       return {};
@@ -1387,8 +1496,8 @@ function jsonSchemaOfOne(schema: AnySchema): Record<string, unknown> {
 }
 
 /** Convert one schema to a JSON Schema document, as `z.toJSONSchema` does. */
-function toJsonSchema(schema: AnySchema): Record<string, unknown> {
-  return { $schema: 'https://json-schema.org/draft/2020-12/schema', ...jsonSchemaOfOne(schema) };
+function toJsonSchema(schema: AnySchema, io: 'input' | 'output' = 'input'): Record<string, unknown> {
+  return { $schema: 'https://json-schema.org/draft/2020-12/schema', ...jsonSchemaOfOne(schema, io) };
 }
 
 /** Options of {@link z.toJSONSchema}. */
@@ -1422,8 +1531,8 @@ export const z = {
     datetime: (params?: MessageParams): StringSchema => new StringSchema().datetime(params),
   },
   toJSONSchema: (schema: AnySchema, params?: ToJSONSchemaParams): Record<string, unknown> => {
-    void params;
-    return toJsonSchema(schema);
+    const io = params?.io ?? 'input';
+    return toJsonSchema(schema, io);
   },
 };
 

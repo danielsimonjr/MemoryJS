@@ -1,1073 +1,1103 @@
 <!-- repo-map:no-verification -->
 <!-- GENERATED FILE -- do not edit by hand.
-     Regenerate with `npm run tools:deps:full`. -->
+     Regenerate with `repo-tools map`. -->
 
 # Complete File Inventory
 
+This report lists each source file that the map census finds, with a disposition. The census reads the files that git tracks. Outside a git work tree, it walks the folder. The census skips tool state, dependency folders and build output (for example `.git/`, `node_modules/`, `dist/` and `target/`), and `obj/` and `bin/` for C#.
 
-Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks/`, root-level `*.config.ts` — tagged with a disposition. A completeness census: no `.ts` may be silently missing. The self-check gate does a MAXIMAL, location-agnostic repo walk (broader than this census’s enumerated discovery) and fails the run if any `.ts` on disk is unaccounted.
+**Language**: typescript
 
-**Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
-
-**Total files**: 1030
+**Total files**: 1043
 
 ## Disposition counts
 
 | Disposition | Count | Meaning |
 | --- | --: | --- |
-| `reachable` | 410 | A `src/` file in the module graph, reachable from a root. |
-| `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
-| `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
-| `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 584 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
-| `tool` | 10 | A file under `tools/` — repo meta-tooling. |
-| `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
-| `bench` | 5 | A `benchmarks/` source file (run directly via tsx, not imported). |
-| `example` | 15 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **1030** | |
+| `reachable` | 402 | A `src`-area file that an entry root reaches. |
+| `build-entry` | 12 | A `src`-area file that is an entry root. |
+| `test-only` | 0 | A `src`-area file that only a test reaches. |
+| `orphan` | 0 | A `src`-area file that nothing reaches. Delete it, or wire it to a root. |
+| `test` | 588 | A file in a `test/` or `tests/` folder, or a `*.test.ts` or `*.spec.ts` file. |
+| `tool` | 17 | A file in a `tools/` or `scripts/` folder outside `src/`. |
+| `config` | 2 | A `*.config.*` file of TypeScript or JavaScript. |
+| `example` | 16 | A file in `examples/` or `docs/`. |
+| `bench` | 6 | A file in `bench/` or `benchmarks/`, or a `*.bench.*` file. |
+| **Total** | **1043** | |
 
 ## Per-area counts
 
 | Area | Files |
 | --- | --: |
-| `benchmarks` | 5 |
+| `benchmarks` | 6 |
 | `config` | 2 |
+| `docs` | 1 |
 | `examples` | 15 |
 | `src` | 414 |
-| `tests` | 584 |
-| `tools` | 10 |
+| `tests` | 588 |
+| `tools` | 17 |
+
+## Per-package counts
+
+| Package | Files |
+| --- | --: |
+| `(root)` | 629 |
+| `@danielsimonjr/memoryjs` | 414 |
 
 ## All files
 
-| file | area | disposition | LOC |
-| --- | --- | --- | --: |
-| `benchmarks/performance-plan-bench.ts` | benchmarks | bench | 141 |
-| `benchmarks/review-bench.ts` | benchmarks | bench | 51 |
-| `benchmarks/semantic-forget-benchmark.ts` | benchmarks | bench | 78 |
-| `benchmarks/summarization-bench.ts` | benchmarks | bench | 39 |
-| `benchmarks/synthetic-bench.ts` | benchmarks | bench | 142 |
-| `examples/01-quick-start.ts` | examples | example | 78 |
-| `examples/02-search.ts` | examples | example | 82 |
-| `examples/03-graph-algorithms.ts` | examples | example | 70 |
-| `examples/04-import-export.ts` | examples | example | 98 |
-| `examples/05-agent-memory.ts` | examples | example | 104 |
-| `examples/06-multi-agent.ts` | examples | example | 91 |
-| `examples/07-governance-rbac.ts` | examples | example | 106 |
-| `examples/08-versioning-causal.ts` | examples | example | 89 |
-| `examples/09-recursa-skills-knowledge.ts` | examples | example | 88 |
-| `examples/10-recursa-learning.ts` | examples | example | 99 |
-| `examples/11-recursa-bootstrap.ts` | examples | example | 87 |
-| `examples/12-harness-tools.ts` | examples | example | 97 |
-| `examples/13-reconstructive-memory.ts` | examples | example | 64 |
-| `examples/14-procedural-graph.ts` | examples | example | 63 |
-| `examples/15-sqlite.ts` | examples | example | 61 |
-| `src/adapters/ApiKeyAuthMiddleware.ts` | src | reachable | 193 |
-| `src/adapters/index.ts` | src | reachable | 60 |
-| `src/adapters/LangChainMemoryAdapter.ts` | src | reachable | 194 |
-| `src/adapters/MCPToolObserverAdapter.ts` | src | reachable | 78 |
-| `src/adapters/pagination.ts` | src | reachable | 92 |
-| `src/adapters/RateLimiter.ts` | src | reachable | 206 |
-| `src/adapters/RecursaToolAdapter.ts` | src | reachable | 375 |
-| `src/adapters/recursaToolBounds.ts` | src | reachable | 109 |
-| `src/adapters/recursaToolSchemas.ts` | src | reachable | 143 |
-| `src/adapters/recursaToolSupport.ts` | src | reachable | 169 |
-| `src/adapters/RestRouter.ts` | src | reachable | 751 |
-| `src/agent/AccessTracker.ts` | src | reachable | 479 |
-| `src/agent/AgentEnvDefaults.ts` | src | reachable | 112 |
-| `src/agent/AgentMemoryConfig.ts` | src | reachable | 265 |
-| `src/agent/AgentMemoryManager.ts` | src | reachable | 728 |
-| `src/agent/AgentReflectionManager.ts` | src | reachable | 306 |
-| `src/agent/ArtifactManager.ts` | src | reachable | 241 |
-| `src/agent/bootstrap/Bootstrapper.ts` | src | reachable | 246 |
-| `src/agent/bootstrap/bootstrapShared.ts` | src | reachable | 203 |
-| `src/agent/bootstrap/BoundaryRecorder.ts` | src | reachable | 249 |
-| `src/agent/bootstrap/CorpusMapper.ts` | src | reachable | 550 |
-| `src/agent/bootstrap/ExplorationNotes.ts` | src | reachable | 396 |
-| `src/agent/bootstrap/index.ts` | src | reachable | 20 |
-| `src/agent/bootstrap/PracticeTaskGenerator.ts` | src | reachable | 351 |
-| `src/agent/causal/CausalReasoner.ts` | src | reachable | 254 |
-| `src/agent/causal/index.ts` | src | reachable | 15 |
-| `src/agent/CognitiveLoadAnalyzer.ts` | src | reachable | 332 |
-| `src/agent/collaboration/CollaborationAuditEnforcer.ts` | src | reachable | 145 |
-| `src/agent/CollaborativeSynthesis.ts` | src | reachable | 355 |
-| `src/agent/ConflictResolver.ts` | src | reachable | 464 |
-| `src/agent/connectivity.ts` | src | reachable | 66 |
-| `src/agent/ConsolidationPipeline.ts` | src | reachable | 2140 |
-| `src/agent/ConsolidationScheduler.ts` | src | reachable | 230 |
-| `src/agent/ContextProfileManager.ts` | src | reachable | 301 |
-| `src/agent/ContextWindowManager.ts` | src | reachable | 2000 |
-| `src/agent/DecayEngine.ts` | src | reachable | 831 |
-| `src/agent/DecayScheduler.ts` | src | reachable | 233 |
-| `src/agent/DecisionManager.ts` | src | reachable | 442 |
-| `src/agent/DistillationPipeline.ts` | src | reachable | 204 |
-| `src/agent/DistillationPolicy.ts` | src | reachable | 339 |
-| `src/agent/DreamEngine.ts` | src | reachable | 646 |
-| `src/agent/EntropyFilter.ts` | src | reachable | 179 |
-| `src/agent/EpisodicMemoryManager.ts` | src | reachable | 531 |
-| `src/agent/evaluation/DeterministicJudge.ts` | src | reachable | 227 |
-| `src/agent/evaluation/Evaluator.ts` | src | reachable | 404 |
-| `src/agent/evaluation/index.ts` | src | reachable | 10 |
-| `src/agent/evaluation/LLMRubricJudge.ts` | src | reachable | 261 |
-| `src/agent/evaluation/RubricAudit.ts` | src | reachable | 224 |
-| `src/agent/events/EventManager.ts` | src | reachable | 513 |
-| `src/agent/events/index.ts` | src | reachable | 20 |
-| `src/agent/ExclusionManager.ts` | src | reachable | 210 |
-| `src/agent/ExperienceExtractor.ts` | src | reachable | 435 |
-| `src/agent/FailureDistillation.ts` | src | reachable | 314 |
-| `src/agent/FailureManager.ts` | src | reachable | 537 |
-| `src/agent/GuardedComponentEdit.ts` | src | reachable | 711 |
-| `src/agent/harness/ConcurrencyLimiter.ts` | src | reachable | 246 |
-| `src/agent/harness/EvictionIndex.ts` | src | reachable | 163 |
-| `src/agent/harness/index.ts` | src | reachable | 10 |
-| `src/agent/harness/InteractionLog.ts` | src | reachable | 495 |
-| `src/agent/harness/InteractionLogBlobs.ts` | src | reachable | 133 |
-| `src/agent/harness/InteractionLogFormat.ts` | src | reachable | 390 |
-| `src/agent/harness/InteractionLogRegex.ts` | src | reachable | 180 |
-| `src/agent/HeuristicManager.ts` | src | reachable | 342 |
-| `src/agent/ImportanceScorer.ts` | src | reachable | 91 |
-| `src/agent/index.ts` | src | reachable | 640 |
-| `src/agent/InMemoryBackend.ts` | src | reachable | 115 |
-| `src/agent/keyValueLine.ts` | src | reachable | 63 |
-| `src/agent/knowledge/index.ts` | src | reachable | 49 |
-| `src/agent/knowledge/InstructionSetManager.ts` | src | reachable | 309 |
-| `src/agent/knowledge/knowledgeDigest.ts` | src | reachable | 254 |
-| `src/agent/knowledge/knowledgeLoad.ts` | src | reachable | 142 |
-| `src/agent/knowledge/KnowledgeRepository.ts` | src | reachable | 479 |
-| `src/agent/knowledge/knowledgeRevision.ts` | src | reachable | 342 |
-| `src/agent/knowledge/ScratchKnowledge.ts` | src | reachable | 191 |
-| `src/agent/knowledgeContext.ts` | src | reachable | 116 |
-| `src/agent/learning/ChildKnowledgeOverlay.ts` | src | reachable | 272 |
-| `src/agent/learning/Diagnoser.ts` | src | reachable | 537 |
-| `src/agent/learning/index.ts` | src | reachable | 63 |
-| `src/agent/learning/InProcessLearnHandler.ts` | src | reachable | 76 |
-| `src/agent/learning/KnowledgeEditor.ts` | src | reachable | 375 |
-| `src/agent/learning/LeafApply.ts` | src | reachable | 93 |
-| `src/agent/learning/LeafLearner.ts` | src | reachable | 402 |
-| `src/agent/learning/LeafLearnerContext.ts` | src | reachable | 296 |
-| `src/agent/learning/LeafLearnerDeps.ts` | src | reachable | 114 |
-| `src/agent/learning/LeafLearnerOptions.ts` | src | reachable | 184 |
-| `src/agent/learning/LeafLearnerStore.ts` | src | reachable | 330 |
-| `src/agent/learning/LeafRound.ts` | src | reachable | 294 |
-| `src/agent/learning/LeafValidation.ts` | src | reachable | 231 |
-| `src/agent/learning/LearningAccountant.ts` | src | reachable | 329 |
-| `src/agent/learning/LearningReflector.ts` | src | reachable | 229 |
-| `src/agent/learning/LearningTrace.ts` | src | reachable | 679 |
-| `src/agent/learning/llmJson.ts` | src | reachable | 163 |
-| `src/agent/learning/observationChunks.ts` | src | reachable | 85 |
-| `src/agent/learning/RecursiveChildren.ts` | src | reachable | 117 |
-| `src/agent/learning/RecursiveDrive.ts` | src | reachable | 454 |
-| `src/agent/learning/RecursiveEvaluate.ts` | src | reachable | 82 |
-| `src/agent/learning/RecursiveLearner.ts` | src | reachable | 489 |
-| `src/agent/learning/RecursiveLearnerState.ts` | src | reachable | 434 |
-| `src/agent/learning/RecursiveMerge.ts` | src | reachable | 231 |
-| `src/agent/learning/RecursivePlan.ts` | src | reachable | 159 |
-| `src/agent/learning/RevisionGeneralize.ts` | src | reachable | 183 |
-| `src/agent/learning/RevisionMerger.ts` | src | reachable | 163 |
-| `src/agent/learning/revisionMergeShared.ts` | src | reachable | 144 |
-| `src/agent/learning/RevisionReconcile.ts` | src | reachable | 203 |
-| `src/agent/learning/RevisionValidator.ts` | src | reachable | 276 |
-| `src/agent/learning/SplitStrategies.ts` | src | reachable | 346 |
-| `src/agent/learning/types.ts` | src | reachable | 74 |
-| `src/agent/MemoryBackend.ts` | src | reachable | 156 |
-| `src/agent/MemoryEngine.ts` | src | reachable | 596 |
-| `src/agent/MemoryFormatter.ts` | src | reachable | 518 |
-| `src/agent/MemoryValidator.ts` | src | reachable | 332 |
-| `src/agent/MultiAgentMemoryManager.ts` | src | reachable | 1153 |
-| `src/agent/ObservationDedupManager.ts` | src | reachable | 246 |
-| `src/agent/ObserverPipeline.ts` | src | reachable | 380 |
-| `src/agent/PatternDetector.ts` | src | reachable | 372 |
-| `src/agent/PlanManager.ts` | src | reachable | 543 |
-| `src/agent/procedural/graph/backing/index.ts` | src | reachable | 17 |
-| `src/agent/procedural/graph/backing/InMemoryProceduralGraphBacking.ts` | src | reachable | 25 |
-| `src/agent/procedural/graph/backing/IProceduralGraphBacking.ts` | src | reachable | 102 |
-| `src/agent/procedural/graph/backing/JsonlProceduralGraphBacking.ts` | src | reachable | 133 |
-| `src/agent/procedural/graph/backing/LockedProceduralGraphBacking.ts` | src | reachable | 135 |
-| `src/agent/procedural/graph/backing/ProceduralGraphState.ts` | src | reachable | 581 |
-| `src/agent/procedural/graph/backing/SqliteProceduralGraphBacking.ts` | src | reachable | 516 |
-| `src/agent/procedural/graph/canonical.ts` | src | reachable | 119 |
-| `src/agent/procedural/graph/CompletionProvider.ts` | src | reachable | 140 |
-| `src/agent/procedural/graph/index.ts` | src | reachable | 126 |
-| `src/agent/procedural/graph/ProceduralGraph.ts` | src | reachable | 439 |
-| `src/agent/procedural/graph/ProceduralGraphEvolution.ts` | src | reachable | 898 |
-| `src/agent/procedural/graph/ProceduralGraphManager.ts` | src | reachable | 537 |
-| `src/agent/procedural/graph/ProceduralGraphRefiner.ts` | src | reachable | 334 |
-| `src/agent/procedural/graph/ProceduralGraphSchemas.ts` | src | reachable | 423 |
-| `src/agent/procedural/graph/ProceduralGraphSerializer.ts` | src | reachable | 111 |
-| `src/agent/procedural/graph/ProceduralGraphSession.ts` | src | reachable | 194 |
-| `src/agent/procedural/graph/ProceduralGraphValidator.ts` | src | reachable | 300 |
-| `src/agent/procedural/graph/ProceduralGuidance.ts` | src | reachable | 219 |
-| `src/agent/procedural/graph/ProcedureGraphAdapter.ts` | src | reachable | 120 |
-| `src/agent/procedural/graph/prompts.ts` | src | reachable | 96 |
-| `src/agent/procedural/graph/tokenTail.ts` | src | reachable | 51 |
-| `src/agent/procedural/index.ts` | src | reachable | 26 |
-| `src/agent/procedural/ProcedureManager.ts` | src | reachable | 236 |
-| `src/agent/procedural/ProcedureStore.ts` | src | reachable | 450 |
-| `src/agent/procedural/StepSequencer.ts` | src | reachable | 86 |
-| `src/agent/ProfileManager.ts` | src | reachable | 241 |
-| `src/agent/ProjectContextManager.ts` | src | reachable | 324 |
-| `src/agent/ProspectiveMemoryManager.ts` | src | reachable | 685 |
-| `src/agent/rbac/index.ts` | src | reachable | 32 |
-| `src/agent/rbac/PermissionMatrix.ts` | src | reachable | 58 |
-| `src/agent/rbac/RbacMiddleware.ts` | src | reachable | 117 |
-| `src/agent/rbac/RbacTypes.ts` | src | reachable | 78 |
-| `src/agent/rbac/RoleAssignmentStore.ts` | src | reachable | 225 |
-| `src/agent/reconstruction/CueTagContentGraph.ts` | src | reachable | 257 |
-| `src/agent/reconstruction/index.ts` | src | reachable | 21 |
-| `src/agent/reconstruction/MemoryDistiller.ts` | src | reachable | 484 |
-| `src/agent/reconstruction/MemoryGraphBridge.ts` | src | reachable | 229 |
-| `src/agent/reconstruction/MemoryReconstructor.ts` | src | reachable | 394 |
-| `src/agent/reconstruction/MemoryToolkit.ts` | src | reachable | 111 |
-| `src/agent/reconstruction/ReconstructiveMemory.ts` | src | reachable | 151 |
-| `src/agent/recordQuery.ts` | src | reachable | 30 |
-| `src/agent/RelationConsolidator.ts` | src | reachable | 962 |
-| `src/agent/retrieval/ActiveRetrievalController.ts` | src | reachable | 189 |
-| `src/agent/retrieval/index.ts` | src | reachable | 20 |
-| `src/agent/retrieval/QueryRewriter.ts` | src | reachable | 83 |
-| `src/agent/RoleProfiles.ts` | src | reachable | 237 |
-| `src/agent/RuleEvaluator.ts` | src | reachable | 149 |
-| `src/agent/SalienceEngine.ts` | src | reachable | 733 |
-| `src/agent/selectWeightedTurns.ts` | src | reachable | 18 |
-| `src/agent/SessionCheckpoint.ts` | src | reachable | 692 |
-| `src/agent/SessionManager.ts` | src | reachable | 685 |
-| `src/agent/SessionQueryBuilder.ts` | src | reachable | 541 |
-| `src/agent/skills/index.ts` | src | reachable | 56 |
-| `src/agent/skills/SkillFormat.ts` | src | reachable | 423 |
-| `src/agent/skills/SkillManager.ts` | src | reachable | 451 |
-| `src/agent/skills/SkillPublisher.ts` | src | reachable | 318 |
-| `src/agent/skills/skillRecordUtils.ts` | src | reachable | 132 |
-| `src/agent/skills/skillTreeFs.ts` | src | reachable | 165 |
-| `src/agent/SQLiteBackend.ts` | src | reachable | 175 |
-| `src/agent/SummarizationService.ts` | src | reachable | 341 |
-| `src/agent/ToolAffordanceManager.ts` | src | reachable | 279 |
-| `src/agent/ToolCallObserver.ts` | src | reachable | 180 |
-| `src/agent/TrajectoryCompressor.ts` | src | reachable | 326 |
-| `src/agent/versionedWriteFailure.ts` | src | reachable | 26 |
-| `src/agent/VisibilityResolver.ts` | src | reachable | 104 |
-| `src/agent/workingMemoryGuard.ts` | src | reachable | 39 |
-| `src/agent/WorkingMemoryManager.ts` | src | reachable | 817 |
-| `src/agent/WorkThreadManager.ts` | src | reachable | 801 |
-| `src/agent/world/index.ts` | src | reachable | 17 |
-| `src/agent/world/WorldModelManager.ts` | src | reachable | 128 |
-| `src/agent/world/WorldStateSnapshot.ts` | src | reachable | 125 |
-| `src/cli/ansi.ts` | src | reachable | 93 |
-| `src/cli/commands/audit.ts` | src | reachable | 286 |
-| `src/cli/commands/cache.ts` | src | reachable | 76 |
-| `src/cli/commands/check.ts` | src | reachable | 172 |
-| `src/cli/commands/decision.ts` | src | reachable | 185 |
-| `src/cli/commands/diag.ts` | src | reachable | 296 |
-| `src/cli/commands/doctor.ts` | src | reachable | 486 |
-| `src/cli/commands/entity.ts` | src | reachable | 115 |
-| `src/cli/commands/exclusion.ts` | src | reachable | 113 |
-| `src/cli/commands/graph.ts` | src | reachable | 79 |
-| `src/cli/commands/helpers.ts` | src | reachable | 75 |
-| `src/cli/commands/heuristic.ts` | src | reachable | 125 |
-| `src/cli/commands/hierarchy.ts` | src | reachable | 66 |
-| `src/cli/commands/index.ts` | src | reachable | 66 |
-| `src/cli/commands/inspect.ts` | src | reachable | 261 |
-| `src/cli/commands/io.ts` | src | reachable | 71 |
-| `src/cli/commands/maintenance.ts` | src | reachable | 188 |
-| `src/cli/commands/observation.ts` | src | reachable | 80 |
-| `src/cli/commands/observationDedup.ts` | src | reachable | 83 |
-| `src/cli/commands/projectContext.ts` | src | reachable | 102 |
-| `src/cli/commands/reindex.ts` | src | reachable | 97 |
-| `src/cli/commands/relation.ts` | src | reachable | 61 |
-| `src/cli/commands/search.ts` | src | reachable | 94 |
-| `src/cli/commands/smoke.ts` | src | reachable | 420 |
-| `src/cli/commands/spell.ts` | src | reachable | 55 |
-| `src/cli/commands/tag.ts` | src | reachable | 74 |
-| `src/cli/commands/toolAffordance.ts` | src | reachable | 114 |
-| `src/cli/config.ts` | src | reachable | 94 |
-| `src/cli/formatters.ts` | src | reachable | 362 |
-| `src/cli/index.ts` | src | build-entry | 204 |
-| `src/cli/interactive.ts` | src | reachable | 439 |
-| `src/cli/options.ts` | src | reachable | 58 |
-| `src/cli/parseArgs.ts` | src | reachable | 1545 |
-| `src/cli/plainTable.ts` | src | reachable | 242 |
-| `src/core/columns/IColumnStore.ts` | src | reachable | 177 |
-| `src/core/columns/JsonlColumnStore.ts` | src | reachable | 227 |
-| `src/core/context/AgentBookkeepingFacade.ts` | src | reachable | 217 |
-| `src/core/context/AgentCognitionFacade.ts` | src | reachable | 380 |
-| `src/core/context/AgentMemoryFacade.ts` | src | reachable | 494 |
-| `src/core/context/BootstrapFacade.ts` | src | reachable | 104 |
-| `src/core/context/envBounds.ts` | src | reachable | 12 |
-| `src/core/context/KnowledgeGovernanceFacade.ts` | src | reachable | 262 |
-| `src/core/context/LearningFacade.ts` | src | reachable | 252 |
-| `src/core/context/SearchFacade.ts` | src | reachable | 323 |
-| `src/core/context/StorageInfraFacade.ts` | src | reachable | 277 |
-| `src/core/EntityManager.ts` | src | reachable | 1629 |
-| `src/core/EntityStateMachine.ts` | src | reachable | 104 |
-| `src/core/GraphEventEmitter.ts` | src | reachable | 471 |
-| `src/core/GraphStorage.ts` | src | reachable | 1872 |
-| `src/core/GraphTraversal.ts` | src | reachable | 1407 |
-| `src/core/HierarchyManager.ts` | src | reachable | 314 |
-| `src/core/index.ts` | src | reachable | 60 |
-| `src/core/ManagerContext.ts` | src | reachable | 777 |
-| `src/core/mmap/FsReadMmapBackend.ts` | src | reachable | 239 |
-| `src/core/mmap/IMmapBackend.ts` | src | reachable | 169 |
-| `src/core/nodeSqliteAdapter.ts` | src | reachable | 181 |
-| `src/core/ObservationManager.ts` | src | reachable | 1009 |
-| `src/core/ObservationStore.ts` | src | reachable | 196 |
-| `src/core/PostgreSQLStorage.ts` | src | reachable | 743 |
-| `src/core/RefIndex.ts` | src | reachable | 380 |
-| `src/core/RelationManager.ts` | src | reachable | 489 |
-| `src/core/segments/FileSegmentStorage.ts` | src | reachable | 678 |
-| `src/core/segments/ISegmentStorage.ts` | src | reachable | 288 |
-| `src/core/sqlite-register.ts` | src | reachable | 31 |
-| `src/core/SQLiteStorage.ts` | src | reachable | 2642 |
-| `src/core/storageCache.ts` | src | reachable | 304 |
-| `src/core/storageCapabilities.ts` | src | reachable | 68 |
-| `src/core/StorageFactory.ts` | src | reachable | 158 |
-| `src/core/TransactionManager.ts` | src | reachable | 763 |
-| `src/core/TransitionLedger.ts` | src | reachable | 428 |
-| `src/features/AnalyticsManager.ts` | src | reachable | 247 |
-| `src/features/ArchiveManager.ts` | src | reachable | 426 |
-| `src/features/AuditLog.ts` | src | reachable | 554 |
-| `src/features/AutoLinker.ts` | src | reachable | 263 |
-| `src/features/BackupManager.ts` | src | reachable | 416 |
-| `src/features/CompressionManager.ts` | src | reachable | 708 |
-| `src/features/ContradictionDetector.ts` | src | reachable | 211 |
-| `src/features/FactExtractor.ts` | src | reachable | 353 |
-| `src/features/FreshnessManager.ts` | src | reachable | 307 |
-| `src/features/GovernanceManager.ts` | src | reachable | 717 |
-| `src/features/index.ts` | src | reachable | 106 |
-| `src/features/IOManager.ts` | src | reachable | 2146 |
-| `src/features/KeywordExtractor.ts` | src | reachable | 150 |
-| `src/features/ObservableDataModelAdapter.ts` | src | reachable | 360 |
-| `src/features/ObservationNormalizer.ts` | src | reachable | 266 |
-| `src/features/SemanticForget.ts` | src | reachable | 189 |
-| `src/features/StreamingExporter.ts` | src | reachable | 311 |
-| `src/features/TagManager.ts` | src | reachable | 255 |
-| `src/index.ts` | src | build-entry | 36 |
-| `src/search/BasicSearch.ts` | src | reachable | 171 |
-| `src/search/BloomFilter.ts` | src | reachable | 130 |
-| `src/search/BloomPreScreener.ts` | src | reachable | 156 |
-| `src/search/BM25Search.ts` | src | reachable | 542 |
-| `src/search/BooleanSearch.ts` | src | reachable | 575 |
-| `src/search/EarlyTerminationManager.ts` | src | reachable | 394 |
-| `src/search/EmbeddingCache.ts` | src | reachable | 340 |
-| `src/search/EmbeddingService.ts` | src | reachable | 928 |
-| `src/search/enDate/calendar.ts` | src | reachable | 193 |
-| `src/search/enDate/components.ts` | src | reachable | 358 |
-| `src/search/enDate/constants.ts` | src | reachable | 310 |
-| `src/search/enDate/parseEnDate.ts` | src | reachable | 117 |
-| `src/search/enDate/parsers.ts` | src | reachable | 972 |
-| `src/search/enDate/refiners.ts` | src | reachable | 536 |
-| `src/search/enDate/timezones.ts` | src | reachable | 133 |
-| `src/search/enDate/types.ts` | src | reachable | 84 |
-| `src/search/EvidencePathBuilder.ts` | src | reachable | 222 |
-| `src/search/ftsCandidates.ts` | src | reachable | 50 |
-| `src/search/FuzzySearch.ts` | src | reachable | 659 |
-| `src/search/GraphRankPrior.ts` | src | reachable | 361 |
-| `src/search/hybridLayers.ts` | src | reachable | 66 |
-| `src/search/HybridScorer.ts` | src | reachable | 327 |
-| `src/search/HybridSearchManager.ts` | src | reachable | 602 |
-| `src/search/IncrementalIndexer.ts` | src | reachable | 419 |
-| `src/search/index.ts` | src | reachable | 276 |
-| `src/search/inducedSubgraph.ts` | src | reachable | 24 |
-| `src/search/LLMQueryPlanner.ts` | src | reachable | 383 |
-| `src/search/LLMSearchExecutor.ts` | src | reachable | 226 |
-| `src/search/LSHVectorStore.ts` | src | reachable | 159 |
-| `src/search/MaterializedViews.ts` | src | reachable | 206 |
-| `src/search/NGramIndex.ts` | src | reachable | 262 |
-| `src/search/OptimizedInvertedIndex.ts` | src | reachable | 489 |
-| `src/search/ParallelSearchExecutor.ts` | src | reachable | 563 |
-| `src/search/PartialIndexAdvisor.ts` | src | reachable | 223 |
-| `src/search/ProximitySearch.ts` | src | reachable | 234 |
-| `src/search/QuantizedVectorStore.ts` | src | reachable | 408 |
-| `src/search/QueryAnalyzer.ts` | src | reachable | 258 |
-| `src/search/QueryCostEstimator.ts` | src | reachable | 795 |
-| `src/search/QueryLogger.ts` | src | reachable | 213 |
-| `src/search/QueryParser.ts` | src | reachable | 381 |
-| `src/search/QueryPlanCache.ts` | src | reachable | 493 |
-| `src/search/QueryPlanFormatter.ts` | src | reachable | 76 |
-| `src/search/QueryPlanner.ts` | src | reachable | 124 |
-| `src/search/RankedSearch.ts` | src | reachable | 557 |
-| `src/search/ReflectionManager.ts` | src | reachable | 374 |
-| `src/search/SavedSearchManager.ts` | src | reachable | 220 |
-| `src/search/SearchFilterChain.ts` | src | reachable | 410 |
-| `src/search/SearchManager.ts` | src | reachable | 561 |
-| `src/search/SearchSuggestions.ts` | src | reachable | 240 |
-| `src/search/SemanticSearch.ts` | src | reachable | 586 |
-| `src/search/SpellChecker.ts` | src | reachable | 173 |
-| `src/search/SymbolicSearch.ts` | src | reachable | 165 |
-| `src/search/TemporalQueryParser.ts` | src | reachable | 349 |
-| `src/search/TemporalSearch.ts` | src | reachable | 174 |
-| `src/search/TFIDFEventSync.ts` | src | reachable | 420 |
-| `src/search/TFIDFIndexManager.ts` | src | reachable | 714 |
-| `src/search/tiered/BrotliColdTier.ts` | src | reachable | 169 |
-| `src/search/tiered/DiskWarmTier.ts` | src | reachable | 263 |
-| `src/search/tiered/ITieredIndex.ts` | src | reachable | 235 |
-| `src/search/tiered/LRUHotTier.ts` | src | reachable | 177 |
-| `src/search/tiered/MapFileTier.ts` | src | reachable | 155 |
-| `src/search/tiered/TieredIndex.ts` | src | reachable | 314 |
-| `src/search/VectorStore.ts` | src | reachable | 473 |
-| `src/security/ABACPolicy.ts` | src | reachable | 271 |
-| `src/security/APIKeyStore.ts` | src | reachable | 347 |
-| `src/security/index.ts` | src | reachable | 39 |
-| `src/security/PiiRedactor.ts` | src | reachable | 164 |
-| `src/security/RowLevelFilter.ts` | src | reachable | 133 |
-| `src/sqlite.ts` | src | build-entry | 20 |
-| `src/types/agent-memory.ts` | src | reachable | 2535 |
-| `src/types/artifact.ts` | src | reachable | 154 |
-| `src/types/event.ts` | src | reachable | 138 |
-| `src/types/index.ts` | src | reachable | 390 |
-| `src/types/learning.ts` | src | reachable | 278 |
-| `src/types/proceduralGraph.ts` | src | reachable | 254 |
-| `src/types/procedure.ts` | src | reachable | 72 |
-| `src/types/progress.ts` | src | reachable | 196 |
-| `src/types/reconstruction.ts` | src | reachable | 206 |
-| `src/types/result.ts` | src | reachable | 97 |
-| `src/types/search.ts` | src | reachable | 345 |
-| `src/types/skills.ts` | src | reachable | 287 |
-| `src/types/task-scheduler.ts` | src | reachable | 34 |
-| `src/types/types.ts` | src | reachable | 2586 |
-| `src/utils/AsyncMutex.ts` | src | reachable | 174 |
-| `src/utils/BatchProcessor.ts` | src | reachable | 526 |
-| `src/utils/boundedTopK.ts` | src | reachable | 57 |
-| `src/utils/CachePressureCoordinator.ts` | src | reachable | 177 |
-| `src/utils/compressedCache.ts` | src | reachable | 493 |
-| `src/utils/compression/CompressedMap.ts` | src | reachable | 295 |
-| `src/utils/compression/ICompressionAdapter.ts` | src | reachable | 176 |
-| `src/utils/compressionUtil.ts` | src | reachable | 422 |
-| `src/utils/constants.ts` | src | reachable | 344 |
-| `src/utils/Diagnostics.ts` | src | reachable | 111 |
-| `src/utils/durableWriteFile.ts` | src | reachable | 285 |
-| `src/utils/entityUtils.ts` | src | reachable | 889 |
-| `src/utils/EntityValidator.ts` | src | reachable | 302 |
-| `src/utils/envConfig.ts` | src | reachable | 197 |
-| `src/utils/errors.ts` | src | reachable | 474 |
-| `src/utils/errorSuggestions.ts` | src | reachable | 268 |
-| `src/utils/fieldPath.ts` | src | reachable | 35 |
-| `src/utils/fillDefaults.ts` | src | reachable | 18 |
-| `src/utils/formatters.ts` | src | reachable | 197 |
-| `src/utils/graphCopy.ts` | src | reachable | 96 |
-| `src/utils/halfLife.ts` | src | reachable | 40 |
-| `src/utils/ids.ts` | src | reachable | 23 |
-| `src/utils/IIndexHealth.ts` | src | reachable | 47 |
-| `src/utils/index.ts` | src | reachable | 455 |
-| `src/utils/indexes.ts` | src | reachable | 453 |
-| `src/utils/IndexHealthMonitor.ts` | src | reachable | 78 |
-| `src/utils/jsonlMapFile.ts` | src | reachable | 127 |
-| `src/utils/jsonlRecordFile.ts` | src | reachable | 40 |
-| `src/utils/logger.ts` | src | reachable | 45 |
-| `src/utils/MemoryMonitor.ts` | src | reachable | 411 |
-| `src/utils/mutateMapWithFlushRollback.ts` | src | reachable | 76 |
-| `src/utils/nextMonotonicIsoTimestamp.ts` | src | reachable | 15 |
-| `src/utils/operationUtils.ts` | src | reachable | 224 |
-| `src/utils/parallelUtils.ts` | src | reachable | 148 |
-| `src/utils/postingIndex.ts` | src | reachable | 24 |
-| `src/utils/relationHelpers.ts` | src | reachable | 286 |
-| `src/utils/relationValidation.ts` | src | reachable | 257 |
-| `src/utils/RunExclusiveMutex.ts` | src | reachable | 44 |
-| `src/utils/schema.ts` | src | reachable | 1448 |
-| `src/utils/schemas.ts` | src | reachable | 812 |
-| `src/utils/SchemaValidator.ts` | src | reachable | 373 |
-| `src/utils/searchAlgorithms.ts` | src | reachable | 252 |
-| `src/utils/searchCache.ts` | src | reachable | 523 |
-| `src/utils/sidecarPath.ts` | src | reachable | 40 |
-| `src/utils/taskScheduler.ts` | src | reachable | 642 |
-| `src/utils/textSimilarity.ts` | src | reachable | 214 |
-| `src/utils/timing.ts` | src | reachable | 100 |
-| `src/utils/tokenEstimate.ts` | src | reachable | 28 |
-| `src/utils/unrefInterval.ts` | src | reachable | 32 |
-| `src/utils/validation.ts` | src | reachable | 29 |
-| `src/utils/validators.ts` | src | reachable | 358 |
-| `src/utils/WorkerPoolManager.ts` | src | reachable | 402 |
-| `src/utils/WorkerTaskManager.ts` | src | reachable | 359 |
-| `src/workers/levenshteinWorker.ts` | src | build-entry | 135 |
-| `tests/edge-cases/edge-cases.test.ts` | tests | test | 496 |
-| `tests/examples/examples.test.ts` | tests | test | 254 |
-| `tests/file-path.test.ts` | tests | test | 235 |
-| `tests/helpers/__tests__/mockStorage.test.ts` | tests | test | 101 |
-| `tests/helpers/mockStorage.ts` | tests | test | 127 |
-| `tests/helpers/tempStorage.ts` | tests | test | 93 |
-| `tests/integration/agent/access-tracking.test.ts` | tests | test | 326 |
-| `tests/integration/agent/agent-memory-manager-profile.test.ts` | tests | test | 33 |
-| `tests/integration/agent/recursa-end-to-end.test.ts` | tests | test | 110 |
-| `tests/integration/agent/recursa-leaf-learner.test.ts` | tests | test | 216 |
-| `tests/integration/agent/recursa-loop.test.ts` | tests | test | 173 |
-| `tests/integration/backup-compression.test.ts` | tests | test | 432 |
-| `tests/integration/compression-optimization.test.ts` | tests | test | 134 |
-| `tests/integration/core/manager-context-semantic-forget.test.ts` | tests | test | 38 |
-| `tests/integration/core/observation-manager-contradiction.test.ts` | tests | test | 44 |
-| `tests/integration/features/contradiction-detector-supersede.test.ts` | tests | test | 109 |
-| `tests/integration/features/governance-enforcement.test.ts` | tests | test | 322 |
-| `tests/integration/hybrid-search.test.ts` | tests | test | 332 |
-| `tests/integration/MemoryEngineStorage.test.ts` | tests | test | 182 |
-| `tests/integration/operation-progress.test.ts` | tests | test | 270 |
-| `tests/integration/procedural-graph-guidance.test.ts` | tests | test | 57 |
-| `tests/integration/procedural-graph-iomanager-roundtrip.test.ts` | tests | test | 81 |
-| `tests/integration/procedural-graph-recovery.test.ts` | tests | test | 232 |
-| `tests/integration/search/project-scope-isolation.test.ts` | tests | test | 87 |
-| `tests/integration/smart-search.test.ts` | tests | test | 287 |
-| `tests/integration/storage-dedup-safety.test.ts` | tests | test | 1251 |
-| `tests/integration/storage/graph-storage-new-fields.test.ts` | tests | test | 73 |
-| `tests/integration/storage/sqlite-storage-new-fields.test.ts` | tests | test | 65 |
-| `tests/integration/streaming-export.test.ts` | tests | test | 227 |
-| `tests/integration/transaction-isolation.test.ts` | tests | test | 230 |
-| `tests/integration/worker-pool-integration.test.ts` | tests | test | 237 |
-| `tests/integration/workflows.test.ts` | tests | test | 540 |
-| `tests/knowledge-graph.test.ts` | tests | test | 400 |
-| `tests/performance/baselineHelper.ts` | tests | test | 85 |
-| `tests/performance/benchmarks.test.ts` | tests | test | 495 |
-| `tests/performance/compression-benchmarks.test.ts` | tests | test | 308 |
-| `tests/performance/embedding-benchmarks.test.ts` | tests | test | 472 |
-| `tests/performance/foundation-benchmarks.test.ts` | tests | test | 548 |
-| `tests/performance/memory-engine-perf.test.ts` | tests | test | 101 |
-| `tests/performance/merge-perf.test.ts` | tests | test | 49 |
-| `tests/performance/mmap-load-benchmark.test.ts` | tests | test | 171 |
-| `tests/performance/optimization-benchmarks.test.ts` | tests | test | 318 |
-| `tests/performance/parallel-benchmarks.test.ts` | tests | test | 477 |
-| `tests/performance/query-execution-benchmarks.test.ts` | tests | test | 521 |
-| `tests/performance/ranked-search-benchmarks.test.ts` | tests | test | 141 |
-| `tests/performance/search-algorithm-benchmarks.test.ts` | tests | test | 616 |
-| `tests/performance/task-scheduler-benchmarks.test.ts` | tests | test | 420 |
-| `tests/performance/task-scheduler-config-benchmarks.test.ts` | tests | test | 611 |
-| `tests/performance/v10-benchmarks.test.ts` | tests | test | 335 |
-| `tests/performance/write-path-benchmarks.test.ts` | tests | test | 158 |
-| `tests/performance/write-performance.test.ts` | tests | test | 464 |
-| `tests/test-utils/inject-flush-failure.ts` | tests | test | 68 |
-| `tests/test-utils/microtask-ticks.ts` | tests | test | 47 |
-| `tests/test-utils/sqlite-files.ts` | tests | test | 34 |
-| `tests/unit/adapters/ApiKeyAuthMiddleware.test.ts` | tests | test | 266 |
-| `tests/unit/adapters/LangChainMemoryAdapter.test.ts` | tests | test | 98 |
-| `tests/unit/adapters/MCPToolObserverAdapter.test.ts` | tests | test | 164 |
-| `tests/unit/adapters/pagination.test.ts` | tests | test | 78 |
-| `tests/unit/adapters/RateLimiter.bounds.test.ts` | tests | test | 61 |
-| `tests/unit/adapters/RateLimiter.test.ts` | tests | test | 92 |
-| `tests/unit/adapters/RecursaToolAdapter.test.ts` | tests | test | 277 |
-| `tests/unit/adapters/RecursaToolAdapterSafety.test.ts` | tests | test | 209 |
-| `tests/unit/adapters/rest-input-security.test.ts` | tests | test | 89 |
-| `tests/unit/adapters/rest-tenancy.test.ts` | tests | test | 347 |
-| `tests/unit/adapters/rest-unscoped-warning.test.ts` | tests | test | 46 |
-| `tests/unit/adapters/RestRouter.test.ts` | tests | test | 203 |
-| `tests/unit/agent/AccessTracker.recordBatch.test.ts` | tests | test | 101 |
-| `tests/unit/agent/AccessTracker.test.ts` | tests | test | 744 |
-| `tests/unit/agent/ActiveRetrieval.test.ts` | tests | test | 194 |
-| `tests/unit/agent/agent-memory-manager-diary.test.ts` | tests | test | 70 |
-| `tests/unit/agent/AgentEnvDefaults.test.ts` | tests | test | 144 |
-| `tests/unit/agent/AgentMemoryManager.collaborativeSynthesis.test.ts` | tests | test | 25 |
-| `tests/unit/agent/AgentMemoryManager.knowledge.test.ts` | tests | test | 67 |
-| `tests/unit/agent/AgentMemoryManager.test.ts` | tests | test | 720 |
-| `tests/unit/agent/AgentReflectionManager.test.ts` | tests | test | 578 |
-| `tests/unit/agent/ArtifactManager.test.ts` | tests | test | 659 |
-| `tests/unit/agent/bootstrap/bootstrapFixtures.ts` | tests | test | 90 |
-| `tests/unit/agent/bootstrap/Bootstrapper.test.ts` | tests | test | 114 |
-| `tests/unit/agent/bootstrap/BootstrapValidation.test.ts` | tests | test | 54 |
-| `tests/unit/agent/bootstrap/BoundaryRecorder.test.ts` | tests | test | 86 |
-| `tests/unit/agent/bootstrap/CorpusMapper.test.ts` | tests | test | 169 |
-| `tests/unit/agent/bootstrap/ExplorationNotes.test.ts` | tests | test | 124 |
-| `tests/unit/agent/bootstrap/PracticeTaskGenerator.test.ts` | tests | test | 130 |
-| `tests/unit/agent/CausalReasoner.test.ts` | tests | test | 339 |
-| `tests/unit/agent/CognitiveLoadAnalyzer.test.ts` | tests | test | 362 |
-| `tests/unit/agent/CollaborationAuditEnforcer.test.ts` | tests | test | 184 |
-| `tests/unit/agent/CollaborativeSynthesis.test.ts` | tests | test | 710 |
-| `tests/unit/agent/ConflictResolver.strategies.test.ts` | tests | test | 154 |
-| `tests/unit/agent/ConflictResolver.test.ts` | tests | test | 466 |
-| `tests/unit/agent/ConnectivitySignals.test.ts` | tests | test | 478 |
-| `tests/unit/agent/ConsolidationPipeline.mergeDelta.test.ts` | tests | test | 339 |
-| `tests/unit/agent/ConsolidationPipeline.mergeRace.test.ts` | tests | test | 134 |
-| `tests/unit/agent/ConsolidationPipeline.promoteBatch.test.ts` | tests | test | 278 |
-| `tests/unit/agent/ConsolidationPipeline.test.ts` | tests | test | 2334 |
-| `tests/unit/agent/ConsolidationScheduler.test.ts` | tests | test | 396 |
-| `tests/unit/agent/context-window-manager-compress.test.ts` | tests | test | 166 |
-| `tests/unit/agent/context-window-manager-wakeup.test.ts` | tests | test | 226 |
-| `tests/unit/agent/ContextProfileManager.test.ts` | tests | test | 526 |
-| `tests/unit/agent/ContextWindowManager.eviction.test.ts` | tests | test | 233 |
-| `tests/unit/agent/ContextWindowManager.knowledge.test.ts` | tests | test | 106 |
-| `tests/unit/agent/ContextWindowManager.test.ts` | tests | test | 1753 |
-| `tests/unit/agent/DecayEngine.reinforceBatch.test.ts` | tests | test | 150 |
-| `tests/unit/agent/DecayEngine.test.ts` | tests | test | 1318 |
-| `tests/unit/agent/DecayScheduler.test.ts` | tests | test | 584 |
-| `tests/unit/agent/DecisionManager.test.ts` | tests | test | 407 |
-| `tests/unit/agent/delta-services-wiring.test.ts` | tests | test | 61 |
-| `tests/unit/agent/DistillationPipeline.test.ts` | tests | test | 153 |
-| `tests/unit/agent/DistillationPolicy.test.ts` | tests | test | 850 |
-| `tests/unit/agent/DreamEngine.test.ts` | tests | test | 965 |
-| `tests/unit/agent/EntropyFilter.test.ts` | tests | test | 318 |
-| `tests/unit/agent/EpisodicMemoryManager.test.ts` | tests | test | 727 |
-| `tests/unit/agent/evaluation/DeterministicJudge.hardening.test.ts` | tests | test | 67 |
-| `tests/unit/agent/evaluation/DeterministicJudge.test.ts` | tests | test | 131 |
-| `tests/unit/agent/evaluation/Evaluator.hardening.test.ts` | tests | test | 94 |
-| `tests/unit/agent/evaluation/Evaluator.test.ts` | tests | test | 197 |
-| `tests/unit/agent/evaluation/LLMRubricJudge.hardening.test.ts` | tests | test | 71 |
-| `tests/unit/agent/evaluation/LLMRubricJudge.test.ts` | tests | test | 129 |
-| `tests/unit/agent/evaluation/RubricAudit.hardening.test.ts` | tests | test | 53 |
-| `tests/unit/agent/evaluation/RubricAudit.test.ts` | tests | test | 160 |
-| `tests/unit/agent/EventManager.candidatesVia.test.ts` | tests | test | 74 |
-| `tests/unit/agent/EventManager.test.ts` | tests | test | 512 |
-| `tests/unit/agent/ExclusionManager.test.ts` | tests | test | 237 |
-| `tests/unit/agent/ExperienceExtractor.test.ts` | tests | test | 178 |
-| `tests/unit/agent/FailureDistillation.test.ts` | tests | test | 617 |
-| `tests/unit/agent/FailureManager.test.ts` | tests | test | 762 |
-| `tests/unit/agent/GuardedComponentEdit.test.ts` | tests | test | 598 |
-| `tests/unit/agent/harness/ConcurrencyLimiter.test.ts` | tests | test | 247 |
-| `tests/unit/agent/harness/EvictionIndex.test.ts` | tests | test | 130 |
-| `tests/unit/agent/harness/InteractionLog.hardening.test.ts` | tests | test | 146 |
-| `tests/unit/agent/harness/InteractionLog.test.ts` | tests | test | 271 |
-| `tests/unit/agent/HeuristicExtractionStage.test.ts` | tests | test | 326 |
-| `tests/unit/agent/HeuristicManager.test.ts` | tests | test | 206 |
-| `tests/unit/agent/IMemoryBackend.contract.test.ts` | tests | test | 229 |
-| `tests/unit/agent/ImportanceScorer.test.ts` | tests | test | 79 |
-| `tests/unit/agent/InMemoryBackend.test.ts` | tests | test | 137 |
-| `tests/unit/agent/keyValueLine.test.ts` | tests | test | 60 |
-| `tests/unit/agent/knowledge/InstructionSetManager.test.ts` | tests | test | 96 |
-| `tests/unit/agent/knowledge/knowledgeDigest.test.ts` | tests | test | 89 |
-| `tests/unit/agent/knowledge/knowledgeFixtures.ts` | tests | test | 152 |
-| `tests/unit/agent/knowledge/KnowledgeHardening.test.ts` | tests | test | 139 |
-| `tests/unit/agent/knowledge/KnowledgeRepository.rollback.test.ts` | tests | test | 135 |
-| `tests/unit/agent/knowledge/KnowledgeRepository.test.ts` | tests | test | 220 |
-| `tests/unit/agent/knowledgeContext.sections.test.ts` | tests | test | 63 |
-| `tests/unit/agent/learning/Diagnoser.test.ts` | tests | test | 254 |
-| `tests/unit/agent/learning/DiagnoserBatchDurability.challenger.test.ts` | tests | test | 146 |
-| `tests/unit/agent/learning/InProcessLearnHandler.concurrency.test.ts` | tests | test | 61 |
-| `tests/unit/agent/learning/KnowledgeEditor.test.ts` | tests | test | 308 |
-| `tests/unit/agent/learning/LeafAbortDedup.test.ts` | tests | test | 125 |
-| `tests/unit/agent/learning/LeafApply.test.ts` | tests | test | 233 |
-| `tests/unit/agent/learning/leafFixtures.ts` | tests | test | 196 |
-| `tests/unit/agent/learning/LeafLearner.test.ts` | tests | test | 210 |
-| `tests/unit/agent/learning/LeafLearnerBounds.test.ts` | tests | test | 113 |
-| `tests/unit/agent/learning/LeafLearnerResume.test.ts` | tests | test | 138 |
-| `tests/unit/agent/learning/LeafValidationPlan.test.ts` | tests | test | 112 |
-| `tests/unit/agent/learning/LearnedSkillLoadability.test.ts` | tests | test | 97 |
-| `tests/unit/agent/learning/LearningAccountant.test.ts` | tests | test | 193 |
-| `tests/unit/agent/learning/LearningReflector.test.ts` | tests | test | 175 |
-| `tests/unit/agent/learning/LearningTrace.test.ts` | tests | test | 268 |
-| `tests/unit/agent/learning/RecursiveCriteria.test.ts` | tests | test | 46 |
-| `tests/unit/agent/learning/recursiveFixtures.ts` | tests | test | 162 |
-| `tests/unit/agent/learning/RecursiveLearner.test.ts` | tests | test | 208 |
-| `tests/unit/agent/learning/RecursiveLiveK.test.ts` | tests | test | 121 |
-| `tests/unit/agent/learning/RecursivePlanBudget.test.ts` | tests | test | 66 |
-| `tests/unit/agent/learning/RecursiveWriteBudget.test.ts` | tests | test | 154 |
-| `tests/unit/agent/learning/RevisionMerger.test.ts` | tests | test | 298 |
-| `tests/unit/agent/learning/RevisionMergeRules.test.ts` | tests | test | 134 |
-| `tests/unit/agent/learning/RevisionValidator.test.ts` | tests | test | 167 |
-| `tests/unit/agent/learning/SplitStrategies.test.ts` | tests | test | 308 |
-| `tests/unit/agent/memoryBackend-wiring.test.ts` | tests | test | 71 |
-| `tests/unit/agent/MemoryEngine.test.ts` | tests | test | 858 |
-| `tests/unit/agent/MemoryFormatter.test.ts` | tests | test | 313 |
-| `tests/unit/agent/MemoryFormatterSalience.test.ts` | tests | test | 242 |
-| `tests/unit/agent/MemoryValidator.test.ts` | tests | test | 203 |
-| `tests/unit/agent/MultiAgentMemoryManager.fieldPreservation.test.ts` | tests | test | 43 |
-| `tests/unit/agent/MultiAgentMemoryManager.test.ts` | tests | test | 1108 |
-| `tests/unit/agent/ObservationDedupManager.test.ts` | tests | test | 237 |
-| `tests/unit/agent/ObservationDedupReportStage.test.ts` | tests | test | 111 |
-| `tests/unit/agent/ObserverPipeline.test.ts` | tests | test | 556 |
-| `tests/unit/agent/PatternDetector.test.ts` | tests | test | 413 |
-| `tests/unit/agent/PlanManager.test.ts` | tests | test | 600 |
-| `tests/unit/agent/procedural/graph/appendixF.test.ts` | tests | test | 97 |
-| `tests/unit/agent/procedural/graph/backing/backingContract.ts` | tests | test | 383 |
-| `tests/unit/agent/procedural/graph/backing/jsonl.test.ts` | tests | test | 118 |
-| `tests/unit/agent/procedural/graph/backing/memory.test.ts` | tests | test | 55 |
-| `tests/unit/agent/procedural/graph/backing/sqlite.test.ts` | tests | test | 122 |
-| `tests/unit/agent/procedural/graph/canonical-compare.test.ts` | tests | test | 92 |
-| `tests/unit/agent/procedural/graph/canonical.test.ts` | tests | test | 214 |
-| `tests/unit/agent/procedural/graph/CompletionProvider.test.ts` | tests | test | 114 |
-| `tests/unit/agent/procedural/graph/fixtures/appendixF.ts` | tests | test | 167 |
-| `tests/unit/agent/procedural/graph/fixtures/cfo-generation-d.ts` | tests | test | 77 |
-| `tests/unit/agent/procedural/graph/fixtures/hotpotqa-mode2.ts` | tests | test | 103 |
-| `tests/unit/agent/procedural/graph/hardening.test.ts` | tests | test | 429 |
-| `tests/unit/agent/procedural/graph/ProceduralGraph.test.ts` | tests | test | 306 |
-| `tests/unit/agent/procedural/graph/ProceduralGraphEvolution.test.ts` | tests | test | 1012 |
-| `tests/unit/agent/procedural/graph/ProceduralGraphManager.test.ts` | tests | test | 469 |
-| `tests/unit/agent/procedural/graph/ProceduralGraphRefiner.test.ts` | tests | test | 235 |
-| `tests/unit/agent/procedural/graph/ProceduralGraphSchemas.test.ts` | tests | test | 332 |
-| `tests/unit/agent/procedural/graph/ProceduralGraphSerializer.test.ts` | tests | test | 119 |
-| `tests/unit/agent/procedural/graph/ProceduralGraphSession.test.ts` | tests | test | 311 |
-| `tests/unit/agent/procedural/graph/ProceduralGraphValidator.test.ts` | tests | test | 325 |
-| `tests/unit/agent/procedural/graph/ProcedureGraphAdapter.test.ts` | tests | test | 135 |
-| `tests/unit/agent/procedural/graph/prompts.test.ts` | tests | test | 49 |
-| `tests/unit/agent/procedural/graph/tokenTail.test.ts` | tests | test | 93 |
-| `tests/unit/agent/ProcedureManager.test.ts` | tests | test | 413 |
-| `tests/unit/agent/ProcedureStore.test.ts` | tests | test | 488 |
-| `tests/unit/agent/profile-manager-basics.test.ts` | tests | test | 78 |
-| `tests/unit/agent/profile-manager-extraction.test.ts` | tests | test | 91 |
-| `tests/unit/agent/ProjectContextManager.dedupByKey.test.ts` | tests | test | 67 |
-| `tests/unit/agent/ProjectContextManager.test.ts` | tests | test | 255 |
-| `tests/unit/agent/ProspectiveMemoryManager.conditional.test.ts` | tests | test | 314 |
-| `tests/unit/agent/ProspectiveMemoryManager.test.ts` | tests | test | 722 |
-| `tests/unit/agent/rbac.test.ts` | tests | test | 315 |
-| `tests/unit/agent/reconstruction/CueTagContentGraph.test.ts` | tests | test | 88 |
-| `tests/unit/agent/reconstruction/MemoryDistiller.test.ts` | tests | test | 121 |
-| `tests/unit/agent/reconstruction/MemoryGraphBridge.test.ts` | tests | test | 120 |
-| `tests/unit/agent/reconstruction/MemoryToolkit.test.ts` | tests | test | 61 |
-| `tests/unit/agent/reconstruction/ReconstructiveMemory.test.ts` | tests | test | 135 |
-| `tests/unit/agent/recordQuery.test.ts` | tests | test | 23 |
-| `tests/unit/agent/ReflectionStage.test.ts` | tests | test | 344 |
-| `tests/unit/agent/RelationConsolidator.test.ts` | tests | test | 678 |
-| `tests/unit/agent/RoleProfiles.test.ts` | tests | test | 255 |
-| `tests/unit/agent/RuleEvaluator.test.ts` | tests | test | 310 |
-| `tests/unit/agent/SalienceEngine-heap-pins.test.ts` | tests | test | 179 |
-| `tests/unit/agent/SalienceEngine.test.ts` | tests | test | 848 |
-| `tests/unit/agent/selectWeightedTurns.test.ts` | tests | test | 75 |
-| `tests/unit/agent/SessionCheckpoint.test.ts` | tests | test | 698 |
-| `tests/unit/agent/SessionManager.test.ts` | tests | test | 848 |
-| `tests/unit/agent/SessionQueryBuilder.createdWithin.test.ts` | tests | test | 72 |
-| `tests/unit/agent/SessionQueryBuilder.test.ts` | tests | test | 610 |
-| `tests/unit/agent/skills/SkillFormat.test.ts` | tests | test | 240 |
-| `tests/unit/agent/skills/SkillHardening.test.ts` | tests | test | 179 |
-| `tests/unit/agent/skills/SkillIOConfinement.test.ts` | tests | test | 64 |
-| `tests/unit/agent/skills/SkillManager.test.ts` | tests | test | 259 |
-| `tests/unit/agent/skills/SkillPublisher.test.ts` | tests | test | 216 |
-| `tests/unit/agent/skills/SkillPublisherConfinement.test.ts` | tests | test | 109 |
-| `tests/unit/agent/skills/SkillWritePath.test.ts` | tests | test | 124 |
-| `tests/unit/agent/SQLiteBackend.test.ts` | tests | test | 216 |
-| `tests/unit/agent/SummarizationService.test.ts` | tests | test | 531 |
-| `tests/unit/agent/ToolAffordanceManager.test.ts` | tests | test | 198 |
-| `tests/unit/agent/ToolCallObserver.interactionLog.test.ts` | tests | test | 78 |
-| `tests/unit/agent/ToolCallObserver.test.ts` | tests | test | 339 |
-| `tests/unit/agent/TrajectoryCompressor.test.ts` | tests | test | 159 |
-| `tests/unit/agent/VisibilityResolver.test.ts` | tests | test | 462 |
-| `tests/unit/agent/workingMemoryGuard.test.ts` | tests | test | 104 |
-| `tests/unit/agent/WorkingMemoryManager.test.ts` | tests | test | 1269 |
-| `tests/unit/agent/WorkThreadManager.test.ts` | tests | test | 1209 |
-| `tests/unit/agent/WorldModel.test.ts` | tests | test | 176 |
-| `tests/unit/cli/actionFrame.test.ts` | tests | test | 446 |
-| `tests/unit/cli/ansi.test.ts` | tests | test | 168 |
-| `tests/unit/cli/audit.test.ts` | tests | test | 420 |
-| `tests/unit/cli/cache-reindex.test.ts` | tests | test | 157 |
-| `tests/unit/cli/check.test.ts` | tests | test | 165 |
-| `tests/unit/cli/commands.test.ts` | tests | test | 814 |
-| `tests/unit/cli/config.test.ts` | tests | test | 323 |
-| `tests/unit/cli/decision.test.ts` | tests | test | 114 |
-| `tests/unit/cli/diag.test.ts` | tests | test | 194 |
-| `tests/unit/cli/doctor.test.ts` | tests | test | 419 |
-| `tests/unit/cli/exclusion.test.ts` | tests | test | 71 |
-| `tests/unit/cli/formatters.test.ts` | tests | test | 738 |
-| `tests/unit/cli/graph.test.ts` | tests | test | 77 |
-| `tests/unit/cli/helpers/captureCliParity.ts` | tests | test | 312 |
-| `tests/unit/cli/helpers/cliTestHarness.ts` | tests | test | 114 |
-| `tests/unit/cli/helpers/syntheticProgram.ts` | tests | test | 173 |
-| `tests/unit/cli/heuristic.test.ts` | tests | test | 70 |
-| `tests/unit/cli/hierarchy.test.ts` | tests | test | 65 |
-| `tests/unit/cli/index.test.ts` | tests | test | 271 |
-| `tests/unit/cli/inspect.test.ts` | tests | test | 212 |
-| `tests/unit/cli/interactive.test.ts` | tests | test | 920 |
-| `tests/unit/cli/maintenance-cli.test.ts` | tests | test | 78 |
-| `tests/unit/cli/observation.test.ts` | tests | test | 66 |
-| `tests/unit/cli/observationDedup.test.ts` | tests | test | 60 |
-| `tests/unit/cli/options.test.ts` | tests | test | 313 |
-| `tests/unit/cli/parseArgsPinned.test.ts` | tests | test | 269 |
-| `tests/unit/cli/parseArgsSurfacePinned.test.ts` | tests | test | 89 |
-| `tests/unit/cli/plainTable.challenger.test.ts` | tests | test | 201 |
-| `tests/unit/cli/plainTable.test.ts` | tests | test | 127 |
-| `tests/unit/cli/projectContext.test.ts` | tests | test | 65 |
-| `tests/unit/cli/recorderDoc.test.ts` | tests | test | 49 |
-| `tests/unit/cli/search-extended.test.ts` | tests | test | 66 |
-| `tests/unit/cli/smoke.test.ts` | tests | test | 83 |
-| `tests/unit/cli/spell.test.ts` | tests | test | 72 |
-| `tests/unit/cli/tag.test.ts` | tests | test | 66 |
-| `tests/unit/cli/toolAffordance.test.ts` | tests | test | 76 |
-| `tests/unit/core/BatchTransaction.test.ts` | tests | test | 695 |
-| `tests/unit/core/bloom-prescreener-wiring.test.ts` | tests | test | 203 |
-| `tests/unit/core/columns/columns-review-fixes.test.ts` | tests | test | 355 |
-| `tests/unit/core/columns/IColumnStore.test.ts` | tests | test | 132 |
-| `tests/unit/core/columns/JsonlColumnStore.test.ts` | tests | test | 444 |
-| `tests/unit/core/columns/ObservationColumnStore-wiring.test.ts` | tests | test | 266 |
-| `tests/unit/core/columns/shadow-write-drain.test.ts` | tests | test | 109 |
-| `tests/unit/core/ConcurrencyControl.test.ts` | tests | test | 459 |
-| `tests/unit/core/context/AgentBookkeepingFacade.test.ts` | tests | test | 69 |
-| `tests/unit/core/context/AgentCognitionFacade.test.ts` | tests | test | 94 |
-| `tests/unit/core/context/AgentMemoryFacade.test.ts` | tests | test | 116 |
-| `tests/unit/core/context/KnowledgeGovernanceFacade.test.ts` | tests | test | 99 |
-| `tests/unit/core/context/LazyGetters.freshness-temporal.test.ts` | tests | test | 83 |
-| `tests/unit/core/context/ManagerContext.close.test.ts` | tests | test | 45 |
-| `tests/unit/core/context/ManagerContext.newMembers.test.ts` | tests | test | 36 |
-| `tests/unit/core/context/SearchFacade.test.ts` | tests | test | 118 |
-| `tests/unit/core/context/StorageInfraFacade.test.ts` | tests | test | 184 |
-| `tests/unit/core/entity-id.test.ts` | tests | test | 197 |
-| `tests/unit/core/entity-manager-list-projects.test.ts` | tests | test | 36 |
-| `tests/unit/core/entity-manager-profile-namespace.test.ts` | tests | test | 45 |
-| `tests/unit/core/entity-manager-project-stamping.test.ts` | tests | test | 51 |
-| `tests/unit/core/entity-manager-version-chain.test.ts` | tests | test | 152 |
-| `tests/unit/core/EntityManager.legacyDelete.test.ts` | tests | test | 67 |
-| `tests/unit/core/EntityManager.test.ts` | tests | test | 903 |
-| `tests/unit/core/EntityStateMachine.test.ts` | tests | test | 65 |
-| `tests/unit/core/GraphEventEmitter.observation.test.ts` | tests | test | 78 |
-| `tests/unit/core/GraphEventEmitter.test.ts` | tests | test | 519 |
-| `tests/unit/core/GraphEvents.test.ts` | tests | test | 480 |
-| `tests/unit/core/GraphStorage.test.ts` | tests | test | 666 |
-| `tests/unit/core/GraphTraversal.test.ts` | tests | test | 615 |
-| `tests/unit/core/GraphTraversalLookFor.test.ts` | tests | test | 191 |
-| `tests/unit/core/HierarchyManager.test.ts` | tests | test | 509 |
-| `tests/unit/core/known-issue-fixes.test.ts` | tests | test | 234 |
-| `tests/unit/core/manager-context-default-embedding.test.ts` | tests | test | 29 |
-| `tests/unit/core/manager-context-env-number.test.ts` | tests | test | 81 |
-| `tests/unit/core/manager-context-new-managers.test.ts` | tests | test | 78 |
-| `tests/unit/core/manager-context-project.test.ts` | tests | test | 33 |
-| `tests/unit/core/ManagerContext-hybridContext.test.ts` | tests | test | 127 |
-| `tests/unit/core/ManagerContext-proceduralGraph.test.ts` | tests | test | 76 |
-| `tests/unit/core/ManagerContext-vectorStore.test.ts` | tests | test | 55 |
-| `tests/unit/core/ManagerContext.agentEnvDefaults.test.ts` | tests | test | 60 |
-| `tests/unit/core/ManagerContext.bootstrapper.test.ts` | tests | test | 114 |
-| `tests/unit/core/ManagerContext.learningLoop.facade.test.ts` | tests | test | 73 |
-| `tests/unit/core/ManagerContext.learningLoop.recursive.test.ts` | tests | test | 192 |
-| `tests/unit/core/ManagerContext.learningLoop.test.ts` | tests | test | 209 |
-| `tests/unit/core/ManagerContext.recursa-wiring.test.ts` | tests | test | 199 |
-| `tests/unit/core/ManagerContext.test.ts` | tests | test | 1359 |
-| `tests/unit/core/mmap/FsReadMmapBackend.test.ts` | tests | test | 275 |
-| `tests/unit/core/mmap/GraphStorage-mmap-wiring.test.ts` | tests | test | 723 |
-| `tests/unit/core/mmap/IMmapBackend.test.ts` | tests | test | 198 |
-| `tests/unit/core/mmap/mmap-review-fixes.test.ts` | tests | test | 272 |
-| `tests/unit/core/mutation-isolation.test.ts` | tests | test | 108 |
-| `tests/unit/core/nodeSqliteAdapter.test.ts` | tests | test | 128 |
-| `tests/unit/core/observation-validate-hook.test.ts` | tests | test | 128 |
-| `tests/unit/core/ObservationManager.dedup.test.ts` | tests | test | 495 |
-| `tests/unit/core/ObservationManager.events.test.ts` | tests | test | 203 |
-| `tests/unit/core/ObservationManager.test.ts` | tests | test | 386 |
-| `tests/unit/core/ObservationStore.test.ts` | tests | test | 95 |
-| `tests/unit/core/optimistic-concurrency.test.ts` | tests | test | 133 |
-| `tests/unit/core/PostgreSQLStorage.test.ts` | tests | test | 528 |
-| `tests/unit/core/rebuild-native.test.ts` | tests | test | 42 |
-| `tests/unit/core/recursa-record-persistence.test.ts` | tests | test | 98 |
-| `tests/unit/core/RefIndex.test.ts` | tests | test | 620 |
-| `tests/unit/core/relation-manager-temporal.test.ts` | tests | test | 157 |
-| `tests/unit/core/RelationManager-metadata.test.ts` | tests | test | 127 |
-| `tests/unit/core/RelationManager.test.ts` | tests | test | 357 |
-| `tests/unit/core/rename-entity.test.ts` | tests | test | 364 |
-| `tests/unit/core/segments/assertValidSegmentId.test.ts` | tests | test | 69 |
-| `tests/unit/core/segments/FileSegmentStorage.test.ts` | tests | test | 877 |
-| `tests/unit/core/segments/GraphStorage-segments.test.ts` | tests | test | 222 |
-| `tests/unit/core/segments/ISegmentStorage.test.ts` | tests | test | 385 |
-| `tests/unit/core/segments/segments-review-fixes.test.ts` | tests | test | 467 |
-| `tests/unit/core/sqlite-append-replace.test.ts` | tests | test | 339 |
-| `tests/unit/core/sqlite-content-hash-migration.test.ts` | tests | test | 57 |
-| `tests/unit/core/sqlite-driver-resolver.test.ts` | tests | test | 72 |
-| `tests/unit/core/sqlite-embeddings-content-hash.test.ts` | tests | test | 182 |
-| `tests/unit/core/sqlite-events.test.ts` | tests | test | 470 |
-| `tests/unit/core/sqlite-fts5-error.test.ts` | tests | test | 147 |
-| `tests/unit/core/sqlite-lazy-load.test.ts` | tests | test | 82 |
-| `tests/unit/core/SQLiteStorage.autoIndexDeprecation.test.ts` | tests | test | 109 |
-| `tests/unit/core/SQLiteStorage.test.ts` | tests | test | 1720 |
-| `tests/unit/core/storage-write-ownership.test.ts` | tests | test | 140 |
-| `tests/unit/core/storageCache.rebuild.test.ts` | tests | test | 95 |
-| `tests/unit/core/storageCache.test.ts` | tests | test | 390 |
-| `tests/unit/core/storageCapabilities.test.ts` | tests | test | 123 |
-| `tests/unit/core/StorageFactory.test.ts` | tests | test | 220 |
-| `tests/unit/core/temporal-versioning.test.ts` | tests | test | 267 |
-| `tests/unit/core/TransactionBatching.test.ts` | tests | test | 440 |
-| `tests/unit/core/TransactionManager.test.ts` | tests | test | 769 |
-| `tests/unit/core/TransitionLedger.test.ts` | tests | test | 521 |
-| `tests/unit/core/write-path-delta.test.ts` | tests | test | 745 |
-| `tests/unit/exports-barrels.recursa.test.ts` | tests | test | 233 |
-| `tests/unit/exports-barrels.test.ts` | tests | test | 198 |
-| `tests/unit/features/AnalyticsManager.test.ts` | tests | test | 400 |
-| `tests/unit/features/ArchiveManager.test.ts` | tests | test | 774 |
-| `tests/unit/features/AuditLog.test.ts` | tests | test | 477 |
-| `tests/unit/features/AutoLinker.test.ts` | tests | test | 383 |
-| `tests/unit/features/BackupManager.test.ts` | tests | test | 201 |
-| `tests/unit/features/compression-manager-priority-dedup.test.ts` | tests | test | 47 |
-| `tests/unit/features/compression-manager-versioning-guard.test.ts` | tests | test | 48 |
-| `tests/unit/features/CompressionManager.test.ts` | tests | test | 574 |
-| `tests/unit/features/contradiction-detector-detect.test.ts` | tests | test | 63 |
-| `tests/unit/features/FactExtractor.test.ts` | tests | test | 320 |
-| `tests/unit/features/FreshnessManager.test.ts` | tests | test | 528 |
-| `tests/unit/features/GovernanceManager-delta.test.ts` | tests | test | 293 |
-| `tests/unit/features/GovernanceManager-fresh-storage.test.ts` | tests | test | 65 |
-| `tests/unit/features/GovernanceManager.test.ts` | tests | test | 737 |
-| `tests/unit/features/ingest-provenance-modes.test.ts` | tests | test | 277 |
-| `tests/unit/features/io-manager-ingest.test.ts` | tests | test | 148 |
-| `tests/unit/features/io-manager-split.test.ts` | tests | test | 52 |
-| `tests/unit/features/io-manager-visualize.test.ts` | tests | test | 83 |
-| `tests/unit/features/IOManager.graphmlDataValue.test.ts` | tests | test | 50 |
-| `tests/unit/features/IOManager.rdf-export.test.ts` | tests | test | 290 |
-| `tests/unit/features/IOManager.test.ts` | tests | test | 1777 |
-| `tests/unit/features/ObservableDataModelAdapter.test.ts` | tests | test | 446 |
-| `tests/unit/features/ObservationNormalizer.test.ts` | tests | test | 339 |
-| `tests/unit/features/pii-redaction-export.test.ts` | tests | test | 224 |
-| `tests/unit/features/semantic-forget-exact.test.ts` | tests | test | 81 |
-| `tests/unit/features/semantic-forget-semantic.test.ts` | tests | test | 74 |
-| `tests/unit/features/StreamingExporter-frame-pins.test.ts` | tests | test | 184 |
-| `tests/unit/features/StreamingExporter.test.ts` | tests | test | 363 |
-| `tests/unit/features/TagManager-loader-pins.test.ts` | tests | test | 253 |
-| `tests/unit/features/TagManager.test.ts` | tests | test | 330 |
-| `tests/unit/lint-rules/lint-rules.test.ts` | tests | test | 99 |
-| `tests/unit/performance/baselineHelper.test.ts` | tests | test | 21 |
-| `tests/unit/scripts/clean-dist.edges.test.ts` | tests | test | 114 |
-| `tests/unit/scripts/clean-dist.test.ts` | tests | test | 22 |
-| `tests/unit/search/BasicSearch.test.ts` | tests | test | 458 |
-| `tests/unit/search/BloomFilter.test.ts` | tests | test | 133 |
-| `tests/unit/search/BM25Search.test.ts` | tests | test | 338 |
-| `tests/unit/search/BM25SearchReadPath.test.ts` | tests | test | 281 |
-| `tests/unit/search/BooleanSearch.test.ts` | tests | test | 653 |
-| `tests/unit/search/cache-isolation.test.ts` | tests | test | 113 |
-| `tests/unit/search/EarlyTerminationManager.test.ts` | tests | test | 411 |
-| `tests/unit/search/EmbeddingCache.test.ts` | tests | test | 455 |
-| `tests/unit/search/EmbeddingService.test.ts` | tests | test | 1094 |
-| `tests/unit/search/enDate.challenger.test.ts` | tests | test | 76 |
-| `tests/unit/search/enDate.inventory.test.ts` | tests | test | 94 |
-| `tests/unit/search/enDate.parity.test.ts` | tests | test | 207 |
-| `tests/unit/search/EvidencePathBuilder.test.ts` | tests | test | 225 |
-| `tests/unit/search/FuzzySearch.test.ts` | tests | test | 1323 |
-| `tests/unit/search/FuzzySearchPerformance.test.ts` | tests | test | 102 |
-| `tests/unit/search/FuzzySearchWorkerPath.test.ts` | tests | test | 97 |
-| `tests/unit/search/GraphRankPrior.test.ts` | tests | test | 612 |
-| `tests/unit/search/hybridLayers.test.ts` | tests | test | 118 |
-| `tests/unit/search/HybridScorer.test.ts` | tests | test | 368 |
-| `tests/unit/search/HybridScorerGraphChannel.test.ts` | tests | test | 168 |
-| `tests/unit/search/HybridSearchExplain.test.ts` | tests | test | 306 |
-| `tests/unit/search/HybridSearchManager.test.ts` | tests | test | 505 |
-| `tests/unit/search/HybridSearchManagerGraph.test.ts` | tests | test | 306 |
-| `tests/unit/search/IncrementalIndexer.queue.test.ts` | tests | test | 121 |
-| `tests/unit/search/IncrementalIndexer.test.ts` | tests | test | 497 |
-| `tests/unit/search/IncrementalTFIDF.test.ts` | tests | test | 421 |
-| `tests/unit/search/inducedSubgraph.test.ts` | tests | test | 87 |
-| `tests/unit/search/LexicalCandidateSelection.test.ts` | tests | test | 59 |
-| `tests/unit/search/LlamaCppEmbeddingService.test.ts` | tests | test | 238 |
-| `tests/unit/search/LLMQueryPlanner.test.ts` | tests | test | 391 |
-| `tests/unit/search/LLMSearchExecutor.test.ts` | tests | test | 248 |
-| `tests/unit/search/LLMSearchExecutorExplain.test.ts` | tests | test | 193 |
-| `tests/unit/search/LSHVectorStore.test.ts` | tests | test | 77 |
-| `tests/unit/search/MaterializedViews.test.ts` | tests | test | 162 |
-| `tests/unit/search/NGramFuzzyIntegration.test.ts` | tests | test | 298 |
-| `tests/unit/search/NGramIndex.test.ts` | tests | test | 470 |
-| `tests/unit/search/OptimizedInvertedIndex.test.ts` | tests | test | 276 |
-| `tests/unit/search/ParallelSearchExecutor.test.ts` | tests | test | 578 |
-| `tests/unit/search/PartialIndexAdvisor.test.ts` | tests | test | 125 |
-| `tests/unit/search/ProximitySearch.test.ts` | tests | test | 530 |
-| `tests/unit/search/pruneExpiredEntries.test.ts` | tests | test | 63 |
-| `tests/unit/search/QuantizedVectorStore-topk-pins.test.ts` | tests | test | 93 |
-| `tests/unit/search/QuantizedVectorStore.test.ts` | tests | test | 358 |
-| `tests/unit/search/QueryAnalyzer.test.ts` | tests | test | 252 |
-| `tests/unit/search/QueryCostEstimator.test.ts` | tests | test | 668 |
-| `tests/unit/search/QueryLogger.test.ts` | tests | test | 593 |
-| `tests/unit/search/QueryParser.test.ts` | tests | test | 412 |
-| `tests/unit/search/QueryPlanCache.test.ts` | tests | test | 686 |
-| `tests/unit/search/QueryPlanFormatter.test.ts` | tests | test | 176 |
-| `tests/unit/search/QueryPlanner.test.ts` | tests | test | 197 |
-| `tests/unit/search/RankedSearch.test.ts` | tests | test | 867 |
-| `tests/unit/search/RankedSearchGraphBoost.test.ts` | tests | test | 121 |
-| `tests/unit/search/RankedSearchProjectStarvation.test.ts` | tests | test | 70 |
-| `tests/unit/search/ReflectionManager.test.ts` | tests | test | 476 |
-| `tests/unit/search/SavedSearchManager-loader-pins.test.ts` | tests | test | 271 |
-| `tests/unit/search/SavedSearchManager.test.ts` | tests | test | 347 |
-| `tests/unit/search/search-filter-chain-project.test.ts` | tests | test | 52 |
-| `tests/unit/search/search-filter-chain-versioning.test.ts` | tests | test | 149 |
-| `tests/unit/search/SearchFilterChain.test.ts` | tests | test | 581 |
-| `tests/unit/search/SearchManager.test.ts` | tests | test | 633 |
-| `tests/unit/search/SearchSuggestions.test.ts` | tests | test | 304 |
-| `tests/unit/search/searchTwinsFts.test.ts` | tests | test | 364 |
-| `tests/unit/search/searchTwinsLayers.test.ts` | tests | test | 339 |
-| `tests/unit/search/searchTwinsPaths.test.ts` | tests | test | 136 |
-| `tests/unit/search/searchTwinsProximity.test.ts` | tests | test | 125 |
-| `tests/unit/search/searchTwinsSemantic.test.ts` | tests | test | 250 |
-| `tests/unit/search/searchTwinsTfidf.test.ts` | tests | test | 150 |
-| `tests/unit/search/SemanticSearch.resolver.test.ts` | tests | test | 62 |
-| `tests/unit/search/SemanticSearch.test.ts` | tests | test | 575 |
-| `tests/unit/search/SpellChecker.test.ts` | tests | test | 132 |
-| `tests/unit/search/SQLiteFtsSearchIntegration.test.ts` | tests | test | 58 |
-| `tests/unit/search/SymbolicSearch.test.ts` | tests | test | 244 |
-| `tests/unit/search/TemporalQueryParser.lazy.test.ts` | tests | test | 54 |
-| `tests/unit/search/TemporalQueryParser.test.ts` | tests | test | 279 |
-| `tests/unit/search/TemporalSearch.test.ts` | tests | test | 360 |
-| `tests/unit/search/TFIDFEventSync.test.ts` | tests | test | 742 |
-| `tests/unit/search/TFIDFIncrementalPersistence.test.ts` | tests | test | 103 |
-| `tests/unit/search/TFIDFIndexManager.test.ts` | tests | test | 564 |
-| `tests/unit/search/tiered/BrotliColdTier.test.ts` | tests | test | 599 |
-| `tests/unit/search/tiered/disk-tier-concurrency.test.ts` | tests | test | 69 |
-| `tests/unit/search/tiered/DiskWarmTier.compaction.test.ts` | tests | test | 159 |
-| `tests/unit/search/tiered/DiskWarmTier.test.ts` | tests | test | 558 |
-| `tests/unit/search/tiered/ITieredIndex.test.ts` | tests | test | 175 |
-| `tests/unit/search/tiered/LRUHotTier.test.ts` | tests | test | 252 |
-| `tests/unit/search/tiered/snapshotTierStats.test.ts` | tests | test | 82 |
-| `tests/unit/search/tiered/tiered-review-fixes.test.ts` | tests | test | 275 |
-| `tests/unit/search/tiered/TieredIndex-wiring.test.ts` | tests | test | 142 |
-| `tests/unit/search/tiered/TieredIndex.test.ts` | tests | test | 270 |
-| `tests/unit/search/VectorStore-topk-pins.test.ts` | tests | test | 212 |
-| `tests/unit/search/VectorStore.test.ts` | tests | test | 505 |
-| `tests/unit/security/ABACPolicy.test.ts` | tests | test | 339 |
-| `tests/unit/security/APIKeyStore.test.ts` | tests | test | 209 |
-| `tests/unit/security/PiiRedactor.test.ts` | tests | test | 139 |
-| `tests/unit/security/RowLevelFilter.test.ts` | tests | test | 157 |
-| `tests/unit/tools-migrate-rebuild-native.test.ts` | tests | test | 52 |
-| `tests/unit/tools/observations-to-columns.test.ts` | tools | tool | 780 |
-| `tests/unit/tools/plan-doc-audit.test.ts` | tools | tool | 374 |
-| `tests/unit/tools/segment-jsonl.test.ts` | tools | tool | 411 |
-| `tests/unit/types/agent-memory.test.ts` | tests | test | 893 |
-| `tests/unit/types/entity-content-hash.test.ts` | tests | test | 53 |
-| `tests/unit/types/entity-new-fields.test.ts` | tests | test | 54 |
-| `tests/unit/types/learning.types.test.ts` | tests | test | 210 |
-| `tests/unit/types/profile-entity.test.ts` | tests | test | 24 |
-| `tests/unit/types/progress.test.ts` | tests | test | 413 |
-| `tests/unit/types/result.test.ts` | tests | test | 91 |
-| `tests/unit/types/search.test.ts` | tests | test | 591 |
-| `tests/unit/types/skills.types.test.ts` | tests | test | 279 |
-| `tests/unit/types/trust-level.test.ts` | tests | test | 108 |
-| `tests/unit/utils/AsyncMutex.test.ts` | tests | test | 232 |
-| `tests/unit/utils/BatchProcessor.test.ts` | tests | test | 672 |
-| `tests/unit/utils/boundedTopK.test.ts` | tests | test | 18 |
-| `tests/unit/utils/CachePressureCoordinator.test.ts` | tests | test | 108 |
-| `tests/unit/utils/compressedCache.test.ts` | tests | test | 601 |
-| `tests/unit/utils/compression/compressedEntityCache-wiring.test.ts` | tests | test | 110 |
-| `tests/unit/utils/compression/CompressedMap.test.ts` | tests | test | 464 |
-| `tests/unit/utils/compression/ICompressionAdapter.test.ts` | tests | test | 140 |
-| `tests/unit/utils/compressionUtil.test.ts` | tests | test | 551 |
-| `tests/unit/utils/deleteFromMapWithFlushRollback.test.ts` | tests | test | 81 |
-| `tests/unit/utils/Diagnostics.observationDedup.test.ts` | tests | test | 120 |
-| `tests/unit/utils/durableWriteFile.test.ts` | tests | test | 309 |
-| `tests/unit/utils/entityUtils.test.ts` | tests | test | 1097 |
-| `tests/unit/utils/EntityValidator.results.test.ts` | tests | test | 128 |
-| `tests/unit/utils/EntityValidator.test.ts` | tests | test | 515 |
-| `tests/unit/utils/envConfig.test.ts` | tests | test | 254 |
-| `tests/unit/utils/errors.test.ts` | tests | test | 377 |
-| `tests/unit/utils/errorSuggestions.test.ts` | tests | test | 389 |
-| `tests/unit/utils/fieldPath.test.ts` | tests | test | 50 |
-| `tests/unit/utils/fillDefaults.test.ts` | tests | test | 22 |
-| `tests/unit/utils/formatters.test.ts` | tests | test | 470 |
-| `tests/unit/utils/graphCopy.test.ts` | tests | test | 133 |
-| `tests/unit/utils/halfLife.test.ts` | tests | test | 27 |
-| `tests/unit/utils/helpers/captureSchemaParity.ts` | tests | test | 158 |
-| `tests/unit/utils/helpers/captureSchemaSynthetic.ts` | tests | test | 67 |
-| `tests/unit/utils/helpers/schemaParityCases.ts` | tests | test | 640 |
-| `tests/unit/utils/helpers/schemaParityFormat.ts` | tests | test | 99 |
-| `tests/unit/utils/helpers/schemaSyntheticCases.ts` | tests | test | 216 |
-| `tests/unit/utils/ids.test.ts` | tests | test | 35 |
-| `tests/unit/utils/indexBuckets.test.ts` | tests | test | 98 |
-| `tests/unit/utils/indexes.test.ts` | tests | test | 898 |
-| `tests/unit/utils/IndexHealthMonitor.test.ts` | tests | test | 67 |
-| `tests/unit/utils/jsonlMapFile.test.ts` | tests | test | 162 |
-| `tests/unit/utils/jsonlRecordFile.test.ts` | tests | test | 89 |
-| `tests/unit/utils/logger.test.ts` | tests | test | 253 |
-| `tests/unit/utils/MemoryMonitor.test.ts` | tests | test | 413 |
-| `tests/unit/utils/mutateMapWithFlushRollback.test.ts` | tests | test | 34 |
-| `tests/unit/utils/nextMonotonicIsoTimestamp.test.ts` | tests | test | 17 |
-| `tests/unit/utils/operationUtils.test.ts` | tests | test | 365 |
-| `tests/unit/utils/parallelUtils.test.ts` | tests | test | 327 |
-| `tests/unit/utils/postingIndex.test.ts` | tests | test | 73 |
-| `tests/unit/utils/relationHelpers.test.ts` | tests | test | 451 |
-| `tests/unit/utils/relationValidation.test.ts` | tests | test | 507 |
-| `tests/unit/utils/RunExclusiveMutex.challenger.test.ts` | tests | test | 200 |
-| `tests/unit/utils/RunExclusiveMutex.test.ts` | tests | test | 237 |
-| `tests/unit/utils/schema.inventory.test.ts` | tests | test | 231 |
-| `tests/unit/utils/schema.parity.test.ts` | tests | test | 221 |
-| `tests/unit/utils/schemas.test.ts` | tests | test | 894 |
-| `tests/unit/utils/schemas.validateResult.test.ts` | tests | test | 50 |
-| `tests/unit/utils/SchemaValidator.test.ts` | tests | test | 631 |
-| `tests/unit/utils/searchAlgorithms.test.ts` | tests | test | 856 |
-| `tests/unit/utils/searchCache.test.ts` | tests | test | 780 |
-| `tests/unit/utils/searchCacheForEach.test.ts` | tests | test | 86 |
-| `tests/unit/utils/sidecarPath.test.ts` | tests | test | 86 |
-| `tests/unit/utils/taskScheduler.test.ts` | tests | test | 1118 |
-| `tests/unit/utils/textSimilarity.test.ts` | tests | test | 147 |
-| `tests/unit/utils/textSimilarity.tokenSets.test.ts` | tests | test | 95 |
-| `tests/unit/utils/timing.test.ts` | tests | test | 192 |
-| `tests/unit/utils/tokenEstimate.test.ts` | tests | test | 40 |
-| `tests/unit/utils/unrefInterval.test.ts` | tests | test | 92 |
-| `tests/unit/utils/update-entity-schema-strip.test.ts` | tests | test | 202 |
-| `tests/unit/utils/validation.assertNonEmptyString.test.ts` | tests | test | 74 |
-| `tests/unit/utils/validators.bounds.test.ts` | tests | test | 71 |
-| `tests/unit/utils/validators.test.ts` | tests | test | 1001 |
-| `tests/unit/utils/walkParents.test.ts` | tests | test | 67 |
-| `tests/unit/utils/WorkerPoolManager.test.ts` | tests | test | 408 |
-| `tests/unit/utils/WorkerTaskManager.test.ts` | tests | test | 255 |
-| `tests/unit/workers/levenshteinWorker.test.ts` | tests | test | 425 |
-| `tests/unit/workers/WorkerPool.test.ts` | tests | test | 75 |
-| `tools/chunking-for-files/chunking-for-files.ts` | tools | tool | 1255 |
-| `tools/compress-for-context/compress-for-context.ts` | tools | tool | 1461 |
-| `tools/create-dependency-graph/create-dependency-graph.ts` | tools | tool | 3833 |
-| `tools/migrate-from-jsonl-to-sqlite/migrate-from-jsonl-to-sqlite.ts` | tools | tool | 725 |
-| `tools/observations-to-columns/observations-to-columns.ts` | tools | tool | 560 |
-| `tools/plan-doc-audit/audit.ts` | tools | tool | 419 |
-| `tools/segment-jsonl/segment-jsonl.ts` | tools | tool | 423 |
-| `tsup.config.ts` | config | config | 88 |
-| `vitest.config.ts` | config | config | 70 |
+| File | Package | Area | Disposition | Lines |
+| --- | --- | --- | --- | --: |
+| `benchmarks/baseline-bench.mjs` | (root) | benchmarks | bench | 178 |
+| `benchmarks/performance-plan-bench.ts` | (root) | benchmarks | bench | 140 |
+| `benchmarks/review-bench.ts` | (root) | benchmarks | bench | 50 |
+| `benchmarks/semantic-forget-benchmark.ts` | (root) | benchmarks | bench | 77 |
+| `benchmarks/summarization-bench.ts` | (root) | benchmarks | bench | 38 |
+| `benchmarks/synthetic-bench.ts` | (root) | benchmarks | bench | 141 |
+| `docs/analysis/inspect-graph.mjs` | (root) | docs | example | 15 |
+| `examples/01-quick-start.ts` | (root) | examples | example | 77 |
+| `examples/02-search.ts` | (root) | examples | example | 81 |
+| `examples/03-graph-algorithms.ts` | (root) | examples | example | 69 |
+| `examples/04-import-export.ts` | (root) | examples | example | 97 |
+| `examples/05-agent-memory.ts` | (root) | examples | example | 103 |
+| `examples/06-multi-agent.ts` | (root) | examples | example | 90 |
+| `examples/07-governance-rbac.ts` | (root) | examples | example | 105 |
+| `examples/08-versioning-causal.ts` | (root) | examples | example | 88 |
+| `examples/09-recursa-skills-knowledge.ts` | (root) | examples | example | 87 |
+| `examples/10-recursa-learning.ts` | (root) | examples | example | 98 |
+| `examples/11-recursa-bootstrap.ts` | (root) | examples | example | 86 |
+| `examples/12-harness-tools.ts` | (root) | examples | example | 96 |
+| `examples/13-reconstructive-memory.ts` | (root) | examples | example | 63 |
+| `examples/14-procedural-graph.ts` | (root) | examples | example | 62 |
+| `examples/15-sqlite.ts` | (root) | examples | example | 60 |
+| `scripts/check-exports.mjs` | (root) | tools | tool | 57 |
+| `scripts/check-lint-rules.mjs` | (root) | tools | tool | 75 |
+| `scripts/clean-dist.mjs` | (root) | tools | tool | 4 |
+| `scripts/emit-dts.mjs` | (root) | tools | tool | 103 |
+| `scripts/lint-rules.mjs` | (root) | tools | tool | 138 |
+| `scripts/node-runtime-smoke.mjs` | (root) | tools | tool | 61 |
+| `scripts/rebuild-native.mjs` | (root) | tools | tool | 120 |
+| `src/adapters/ApiKeyAuthMiddleware.ts` | @danielsimonjr/memoryjs | src | reachable | 192 |
+| `src/adapters/LangChainMemoryAdapter.ts` | @danielsimonjr/memoryjs | src | reachable | 193 |
+| `src/adapters/MCPToolObserverAdapter.ts` | @danielsimonjr/memoryjs | src | reachable | 77 |
+| `src/adapters/RateLimiter.ts` | @danielsimonjr/memoryjs | src | reachable | 205 |
+| `src/adapters/RecursaToolAdapter.ts` | @danielsimonjr/memoryjs | src | reachable | 374 |
+| `src/adapters/RestRouter.ts` | @danielsimonjr/memoryjs | src | reachable | 750 |
+| `src/adapters/index.ts` | @danielsimonjr/memoryjs | src | build-entry | 59 |
+| `src/adapters/pagination.ts` | @danielsimonjr/memoryjs | src | reachable | 91 |
+| `src/adapters/recursaToolBounds.ts` | @danielsimonjr/memoryjs | src | reachable | 108 |
+| `src/adapters/recursaToolSchemas.ts` | @danielsimonjr/memoryjs | src | reachable | 142 |
+| `src/adapters/recursaToolSupport.ts` | @danielsimonjr/memoryjs | src | reachable | 168 |
+| `src/agent/AccessTracker.ts` | @danielsimonjr/memoryjs | src | reachable | 478 |
+| `src/agent/AgentEnvDefaults.ts` | @danielsimonjr/memoryjs | src | reachable | 111 |
+| `src/agent/AgentMemoryConfig.ts` | @danielsimonjr/memoryjs | src | reachable | 264 |
+| `src/agent/AgentMemoryManager.ts` | @danielsimonjr/memoryjs | src | reachable | 727 |
+| `src/agent/AgentReflectionManager.ts` | @danielsimonjr/memoryjs | src | reachable | 305 |
+| `src/agent/ArtifactManager.ts` | @danielsimonjr/memoryjs | src | reachable | 240 |
+| `src/agent/CognitiveLoadAnalyzer.ts` | @danielsimonjr/memoryjs | src | reachable | 331 |
+| `src/agent/CollaborativeSynthesis.ts` | @danielsimonjr/memoryjs | src | reachable | 354 |
+| `src/agent/ConflictResolver.ts` | @danielsimonjr/memoryjs | src | reachable | 463 |
+| `src/agent/ConsolidationPipeline.ts` | @danielsimonjr/memoryjs | src | reachable | 2139 |
+| `src/agent/ConsolidationScheduler.ts` | @danielsimonjr/memoryjs | src | reachable | 229 |
+| `src/agent/ContextProfileManager.ts` | @danielsimonjr/memoryjs | src | reachable | 300 |
+| `src/agent/ContextWindowManager.ts` | @danielsimonjr/memoryjs | src | reachable | 1999 |
+| `src/agent/DecayEngine.ts` | @danielsimonjr/memoryjs | src | reachable | 830 |
+| `src/agent/DecayScheduler.ts` | @danielsimonjr/memoryjs | src | reachable | 232 |
+| `src/agent/DecisionManager.ts` | @danielsimonjr/memoryjs | src | reachable | 441 |
+| `src/agent/DistillationPipeline.ts` | @danielsimonjr/memoryjs | src | reachable | 203 |
+| `src/agent/DistillationPolicy.ts` | @danielsimonjr/memoryjs | src | reachable | 338 |
+| `src/agent/DreamEngine.ts` | @danielsimonjr/memoryjs | src | reachable | 645 |
+| `src/agent/EntropyFilter.ts` | @danielsimonjr/memoryjs | src | reachable | 178 |
+| `src/agent/EpisodicMemoryManager.ts` | @danielsimonjr/memoryjs | src | reachable | 530 |
+| `src/agent/ExclusionManager.ts` | @danielsimonjr/memoryjs | src | reachable | 209 |
+| `src/agent/ExperienceExtractor.ts` | @danielsimonjr/memoryjs | src | reachable | 434 |
+| `src/agent/FailureDistillation.ts` | @danielsimonjr/memoryjs | src | reachable | 313 |
+| `src/agent/FailureManager.ts` | @danielsimonjr/memoryjs | src | reachable | 536 |
+| `src/agent/GuardedComponentEdit.ts` | @danielsimonjr/memoryjs | src | reachable | 710 |
+| `src/agent/HeuristicManager.ts` | @danielsimonjr/memoryjs | src | reachable | 341 |
+| `src/agent/ImportanceScorer.ts` | @danielsimonjr/memoryjs | src | reachable | 90 |
+| `src/agent/InMemoryBackend.ts` | @danielsimonjr/memoryjs | src | reachable | 114 |
+| `src/agent/MemoryBackend.ts` | @danielsimonjr/memoryjs | src | reachable | 155 |
+| `src/agent/MemoryEngine.ts` | @danielsimonjr/memoryjs | src | reachable | 595 |
+| `src/agent/MemoryFormatter.ts` | @danielsimonjr/memoryjs | src | reachable | 517 |
+| `src/agent/MemoryValidator.ts` | @danielsimonjr/memoryjs | src | reachable | 331 |
+| `src/agent/MultiAgentMemoryManager.ts` | @danielsimonjr/memoryjs | src | reachable | 1152 |
+| `src/agent/ObservationDedupManager.ts` | @danielsimonjr/memoryjs | src | reachable | 245 |
+| `src/agent/ObserverPipeline.ts` | @danielsimonjr/memoryjs | src | reachable | 379 |
+| `src/agent/PatternDetector.ts` | @danielsimonjr/memoryjs | src | reachable | 371 |
+| `src/agent/PlanManager.ts` | @danielsimonjr/memoryjs | src | reachable | 542 |
+| `src/agent/ProfileManager.ts` | @danielsimonjr/memoryjs | src | reachable | 240 |
+| `src/agent/ProjectContextManager.ts` | @danielsimonjr/memoryjs | src | reachable | 323 |
+| `src/agent/ProspectiveMemoryManager.ts` | @danielsimonjr/memoryjs | src | reachable | 684 |
+| `src/agent/RelationConsolidator.ts` | @danielsimonjr/memoryjs | src | reachable | 961 |
+| `src/agent/RoleProfiles.ts` | @danielsimonjr/memoryjs | src | reachable | 236 |
+| `src/agent/RuleEvaluator.ts` | @danielsimonjr/memoryjs | src | reachable | 148 |
+| `src/agent/SQLiteBackend.ts` | @danielsimonjr/memoryjs | src | reachable | 174 |
+| `src/agent/SalienceEngine.ts` | @danielsimonjr/memoryjs | src | reachable | 732 |
+| `src/agent/SessionCheckpoint.ts` | @danielsimonjr/memoryjs | src | reachable | 691 |
+| `src/agent/SessionManager.ts` | @danielsimonjr/memoryjs | src | reachable | 684 |
+| `src/agent/SessionQueryBuilder.ts` | @danielsimonjr/memoryjs | src | reachable | 540 |
+| `src/agent/SummarizationService.ts` | @danielsimonjr/memoryjs | src | reachable | 340 |
+| `src/agent/ToolAffordanceManager.ts` | @danielsimonjr/memoryjs | src | reachable | 278 |
+| `src/agent/ToolCallObserver.ts` | @danielsimonjr/memoryjs | src | reachable | 179 |
+| `src/agent/TrajectoryCompressor.ts` | @danielsimonjr/memoryjs | src | reachable | 325 |
+| `src/agent/VisibilityResolver.ts` | @danielsimonjr/memoryjs | src | reachable | 103 |
+| `src/agent/WorkThreadManager.ts` | @danielsimonjr/memoryjs | src | reachable | 800 |
+| `src/agent/WorkingMemoryManager.ts` | @danielsimonjr/memoryjs | src | reachable | 816 |
+| `src/agent/bootstrap/Bootstrapper.ts` | @danielsimonjr/memoryjs | src | reachable | 245 |
+| `src/agent/bootstrap/BoundaryRecorder.ts` | @danielsimonjr/memoryjs | src | reachable | 248 |
+| `src/agent/bootstrap/CorpusMapper.ts` | @danielsimonjr/memoryjs | src | reachable | 549 |
+| `src/agent/bootstrap/ExplorationNotes.ts` | @danielsimonjr/memoryjs | src | reachable | 395 |
+| `src/agent/bootstrap/PracticeTaskGenerator.ts` | @danielsimonjr/memoryjs | src | reachable | 350 |
+| `src/agent/bootstrap/bootstrapShared.ts` | @danielsimonjr/memoryjs | src | reachable | 202 |
+| `src/agent/bootstrap/index.ts` | @danielsimonjr/memoryjs | src | reachable | 19 |
+| `src/agent/causal/CausalReasoner.ts` | @danielsimonjr/memoryjs | src | reachable | 253 |
+| `src/agent/causal/index.ts` | @danielsimonjr/memoryjs | src | reachable | 14 |
+| `src/agent/collaboration/CollaborationAuditEnforcer.ts` | @danielsimonjr/memoryjs | src | reachable | 144 |
+| `src/agent/connectivity.ts` | @danielsimonjr/memoryjs | src | reachable | 65 |
+| `src/agent/evaluation/DeterministicJudge.ts` | @danielsimonjr/memoryjs | src | reachable | 226 |
+| `src/agent/evaluation/Evaluator.ts` | @danielsimonjr/memoryjs | src | reachable | 403 |
+| `src/agent/evaluation/LLMRubricJudge.ts` | @danielsimonjr/memoryjs | src | reachable | 260 |
+| `src/agent/evaluation/RubricAudit.ts` | @danielsimonjr/memoryjs | src | reachable | 223 |
+| `src/agent/evaluation/index.ts` | @danielsimonjr/memoryjs | src | reachable | 9 |
+| `src/agent/events/EventManager.ts` | @danielsimonjr/memoryjs | src | reachable | 512 |
+| `src/agent/events/index.ts` | @danielsimonjr/memoryjs | src | reachable | 19 |
+| `src/agent/harness/ConcurrencyLimiter.ts` | @danielsimonjr/memoryjs | src | reachable | 245 |
+| `src/agent/harness/EvictionIndex.ts` | @danielsimonjr/memoryjs | src | reachable | 162 |
+| `src/agent/harness/InteractionLog.ts` | @danielsimonjr/memoryjs | src | reachable | 494 |
+| `src/agent/harness/InteractionLogBlobs.ts` | @danielsimonjr/memoryjs | src | reachable | 132 |
+| `src/agent/harness/InteractionLogFormat.ts` | @danielsimonjr/memoryjs | src | reachable | 389 |
+| `src/agent/harness/InteractionLogRegex.ts` | @danielsimonjr/memoryjs | src | reachable | 179 |
+| `src/agent/harness/index.ts` | @danielsimonjr/memoryjs | src | reachable | 9 |
+| `src/agent/index.ts` | @danielsimonjr/memoryjs | src | build-entry | 639 |
+| `src/agent/keyValueLine.ts` | @danielsimonjr/memoryjs | src | reachable | 62 |
+| `src/agent/knowledge/InstructionSetManager.ts` | @danielsimonjr/memoryjs | src | reachable | 308 |
+| `src/agent/knowledge/KnowledgeRepository.ts` | @danielsimonjr/memoryjs | src | reachable | 478 |
+| `src/agent/knowledge/ScratchKnowledge.ts` | @danielsimonjr/memoryjs | src | reachable | 190 |
+| `src/agent/knowledge/index.ts` | @danielsimonjr/memoryjs | src | reachable | 48 |
+| `src/agent/knowledge/knowledgeDigest.ts` | @danielsimonjr/memoryjs | src | reachable | 253 |
+| `src/agent/knowledge/knowledgeLoad.ts` | @danielsimonjr/memoryjs | src | reachable | 141 |
+| `src/agent/knowledge/knowledgeRevision.ts` | @danielsimonjr/memoryjs | src | reachable | 341 |
+| `src/agent/knowledgeContext.ts` | @danielsimonjr/memoryjs | src | reachable | 115 |
+| `src/agent/learning/ChildKnowledgeOverlay.ts` | @danielsimonjr/memoryjs | src | reachable | 271 |
+| `src/agent/learning/Diagnoser.ts` | @danielsimonjr/memoryjs | src | reachable | 536 |
+| `src/agent/learning/InProcessLearnHandler.ts` | @danielsimonjr/memoryjs | src | reachable | 75 |
+| `src/agent/learning/KnowledgeEditor.ts` | @danielsimonjr/memoryjs | src | reachable | 374 |
+| `src/agent/learning/LeafApply.ts` | @danielsimonjr/memoryjs | src | reachable | 92 |
+| `src/agent/learning/LeafLearner.ts` | @danielsimonjr/memoryjs | src | reachable | 401 |
+| `src/agent/learning/LeafLearnerContext.ts` | @danielsimonjr/memoryjs | src | reachable | 295 |
+| `src/agent/learning/LeafLearnerDeps.ts` | @danielsimonjr/memoryjs | src | reachable | 113 |
+| `src/agent/learning/LeafLearnerOptions.ts` | @danielsimonjr/memoryjs | src | reachable | 183 |
+| `src/agent/learning/LeafLearnerStore.ts` | @danielsimonjr/memoryjs | src | reachable | 329 |
+| `src/agent/learning/LeafRound.ts` | @danielsimonjr/memoryjs | src | reachable | 293 |
+| `src/agent/learning/LeafValidation.ts` | @danielsimonjr/memoryjs | src | reachable | 230 |
+| `src/agent/learning/LearningAccountant.ts` | @danielsimonjr/memoryjs | src | reachable | 328 |
+| `src/agent/learning/LearningReflector.ts` | @danielsimonjr/memoryjs | src | reachable | 228 |
+| `src/agent/learning/LearningTrace.ts` | @danielsimonjr/memoryjs | src | reachable | 678 |
+| `src/agent/learning/RecursiveChildren.ts` | @danielsimonjr/memoryjs | src | reachable | 116 |
+| `src/agent/learning/RecursiveDrive.ts` | @danielsimonjr/memoryjs | src | reachable | 453 |
+| `src/agent/learning/RecursiveEvaluate.ts` | @danielsimonjr/memoryjs | src | reachable | 81 |
+| `src/agent/learning/RecursiveLearner.ts` | @danielsimonjr/memoryjs | src | reachable | 488 |
+| `src/agent/learning/RecursiveLearnerState.ts` | @danielsimonjr/memoryjs | src | reachable | 433 |
+| `src/agent/learning/RecursiveMerge.ts` | @danielsimonjr/memoryjs | src | reachable | 230 |
+| `src/agent/learning/RecursivePlan.ts` | @danielsimonjr/memoryjs | src | reachable | 158 |
+| `src/agent/learning/RevisionGeneralize.ts` | @danielsimonjr/memoryjs | src | reachable | 182 |
+| `src/agent/learning/RevisionMerger.ts` | @danielsimonjr/memoryjs | src | reachable | 162 |
+| `src/agent/learning/RevisionReconcile.ts` | @danielsimonjr/memoryjs | src | reachable | 202 |
+| `src/agent/learning/RevisionValidator.ts` | @danielsimonjr/memoryjs | src | reachable | 275 |
+| `src/agent/learning/SplitStrategies.ts` | @danielsimonjr/memoryjs | src | reachable | 345 |
+| `src/agent/learning/index.ts` | @danielsimonjr/memoryjs | src | reachable | 62 |
+| `src/agent/learning/llmJson.ts` | @danielsimonjr/memoryjs | src | reachable | 162 |
+| `src/agent/learning/observationChunks.ts` | @danielsimonjr/memoryjs | src | reachable | 84 |
+| `src/agent/learning/revisionMergeShared.ts` | @danielsimonjr/memoryjs | src | reachable | 143 |
+| `src/agent/learning/types.ts` | @danielsimonjr/memoryjs | src | reachable | 73 |
+| `src/agent/procedural/ProcedureManager.ts` | @danielsimonjr/memoryjs | src | reachable | 235 |
+| `src/agent/procedural/ProcedureStore.ts` | @danielsimonjr/memoryjs | src | reachable | 449 |
+| `src/agent/procedural/StepSequencer.ts` | @danielsimonjr/memoryjs | src | reachable | 85 |
+| `src/agent/procedural/graph/CompletionProvider.ts` | @danielsimonjr/memoryjs | src | reachable | 139 |
+| `src/agent/procedural/graph/ProceduralGraph.ts` | @danielsimonjr/memoryjs | src | reachable | 438 |
+| `src/agent/procedural/graph/ProceduralGraphEvolution.ts` | @danielsimonjr/memoryjs | src | reachable | 897 |
+| `src/agent/procedural/graph/ProceduralGraphManager.ts` | @danielsimonjr/memoryjs | src | reachable | 536 |
+| `src/agent/procedural/graph/ProceduralGraphRefiner.ts` | @danielsimonjr/memoryjs | src | reachable | 333 |
+| `src/agent/procedural/graph/ProceduralGraphSchemas.ts` | @danielsimonjr/memoryjs | src | reachable | 422 |
+| `src/agent/procedural/graph/ProceduralGraphSerializer.ts` | @danielsimonjr/memoryjs | src | reachable | 110 |
+| `src/agent/procedural/graph/ProceduralGraphSession.ts` | @danielsimonjr/memoryjs | src | reachable | 193 |
+| `src/agent/procedural/graph/ProceduralGraphValidator.ts` | @danielsimonjr/memoryjs | src | reachable | 299 |
+| `src/agent/procedural/graph/ProceduralGuidance.ts` | @danielsimonjr/memoryjs | src | reachable | 218 |
+| `src/agent/procedural/graph/ProcedureGraphAdapter.ts` | @danielsimonjr/memoryjs | src | reachable | 119 |
+| `src/agent/procedural/graph/backing/IProceduralGraphBacking.ts` | @danielsimonjr/memoryjs | src | reachable | 101 |
+| `src/agent/procedural/graph/backing/InMemoryProceduralGraphBacking.ts` | @danielsimonjr/memoryjs | src | reachable | 24 |
+| `src/agent/procedural/graph/backing/JsonlProceduralGraphBacking.ts` | @danielsimonjr/memoryjs | src | reachable | 132 |
+| `src/agent/procedural/graph/backing/LockedProceduralGraphBacking.ts` | @danielsimonjr/memoryjs | src | reachable | 134 |
+| `src/agent/procedural/graph/backing/ProceduralGraphState.ts` | @danielsimonjr/memoryjs | src | reachable | 580 |
+| `src/agent/procedural/graph/backing/SqliteProceduralGraphBacking.ts` | @danielsimonjr/memoryjs | src | reachable | 515 |
+| `src/agent/procedural/graph/backing/index.ts` | @danielsimonjr/memoryjs | src | reachable | 16 |
+| `src/agent/procedural/graph/canonical.ts` | @danielsimonjr/memoryjs | src | reachable | 118 |
+| `src/agent/procedural/graph/index.ts` | @danielsimonjr/memoryjs | src | reachable | 125 |
+| `src/agent/procedural/graph/prompts.ts` | @danielsimonjr/memoryjs | src | reachable | 95 |
+| `src/agent/procedural/graph/tokenTail.ts` | @danielsimonjr/memoryjs | src | reachable | 50 |
+| `src/agent/procedural/index.ts` | @danielsimonjr/memoryjs | src | reachable | 25 |
+| `src/agent/rbac/PermissionMatrix.ts` | @danielsimonjr/memoryjs | src | reachable | 57 |
+| `src/agent/rbac/RbacMiddleware.ts` | @danielsimonjr/memoryjs | src | reachable | 116 |
+| `src/agent/rbac/RbacTypes.ts` | @danielsimonjr/memoryjs | src | reachable | 77 |
+| `src/agent/rbac/RoleAssignmentStore.ts` | @danielsimonjr/memoryjs | src | reachable | 224 |
+| `src/agent/rbac/index.ts` | @danielsimonjr/memoryjs | src | reachable | 31 |
+| `src/agent/reconstruction/CueTagContentGraph.ts` | @danielsimonjr/memoryjs | src | reachable | 256 |
+| `src/agent/reconstruction/MemoryDistiller.ts` | @danielsimonjr/memoryjs | src | reachable | 483 |
+| `src/agent/reconstruction/MemoryGraphBridge.ts` | @danielsimonjr/memoryjs | src | reachable | 228 |
+| `src/agent/reconstruction/MemoryReconstructor.ts` | @danielsimonjr/memoryjs | src | reachable | 393 |
+| `src/agent/reconstruction/MemoryToolkit.ts` | @danielsimonjr/memoryjs | src | reachable | 110 |
+| `src/agent/reconstruction/ReconstructiveMemory.ts` | @danielsimonjr/memoryjs | src | reachable | 150 |
+| `src/agent/reconstruction/index.ts` | @danielsimonjr/memoryjs | src | reachable | 20 |
+| `src/agent/recordQuery.ts` | @danielsimonjr/memoryjs | src | reachable | 29 |
+| `src/agent/retrieval/ActiveRetrievalController.ts` | @danielsimonjr/memoryjs | src | reachable | 188 |
+| `src/agent/retrieval/QueryRewriter.ts` | @danielsimonjr/memoryjs | src | reachable | 82 |
+| `src/agent/retrieval/index.ts` | @danielsimonjr/memoryjs | src | reachable | 19 |
+| `src/agent/selectWeightedTurns.ts` | @danielsimonjr/memoryjs | src | reachable | 17 |
+| `src/agent/skills/SkillFormat.ts` | @danielsimonjr/memoryjs | src | reachable | 422 |
+| `src/agent/skills/SkillManager.ts` | @danielsimonjr/memoryjs | src | reachable | 450 |
+| `src/agent/skills/SkillPublisher.ts` | @danielsimonjr/memoryjs | src | reachable | 317 |
+| `src/agent/skills/index.ts` | @danielsimonjr/memoryjs | src | reachable | 55 |
+| `src/agent/skills/skillRecordUtils.ts` | @danielsimonjr/memoryjs | src | reachable | 131 |
+| `src/agent/skills/skillTreeFs.ts` | @danielsimonjr/memoryjs | src | reachable | 164 |
+| `src/agent/versionedWriteFailure.ts` | @danielsimonjr/memoryjs | src | reachable | 25 |
+| `src/agent/workingMemoryGuard.ts` | @danielsimonjr/memoryjs | src | reachable | 38 |
+| `src/agent/world/WorldModelManager.ts` | @danielsimonjr/memoryjs | src | reachable | 127 |
+| `src/agent/world/WorldStateSnapshot.ts` | @danielsimonjr/memoryjs | src | reachable | 124 |
+| `src/agent/world/index.ts` | @danielsimonjr/memoryjs | src | reachable | 16 |
+| `src/cli/ansi.ts` | @danielsimonjr/memoryjs | src | reachable | 92 |
+| `src/cli/commands/audit.ts` | @danielsimonjr/memoryjs | src | reachable | 285 |
+| `src/cli/commands/cache.ts` | @danielsimonjr/memoryjs | src | reachable | 75 |
+| `src/cli/commands/check.ts` | @danielsimonjr/memoryjs | src | reachable | 171 |
+| `src/cli/commands/decision.ts` | @danielsimonjr/memoryjs | src | reachable | 184 |
+| `src/cli/commands/diag.ts` | @danielsimonjr/memoryjs | src | reachable | 295 |
+| `src/cli/commands/doctor.ts` | @danielsimonjr/memoryjs | src | reachable | 485 |
+| `src/cli/commands/entity.ts` | @danielsimonjr/memoryjs | src | reachable | 114 |
+| `src/cli/commands/exclusion.ts` | @danielsimonjr/memoryjs | src | reachable | 112 |
+| `src/cli/commands/graph.ts` | @danielsimonjr/memoryjs | src | reachable | 78 |
+| `src/cli/commands/helpers.ts` | @danielsimonjr/memoryjs | src | reachable | 74 |
+| `src/cli/commands/heuristic.ts` | @danielsimonjr/memoryjs | src | reachable | 124 |
+| `src/cli/commands/hierarchy.ts` | @danielsimonjr/memoryjs | src | reachable | 65 |
+| `src/cli/commands/index.ts` | @danielsimonjr/memoryjs | src | reachable | 65 |
+| `src/cli/commands/inspect.ts` | @danielsimonjr/memoryjs | src | reachable | 260 |
+| `src/cli/commands/io.ts` | @danielsimonjr/memoryjs | src | reachable | 70 |
+| `src/cli/commands/maintenance.ts` | @danielsimonjr/memoryjs | src | reachable | 187 |
+| `src/cli/commands/observation.ts` | @danielsimonjr/memoryjs | src | reachable | 79 |
+| `src/cli/commands/observationDedup.ts` | @danielsimonjr/memoryjs | src | reachable | 82 |
+| `src/cli/commands/projectContext.ts` | @danielsimonjr/memoryjs | src | reachable | 101 |
+| `src/cli/commands/reindex.ts` | @danielsimonjr/memoryjs | src | reachable | 96 |
+| `src/cli/commands/relation.ts` | @danielsimonjr/memoryjs | src | reachable | 60 |
+| `src/cli/commands/search.ts` | @danielsimonjr/memoryjs | src | reachable | 93 |
+| `src/cli/commands/smoke.ts` | @danielsimonjr/memoryjs | src | reachable | 419 |
+| `src/cli/commands/spell.ts` | @danielsimonjr/memoryjs | src | reachable | 54 |
+| `src/cli/commands/tag.ts` | @danielsimonjr/memoryjs | src | reachable | 73 |
+| `src/cli/commands/toolAffordance.ts` | @danielsimonjr/memoryjs | src | reachable | 113 |
+| `src/cli/config.ts` | @danielsimonjr/memoryjs | src | reachable | 93 |
+| `src/cli/formatters.ts` | @danielsimonjr/memoryjs | src | reachable | 361 |
+| `src/cli/index.ts` | @danielsimonjr/memoryjs | src | build-entry | 203 |
+| `src/cli/interactive.ts` | @danielsimonjr/memoryjs | src | reachable | 438 |
+| `src/cli/options.ts` | @danielsimonjr/memoryjs | src | reachable | 57 |
+| `src/cli/parseArgs.ts` | @danielsimonjr/memoryjs | src | reachable | 1544 |
+| `src/cli/plainTable.ts` | @danielsimonjr/memoryjs | src | reachable | 241 |
+| `src/core/EntityManager.ts` | @danielsimonjr/memoryjs | src | reachable | 1628 |
+| `src/core/EntityStateMachine.ts` | @danielsimonjr/memoryjs | src | reachable | 103 |
+| `src/core/GraphEventEmitter.ts` | @danielsimonjr/memoryjs | src | reachable | 470 |
+| `src/core/GraphStorage.ts` | @danielsimonjr/memoryjs | src | reachable | 1871 |
+| `src/core/GraphTraversal.ts` | @danielsimonjr/memoryjs | src | reachable | 1406 |
+| `src/core/HierarchyManager.ts` | @danielsimonjr/memoryjs | src | reachable | 313 |
+| `src/core/ManagerContext.ts` | @danielsimonjr/memoryjs | src | reachable | 776 |
+| `src/core/ObservationManager.ts` | @danielsimonjr/memoryjs | src | reachable | 1008 |
+| `src/core/ObservationStore.ts` | @danielsimonjr/memoryjs | src | reachable | 195 |
+| `src/core/PostgreSQLStorage.ts` | @danielsimonjr/memoryjs | src | reachable | 742 |
+| `src/core/RefIndex.ts` | @danielsimonjr/memoryjs | src | reachable | 379 |
+| `src/core/RelationManager.ts` | @danielsimonjr/memoryjs | src | reachable | 488 |
+| `src/core/SQLiteStorage.ts` | @danielsimonjr/memoryjs | src | reachable | 2641 |
+| `src/core/StorageFactory.ts` | @danielsimonjr/memoryjs | src | reachable | 157 |
+| `src/core/TransactionManager.ts` | @danielsimonjr/memoryjs | src | reachable | 762 |
+| `src/core/TransitionLedger.ts` | @danielsimonjr/memoryjs | src | reachable | 427 |
+| `src/core/columns/IColumnStore.ts` | @danielsimonjr/memoryjs | src | reachable | 176 |
+| `src/core/columns/JsonlColumnStore.ts` | @danielsimonjr/memoryjs | src | reachable | 226 |
+| `src/core/context/AgentBookkeepingFacade.ts` | @danielsimonjr/memoryjs | src | reachable | 216 |
+| `src/core/context/AgentCognitionFacade.ts` | @danielsimonjr/memoryjs | src | reachable | 379 |
+| `src/core/context/AgentMemoryFacade.ts` | @danielsimonjr/memoryjs | src | reachable | 493 |
+| `src/core/context/BootstrapFacade.ts` | @danielsimonjr/memoryjs | src | reachable | 103 |
+| `src/core/context/KnowledgeGovernanceFacade.ts` | @danielsimonjr/memoryjs | src | reachable | 261 |
+| `src/core/context/LearningFacade.ts` | @danielsimonjr/memoryjs | src | reachable | 251 |
+| `src/core/context/SearchFacade.ts` | @danielsimonjr/memoryjs | src | reachable | 322 |
+| `src/core/context/StorageInfraFacade.ts` | @danielsimonjr/memoryjs | src | reachable | 276 |
+| `src/core/context/envBounds.ts` | @danielsimonjr/memoryjs | src | reachable | 11 |
+| `src/core/index.ts` | @danielsimonjr/memoryjs | src | build-entry | 59 |
+| `src/core/mmap/FsReadMmapBackend.ts` | @danielsimonjr/memoryjs | src | reachable | 238 |
+| `src/core/mmap/IMmapBackend.ts` | @danielsimonjr/memoryjs | src | reachable | 168 |
+| `src/core/nodeSqliteAdapter.ts` | @danielsimonjr/memoryjs | src | reachable | 180 |
+| `src/core/segments/FileSegmentStorage.ts` | @danielsimonjr/memoryjs | src | reachable | 677 |
+| `src/core/segments/ISegmentStorage.ts` | @danielsimonjr/memoryjs | src | reachable | 287 |
+| `src/core/sqlite-register.ts` | @danielsimonjr/memoryjs | src | reachable | 30 |
+| `src/core/storageCache.ts` | @danielsimonjr/memoryjs | src | reachable | 303 |
+| `src/core/storageCapabilities.ts` | @danielsimonjr/memoryjs | src | reachable | 67 |
+| `src/features/AnalyticsManager.ts` | @danielsimonjr/memoryjs | src | reachable | 246 |
+| `src/features/ArchiveManager.ts` | @danielsimonjr/memoryjs | src | reachable | 425 |
+| `src/features/AuditLog.ts` | @danielsimonjr/memoryjs | src | reachable | 553 |
+| `src/features/AutoLinker.ts` | @danielsimonjr/memoryjs | src | reachable | 262 |
+| `src/features/BackupManager.ts` | @danielsimonjr/memoryjs | src | reachable | 415 |
+| `src/features/CompressionManager.ts` | @danielsimonjr/memoryjs | src | reachable | 707 |
+| `src/features/ContradictionDetector.ts` | @danielsimonjr/memoryjs | src | reachable | 210 |
+| `src/features/FactExtractor.ts` | @danielsimonjr/memoryjs | src | reachable | 352 |
+| `src/features/FreshnessManager.ts` | @danielsimonjr/memoryjs | src | reachable | 306 |
+| `src/features/GovernanceManager.ts` | @danielsimonjr/memoryjs | src | reachable | 716 |
+| `src/features/IOManager.ts` | @danielsimonjr/memoryjs | src | reachable | 2145 |
+| `src/features/KeywordExtractor.ts` | @danielsimonjr/memoryjs | src | reachable | 149 |
+| `src/features/ObservableDataModelAdapter.ts` | @danielsimonjr/memoryjs | src | reachable | 359 |
+| `src/features/ObservationNormalizer.ts` | @danielsimonjr/memoryjs | src | reachable | 265 |
+| `src/features/SemanticForget.ts` | @danielsimonjr/memoryjs | src | reachable | 188 |
+| `src/features/StreamingExporter.ts` | @danielsimonjr/memoryjs | src | reachable | 310 |
+| `src/features/TagManager.ts` | @danielsimonjr/memoryjs | src | reachable | 254 |
+| `src/features/index.ts` | @danielsimonjr/memoryjs | src | build-entry | 105 |
+| `src/index.ts` | @danielsimonjr/memoryjs | src | build-entry | 35 |
+| `src/search/BM25Search.ts` | @danielsimonjr/memoryjs | src | reachable | 541 |
+| `src/search/BasicSearch.ts` | @danielsimonjr/memoryjs | src | reachable | 170 |
+| `src/search/BloomFilter.ts` | @danielsimonjr/memoryjs | src | reachable | 129 |
+| `src/search/BloomPreScreener.ts` | @danielsimonjr/memoryjs | src | reachable | 155 |
+| `src/search/BooleanSearch.ts` | @danielsimonjr/memoryjs | src | reachable | 574 |
+| `src/search/EarlyTerminationManager.ts` | @danielsimonjr/memoryjs | src | reachable | 393 |
+| `src/search/EmbeddingCache.ts` | @danielsimonjr/memoryjs | src | reachable | 339 |
+| `src/search/EmbeddingService.ts` | @danielsimonjr/memoryjs | src | reachable | 927 |
+| `src/search/EvidencePathBuilder.ts` | @danielsimonjr/memoryjs | src | reachable | 221 |
+| `src/search/FuzzySearch.ts` | @danielsimonjr/memoryjs | src | reachable | 658 |
+| `src/search/GraphRankPrior.ts` | @danielsimonjr/memoryjs | src | reachable | 360 |
+| `src/search/HybridScorer.ts` | @danielsimonjr/memoryjs | src | reachable | 326 |
+| `src/search/HybridSearchManager.ts` | @danielsimonjr/memoryjs | src | reachable | 601 |
+| `src/search/IncrementalIndexer.ts` | @danielsimonjr/memoryjs | src | reachable | 418 |
+| `src/search/LLMQueryPlanner.ts` | @danielsimonjr/memoryjs | src | reachable | 382 |
+| `src/search/LLMSearchExecutor.ts` | @danielsimonjr/memoryjs | src | reachable | 225 |
+| `src/search/LSHVectorStore.ts` | @danielsimonjr/memoryjs | src | reachable | 158 |
+| `src/search/MaterializedViews.ts` | @danielsimonjr/memoryjs | src | reachable | 205 |
+| `src/search/NGramIndex.ts` | @danielsimonjr/memoryjs | src | reachable | 261 |
+| `src/search/OptimizedInvertedIndex.ts` | @danielsimonjr/memoryjs | src | reachable | 488 |
+| `src/search/ParallelSearchExecutor.ts` | @danielsimonjr/memoryjs | src | reachable | 562 |
+| `src/search/PartialIndexAdvisor.ts` | @danielsimonjr/memoryjs | src | reachable | 222 |
+| `src/search/ProximitySearch.ts` | @danielsimonjr/memoryjs | src | reachable | 233 |
+| `src/search/QuantizedVectorStore.ts` | @danielsimonjr/memoryjs | src | reachable | 407 |
+| `src/search/QueryAnalyzer.ts` | @danielsimonjr/memoryjs | src | reachable | 257 |
+| `src/search/QueryCostEstimator.ts` | @danielsimonjr/memoryjs | src | reachable | 794 |
+| `src/search/QueryLogger.ts` | @danielsimonjr/memoryjs | src | reachable | 212 |
+| `src/search/QueryParser.ts` | @danielsimonjr/memoryjs | src | reachable | 380 |
+| `src/search/QueryPlanCache.ts` | @danielsimonjr/memoryjs | src | reachable | 492 |
+| `src/search/QueryPlanFormatter.ts` | @danielsimonjr/memoryjs | src | reachable | 75 |
+| `src/search/QueryPlanner.ts` | @danielsimonjr/memoryjs | src | reachable | 123 |
+| `src/search/RankedSearch.ts` | @danielsimonjr/memoryjs | src | reachable | 556 |
+| `src/search/ReflectionManager.ts` | @danielsimonjr/memoryjs | src | reachable | 373 |
+| `src/search/SavedSearchManager.ts` | @danielsimonjr/memoryjs | src | reachable | 219 |
+| `src/search/SearchFilterChain.ts` | @danielsimonjr/memoryjs | src | reachable | 409 |
+| `src/search/SearchManager.ts` | @danielsimonjr/memoryjs | src | reachable | 560 |
+| `src/search/SearchSuggestions.ts` | @danielsimonjr/memoryjs | src | reachable | 239 |
+| `src/search/SemanticSearch.ts` | @danielsimonjr/memoryjs | src | reachable | 585 |
+| `src/search/SpellChecker.ts` | @danielsimonjr/memoryjs | src | reachable | 172 |
+| `src/search/SymbolicSearch.ts` | @danielsimonjr/memoryjs | src | reachable | 164 |
+| `src/search/TFIDFEventSync.ts` | @danielsimonjr/memoryjs | src | reachable | 419 |
+| `src/search/TFIDFIndexManager.ts` | @danielsimonjr/memoryjs | src | reachable | 713 |
+| `src/search/TemporalQueryParser.ts` | @danielsimonjr/memoryjs | src | reachable | 348 |
+| `src/search/TemporalSearch.ts` | @danielsimonjr/memoryjs | src | reachable | 173 |
+| `src/search/VectorStore.ts` | @danielsimonjr/memoryjs | src | reachable | 472 |
+| `src/search/enDate/calendar.ts` | @danielsimonjr/memoryjs | src | reachable | 192 |
+| `src/search/enDate/components.ts` | @danielsimonjr/memoryjs | src | reachable | 357 |
+| `src/search/enDate/constants.ts` | @danielsimonjr/memoryjs | src | reachable | 309 |
+| `src/search/enDate/parseEnDate.ts` | @danielsimonjr/memoryjs | src | reachable | 116 |
+| `src/search/enDate/parsers.ts` | @danielsimonjr/memoryjs | src | reachable | 971 |
+| `src/search/enDate/refiners.ts` | @danielsimonjr/memoryjs | src | reachable | 535 |
+| `src/search/enDate/timezones.ts` | @danielsimonjr/memoryjs | src | reachable | 132 |
+| `src/search/enDate/types.ts` | @danielsimonjr/memoryjs | src | reachable | 83 |
+| `src/search/ftsCandidates.ts` | @danielsimonjr/memoryjs | src | reachable | 49 |
+| `src/search/hybridLayers.ts` | @danielsimonjr/memoryjs | src | reachable | 65 |
+| `src/search/index.ts` | @danielsimonjr/memoryjs | src | build-entry | 275 |
+| `src/search/inducedSubgraph.ts` | @danielsimonjr/memoryjs | src | reachable | 23 |
+| `src/search/tiered/BrotliColdTier.ts` | @danielsimonjr/memoryjs | src | reachable | 168 |
+| `src/search/tiered/DiskWarmTier.ts` | @danielsimonjr/memoryjs | src | reachable | 262 |
+| `src/search/tiered/ITieredIndex.ts` | @danielsimonjr/memoryjs | src | reachable | 234 |
+| `src/search/tiered/LRUHotTier.ts` | @danielsimonjr/memoryjs | src | reachable | 176 |
+| `src/search/tiered/MapFileTier.ts` | @danielsimonjr/memoryjs | src | reachable | 154 |
+| `src/search/tiered/TieredIndex.ts` | @danielsimonjr/memoryjs | src | reachable | 313 |
+| `src/security/ABACPolicy.ts` | @danielsimonjr/memoryjs | src | reachable | 270 |
+| `src/security/APIKeyStore.ts` | @danielsimonjr/memoryjs | src | reachable | 346 |
+| `src/security/PiiRedactor.ts` | @danielsimonjr/memoryjs | src | reachable | 163 |
+| `src/security/RowLevelFilter.ts` | @danielsimonjr/memoryjs | src | reachable | 132 |
+| `src/security/index.ts` | @danielsimonjr/memoryjs | src | build-entry | 38 |
+| `src/sqlite.ts` | @danielsimonjr/memoryjs | src | build-entry | 19 |
+| `src/types/agent-memory.ts` | @danielsimonjr/memoryjs | src | reachable | 2534 |
+| `src/types/artifact.ts` | @danielsimonjr/memoryjs | src | reachable | 153 |
+| `src/types/event.ts` | @danielsimonjr/memoryjs | src | reachable | 137 |
+| `src/types/index.ts` | @danielsimonjr/memoryjs | src | build-entry | 389 |
+| `src/types/learning.ts` | @danielsimonjr/memoryjs | src | reachable | 277 |
+| `src/types/proceduralGraph.ts` | @danielsimonjr/memoryjs | src | reachable | 253 |
+| `src/types/procedure.ts` | @danielsimonjr/memoryjs | src | reachable | 71 |
+| `src/types/progress.ts` | @danielsimonjr/memoryjs | src | reachable | 195 |
+| `src/types/reconstruction.ts` | @danielsimonjr/memoryjs | src | reachable | 205 |
+| `src/types/result.ts` | @danielsimonjr/memoryjs | src | reachable | 96 |
+| `src/types/search.ts` | @danielsimonjr/memoryjs | src | reachable | 344 |
+| `src/types/skills.ts` | @danielsimonjr/memoryjs | src | reachable | 286 |
+| `src/types/task-scheduler.ts` | @danielsimonjr/memoryjs | src | reachable | 33 |
+| `src/types/types.ts` | @danielsimonjr/memoryjs | src | reachable | 2585 |
+| `src/utils/AsyncMutex.ts` | @danielsimonjr/memoryjs | src | reachable | 173 |
+| `src/utils/BatchProcessor.ts` | @danielsimonjr/memoryjs | src | reachable | 525 |
+| `src/utils/CachePressureCoordinator.ts` | @danielsimonjr/memoryjs | src | reachable | 176 |
+| `src/utils/Diagnostics.ts` | @danielsimonjr/memoryjs | src | reachable | 110 |
+| `src/utils/EntityValidator.ts` | @danielsimonjr/memoryjs | src | reachable | 301 |
+| `src/utils/IIndexHealth.ts` | @danielsimonjr/memoryjs | src | reachable | 46 |
+| `src/utils/IndexHealthMonitor.ts` | @danielsimonjr/memoryjs | src | reachable | 77 |
+| `src/utils/MemoryMonitor.ts` | @danielsimonjr/memoryjs | src | reachable | 410 |
+| `src/utils/RunExclusiveMutex.ts` | @danielsimonjr/memoryjs | src | reachable | 43 |
+| `src/utils/SchemaValidator.ts` | @danielsimonjr/memoryjs | src | reachable | 372 |
+| `src/utils/WorkerPoolManager.ts` | @danielsimonjr/memoryjs | src | reachable | 401 |
+| `src/utils/WorkerTaskManager.ts` | @danielsimonjr/memoryjs | src | reachable | 358 |
+| `src/utils/boundedTopK.ts` | @danielsimonjr/memoryjs | src | reachable | 56 |
+| `src/utils/compressedCache.ts` | @danielsimonjr/memoryjs | src | reachable | 492 |
+| `src/utils/compression/CompressedMap.ts` | @danielsimonjr/memoryjs | src | reachable | 294 |
+| `src/utils/compression/ICompressionAdapter.ts` | @danielsimonjr/memoryjs | src | reachable | 175 |
+| `src/utils/compressionUtil.ts` | @danielsimonjr/memoryjs | src | reachable | 421 |
+| `src/utils/constants.ts` | @danielsimonjr/memoryjs | src | reachable | 343 |
+| `src/utils/durableWriteFile.ts` | @danielsimonjr/memoryjs | src | reachable | 284 |
+| `src/utils/entityUtils.ts` | @danielsimonjr/memoryjs | src | reachable | 888 |
+| `src/utils/envConfig.ts` | @danielsimonjr/memoryjs | src | reachable | 196 |
+| `src/utils/errorSuggestions.ts` | @danielsimonjr/memoryjs | src | reachable | 267 |
+| `src/utils/errors.ts` | @danielsimonjr/memoryjs | src | reachable | 473 |
+| `src/utils/fieldPath.ts` | @danielsimonjr/memoryjs | src | reachable | 34 |
+| `src/utils/fillDefaults.ts` | @danielsimonjr/memoryjs | src | reachable | 17 |
+| `src/utils/formatters.ts` | @danielsimonjr/memoryjs | src | reachable | 196 |
+| `src/utils/graphCopy.ts` | @danielsimonjr/memoryjs | src | reachable | 95 |
+| `src/utils/halfLife.ts` | @danielsimonjr/memoryjs | src | reachable | 39 |
+| `src/utils/ids.ts` | @danielsimonjr/memoryjs | src | reachable | 22 |
+| `src/utils/index.ts` | @danielsimonjr/memoryjs | src | build-entry | 454 |
+| `src/utils/indexes.ts` | @danielsimonjr/memoryjs | src | reachable | 452 |
+| `src/utils/jsonlMapFile.ts` | @danielsimonjr/memoryjs | src | reachable | 126 |
+| `src/utils/jsonlRecordFile.ts` | @danielsimonjr/memoryjs | src | reachable | 39 |
+| `src/utils/logger.ts` | @danielsimonjr/memoryjs | src | reachable | 44 |
+| `src/utils/mutateMapWithFlushRollback.ts` | @danielsimonjr/memoryjs | src | reachable | 75 |
+| `src/utils/nextMonotonicIsoTimestamp.ts` | @danielsimonjr/memoryjs | src | reachable | 14 |
+| `src/utils/operationUtils.ts` | @danielsimonjr/memoryjs | src | reachable | 223 |
+| `src/utils/parallelUtils.ts` | @danielsimonjr/memoryjs | src | reachable | 147 |
+| `src/utils/postingIndex.ts` | @danielsimonjr/memoryjs | src | reachable | 23 |
+| `src/utils/relationHelpers.ts` | @danielsimonjr/memoryjs | src | reachable | 285 |
+| `src/utils/relationValidation.ts` | @danielsimonjr/memoryjs | src | reachable | 256 |
+| `src/utils/schema.ts` | @danielsimonjr/memoryjs | src | reachable | 1556 |
+| `src/utils/schemas.ts` | @danielsimonjr/memoryjs | src | reachable | 811 |
+| `src/utils/searchAlgorithms.ts` | @danielsimonjr/memoryjs | src | reachable | 251 |
+| `src/utils/searchCache.ts` | @danielsimonjr/memoryjs | src | reachable | 522 |
+| `src/utils/sidecarPath.ts` | @danielsimonjr/memoryjs | src | reachable | 39 |
+| `src/utils/taskScheduler.ts` | @danielsimonjr/memoryjs | src | reachable | 641 |
+| `src/utils/textSimilarity.ts` | @danielsimonjr/memoryjs | src | reachable | 213 |
+| `src/utils/timing.ts` | @danielsimonjr/memoryjs | src | reachable | 99 |
+| `src/utils/tokenEstimate.ts` | @danielsimonjr/memoryjs | src | reachable | 27 |
+| `src/utils/unrefInterval.ts` | @danielsimonjr/memoryjs | src | reachable | 31 |
+| `src/utils/validation.ts` | @danielsimonjr/memoryjs | src | reachable | 28 |
+| `src/utils/validators.ts` | @danielsimonjr/memoryjs | src | reachable | 357 |
+| `src/workers/levenshteinWorker.ts` | @danielsimonjr/memoryjs | src | build-entry | 134 |
+| `tests/edge-cases/edge-cases.test.ts` | (root) | tests | test | 495 |
+| `tests/examples/examples.test.ts` | (root) | tests | test | 253 |
+| `tests/file-path.test.ts` | (root) | tests | test | 234 |
+| `tests/helpers/__tests__/mockStorage.test.ts` | (root) | tests | test | 100 |
+| `tests/helpers/mockStorage.ts` | (root) | tests | test | 126 |
+| `tests/helpers/tempStorage.ts` | (root) | tests | test | 92 |
+| `tests/integration/MemoryEngineStorage.test.ts` | (root) | tests | test | 181 |
+| `tests/integration/agent/access-tracking.test.ts` | (root) | tests | test | 325 |
+| `tests/integration/agent/agent-memory-manager-profile.test.ts` | (root) | tests | test | 32 |
+| `tests/integration/agent/recursa-end-to-end.test.ts` | (root) | tests | test | 109 |
+| `tests/integration/agent/recursa-leaf-learner.test.ts` | (root) | tests | test | 215 |
+| `tests/integration/agent/recursa-loop.test.ts` | (root) | tests | test | 172 |
+| `tests/integration/backup-compression.test.ts` | (root) | tests | test | 431 |
+| `tests/integration/compression-optimization.test.ts` | (root) | tests | test | 133 |
+| `tests/integration/core/manager-context-semantic-forget.test.ts` | (root) | tests | test | 37 |
+| `tests/integration/core/observation-manager-contradiction.test.ts` | (root) | tests | test | 43 |
+| `tests/integration/features/contradiction-detector-supersede.test.ts` | (root) | tests | test | 108 |
+| `tests/integration/features/governance-enforcement.test.ts` | (root) | tests | test | 321 |
+| `tests/integration/hybrid-search.test.ts` | (root) | tests | test | 331 |
+| `tests/integration/operation-progress.test.ts` | (root) | tests | test | 269 |
+| `tests/integration/procedural-graph-guidance.test.ts` | (root) | tests | test | 56 |
+| `tests/integration/procedural-graph-iomanager-roundtrip.test.ts` | (root) | tests | test | 80 |
+| `tests/integration/procedural-graph-recovery.test.ts` | (root) | tests | test | 231 |
+| `tests/integration/search/project-scope-isolation.test.ts` | (root) | tests | test | 86 |
+| `tests/integration/smart-search.test.ts` | (root) | tests | test | 286 |
+| `tests/integration/storage-dedup-safety.test.ts` | (root) | tests | test | 1250 |
+| `tests/integration/storage/graph-storage-new-fields.test.ts` | (root) | tests | test | 72 |
+| `tests/integration/storage/sqlite-storage-new-fields.test.ts` | (root) | tests | test | 64 |
+| `tests/integration/streaming-export.test.ts` | (root) | tests | test | 226 |
+| `tests/integration/transaction-isolation.test.ts` | (root) | tests | test | 229 |
+| `tests/integration/worker-pool-integration.test.ts` | (root) | tests | test | 236 |
+| `tests/integration/workflows.test.ts` | (root) | tests | test | 539 |
+| `tests/knowledge-graph.test.ts` | (root) | tests | test | 399 |
+| `tests/performance/baselineHelper.ts` | (root) | tests | test | 84 |
+| `tests/performance/benchmarks.test.ts` | (root) | tests | test | 494 |
+| `tests/performance/compression-benchmarks.test.ts` | (root) | tests | test | 307 |
+| `tests/performance/embedding-benchmarks.test.ts` | (root) | tests | test | 471 |
+| `tests/performance/foundation-benchmarks.test.ts` | (root) | tests | test | 547 |
+| `tests/performance/memory-engine-perf.test.ts` | (root) | tests | test | 100 |
+| `tests/performance/merge-perf.test.ts` | (root) | tests | test | 48 |
+| `tests/performance/mmap-load-benchmark.test.ts` | (root) | tests | test | 170 |
+| `tests/performance/optimization-benchmarks.test.ts` | (root) | tests | test | 317 |
+| `tests/performance/parallel-benchmarks.test.ts` | (root) | tests | test | 476 |
+| `tests/performance/query-execution-benchmarks.test.ts` | (root) | tests | test | 520 |
+| `tests/performance/ranked-search-benchmarks.test.ts` | (root) | tests | test | 140 |
+| `tests/performance/search-algorithm-benchmarks.test.ts` | (root) | tests | test | 615 |
+| `tests/performance/task-scheduler-benchmarks.test.ts` | (root) | tests | test | 419 |
+| `tests/performance/task-scheduler-config-benchmarks.test.ts` | (root) | tests | test | 610 |
+| `tests/performance/v10-benchmarks.test.ts` | (root) | tests | test | 334 |
+| `tests/performance/write-path-benchmarks.test.ts` | (root) | tests | test | 157 |
+| `tests/performance/write-performance.test.ts` | (root) | tests | test | 463 |
+| `tests/test-utils/inject-flush-failure.ts` | (root) | tests | test | 67 |
+| `tests/test-utils/microtask-ticks.ts` | (root) | tests | test | 46 |
+| `tests/test-utils/sqlite-files.ts` | (root) | tests | test | 33 |
+| `tests/unit/adapters/ApiKeyAuthMiddleware.test.ts` | (root) | tests | test | 265 |
+| `tests/unit/adapters/LangChainMemoryAdapter.test.ts` | (root) | tests | test | 97 |
+| `tests/unit/adapters/MCPToolObserverAdapter.test.ts` | (root) | tests | test | 163 |
+| `tests/unit/adapters/RateLimiter.bounds.test.ts` | (root) | tests | test | 60 |
+| `tests/unit/adapters/RateLimiter.test.ts` | (root) | tests | test | 91 |
+| `tests/unit/adapters/RecursaToolAdapter.test.ts` | (root) | tests | test | 276 |
+| `tests/unit/adapters/RecursaToolAdapterSafety.test.ts` | (root) | tests | test | 208 |
+| `tests/unit/adapters/RestRouter.test.ts` | (root) | tests | test | 202 |
+| `tests/unit/adapters/pagination.test.ts` | (root) | tests | test | 77 |
+| `tests/unit/adapters/rest-input-security.test.ts` | (root) | tests | test | 88 |
+| `tests/unit/adapters/rest-tenancy.test.ts` | (root) | tests | test | 346 |
+| `tests/unit/adapters/rest-unscoped-warning.test.ts` | (root) | tests | test | 45 |
+| `tests/unit/agent/AccessTracker.recordBatch.test.ts` | (root) | tests | test | 100 |
+| `tests/unit/agent/AccessTracker.test.ts` | (root) | tests | test | 743 |
+| `tests/unit/agent/ActiveRetrieval.test.ts` | (root) | tests | test | 193 |
+| `tests/unit/agent/AgentEnvDefaults.test.ts` | (root) | tests | test | 143 |
+| `tests/unit/agent/AgentMemoryManager.collaborativeSynthesis.test.ts` | (root) | tests | test | 24 |
+| `tests/unit/agent/AgentMemoryManager.knowledge.test.ts` | (root) | tests | test | 66 |
+| `tests/unit/agent/AgentMemoryManager.test.ts` | (root) | tests | test | 719 |
+| `tests/unit/agent/AgentReflectionManager.test.ts` | (root) | tests | test | 577 |
+| `tests/unit/agent/ArtifactManager.test.ts` | (root) | tests | test | 658 |
+| `tests/unit/agent/CausalReasoner.test.ts` | (root) | tests | test | 338 |
+| `tests/unit/agent/CognitiveLoadAnalyzer.test.ts` | (root) | tests | test | 361 |
+| `tests/unit/agent/CollaborationAuditEnforcer.test.ts` | (root) | tests | test | 183 |
+| `tests/unit/agent/CollaborativeSynthesis.test.ts` | (root) | tests | test | 709 |
+| `tests/unit/agent/ConflictResolver.strategies.test.ts` | (root) | tests | test | 153 |
+| `tests/unit/agent/ConflictResolver.test.ts` | (root) | tests | test | 465 |
+| `tests/unit/agent/ConnectivitySignals.test.ts` | (root) | tests | test | 477 |
+| `tests/unit/agent/ConsolidationPipeline.mergeDelta.test.ts` | (root) | tests | test | 338 |
+| `tests/unit/agent/ConsolidationPipeline.mergeRace.test.ts` | (root) | tests | test | 133 |
+| `tests/unit/agent/ConsolidationPipeline.promoteBatch.test.ts` | (root) | tests | test | 277 |
+| `tests/unit/agent/ConsolidationPipeline.test.ts` | (root) | tests | test | 2333 |
+| `tests/unit/agent/ConsolidationScheduler.test.ts` | (root) | tests | test | 395 |
+| `tests/unit/agent/ContextProfileManager.test.ts` | (root) | tests | test | 525 |
+| `tests/unit/agent/ContextWindowManager.eviction.test.ts` | (root) | tests | test | 232 |
+| `tests/unit/agent/ContextWindowManager.knowledge.test.ts` | (root) | tests | test | 105 |
+| `tests/unit/agent/ContextWindowManager.test.ts` | (root) | tests | test | 1752 |
+| `tests/unit/agent/DecayEngine.reinforceBatch.test.ts` | (root) | tests | test | 149 |
+| `tests/unit/agent/DecayEngine.test.ts` | (root) | tests | test | 1317 |
+| `tests/unit/agent/DecayScheduler.test.ts` | (root) | tests | test | 583 |
+| `tests/unit/agent/DecisionManager.test.ts` | (root) | tests | test | 406 |
+| `tests/unit/agent/DistillationPipeline.test.ts` | (root) | tests | test | 152 |
+| `tests/unit/agent/DistillationPolicy.test.ts` | (root) | tests | test | 849 |
+| `tests/unit/agent/DreamEngine.test.ts` | (root) | tests | test | 964 |
+| `tests/unit/agent/EntropyFilter.test.ts` | (root) | tests | test | 317 |
+| `tests/unit/agent/EpisodicMemoryManager.test.ts` | (root) | tests | test | 726 |
+| `tests/unit/agent/EventManager.candidatesVia.test.ts` | (root) | tests | test | 73 |
+| `tests/unit/agent/EventManager.test.ts` | (root) | tests | test | 511 |
+| `tests/unit/agent/ExclusionManager.test.ts` | (root) | tests | test | 236 |
+| `tests/unit/agent/ExperienceExtractor.test.ts` | (root) | tests | test | 177 |
+| `tests/unit/agent/FailureDistillation.test.ts` | (root) | tests | test | 616 |
+| `tests/unit/agent/FailureManager.test.ts` | (root) | tests | test | 761 |
+| `tests/unit/agent/GuardedComponentEdit.test.ts` | (root) | tests | test | 597 |
+| `tests/unit/agent/HeuristicExtractionStage.test.ts` | (root) | tests | test | 325 |
+| `tests/unit/agent/HeuristicManager.test.ts` | (root) | tests | test | 205 |
+| `tests/unit/agent/IMemoryBackend.contract.test.ts` | (root) | tests | test | 228 |
+| `tests/unit/agent/ImportanceScorer.test.ts` | (root) | tests | test | 78 |
+| `tests/unit/agent/InMemoryBackend.test.ts` | (root) | tests | test | 136 |
+| `tests/unit/agent/MemoryEngine.test.ts` | (root) | tests | test | 857 |
+| `tests/unit/agent/MemoryFormatter.test.ts` | (root) | tests | test | 312 |
+| `tests/unit/agent/MemoryFormatterSalience.test.ts` | (root) | tests | test | 241 |
+| `tests/unit/agent/MemoryValidator.test.ts` | (root) | tests | test | 202 |
+| `tests/unit/agent/MultiAgentMemoryManager.fieldPreservation.test.ts` | (root) | tests | test | 42 |
+| `tests/unit/agent/MultiAgentMemoryManager.test.ts` | (root) | tests | test | 1107 |
+| `tests/unit/agent/ObservationDedupManager.test.ts` | (root) | tests | test | 236 |
+| `tests/unit/agent/ObservationDedupReportStage.test.ts` | (root) | tests | test | 110 |
+| `tests/unit/agent/ObserverPipeline.test.ts` | (root) | tests | test | 555 |
+| `tests/unit/agent/PatternDetector.test.ts` | (root) | tests | test | 412 |
+| `tests/unit/agent/PlanManager.test.ts` | (root) | tests | test | 599 |
+| `tests/unit/agent/ProcedureManager.test.ts` | (root) | tests | test | 412 |
+| `tests/unit/agent/ProcedureStore.test.ts` | (root) | tests | test | 487 |
+| `tests/unit/agent/ProjectContextManager.dedupByKey.test.ts` | (root) | tests | test | 66 |
+| `tests/unit/agent/ProjectContextManager.test.ts` | (root) | tests | test | 254 |
+| `tests/unit/agent/ProspectiveMemoryManager.conditional.test.ts` | (root) | tests | test | 313 |
+| `tests/unit/agent/ProspectiveMemoryManager.test.ts` | (root) | tests | test | 721 |
+| `tests/unit/agent/ReflectionStage.test.ts` | (root) | tests | test | 343 |
+| `tests/unit/agent/RelationConsolidator.test.ts` | (root) | tests | test | 677 |
+| `tests/unit/agent/RoleProfiles.test.ts` | (root) | tests | test | 254 |
+| `tests/unit/agent/RuleEvaluator.test.ts` | (root) | tests | test | 309 |
+| `tests/unit/agent/SQLiteBackend.test.ts` | (root) | tests | test | 215 |
+| `tests/unit/agent/SalienceEngine-heap-pins.test.ts` | (root) | tests | test | 178 |
+| `tests/unit/agent/SalienceEngine.test.ts` | (root) | tests | test | 847 |
+| `tests/unit/agent/SessionCheckpoint.test.ts` | (root) | tests | test | 697 |
+| `tests/unit/agent/SessionManager.test.ts` | (root) | tests | test | 847 |
+| `tests/unit/agent/SessionQueryBuilder.createdWithin.test.ts` | (root) | tests | test | 71 |
+| `tests/unit/agent/SessionQueryBuilder.test.ts` | (root) | tests | test | 609 |
+| `tests/unit/agent/SummarizationService.test.ts` | (root) | tests | test | 530 |
+| `tests/unit/agent/ToolAffordanceManager.test.ts` | (root) | tests | test | 197 |
+| `tests/unit/agent/ToolCallObserver.interactionLog.test.ts` | (root) | tests | test | 77 |
+| `tests/unit/agent/ToolCallObserver.test.ts` | (root) | tests | test | 338 |
+| `tests/unit/agent/TrajectoryCompressor.test.ts` | (root) | tests | test | 158 |
+| `tests/unit/agent/VisibilityResolver.test.ts` | (root) | tests | test | 461 |
+| `tests/unit/agent/WorkThreadManager.test.ts` | (root) | tests | test | 1208 |
+| `tests/unit/agent/WorkingMemoryManager.test.ts` | (root) | tests | test | 1268 |
+| `tests/unit/agent/WorldModel.test.ts` | (root) | tests | test | 175 |
+| `tests/unit/agent/agent-memory-manager-diary.test.ts` | (root) | tests | test | 69 |
+| `tests/unit/agent/bootstrap/BootstrapValidation.test.ts` | (root) | tests | test | 53 |
+| `tests/unit/agent/bootstrap/Bootstrapper.test.ts` | (root) | tests | test | 113 |
+| `tests/unit/agent/bootstrap/BoundaryRecorder.test.ts` | (root) | tests | test | 85 |
+| `tests/unit/agent/bootstrap/CorpusMapper.test.ts` | (root) | tests | test | 168 |
+| `tests/unit/agent/bootstrap/ExplorationNotes.test.ts` | (root) | tests | test | 123 |
+| `tests/unit/agent/bootstrap/PracticeTaskGenerator.test.ts` | (root) | tests | test | 129 |
+| `tests/unit/agent/bootstrap/bootstrapFixtures.ts` | (root) | tests | test | 89 |
+| `tests/unit/agent/context-window-manager-compress.test.ts` | (root) | tests | test | 165 |
+| `tests/unit/agent/context-window-manager-wakeup.test.ts` | (root) | tests | test | 225 |
+| `tests/unit/agent/delta-services-wiring.test.ts` | (root) | tests | test | 60 |
+| `tests/unit/agent/evaluation/DeterministicJudge.hardening.test.ts` | (root) | tests | test | 66 |
+| `tests/unit/agent/evaluation/DeterministicJudge.test.ts` | (root) | tests | test | 130 |
+| `tests/unit/agent/evaluation/Evaluator.hardening.test.ts` | (root) | tests | test | 93 |
+| `tests/unit/agent/evaluation/Evaluator.test.ts` | (root) | tests | test | 196 |
+| `tests/unit/agent/evaluation/LLMRubricJudge.hardening.test.ts` | (root) | tests | test | 70 |
+| `tests/unit/agent/evaluation/LLMRubricJudge.test.ts` | (root) | tests | test | 128 |
+| `tests/unit/agent/evaluation/RubricAudit.hardening.test.ts` | (root) | tests | test | 52 |
+| `tests/unit/agent/evaluation/RubricAudit.test.ts` | (root) | tests | test | 159 |
+| `tests/unit/agent/harness/ConcurrencyLimiter.test.ts` | (root) | tests | test | 246 |
+| `tests/unit/agent/harness/EvictionIndex.test.ts` | (root) | tests | test | 129 |
+| `tests/unit/agent/harness/InteractionLog.hardening.test.ts` | (root) | tests | test | 145 |
+| `tests/unit/agent/harness/InteractionLog.test.ts` | (root) | tests | test | 270 |
+| `tests/unit/agent/keyValueLine.test.ts` | (root) | tests | test | 59 |
+| `tests/unit/agent/knowledge/InstructionSetManager.test.ts` | (root) | tests | test | 95 |
+| `tests/unit/agent/knowledge/KnowledgeHardening.test.ts` | (root) | tests | test | 138 |
+| `tests/unit/agent/knowledge/KnowledgeRepository.rollback.test.ts` | (root) | tests | test | 134 |
+| `tests/unit/agent/knowledge/KnowledgeRepository.test.ts` | (root) | tests | test | 219 |
+| `tests/unit/agent/knowledge/knowledgeDigest.test.ts` | (root) | tests | test | 88 |
+| `tests/unit/agent/knowledge/knowledgeFixtures.ts` | (root) | tests | test | 151 |
+| `tests/unit/agent/knowledgeContext.sections.test.ts` | (root) | tests | test | 62 |
+| `tests/unit/agent/learning/Diagnoser.test.ts` | (root) | tests | test | 253 |
+| `tests/unit/agent/learning/DiagnoserBatchDurability.challenger.test.ts` | (root) | tests | test | 145 |
+| `tests/unit/agent/learning/InProcessLearnHandler.concurrency.test.ts` | (root) | tests | test | 60 |
+| `tests/unit/agent/learning/KnowledgeEditor.test.ts` | (root) | tests | test | 307 |
+| `tests/unit/agent/learning/LeafAbortDedup.test.ts` | (root) | tests | test | 124 |
+| `tests/unit/agent/learning/LeafApply.test.ts` | (root) | tests | test | 232 |
+| `tests/unit/agent/learning/LeafLearner.test.ts` | (root) | tests | test | 209 |
+| `tests/unit/agent/learning/LeafLearnerBounds.test.ts` | (root) | tests | test | 112 |
+| `tests/unit/agent/learning/LeafLearnerResume.test.ts` | (root) | tests | test | 137 |
+| `tests/unit/agent/learning/LeafValidationPlan.test.ts` | (root) | tests | test | 111 |
+| `tests/unit/agent/learning/LearnedSkillLoadability.test.ts` | (root) | tests | test | 96 |
+| `tests/unit/agent/learning/LearningAccountant.test.ts` | (root) | tests | test | 192 |
+| `tests/unit/agent/learning/LearningReflector.test.ts` | (root) | tests | test | 174 |
+| `tests/unit/agent/learning/LearningTrace.test.ts` | (root) | tests | test | 267 |
+| `tests/unit/agent/learning/RecursiveCriteria.test.ts` | (root) | tests | test | 45 |
+| `tests/unit/agent/learning/RecursiveLearner.test.ts` | (root) | tests | test | 207 |
+| `tests/unit/agent/learning/RecursiveLiveK.test.ts` | (root) | tests | test | 120 |
+| `tests/unit/agent/learning/RecursivePlanBudget.test.ts` | (root) | tests | test | 65 |
+| `tests/unit/agent/learning/RecursiveWriteBudget.test.ts` | (root) | tests | test | 153 |
+| `tests/unit/agent/learning/RevisionMergeRules.test.ts` | (root) | tests | test | 133 |
+| `tests/unit/agent/learning/RevisionMerger.test.ts` | (root) | tests | test | 297 |
+| `tests/unit/agent/learning/RevisionValidator.test.ts` | (root) | tests | test | 166 |
+| `tests/unit/agent/learning/SplitStrategies.test.ts` | (root) | tests | test | 307 |
+| `tests/unit/agent/learning/leafFixtures.ts` | (root) | tests | test | 195 |
+| `tests/unit/agent/learning/recursiveFixtures.ts` | (root) | tests | test | 161 |
+| `tests/unit/agent/memoryBackend-wiring.test.ts` | (root) | tests | test | 70 |
+| `tests/unit/agent/procedural/graph/CompletionProvider.test.ts` | (root) | tests | test | 113 |
+| `tests/unit/agent/procedural/graph/ProceduralGraph.test.ts` | (root) | tests | test | 305 |
+| `tests/unit/agent/procedural/graph/ProceduralGraphEvolution.test.ts` | (root) | tests | test | 1011 |
+| `tests/unit/agent/procedural/graph/ProceduralGraphManager.test.ts` | (root) | tests | test | 468 |
+| `tests/unit/agent/procedural/graph/ProceduralGraphRefiner.test.ts` | (root) | tests | test | 234 |
+| `tests/unit/agent/procedural/graph/ProceduralGraphSchemas.test.ts` | (root) | tests | test | 331 |
+| `tests/unit/agent/procedural/graph/ProceduralGraphSerializer.test.ts` | (root) | tests | test | 118 |
+| `tests/unit/agent/procedural/graph/ProceduralGraphSession.test.ts` | (root) | tests | test | 310 |
+| `tests/unit/agent/procedural/graph/ProceduralGraphValidator.test.ts` | (root) | tests | test | 324 |
+| `tests/unit/agent/procedural/graph/ProcedureGraphAdapter.test.ts` | (root) | tests | test | 134 |
+| `tests/unit/agent/procedural/graph/appendixF.test.ts` | (root) | tests | test | 96 |
+| `tests/unit/agent/procedural/graph/backing/backingContract.ts` | (root) | tests | test | 382 |
+| `tests/unit/agent/procedural/graph/backing/jsonl.test.ts` | (root) | tests | test | 117 |
+| `tests/unit/agent/procedural/graph/backing/memory.test.ts` | (root) | tests | test | 54 |
+| `tests/unit/agent/procedural/graph/backing/sqlite.test.ts` | (root) | tests | test | 121 |
+| `tests/unit/agent/procedural/graph/canonical-compare.test.ts` | (root) | tests | test | 91 |
+| `tests/unit/agent/procedural/graph/canonical.test.ts` | (root) | tests | test | 213 |
+| `tests/unit/agent/procedural/graph/fixtures/appendixF.ts` | (root) | tests | test | 166 |
+| `tests/unit/agent/procedural/graph/fixtures/cfo-generation-d.ts` | (root) | tests | test | 76 |
+| `tests/unit/agent/procedural/graph/fixtures/hotpotqa-mode2.ts` | (root) | tests | test | 102 |
+| `tests/unit/agent/procedural/graph/hardening.test.ts` | (root) | tests | test | 428 |
+| `tests/unit/agent/procedural/graph/prompts.test.ts` | (root) | tests | test | 48 |
+| `tests/unit/agent/procedural/graph/tokenTail.test.ts` | (root) | tests | test | 92 |
+| `tests/unit/agent/profile-manager-basics.test.ts` | (root) | tests | test | 77 |
+| `tests/unit/agent/profile-manager-extraction.test.ts` | (root) | tests | test | 90 |
+| `tests/unit/agent/rbac.test.ts` | (root) | tests | test | 314 |
+| `tests/unit/agent/reconstruction/CueTagContentGraph.test.ts` | (root) | tests | test | 87 |
+| `tests/unit/agent/reconstruction/MemoryDistiller.test.ts` | (root) | tests | test | 120 |
+| `tests/unit/agent/reconstruction/MemoryGraphBridge.test.ts` | (root) | tests | test | 119 |
+| `tests/unit/agent/reconstruction/MemoryToolkit.test.ts` | (root) | tests | test | 60 |
+| `tests/unit/agent/reconstruction/ReconstructiveMemory.test.ts` | (root) | tests | test | 134 |
+| `tests/unit/agent/recordQuery.test.ts` | (root) | tests | test | 22 |
+| `tests/unit/agent/selectWeightedTurns.test.ts` | (root) | tests | test | 74 |
+| `tests/unit/agent/skills/SkillFormat.test.ts` | (root) | tests | test | 239 |
+| `tests/unit/agent/skills/SkillHardening.test.ts` | (root) | tests | test | 187 |
+| `tests/unit/agent/skills/SkillIOConfinement.test.ts` | (root) | tests | test | 63 |
+| `tests/unit/agent/skills/SkillManager.test.ts` | (root) | tests | test | 258 |
+| `tests/unit/agent/skills/SkillPublisher.test.ts` | (root) | tests | test | 215 |
+| `tests/unit/agent/skills/SkillPublisherConfinement.test.ts` | (root) | tests | test | 108 |
+| `tests/unit/agent/skills/SkillWritePath.test.ts` | (root) | tests | test | 123 |
+| `tests/unit/agent/workingMemoryGuard.test.ts` | (root) | tests | test | 103 |
+| `tests/unit/cli/actionFrame.test.ts` | (root) | tests | test | 445 |
+| `tests/unit/cli/ansi.test.ts` | (root) | tests | test | 167 |
+| `tests/unit/cli/audit.test.ts` | (root) | tests | test | 419 |
+| `tests/unit/cli/cache-reindex.test.ts` | (root) | tests | test | 156 |
+| `tests/unit/cli/check.test.ts` | (root) | tests | test | 164 |
+| `tests/unit/cli/commands.test.ts` | (root) | tests | test | 813 |
+| `tests/unit/cli/config.test.ts` | (root) | tests | test | 322 |
+| `tests/unit/cli/decision.test.ts` | (root) | tests | test | 113 |
+| `tests/unit/cli/diag.test.ts` | (root) | tests | test | 193 |
+| `tests/unit/cli/doctor.test.ts` | (root) | tests | test | 418 |
+| `tests/unit/cli/exclusion.test.ts` | (root) | tests | test | 70 |
+| `tests/unit/cli/formatters.test.ts` | (root) | tests | test | 737 |
+| `tests/unit/cli/graph.test.ts` | (root) | tests | test | 76 |
+| `tests/unit/cli/helpers/captureCliParity.ts` | (root) | tests | test | 311 |
+| `tests/unit/cli/helpers/cliTestHarness.ts` | (root) | tests | test | 113 |
+| `tests/unit/cli/helpers/syntheticProgram.ts` | (root) | tests | test | 172 |
+| `tests/unit/cli/heuristic.test.ts` | (root) | tests | test | 69 |
+| `tests/unit/cli/hierarchy.test.ts` | (root) | tests | test | 64 |
+| `tests/unit/cli/index.test.ts` | (root) | tests | test | 270 |
+| `tests/unit/cli/inspect.test.ts` | (root) | tests | test | 211 |
+| `tests/unit/cli/interactive.test.ts` | (root) | tests | test | 919 |
+| `tests/unit/cli/maintenance-cli.test.ts` | (root) | tests | test | 77 |
+| `tests/unit/cli/observation.test.ts` | (root) | tests | test | 65 |
+| `tests/unit/cli/observationDedup.test.ts` | (root) | tests | test | 59 |
+| `tests/unit/cli/options.test.ts` | (root) | tests | test | 312 |
+| `tests/unit/cli/parseArgsPinned.test.ts` | (root) | tests | test | 268 |
+| `tests/unit/cli/parseArgsSurfacePinned.test.ts` | (root) | tests | test | 88 |
+| `tests/unit/cli/plainTable.challenger.test.ts` | (root) | tests | test | 200 |
+| `tests/unit/cli/plainTable.test.ts` | (root) | tests | test | 126 |
+| `tests/unit/cli/projectContext.test.ts` | (root) | tests | test | 64 |
+| `tests/unit/cli/recorderDoc.test.ts` | (root) | tests | test | 48 |
+| `tests/unit/cli/search-extended.test.ts` | (root) | tests | test | 65 |
+| `tests/unit/cli/smoke.test.ts` | (root) | tests | test | 82 |
+| `tests/unit/cli/spell.test.ts` | (root) | tests | test | 71 |
+| `tests/unit/cli/tag.test.ts` | (root) | tests | test | 65 |
+| `tests/unit/cli/toolAffordance.test.ts` | (root) | tests | test | 75 |
+| `tests/unit/core/BatchTransaction.test.ts` | (root) | tests | test | 694 |
+| `tests/unit/core/ConcurrencyControl.test.ts` | (root) | tests | test | 458 |
+| `tests/unit/core/EntityManager.legacyDelete.test.ts` | (root) | tests | test | 66 |
+| `tests/unit/core/EntityManager.test.ts` | (root) | tests | test | 902 |
+| `tests/unit/core/EntityStateMachine.test.ts` | (root) | tests | test | 64 |
+| `tests/unit/core/GraphEventEmitter.observation.test.ts` | (root) | tests | test | 77 |
+| `tests/unit/core/GraphEventEmitter.test.ts` | (root) | tests | test | 518 |
+| `tests/unit/core/GraphEvents.test.ts` | (root) | tests | test | 479 |
+| `tests/unit/core/GraphStorage.test.ts` | (root) | tests | test | 665 |
+| `tests/unit/core/GraphTraversal.test.ts` | (root) | tests | test | 614 |
+| `tests/unit/core/GraphTraversalLookFor.test.ts` | (root) | tests | test | 190 |
+| `tests/unit/core/HierarchyManager.test.ts` | (root) | tests | test | 508 |
+| `tests/unit/core/ManagerContext-hybridContext.test.ts` | (root) | tests | test | 126 |
+| `tests/unit/core/ManagerContext-proceduralGraph.test.ts` | (root) | tests | test | 75 |
+| `tests/unit/core/ManagerContext-vectorStore.test.ts` | (root) | tests | test | 54 |
+| `tests/unit/core/ManagerContext.agentEnvDefaults.test.ts` | (root) | tests | test | 59 |
+| `tests/unit/core/ManagerContext.bootstrapper.test.ts` | (root) | tests | test | 113 |
+| `tests/unit/core/ManagerContext.learningLoop.facade.test.ts` | (root) | tests | test | 72 |
+| `tests/unit/core/ManagerContext.learningLoop.recursive.test.ts` | (root) | tests | test | 191 |
+| `tests/unit/core/ManagerContext.learningLoop.test.ts` | (root) | tests | test | 208 |
+| `tests/unit/core/ManagerContext.recursa-wiring.test.ts` | (root) | tests | test | 198 |
+| `tests/unit/core/ManagerContext.test.ts` | (root) | tests | test | 1358 |
+| `tests/unit/core/ObservationManager.dedup.test.ts` | (root) | tests | test | 494 |
+| `tests/unit/core/ObservationManager.events.test.ts` | (root) | tests | test | 202 |
+| `tests/unit/core/ObservationManager.test.ts` | (root) | tests | test | 385 |
+| `tests/unit/core/ObservationStore.test.ts` | (root) | tests | test | 94 |
+| `tests/unit/core/PostgreSQLStorage.test.ts` | (root) | tests | test | 527 |
+| `tests/unit/core/RefIndex.test.ts` | (root) | tests | test | 619 |
+| `tests/unit/core/RelationManager-metadata.test.ts` | (root) | tests | test | 126 |
+| `tests/unit/core/RelationManager.test.ts` | (root) | tests | test | 356 |
+| `tests/unit/core/SQLiteStorage.autoIndexDeprecation.test.ts` | (root) | tests | test | 108 |
+| `tests/unit/core/SQLiteStorage.test.ts` | (root) | tests | test | 1719 |
+| `tests/unit/core/StorageFactory.test.ts` | (root) | tests | test | 219 |
+| `tests/unit/core/TransactionBatching.test.ts` | (root) | tests | test | 439 |
+| `tests/unit/core/TransactionManager.test.ts` | (root) | tests | test | 768 |
+| `tests/unit/core/TransitionLedger.test.ts` | (root) | tests | test | 520 |
+| `tests/unit/core/bloom-prescreener-wiring.test.ts` | (root) | tests | test | 202 |
+| `tests/unit/core/columns/IColumnStore.test.ts` | (root) | tests | test | 131 |
+| `tests/unit/core/columns/JsonlColumnStore.test.ts` | (root) | tests | test | 443 |
+| `tests/unit/core/columns/ObservationColumnStore-wiring.test.ts` | (root) | tests | test | 265 |
+| `tests/unit/core/columns/columns-review-fixes.test.ts` | (root) | tests | test | 354 |
+| `tests/unit/core/columns/shadow-write-drain.test.ts` | (root) | tests | test | 108 |
+| `tests/unit/core/context/AgentBookkeepingFacade.test.ts` | (root) | tests | test | 68 |
+| `tests/unit/core/context/AgentCognitionFacade.test.ts` | (root) | tests | test | 93 |
+| `tests/unit/core/context/AgentMemoryFacade.test.ts` | (root) | tests | test | 115 |
+| `tests/unit/core/context/KnowledgeGovernanceFacade.test.ts` | (root) | tests | test | 98 |
+| `tests/unit/core/context/LazyGetters.freshness-temporal.test.ts` | (root) | tests | test | 82 |
+| `tests/unit/core/context/ManagerContext.close.test.ts` | (root) | tests | test | 44 |
+| `tests/unit/core/context/ManagerContext.newMembers.test.ts` | (root) | tests | test | 35 |
+| `tests/unit/core/context/SearchFacade.test.ts` | (root) | tests | test | 117 |
+| `tests/unit/core/context/StorageInfraFacade.test.ts` | (root) | tests | test | 183 |
+| `tests/unit/core/entity-id.test.ts` | (root) | tests | test | 196 |
+| `tests/unit/core/entity-manager-list-projects.test.ts` | (root) | tests | test | 35 |
+| `tests/unit/core/entity-manager-profile-namespace.test.ts` | (root) | tests | test | 44 |
+| `tests/unit/core/entity-manager-project-stamping.test.ts` | (root) | tests | test | 50 |
+| `tests/unit/core/entity-manager-version-chain.test.ts` | (root) | tests | test | 151 |
+| `tests/unit/core/known-issue-fixes.test.ts` | (root) | tests | test | 233 |
+| `tests/unit/core/manager-context-default-embedding.test.ts` | (root) | tests | test | 28 |
+| `tests/unit/core/manager-context-env-number.test.ts` | (root) | tests | test | 80 |
+| `tests/unit/core/manager-context-new-managers.test.ts` | (root) | tests | test | 77 |
+| `tests/unit/core/manager-context-project.test.ts` | (root) | tests | test | 32 |
+| `tests/unit/core/mmap/FsReadMmapBackend.test.ts` | (root) | tests | test | 274 |
+| `tests/unit/core/mmap/GraphStorage-mmap-wiring.test.ts` | (root) | tests | test | 722 |
+| `tests/unit/core/mmap/IMmapBackend.test.ts` | (root) | tests | test | 197 |
+| `tests/unit/core/mmap/mmap-review-fixes.test.ts` | (root) | tests | test | 271 |
+| `tests/unit/core/mutation-isolation.test.ts` | (root) | tests | test | 107 |
+| `tests/unit/core/nodeSqliteAdapter.test.ts` | (root) | tests | test | 127 |
+| `tests/unit/core/observation-validate-hook.test.ts` | (root) | tests | test | 127 |
+| `tests/unit/core/optimistic-concurrency.test.ts` | (root) | tests | test | 132 |
+| `tests/unit/core/rebuild-native.test.ts` | (root) | tests | test | 41 |
+| `tests/unit/core/recursa-record-persistence.test.ts` | (root) | tests | test | 97 |
+| `tests/unit/core/relation-manager-temporal.test.ts` | (root) | tests | test | 156 |
+| `tests/unit/core/rename-entity.test.ts` | (root) | tests | test | 363 |
+| `tests/unit/core/segments/FileSegmentStorage.test.ts` | (root) | tests | test | 876 |
+| `tests/unit/core/segments/GraphStorage-segments.test.ts` | (root) | tests | test | 221 |
+| `tests/unit/core/segments/ISegmentStorage.test.ts` | (root) | tests | test | 384 |
+| `tests/unit/core/segments/assertValidSegmentId.test.ts` | (root) | tests | test | 68 |
+| `tests/unit/core/segments/segments-review-fixes.test.ts` | (root) | tests | test | 466 |
+| `tests/unit/core/sqlite-append-replace.test.ts` | (root) | tests | test | 338 |
+| `tests/unit/core/sqlite-content-hash-migration.test.ts` | (root) | tests | test | 56 |
+| `tests/unit/core/sqlite-driver-resolver.test.ts` | (root) | tests | test | 71 |
+| `tests/unit/core/sqlite-embeddings-content-hash.test.ts` | (root) | tests | test | 181 |
+| `tests/unit/core/sqlite-events.test.ts` | (root) | tests | test | 469 |
+| `tests/unit/core/sqlite-fts5-error.test.ts` | (root) | tests | test | 146 |
+| `tests/unit/core/sqlite-lazy-load.test.ts` | (root) | tests | test | 81 |
+| `tests/unit/core/storage-write-ownership.test.ts` | (root) | tests | test | 139 |
+| `tests/unit/core/storageCache.rebuild.test.ts` | (root) | tests | test | 94 |
+| `tests/unit/core/storageCache.test.ts` | (root) | tests | test | 389 |
+| `tests/unit/core/storageCapabilities.test.ts` | (root) | tests | test | 122 |
+| `tests/unit/core/temporal-versioning.test.ts` | (root) | tests | test | 266 |
+| `tests/unit/core/write-path-delta.test.ts` | (root) | tests | test | 744 |
+| `tests/unit/exports-barrels.recursa.test.ts` | (root) | tests | test | 232 |
+| `tests/unit/exports-barrels.test.ts` | (root) | tests | test | 197 |
+| `tests/unit/features/AnalyticsManager.test.ts` | (root) | tests | test | 399 |
+| `tests/unit/features/ArchiveManager.test.ts` | (root) | tests | test | 773 |
+| `tests/unit/features/AuditLog.test.ts` | (root) | tests | test | 476 |
+| `tests/unit/features/AutoLinker.test.ts` | (root) | tests | test | 382 |
+| `tests/unit/features/BackupManager.test.ts` | (root) | tests | test | 200 |
+| `tests/unit/features/CompressionManager.test.ts` | (root) | tests | test | 573 |
+| `tests/unit/features/FactExtractor.test.ts` | (root) | tests | test | 319 |
+| `tests/unit/features/FreshnessManager.test.ts` | (root) | tests | test | 527 |
+| `tests/unit/features/GovernanceManager-delta.test.ts` | (root) | tests | test | 292 |
+| `tests/unit/features/GovernanceManager-fresh-storage.test.ts` | (root) | tests | test | 64 |
+| `tests/unit/features/GovernanceManager.test.ts` | (root) | tests | test | 736 |
+| `tests/unit/features/IOManager.graphmlDataValue.test.ts` | (root) | tests | test | 49 |
+| `tests/unit/features/IOManager.rdf-export.test.ts` | (root) | tests | test | 290 |
+| `tests/unit/features/IOManager.test.ts` | (root) | tests | test | 1776 |
+| `tests/unit/features/ObservableDataModelAdapter.test.ts` | (root) | tests | test | 445 |
+| `tests/unit/features/ObservationNormalizer.test.ts` | (root) | tests | test | 338 |
+| `tests/unit/features/StreamingExporter-frame-pins.test.ts` | (root) | tests | test | 183 |
+| `tests/unit/features/StreamingExporter.test.ts` | (root) | tests | test | 362 |
+| `tests/unit/features/TagManager-loader-pins.test.ts` | (root) | tests | test | 252 |
+| `tests/unit/features/TagManager.test.ts` | (root) | tests | test | 329 |
+| `tests/unit/features/compression-manager-priority-dedup.test.ts` | (root) | tests | test | 46 |
+| `tests/unit/features/compression-manager-versioning-guard.test.ts` | (root) | tests | test | 47 |
+| `tests/unit/features/contradiction-detector-detect.test.ts` | (root) | tests | test | 62 |
+| `tests/unit/features/ingest-provenance-modes.test.ts` | (root) | tests | test | 276 |
+| `tests/unit/features/io-manager-ingest.test.ts` | (root) | tests | test | 147 |
+| `tests/unit/features/io-manager-split.test.ts` | (root) | tests | test | 51 |
+| `tests/unit/features/io-manager-visualize.test.ts` | (root) | tests | test | 82 |
+| `tests/unit/features/pii-redaction-export.test.ts` | (root) | tests | test | 223 |
+| `tests/unit/features/semantic-forget-exact.test.ts` | (root) | tests | test | 80 |
+| `tests/unit/features/semantic-forget-semantic.test.ts` | (root) | tests | test | 73 |
+| `tests/unit/lint-rules/lint-rules.test.ts` | (root) | tests | test | 98 |
+| `tests/unit/performance/baselineHelper.test.ts` | (root) | tests | test | 20 |
+| `tests/unit/scripts/clean-dist.edges.test.ts` | (root) | tests | test | 113 |
+| `tests/unit/scripts/clean-dist.test.ts` | (root) | tests | test | 21 |
+| `tests/unit/search/BM25Search.test.ts` | (root) | tests | test | 337 |
+| `tests/unit/search/BM25SearchReadPath.test.ts` | (root) | tests | test | 280 |
+| `tests/unit/search/BasicSearch.test.ts` | (root) | tests | test | 457 |
+| `tests/unit/search/BloomFilter.test.ts` | (root) | tests | test | 132 |
+| `tests/unit/search/BooleanSearch.test.ts` | (root) | tests | test | 652 |
+| `tests/unit/search/EarlyTerminationManager.test.ts` | (root) | tests | test | 410 |
+| `tests/unit/search/EmbeddingCache.test.ts` | (root) | tests | test | 454 |
+| `tests/unit/search/EmbeddingService.test.ts` | (root) | tests | test | 1093 |
+| `tests/unit/search/EvidencePathBuilder.test.ts` | (root) | tests | test | 224 |
+| `tests/unit/search/FuzzySearch.test.ts` | (root) | tests | test | 1322 |
+| `tests/unit/search/FuzzySearchPerformance.test.ts` | (root) | tests | test | 101 |
+| `tests/unit/search/FuzzySearchWorkerPath.test.ts` | (root) | tests | test | 96 |
+| `tests/unit/search/GraphRankPrior.test.ts` | (root) | tests | test | 611 |
+| `tests/unit/search/HybridScorer.test.ts` | (root) | tests | test | 367 |
+| `tests/unit/search/HybridScorerGraphChannel.test.ts` | (root) | tests | test | 167 |
+| `tests/unit/search/HybridSearchExplain.test.ts` | (root) | tests | test | 305 |
+| `tests/unit/search/HybridSearchManager.test.ts` | (root) | tests | test | 504 |
+| `tests/unit/search/HybridSearchManagerGraph.test.ts` | (root) | tests | test | 305 |
+| `tests/unit/search/IncrementalIndexer.queue.test.ts` | (root) | tests | test | 120 |
+| `tests/unit/search/IncrementalIndexer.test.ts` | (root) | tests | test | 496 |
+| `tests/unit/search/IncrementalTFIDF.test.ts` | (root) | tests | test | 420 |
+| `tests/unit/search/LLMQueryPlanner.test.ts` | (root) | tests | test | 390 |
+| `tests/unit/search/LLMSearchExecutor.test.ts` | (root) | tests | test | 247 |
+| `tests/unit/search/LLMSearchExecutorExplain.test.ts` | (root) | tests | test | 192 |
+| `tests/unit/search/LSHVectorStore.test.ts` | (root) | tests | test | 76 |
+| `tests/unit/search/LexicalCandidateSelection.test.ts` | (root) | tests | test | 58 |
+| `tests/unit/search/LlamaCppEmbeddingService.test.ts` | (root) | tests | test | 237 |
+| `tests/unit/search/MaterializedViews.test.ts` | (root) | tests | test | 161 |
+| `tests/unit/search/NGramFuzzyIntegration.test.ts` | (root) | tests | test | 297 |
+| `tests/unit/search/NGramIndex.test.ts` | (root) | tests | test | 469 |
+| `tests/unit/search/OptimizedInvertedIndex.test.ts` | (root) | tests | test | 275 |
+| `tests/unit/search/ParallelSearchExecutor.test.ts` | (root) | tests | test | 577 |
+| `tests/unit/search/PartialIndexAdvisor.test.ts` | (root) | tests | test | 124 |
+| `tests/unit/search/ProximitySearch.test.ts` | (root) | tests | test | 529 |
+| `tests/unit/search/QuantizedVectorStore-topk-pins.test.ts` | (root) | tests | test | 92 |
+| `tests/unit/search/QuantizedVectorStore.test.ts` | (root) | tests | test | 357 |
+| `tests/unit/search/QueryAnalyzer.test.ts` | (root) | tests | test | 251 |
+| `tests/unit/search/QueryCostEstimator.test.ts` | (root) | tests | test | 667 |
+| `tests/unit/search/QueryLogger.test.ts` | (root) | tests | test | 592 |
+| `tests/unit/search/QueryParser.test.ts` | (root) | tests | test | 411 |
+| `tests/unit/search/QueryPlanCache.test.ts` | (root) | tests | test | 685 |
+| `tests/unit/search/QueryPlanFormatter.test.ts` | (root) | tests | test | 175 |
+| `tests/unit/search/QueryPlanner.test.ts` | (root) | tests | test | 196 |
+| `tests/unit/search/RankedSearch.test.ts` | (root) | tests | test | 866 |
+| `tests/unit/search/RankedSearchGraphBoost.test.ts` | (root) | tests | test | 120 |
+| `tests/unit/search/RankedSearchProjectStarvation.test.ts` | (root) | tests | test | 69 |
+| `tests/unit/search/ReflectionManager.test.ts` | (root) | tests | test | 475 |
+| `tests/unit/search/SQLiteFtsSearchIntegration.test.ts` | (root) | tests | test | 57 |
+| `tests/unit/search/SavedSearchManager-loader-pins.test.ts` | (root) | tests | test | 270 |
+| `tests/unit/search/SavedSearchManager.test.ts` | (root) | tests | test | 346 |
+| `tests/unit/search/SearchFilterChain.test.ts` | (root) | tests | test | 580 |
+| `tests/unit/search/SearchManager.test.ts` | (root) | tests | test | 632 |
+| `tests/unit/search/SearchSuggestions.test.ts` | (root) | tests | test | 303 |
+| `tests/unit/search/SemanticSearch.resolver.test.ts` | (root) | tests | test | 61 |
+| `tests/unit/search/SemanticSearch.test.ts` | (root) | tests | test | 574 |
+| `tests/unit/search/SpellChecker.test.ts` | (root) | tests | test | 131 |
+| `tests/unit/search/SymbolicSearch.test.ts` | (root) | tests | test | 243 |
+| `tests/unit/search/TFIDFEventSync.test.ts` | (root) | tests | test | 741 |
+| `tests/unit/search/TFIDFIncrementalPersistence.test.ts` | (root) | tests | test | 102 |
+| `tests/unit/search/TFIDFIndexManager.test.ts` | (root) | tests | test | 563 |
+| `tests/unit/search/TemporalQueryParser.lazy.test.ts` | (root) | tests | test | 53 |
+| `tests/unit/search/TemporalQueryParser.test.ts` | (root) | tests | test | 278 |
+| `tests/unit/search/TemporalSearch.test.ts` | (root) | tests | test | 359 |
+| `tests/unit/search/VectorStore-topk-pins.test.ts` | (root) | tests | test | 211 |
+| `tests/unit/search/VectorStore.test.ts` | (root) | tests | test | 504 |
+| `tests/unit/search/cache-isolation.test.ts` | (root) | tests | test | 112 |
+| `tests/unit/search/enDate.challenger.test.ts` | (root) | tests | test | 75 |
+| `tests/unit/search/enDate.inventory.test.ts` | (root) | tests | test | 93 |
+| `tests/unit/search/enDate.parity.test.ts` | (root) | tests | test | 206 |
+| `tests/unit/search/hybridLayers.test.ts` | (root) | tests | test | 117 |
+| `tests/unit/search/inducedSubgraph.test.ts` | (root) | tests | test | 86 |
+| `tests/unit/search/pruneExpiredEntries.test.ts` | (root) | tests | test | 62 |
+| `tests/unit/search/search-filter-chain-project.test.ts` | (root) | tests | test | 51 |
+| `tests/unit/search/search-filter-chain-versioning.test.ts` | (root) | tests | test | 148 |
+| `tests/unit/search/searchTwinsFts.test.ts` | (root) | tests | test | 363 |
+| `tests/unit/search/searchTwinsLayers.test.ts` | (root) | tests | test | 338 |
+| `tests/unit/search/searchTwinsPaths.test.ts` | (root) | tests | test | 135 |
+| `tests/unit/search/searchTwinsProximity.test.ts` | (root) | tests | test | 124 |
+| `tests/unit/search/searchTwinsSemantic.test.ts` | (root) | tests | test | 249 |
+| `tests/unit/search/searchTwinsTfidf.test.ts` | (root) | tests | test | 149 |
+| `tests/unit/search/tiered/BrotliColdTier.test.ts` | (root) | tests | test | 598 |
+| `tests/unit/search/tiered/DiskWarmTier.compaction.test.ts` | (root) | tests | test | 158 |
+| `tests/unit/search/tiered/DiskWarmTier.test.ts` | (root) | tests | test | 557 |
+| `tests/unit/search/tiered/ITieredIndex.test.ts` | (root) | tests | test | 174 |
+| `tests/unit/search/tiered/LRUHotTier.test.ts` | (root) | tests | test | 251 |
+| `tests/unit/search/tiered/TieredIndex-wiring.test.ts` | (root) | tests | test | 141 |
+| `tests/unit/search/tiered/TieredIndex.test.ts` | (root) | tests | test | 269 |
+| `tests/unit/search/tiered/disk-tier-concurrency.test.ts` | (root) | tests | test | 68 |
+| `tests/unit/search/tiered/snapshotTierStats.test.ts` | (root) | tests | test | 81 |
+| `tests/unit/search/tiered/tiered-review-fixes.test.ts` | (root) | tests | test | 274 |
+| `tests/unit/security/ABACPolicy.test.ts` | (root) | tests | test | 338 |
+| `tests/unit/security/APIKeyStore.test.ts` | (root) | tests | test | 208 |
+| `tests/unit/security/PiiRedactor.test.ts` | (root) | tests | test | 138 |
+| `tests/unit/security/RowLevelFilter.test.ts` | (root) | tests | test | 156 |
+| `tests/unit/tools-migrate-rebuild-native.test.ts` | (root) | tests | test | 51 |
+| `tests/unit/tools/observations-to-columns.test.ts` | (root) | tests | test | 779 |
+| `tests/unit/tools/plan-doc-audit.test.ts` | (root) | tests | test | 373 |
+| `tests/unit/tools/segment-jsonl.test.ts` | (root) | tests | test | 410 |
+| `tests/unit/types/agent-memory.test.ts` | (root) | tests | test | 892 |
+| `tests/unit/types/entity-content-hash.test.ts` | (root) | tests | test | 52 |
+| `tests/unit/types/entity-new-fields.test.ts` | (root) | tests | test | 53 |
+| `tests/unit/types/learning.types.test.ts` | (root) | tests | test | 209 |
+| `tests/unit/types/profile-entity.test.ts` | (root) | tests | test | 23 |
+| `tests/unit/types/progress.test.ts` | (root) | tests | test | 412 |
+| `tests/unit/types/result.test.ts` | (root) | tests | test | 90 |
+| `tests/unit/types/search.test.ts` | (root) | tests | test | 590 |
+| `tests/unit/types/skills.types.test.ts` | (root) | tests | test | 278 |
+| `tests/unit/types/trust-level.test.ts` | (root) | tests | test | 107 |
+| `tests/unit/utils/AsyncMutex.test.ts` | (root) | tests | test | 231 |
+| `tests/unit/utils/BatchProcessor.test.ts` | (root) | tests | test | 671 |
+| `tests/unit/utils/CachePressureCoordinator.test.ts` | (root) | tests | test | 107 |
+| `tests/unit/utils/Diagnostics.observationDedup.test.ts` | (root) | tests | test | 119 |
+| `tests/unit/utils/EntityValidator.results.test.ts` | (root) | tests | test | 127 |
+| `tests/unit/utils/EntityValidator.test.ts` | (root) | tests | test | 514 |
+| `tests/unit/utils/IndexHealthMonitor.test.ts` | (root) | tests | test | 66 |
+| `tests/unit/utils/MemoryMonitor.test.ts` | (root) | tests | test | 412 |
+| `tests/unit/utils/RunExclusiveMutex.challenger.test.ts` | (root) | tests | test | 199 |
+| `tests/unit/utils/RunExclusiveMutex.test.ts` | (root) | tests | test | 236 |
+| `tests/unit/utils/SchemaValidator.test.ts` | (root) | tests | test | 630 |
+| `tests/unit/utils/WorkerPoolManager.test.ts` | (root) | tests | test | 407 |
+| `tests/unit/utils/WorkerTaskManager.test.ts` | (root) | tests | test | 254 |
+| `tests/unit/utils/boundedTopK.test.ts` | (root) | tests | test | 17 |
+| `tests/unit/utils/compressedCache.test.ts` | (root) | tests | test | 600 |
+| `tests/unit/utils/compression/CompressedMap.test.ts` | (root) | tests | test | 463 |
+| `tests/unit/utils/compression/ICompressionAdapter.test.ts` | (root) | tests | test | 139 |
+| `tests/unit/utils/compression/compressedEntityCache-wiring.test.ts` | (root) | tests | test | 109 |
+| `tests/unit/utils/compressionUtil.test.ts` | (root) | tests | test | 550 |
+| `tests/unit/utils/deleteFromMapWithFlushRollback.test.ts` | (root) | tests | test | 80 |
+| `tests/unit/utils/durableWriteFile.test.ts` | (root) | tests | test | 308 |
+| `tests/unit/utils/entityUtils.test.ts` | (root) | tests | test | 1096 |
+| `tests/unit/utils/envConfig.test.ts` | (root) | tests | test | 253 |
+| `tests/unit/utils/errorSuggestions.test.ts` | (root) | tests | test | 388 |
+| `tests/unit/utils/errors.test.ts` | (root) | tests | test | 376 |
+| `tests/unit/utils/fieldPath.test.ts` | (root) | tests | test | 49 |
+| `tests/unit/utils/fillDefaults.test.ts` | (root) | tests | test | 21 |
+| `tests/unit/utils/formatters.test.ts` | (root) | tests | test | 469 |
+| `tests/unit/utils/graphCopy.test.ts` | (root) | tests | test | 132 |
+| `tests/unit/utils/halfLife.test.ts` | (root) | tests | test | 26 |
+| `tests/unit/utils/helpers/captureSchemaParity.ts` | (root) | tests | test | 157 |
+| `tests/unit/utils/helpers/captureSchemaSynthetic.ts` | (root) | tests | test | 66 |
+| `tests/unit/utils/helpers/schemaParityCases.ts` | (root) | tests | test | 639 |
+| `tests/unit/utils/helpers/schemaParityFormat.ts` | (root) | tests | test | 98 |
+| `tests/unit/utils/helpers/schemaSyntheticCases.ts` | (root) | tests | test | 215 |
+| `tests/unit/utils/ids.test.ts` | (root) | tests | test | 34 |
+| `tests/unit/utils/indexBuckets.test.ts` | (root) | tests | test | 97 |
+| `tests/unit/utils/indexes.test.ts` | (root) | tests | test | 897 |
+| `tests/unit/utils/jsonlMapFile.test.ts` | (root) | tests | test | 161 |
+| `tests/unit/utils/jsonlRecordFile.test.ts` | (root) | tests | test | 88 |
+| `tests/unit/utils/logger.test.ts` | (root) | tests | test | 252 |
+| `tests/unit/utils/mutateMapWithFlushRollback.test.ts` | (root) | tests | test | 33 |
+| `tests/unit/utils/nextMonotonicIsoTimestamp.test.ts` | (root) | tests | test | 16 |
+| `tests/unit/utils/operationUtils.test.ts` | (root) | tests | test | 364 |
+| `tests/unit/utils/parallelUtils.test.ts` | (root) | tests | test | 326 |
+| `tests/unit/utils/postingIndex.test.ts` | (root) | tests | test | 72 |
+| `tests/unit/utils/relationHelpers.test.ts` | (root) | tests | test | 450 |
+| `tests/unit/utils/relationValidation.test.ts` | (root) | tests | test | 506 |
+| `tests/unit/utils/schema.challenger.test.ts` | (root) | tests | test | 125 |
+| `tests/unit/utils/schema.inventory.test.ts` | (root) | tests | test | 230 |
+| `tests/unit/utils/schema.parity.test.ts` | (root) | tests | test | 220 |
+| `tests/unit/utils/schemas.test.ts` | (root) | tests | test | 893 |
+| `tests/unit/utils/schemas.validateResult.test.ts` | (root) | tests | test | 49 |
+| `tests/unit/utils/searchAlgorithms.test.ts` | (root) | tests | test | 855 |
+| `tests/unit/utils/searchCache.test.ts` | (root) | tests | test | 779 |
+| `tests/unit/utils/searchCacheForEach.test.ts` | (root) | tests | test | 85 |
+| `tests/unit/utils/sidecarPath.test.ts` | (root) | tests | test | 85 |
+| `tests/unit/utils/taskScheduler.test.ts` | (root) | tests | test | 1117 |
+| `tests/unit/utils/textSimilarity.test.ts` | (root) | tests | test | 146 |
+| `tests/unit/utils/textSimilarity.tokenSets.test.ts` | (root) | tests | test | 94 |
+| `tests/unit/utils/timing.test.ts` | (root) | tests | test | 191 |
+| `tests/unit/utils/tokenEstimate.test.ts` | (root) | tests | test | 39 |
+| `tests/unit/utils/unrefInterval.test.ts` | (root) | tests | test | 91 |
+| `tests/unit/utils/update-entity-schema-strip.test.ts` | (root) | tests | test | 201 |
+| `tests/unit/utils/validation.assertNonEmptyString.test.ts` | (root) | tests | test | 73 |
+| `tests/unit/utils/validators.bounds.test.ts` | (root) | tests | test | 70 |
+| `tests/unit/utils/validators.test.ts` | (root) | tests | test | 1000 |
+| `tests/unit/utils/walkParents.test.ts` | (root) | tests | test | 66 |
+| `tests/unit/workers/WorkerPool.test.ts` | (root) | tests | test | 74 |
+| `tests/unit/workers/levenshteinWorker.test.ts` | (root) | tests | test | 424 |
+| `tools/chunking-for-files/chunking-for-files.ts` | (root) | tools | tool | 1254 |
+| `tools/compress-for-context/compress-for-context.ts` | (root) | tools | tool | 1460 |
+| `tools/create-dependency-graph/check-duplicates.mjs` | (root) | tools | tool | 120 |
+| `tools/create-dependency-graph/create-dependency-graph.ts` | (root) | tools | tool | 3832 |
+| `tools/create-dependency-graph/gen-duplicate-baseline.mjs` | (root) | tools | tool | 39 |
+| `tools/migrate-from-jsonl-to-sqlite/migrate-from-jsonl-to-sqlite.ts` | (root) | tools | tool | 724 |
+| `tools/migrate-from-jsonl-to-sqlite/scripts/rebuild-native.mjs` | (root) | tools | tool | 120 |
+| `tools/observations-to-columns/observations-to-columns.ts` | (root) | tools | tool | 559 |
+| `tools/plan-doc-audit/audit.ts` | (root) | tools | tool | 418 |
+| `tools/segment-jsonl/segment-jsonl.ts` | (root) | tools | tool | 422 |
+| `tsup.config.ts` | (root) | config | config | 87 |
+| `vitest.config.ts` | (root) | config | config | 69 |
+
+## Skipped links
+
+Links (symbolic links and junctions) that the census did not follow. A link can point to another repository, so no file behind a link is in this inventory or in the graph.
+
+_None._
+
+## Warnings
+
+_None._
