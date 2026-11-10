@@ -746,12 +746,12 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/cli/observation.test.ts` | tests | test | 66 |
 | `tests/unit/cli/observationDedup.test.ts` | tests | test | 60 |
 | `tests/unit/cli/options.test.ts` | tests | test | 313 |
-| `tests/unit/cli/parseArgsPinned.test.ts` | tests | test | 254 |
+| `tests/unit/cli/parseArgsPinned.test.ts` | tests | test | 269 |
 | `tests/unit/cli/parseArgsSurfacePinned.test.ts` | tests | test | 89 |
 | `tests/unit/cli/plainTable.challenger.test.ts` | tests | test | 201 |
 | `tests/unit/cli/plainTable.test.ts` | tests | test | 127 |
 | `tests/unit/cli/projectContext.test.ts` | tests | test | 65 |
-| `tests/unit/cli/recorderDoc.test.ts` | tests | test | 53 |
+| `tests/unit/cli/recorderDoc.test.ts` | tests | test | 49 |
 | `tests/unit/cli/search-extended.test.ts` | tests | test | 66 |
 | `tests/unit/cli/smoke.test.ts` | tests | test | 83 |
 | `tests/unit/cli/spell.test.ts` | tests | test | 72 |

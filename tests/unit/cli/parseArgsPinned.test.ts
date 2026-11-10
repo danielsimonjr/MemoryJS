@@ -237,6 +237,21 @@ describe('parseArgs pinned behavior', () => {
     }
   });
 
+  it('parseAsync({ from: "user" }) matches a recorded pipe-mode line', async () => {
+    const recorded =
+      fixture.invocations.find((run) => run.argv.join(' ') === 'entity list -l 2') ??
+      fixture.invocations[0];
+    const captured: Captured[] = [];
+    const program = buildProgram(captured, []);
+    await program.parseAsync(recorded.argv, { from: 'user' });
+    expect(asRecorded(captured)).toEqual(recorded.captured);
+  });
+
+  it("pipe mode still calls parseAsync(args, { from: 'user' })", () => {
+    const source = readFileSync(join(import.meta.dirname, '../../../src/cli/index.ts'), 'utf-8');
+    expect(source).toMatch(/parseAsync\(\s*lineArgs\s*,\s*\{\s*from:\s*'user'\s*\}\s*\)/);
+  });
+
   describe('parseOptions (the pipe-mode global priming call)', () => {
     for (const recorded of fixture.parseOptions) {
       it(`splits and stores like commander for: ${recorded.argv.join(' ')}`, () => {

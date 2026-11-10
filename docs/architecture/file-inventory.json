@@ -4960,7 +4960,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 254
+      "loc": 269
     },
     {
       "file": "tests/unit/cli/parseArgsSurfacePinned.test.ts",
@@ -4995,7 +4995,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 53
+      "loc": 49
     },
     {
       "file": "tests/unit/cli/search-extended.test.ts",

@@ -2,14 +2,10 @@
  * Challenger test (Sprint 6, step 4): the parity-recorder documentation must
  * point at the recorder that actually exists in the repository.
  *
- * The PR that replaced commander documents the recorder as
- * `scripts/capture-cli-parity.ts`, but the recorder lives at
- * `tests/unit/cli/helpers/captureCliParity.ts`. An operator following
- * CHANGELOG.md to re-record the fixture would fail immediately.
- *
- * This test is expected to FAIL against the current PR until the references
- * are corrected. It asserts that every documented path for the recorder
- * resolves to a file on disk.
+ * The recorder lives at `tests/unit/cli/helpers/captureCliParity.ts`.
+ * An operator following CHANGELOG.md to re-record the fixture must be
+ * pointed at that file. This test asserts that every documented path
+ * for the recorder resolves to a file on disk.
  *
  * @module tests/unit/cli/recorderDoc.test
  */
