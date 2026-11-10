@@ -27,10 +27,11 @@ Each implementation sprint is one PR, executed subagent-driven, test-first:
 |---|---|
 | Builder | deepseek-v41-flash-1017 |
 | Challenger | glm-5p3-flash |
-| Reviewer | composer-2.5 |
-| Checker | grok-4.6 |
+| Build Reviewer | composer-2.5 |
+| Build Checker/Fixer | grok-4.6 |
+| Final PR reviewer | grok-4.7 |
 
-The builder implements the sprint. The challenger tries to break the parity claim. The reviewer checks the diff against this spec. The checker re-runs the verification commands and reports pass or fail. This planning run does not execute a sprint.
+The builder implements the sprint. The challenger tries to break the parity claim and leaves findings or failing tests. The build reviewer reads those findings, fixes the valid ones, and rebuts the invalid ones with written reasons on the PR. The build checker/fixer then checks everything in the PR against this spec and the plan and fixes all remaining issues, then hands the PR to the final PR reviewer. The final PR reviewer reports PASS or FAIL. The sprint merges only after that PASS and green CI. This planning run does not execute a sprint and does not merge.
 
 ## Decision vocabulary
 
@@ -47,16 +48,18 @@ The builder implements the sprint. The challenger tries to break the parity clai
 - Call sites are imports under `src/`, `scripts/`, `tests/`, and `tsup.config.ts`.
 - Transitive counts are the lockfile closure of each direct package key in `bun.lock` `packages` (the package plus every `dependencies` edge, not `optionalDependencies` of platform-specific esbuild binaries).
 - Unpacked size is `dist.unpackedSize` from the npm registry for the version pinned in `bun.lock`, not the `latest` tag.
-- Optional peers are absent from `bun.lock` (`yaml`, `pg`, and `@huggingface/transformers` are not lockfile keys). Bun does not install them, so they add nothing to a default `bun install`.
+- Optional peers are not installed. `yaml`, `pg`, and `@huggingface/transformers` are not keys in `bun.lock` `packages`. The lockfile workspace block lists peer dependencies for `@huggingface/transformers` and `pg` only. `yaml` is in root `package.json` and is missing from that workspace block (lockfile drift). No sprint rewrites the lockfile to "fix" that drift unless `bun install` does it on its own. Bun does not install optional peers, so they add nothing to a default `bun install`.
 - `node_modules` was not installed in the planning environment. Sizes are registry unpacked sizes, not a local `du`.
 
 Runtime union of the eight `dependencies` entries: 15 lockfile packages. Dev union: 91. Overlap makes the full direct union 105 of the 269 lockfile entries. The rest are mostly `@esbuild/*` platform packages pulled by the `esbuild` override, counted inside the `tsup` / `tsx` closures only when that edge names `esbuild` itself.
 
 ## Downstream consumers
 
-`package.json` `version` is `4.6.0`. A consumer ranged at `^4.5.0` receives these sprints as patch or minor updates. Sprints 1–4 are patch: they do not change exported names, types, CLI flags, or on-disk formats.
+`package.json` `version` is `4.6.0`. A consumer ranged at `^4.5.0` receives patch and minor releases. Sprints 1–4 are patch: they do not change exported names, types, CLI flags, or on-disk formats. Sprint 5, if shipped as a minor, is also in range for `^4.5.0`. Shipping it as 5.0.0 is the only way to leave those consumers on the current chrono behavior. That choice is Daniel's.
 
-Checked on 2026-11-10: the default branch of `github.com/danielsimonjr/episodic-memory` (`episodic-memory` 1.7.3) does **not** declare `@danielsimonjr/memoryjs`. Its own dependencies include `better-sqlite3` pinned to `13.0.3`, `zod` `^4.6.6`, and `@huggingface/transformers` `^4.2.0`. Those are separate installs. Keeping or removing the same names inside MemoryJS does not add or remove them from that repo. MemoryJS sprints must still assume other unpublished consumers on `^4.5.0` exist, and must not break the root export, the subpath exports, or the `memory` / `memoryjs` bins.
+Checked on 2026-11-10 against `github.com/danielsimonjr/episodic-memory` branch `main` at `b1b0d8e3330b46f05fef02020cd82549029a1a07` (`episodic-memory` 1.7.3, committed 2026-11-07). Current `package.json` `dependencies` do **not** include `@danielsimonjr/memoryjs`. A Recursa branch, `cursor/recursa-task0-memoryjs-dep-2f37` (package 1.7.1), did add `@danielsimonjr/memoryjs` `^4.5.0`. Main removed it in `6b5de905` ("chore: drop the @danielsimonjr/memoryjs dependency", PR #35, 2026-11-06) after PR #34 replaced the adapter with a native knowledge store. The only `src/` hit on main is a comment in `src/learn/knowledge-store.ts` about that previous adapter. Nothing imports the package.
+
+That repo's own dependencies include `better-sqlite3` pinned to `13.0.3`, `zod` `^4.6.6`, and `@huggingface/transformers` `^4.2.0`. Those are separate installs. MemoryJS sprints must still assume other consumers on `^4.5.0` exist, and must not break the root export, the subpath exports, or the `memory` / `memoryjs` bins.
 
 ## Inventory and decisions
 
@@ -83,7 +86,13 @@ Call sites:
 - `src/agent/harness/InteractionLog.ts` (type-only `import type { Mutex }`)
 - `tests/unit/core/EntityManager.legacyDelete.test.ts`
 
-`src/utils/AsyncMutex.ts` already exists and is the lock behind `graphMutex`. It is **not** a drop-in replacement. `AsyncMutex.acquire` rejects when the queue exceeds 1,000 waiters or when the head waiter exceeds 30 seconds. `async-mutex`'s `runExclusive` has no timeout and no queue cap. Storage writers depend on that. Sprint 3 adds a separate `RunExclusiveMutex` and does not route these call sites through `AsyncMutex`.
+`src/utils/AsyncMutex.ts` already exists and is the lock behind `graphMutex`. It is **not** a drop-in replacement. `AsyncMutex.acquire` rejects when the queue exceeds 1,000 waiters or when the head waiter exceeds 30 seconds. `async-mutex`'s `runExclusive` has no timeout and no queue cap. Storage writers depend on that. Sprint 4 adds a separate `RunExclusiveMutex` and does not route these call sites through `AsyncMutex`.
+
+`RunExclusiveMutex` is not reentrant. A `runExclusive` callback that calls `runExclusive` on the same instance deadlocks. That matches `async-mutex` 0.5.0. None of the production call sites re-enter the same instance. Do not add `acquire`, `isLocked`, `cancel`, or a queue cap.
+
+`tests/unit/core/EntityManager.legacyDelete.test.ts` is the exception. It does `graphMutex: new Mutex()`, and `EntityManager` calls `graphMutex.acquire()`, which `async-mutex`'s `Mutex` provides and `RunExclusiveMutex` must not. That test switches the fake to `new AsyncMutex()` from `src/utils/AsyncMutex.ts`. It does not construct `RunExclusiveMutex`.
+
+`tslib` is in the `async-mutex` closure and is also a dependency of `@emnapi/core`, `@emnapi/runtime`, `@emnapi/wasi-threads`, and `@tybys/wasm-util`. Deleting `async-mutex` leaves `tslib` in the lockfile.
 
 Consumers on `^4.5.0` do not import `async-mutex` through MemoryJS's public types. The class is not re-exported.
 
@@ -99,7 +108,14 @@ Consumers on `^4.5.0` do not import `async-mutex` through MemoryJS's public type
 
 The library entries do not import `chalk`. It is still a runtime `dependencies` entry, so every consumer installs it. The CLI is bundled by tsup from `src/cli/index.ts`, so an in-repo helper is bundled into `dist/cli` and disappears from consumer installs.
 
-Color behavior that must survive: chalk 5+ honors `NO_COLOR` (any value disables color) and `FORCE_COLOR` (`0` disables, `1`/`2`/`3` enables). When neither is set, chalk colors only when stdout is a TTY. The replacement uses the same rule and the same SGR codes: bold `1`, red `31`, green `32`, yellow `33`, cyan `36`, gray `90`.
+Color behavior that must survive, matching chalk 6.0.0 (the `supports-color` rules chalk uses):
+
+- A non-empty `NO_COLOR` disables color, and it wins over `FORCE_COLOR`. An empty `NO_COLOR` does not disable color.
+- When `FORCE_COLOR` is absent, color is on only when `process.stdout.isTTY` is true.
+- `FORCE_COLOR=0` and `FORCE_COLOR=false` disable. `FORCE_COLOR=1`, `2`, or `3` enable. An empty `FORCE_COLOR` and `FORCE_COLOR=true` enable (level 1).
+- SGR codes at level 1: bold `1` closed by `22`; red `31`, green `32`, yellow `33`, cyan `36`, gray `90`, each closed by `39`.
+
+The parity test compares those strings to chalk while chalk is still installed. If chalk 6.0.0 disagrees, the helper changes, not the recorded expected strings.
 
 #### `cli-table3` @ 0.6.5 — REBUILD
 
@@ -109,11 +125,13 @@ Color behavior that must survive: chalk 5+ honors `NO_COLOR` (any value disables
 | Lockfile closure | 6, via `string-width` ^4.2.0 |
 | License | MIT |
 | Maintenance | Last publish 2024-05-12. The string-width 4 line is the old Unicode-width stack. |
-| What the code uses | `src/cli/formatters.ts` only: `new Table({ head, colWidths, wordWrap: true })`, `table.push(cells)`, `table.toString()`. `wordWrap: true` is set on the entity, relation, and search tables. The centrality table sets `head` and `colWidths` only. |
+| What the code uses | `src/cli/formatters.ts` only: `new Table({ head, colWidths, wordWrap: true })`, `table.push(cells)`, `table.toString()`. `wordWrap: true` is set on the entity table and the search-results table. The relation table and the centrality table set `head` and `colWidths` only. |
 
-A general Unicode table would be a second `cli-table3`. The replacement covers this option subset: ANSI-aware column measurement (so Sprint 2's color codes do not inflate widths), space padding, a `+---+` border, and word wrap on whitespace when `wordWrap` is true. It does not implement `cli-table3` options MemoryJS never passes (`colSpan`, `rowSpan`, `style`, `chars` overrides, streaming).
+A general Unicode table would be a second `cli-table3`. The replacement covers this option subset. `colWidths` keep cli-table3's meaning: each number is the full column width, including the default one-space padding on each side, so the content width is `max(1, colWidth - 2)`. `calculateColWidths` already budgets those widths against the terminal. Treating `colWidths` as content width and then adding padding makes the table wider than the terminal the ratios were computed for.
 
-CLI stdout text for table format can change by padding or wrap differences. JSON and CSV formatters must stay byte-identical. Tests pin the table cases MemoryJS renders rather than the whole `cli-table3` matrix. That is a CLI presentation change inside a patch, limited to table glyphs, and it is called out in Sprint 4 so Daniel can reject the sprint if a consumer snapshots table output.
+Width measurement strips ANSI (`CSI … m`) and then uses the same rules as `string-width` 4 for the characters the CLI can print: a fullwidth code point is 2, an emoji presentation is 2, a combining mark is 0, everything else is 1. `String.length` is not the width. When `wordWrap` is true, wrap on whitespace, and hard-break a single token that is wider than the content width. When `wordWrap` is omitted, do not wrap. ANSI in headers must not inflate the width. Header text is short. Body cells are not colored today. Do not implement `colSpan`, `rowSpan`, `style`, `chars` overrides, or streaming.
+
+JSON and CSV formatters must stay byte-identical. Tests pin the table cases MemoryJS renders rather than the whole `cli-table3` matrix. Borders can still differ in glyph choice from cli-table3. That presentation limit is called out in Sprint 3 so Daniel can reject the sprint if a consumer snapshots table output.
 
 #### `chrono-node` @ 2.9.1 — MAKE OPTIONAL (Sprint 5, flagged)
 
@@ -127,9 +145,9 @@ CLI stdout text for table format can change by padding or wrap differences. JSON
 
 Custom patterns in `parseCustomPattern` already handle the relative phrases (`last hour`, `past N days`, `this week`, `today`, `yesterday`, `N units ago`) without chrono. Chrono is the fallback for everything else, including `since <date>` and ranges such as `between Monday and Wednesday`. The module is lazy, but it is still a hard dependency, so it is installed for every consumer and tsup can still bundle it into chunks that load the parser.
 
-Making it an optional peer removes ~3.5 MB from the default install. It also changes runtime behavior: a chrono-only phrase currently returns a `ParsedTemporalRange`; without the peer it must return `undefined` (the same value the parser already uses for text it cannot parse) and emit one `console.warn` per process. That is a behavior change for `TemporalQueryParser`, `TemporalSearch.searchByTime`, and `SearchManager.searchByTime`.
+Making it an optional peer removes ~3.5 MB from the default install. It also changes runtime behavior: a chrono-only phrase currently returns a `ParsedTemporalRange`; without the peer it must return `undefined` (the same value the parser already uses for text it cannot parse) and emit one `console.warn` per process. `parseCustomPattern`'s `since <date>` branch calls `requireChronoSync().parseDate` today, so a missing module throws. The sprint catches that and returns `undefined` instead of throwing. That is a behavior change for `TemporalQueryParser`, `TemporalSearch.searchByTime`, and `SearchManager.searchByTime`.
 
-**Flag for Daniel.** Sprint 5 does not ship unless Daniel accepts that change. If he does not, the decision flips to KEEP and the sprint is skipped. No type signature changes either way. Consumers who need the fallback run `npm install chrono-node@^2.9.1`. `danielsimonjr/episodic-memory` 1.7.3 does not depend on MemoryJS, so this sprint does not change that repo's install.
+**Flag for Daniel.** Sprint 5 does not ship unless Daniel accepts that change. If he does not, the decision flips to KEEP and the sprint is skipped. No type signature changes either way. Consumers who need the fallback run `npm install chrono-node@^2.9.1`. Current `episodic-memory` main does not depend on MemoryJS (see Downstream consumers), so this sprint does not change that repo's install. He also chooses the version: a minor still updates every `^4.5.0` consumer; `5.0.0` does not.
 
 Do not rebuild chrono. The grammar is the product. A partial reimplementation would hurt correctness.
 
@@ -155,7 +173,7 @@ This is the CLI's argument parser, help text, and error type. Rebuilding it woul
 | Maintenance | Active. 4.6.7 published 2026-10-12. |
 | What the code uses | `z.object`, `z.array`, `z.string`, `z.number`, `z.enum`, `z.literal`, `z.record`, `.strict()`, `.safeParse()`, `z.infer`, `ZodSchema`, `ZodError`. |
 
-Production call sites include `src/utils/schemas.ts` (entity, relation, import, and search schemas used by `EntityManager`, `RelationManager`, and `IOManager`), `src/adapters/recursaToolSchemas.ts`, `src/adapters/RecursaToolAdapter.ts`, `src/agent/procedural/graph/ProceduralGraphSchemas.ts`, `src/agent/evaluation/LLMRubricJudge.ts`, `src/agent/learning/{Diagnoser,KnowledgeEditor,RevisionReconcile,revisionMergeShared}.ts`, and `src/agent/bootstrap/{ExplorationNotes,PracticeTaskGenerator}.ts`.
+Production call sites include `src/utils/schemas.ts` (entity, relation, import, and search schemas used by `EntityManager`, `RelationManager`, and `IOManager`), `src/adapters/recursaToolSchemas.ts`, `src/adapters/recursaToolSupport.ts`, `src/adapters/RecursaToolAdapter.ts`, `src/agent/procedural/graph/ProceduralGraphSchemas.ts`, `src/agent/evaluation/LLMRubricJudge.ts`, `src/agent/learning/{Diagnoser,KnowledgeEditor,RevisionReconcile,revisionMergeShared}.ts` (`RevisionMerger.ts` is type-only), and `src/agent/bootstrap/{ExplorationNotes,PracticeTaskGenerator}.ts`.
 
 `src/utils/index.ts` re-exports the schemas, the `z.infer` type aliases (`EntityInput`, `CreateEntityInput`, and the rest of that block), and `formatZodErrors(error: ZodError)`. Those aliases erase to plain types, but `formatZodErrors` names `ZodError` and the schema values are Zod objects at runtime. Removing Zod changes the public `utils` surface. Rebuilding even the subset MemoryJS uses (strict objects, trimmed strings, datetime strings, int ranges, enums, discriminated unions, error formatting) is a correctness risk on data that enters storage.
 
@@ -169,7 +187,7 @@ KEEP. The 6 MB unpacked size is the cost of not drifting validation. `episodic-m
 | Lockfile closure | 2 (`better-sqlite3`, `node-addon-api`) |
 | License | MIT |
 | Maintenance | 13.0.3 published 2026-08-05. Native addon. `postinstall` runs `scripts/rebuild-native.mjs`. |
-| What the code uses | Runtime `require('better-sqlite3')` inside `src/core/SQLiteStorage.ts` `resolveSQLiteDatabaseCtor`, with a `node:sqlite` fallback in `src/core/nodeSqliteAdapter.ts`. Type imports in `SQLiteStorage.ts` and `src/search/PartialIndexAdvisor.ts`. `tsup.config.ts` externalizes it. Doctor command checks ABI. Tests open real databases. |
+| What the code uses | Runtime `require('better-sqlite3')` inside `src/core/SQLiteStorage.ts` `resolveSQLiteDatabaseCtor`, with a `node:sqlite` fallback in `src/core/nodeSqliteAdapter.ts`. Type imports in `SQLiteStorage.ts` and `src/search/PartialIndexAdvisor.ts`. `src/cli/commands/doctor.ts` requires it for the ABI check. `scripts/node-runtime-smoke.mjs` requires it. `tsup.config.ts` externalizes it on both the library and the CLI pipelines. Tests open real databases. |
 
 `nodeSqliteAdapter.ts` documents itself as a compatibility shim, not a reimplementation: `node:sqlite`'s `changes` shape, `.pragma({ simple: true })` (first column of the first row), and non-nestable transactions differ from better-sqlite3. FTS5 search is a documented feature of `SQLiteStorage`. Dropping the native addon would make the fast path depend on a shim that the repo already refuses to treat as equivalent, and it would drop the prebuilt performance path.
 
@@ -212,7 +230,7 @@ Dynamic `import('@huggingface/transformers')` in `src/search/EmbeddingService.ts
 | `rimraf` | 6.1.4 | 262,867 | 10 (`glob`, `package-json-from-dist`, …) | REBUILD | Used only as `rimraf dist` in the `clean` script. Node 22 `fs.rm(path, { recursive: true, force: true })` is the same operation. BlueOak-1.0.0. Actively published, but the transitive glob chain is the reason it was bumped (CHANGELOG notes GHSA-3g3m-2fjr-6pw4 and GHSA-g3hv-75wg-m249 via glob/minimatch). Deleting it removes that chain from the dev install. |
 | `@types/better-sqlite3` | 9.6.0 | (types) | 3 with `@types/node` | KEEP | Compiling `SQLiteStorage` needs the types while the native module stays. |
 | `@types/node` | 26.4.0 | (types) | 2 (`undici-types`) | KEEP | `engines.node` is `>=22.12.0`. The types are the Node API. |
-| `typescript` | 7.0.2 | 2,497,498 | 1 | KEEP | `typecheck` is `tsc --noEmit`. TS 7 has no programmatic compiler API (`scripts/emit-dts.mjs` exists because of that). Replacing the compiler is not a dependency-diet task. Apache-2.0. |
+| `typescript` | 7.0.2 | 2,497,498 | 1 | KEEP | `typecheck` is `tsc --noEmit && tsc --noEmit -p tsconfig.probes.json`. TS 7 has no programmatic compiler API (`scripts/emit-dts.mjs` exists because of that). Replacing the compiler is not a dependency-diet task. Apache-2.0. |
 | `tsup` | 8.5.1 | 389,734 | 45 | KEEP | `build` is `tsup && node scripts/emit-dts.mjs && node scripts/check-exports.mjs`. The config has three pipelines (ESM split library, CJS library, CLI banner, workers). Replacing tsup rewrites the publishable bundle. MIT. |
 | `tsx` | 4.23.1 | (closure 2, via `esbuild`) | 2 | KEEP | `benchmark` and `audit:plans` run `tsx`. One transitive. Not published. |
 | `vitest` | 5.0.5 | 2,878,460 | 23 | KEEP | `test` / `test:ci`. Replacing the runner touches every test file. |
@@ -251,9 +269,9 @@ Dynamic `import('@huggingface/transformers')` in `src/search/EmbeddingService.ts
 |---|---|---|---|---|
 | 1 | `rimraf` | REBUILD | Dev script only. `dist/` delete. | none (devDependency) |
 | 2 | `chalk` | REBUILD | CLI colors. Library API untouched. | patch |
-| 3 | `async-mutex` | REBUILD | In-process write serialization. Parity with no timeout. | patch |
-| 4 | `cli-table3` | REBUILD | CLI table text only. JSON/CSV identical. | patch, with a presentation note |
-| 5 | `chrono-node` | MAKE OPTIONAL | Flagged behavior change. Skip if Daniel declines. | minor, not patch, and only after accept |
+| 3 | `cli-table3` | REBUILD | CLI table text only. JSON/CSV identical. Safer than the mutex sprint. | patch, with a presentation note |
+| 4 | `async-mutex` | REBUILD | In-process write serialization. Parity with no timeout and no reentrancy. | patch |
+| 5 | `chrono-node` | MAKE OPTIONAL | Flagged behavior change. Skip if Daniel declines. | minor only if he accepts it landing on `^4.x`; otherwise 5.0.0 or skip |
 
 KEEP packages have no sprint.
 
@@ -267,7 +285,7 @@ These lines are binding on every sprint. The plan repeats them.
 - `overrides.esbuild` stays `^0.28.1`.
 - `better-sqlite3` stays external in `tsup.config.ts`.
 - Storage file formats, SQLite schema, and environment-variable names stay.
-- Each sprint is one PR. The builder is deepseek-v41-flash-1017. The challenger is glm-5p3-flash. The reviewer is composer-2.5. The checker is grok-4.6.
+- Each sprint is one PR. The builder is deepseek-v41-flash-1017. The challenger is glm-5p3-flash. The build reviewer is composer-2.5. The build checker/fixer is grok-4.6. The final PR reviewer is grok-4.7. The build reviewer reconciles the challenger's findings, then the build checker/fixer checks the whole PR against the plan and fixes every remaining issue, then the final PR reviewer runs. Merge only after the final PR reviewer reports PASS and CI is green.
 - Tests that describe the old dependency's behavior land in the same PR as the removal, and they are written to fail before the new module exists.
 - Verification for every sprint: `bun install --frozen-lockfile`, `bun run typecheck`, `bun run lint`, `bun run test:ci`, `bun run build`, `node scripts/check-exports.mjs` (already inside `build`), and `git diff --stat` on `dist/` only after a local build to see the bundle change. Do not commit `dist/`.
 - `npx --yes @danielsimonjr/repo-tools@2.3.0 docs check src` and `npx --yes @danielsimonjr/repo-tools@2.3.0 check . --docs=docs/architecture` must exit 0 when a sprint adds an exported symbol. New exports need a JSDoc block whose first sentence says what the function does.
@@ -275,12 +293,12 @@ These lines are binding on every sprint. The plan repeats them.
 
 ## Success criteria
 
-- After Sprints 1–4, root `dependencies` no longer lists `rimraf` (it was a devDependency), `chalk`, `async-mutex`, or `cli-table3`.
+- After Sprints 1–4, root `devDependencies` no longer lists `rimraf`, and root `dependencies` no longer lists `chalk`, `async-mutex`, or `cli-table3`.
 - `bun.lock` no longer contains those four keys or `rimraf`'s `glob` / `minimatch` chain unless some other direct dependency still pulls them (today none does).
 - `rg "from 'chalk'|from 'cli-table3'|from 'async-mutex'|rimraf" src package.json` finds no matches.
 - `bun run test:ci`, `bun run typecheck`, `bun run lint`, and `bun run build` exit 0.
 - Exported type names from `src/utils/index.ts` and the CLI's command names are unchanged.
-- Sprint 5 is either skipped, or merged only with Daniel's acceptance recorded in the PR, and `chrono-node` is then an optional peer rather than a dependency.
+- Sprint 5 is either skipped, or merged only with Daniel's acceptance recorded in the PR (including minor versus 5.0.0), and `chrono-node` is then an optional peer rather than a dependency.
 
 ## Spec self-review
 

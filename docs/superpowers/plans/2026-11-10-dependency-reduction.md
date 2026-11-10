@@ -18,21 +18,28 @@
 - `overrides.esbuild` stays `^0.28.1`.
 - `better-sqlite3` stays external in `tsup.config.ts`.
 - Storage file formats, SQLite schema, and environment-variable names stay.
-- Each sprint is one PR. The builder is deepseek-v41-flash-1017. The challenger is glm-5p3-flash. The reviewer is composer-2.5. The checker is grok-4.6.
+- Each sprint is one PR. The builder is deepseek-v41-flash-1017. The challenger is glm-5p3-flash. The build reviewer is composer-2.5. The build checker/fixer is grok-4.6. The final PR reviewer is grok-4.7.
+- The build reviewer reconciles the challenger's findings, then hands the PR to the build checker/fixer. The build checker/fixer checks everything in the PR against this plan and fixes all remaining issues, then hands the PR to the final PR reviewer.
+- Merge the sprint PR only after the final PR reviewer reports PASS and CI is green. This planning branch does not merge.
 - Tests that describe the old dependency's behavior land in the same PR as the removal, and they are written to fail before the new module exists.
 - Verification for every sprint: `bun install --frozen-lockfile`, `bun run typecheck`, `bun run lint`, `bun run test:ci`, `bun run build`. Do not commit `dist/`.
 - `npx --yes @danielsimonjr/repo-tools@2.3.0 docs check src` and `npx --yes @danielsimonjr/repo-tools@2.3.0 check . --docs=docs/architecture` must exit 0 when a sprint adds an exported symbol. New exports need a JSDoc block whose first sentence says what the function does.
 - No force-push, rebase, amend, or `--no-verify`. No publish.
-- The builder commits on the sprint branch. The checker is the one who reports the commands above as pass or fail.
+- The builder commits on the sprint branch. The build checker/fixer commits the fixes for anything still wrong against this plan. The final PR reviewer does not merge.
 
 ## Roles
+
+Per sprint, in this order:
 
 | Role | Model | Job on each sprint |
 |---|---|---|
 | Builder | deepseek-v41-flash-1017 | Implements the tasks in order. Writes the failing test first. |
-| Challenger | glm-5p3-flash | After the builder's tests pass, adds one adversarial test (timeout, ANSI width, missing peer, non-TTY). Does not widen the sprint. |
-| Reviewer | composer-2.5 | Reads the diff against the spec decision for that package. Rejects a sprint that imports `AsyncMutex` to replace `async-mutex`, or that edits KEEP packages. |
-| Checker | grok-4.6 | Runs the verification block at the end of the sprint on a clean `bun install --frozen-lockfile`. |
+| Challenger | glm-5p3-flash | After the builder's tests pass, tries to break the parity claim. Leaves findings and, when a finding is real, a failing test (timeout, ANSI width, missing peer, non-TTY, wide character). Does not widen the sprint. |
+| Build Reviewer | composer-2.5 | Reviews the challenger's findings and failing tests and reconciles them. Fixes a valid finding. Rebuts an invalid one with a written reason on the PR. Rejects a sprint that imports `AsyncMutex` to replace `async-mutex`, or that edits KEEP packages. Hands the PR to the build checker/fixer. |
+| Build Checker/Fixer | grok-4.6 | After the build reviewer, checks everything in the PR against this plan and fixes all remaining issues, including verification failures. Re-runs the verification block on a clean `bun install --frozen-lockfile`. Hands the PR to the final PR reviewer. |
+| Final PR reviewer | grok-4.7 | After the build checker/fixer, reviews the PR and reports PASS or FAIL. Merge waits for PASS and green CI. |
+
+Handoff on every sprint: builder, then challenger, then the build reviewer reconciles the challenger's findings, then the build checker/fixer checks the whole PR against the plan and fixes every remaining issue, then the final PR reviewer. Merge only after grok-4.7 PASS and green CI.
 
 ## File map
 
@@ -42,9 +49,9 @@
 | `package.json` `scripts.clean` | 1 | Call the script instead of `rimraf`. |
 | `src/cli/ansi.ts` | 2 | The six chalk styles the CLI uses. |
 | `src/cli/formatters.ts`, `src/cli/interactive.ts` | 2 | Import `ansi` instead of `chalk`. |
-| `src/utils/RunExclusiveMutex.ts` | 3 | FIFO `runExclusive` with no timeout and no queue cap. |
-| Storage, column, tier, and interaction-log call sites | 3 | Construct `RunExclusiveMutex`. |
-| `src/cli/plainTable.ts` | 4 | `head` / `colWidths` / `wordWrap` / `push` / `toString`. |
+| `src/cli/plainTable.ts` | 3 | `head` / `colWidths` / `wordWrap` / `push` / `toString`. `colWidths` include padding. |
+| `src/utils/RunExclusiveMutex.ts` | 4 | FIFO `runExclusive` with no timeout, no queue cap, and no reentrancy. |
+| Storage, column, tier, and interaction-log call sites | 4 | Construct `RunExclusiveMutex`. The legacy-delete test uses `AsyncMutex`. |
 | `src/search/TemporalQueryParser.ts` | 5 | Treat a missing `chrono-node` as "not parseable" plus one warning. |
 
 ## Sprint 1 — REBUILD `rimraf`
@@ -215,10 +222,25 @@ describe('ansi', () => {
     }
   });
 
-  it('returns plain text when NO_COLOR is set', () => {
+  it('returns plain text when NO_COLOR is set, including when FORCE_COLOR is also set', () => {
     previous.NO_COLOR = process.env.NO_COLOR;
+    previous.FORCE_COLOR = process.env.FORCE_COLOR;
     process.env.NO_COLOR = '1';
+    process.env.FORCE_COLOR = '1';
     expect(ansi.red('x')).toBe('x');
+    expect(chalk.red('x')).toBe('x');
+  });
+
+  it('does not treat an empty NO_COLOR as disable, and honors FORCE_COLOR true and false', () => {
+    previous.NO_COLOR = process.env.NO_COLOR;
+    previous.FORCE_COLOR = process.env.FORCE_COLOR;
+    process.env.NO_COLOR = '';
+    process.env.FORCE_COLOR = 'true';
+    chalk.level = 1;
+    expect(ansi.red('x')).toBe(chalk.red('x'));
+    process.env.FORCE_COLOR = 'false';
+    expect(ansi.red('x')).toBe('x');
+    expect(chalk.red('x')).toBe('x');
   });
 });
 ```
@@ -240,10 +262,17 @@ Expected: FAIL with cannot find module `src/cli/ansi.js`.
 const CODES = { bold: 1, red: 31, green: 32, yellow: 33, cyan: 36, gray: 90 } as const;
 
 function enabled(): boolean {
+  // Match chalk 6 / supports-color. A non-empty NO_COLOR wins.
   if (process.env.NO_COLOR !== undefined && process.env.NO_COLOR !== '') return false;
-  const force = process.env.FORCE_COLOR;
-  if (force === '0') return false;
-  if (force === '1' || force === '2' || force === '3') return true;
+  if (!Object.prototype.hasOwnProperty.call(process.env, 'FORCE_COLOR')) {
+    return Boolean(process.stdout.isTTY);
+  }
+  const force = process.env.FORCE_COLOR ?? '';
+  if (force === 'false' || force === '0') return false;
+  if (force === '' || force === 'true') return true;
+  const level = Number.parseInt(force, 10);
+  if (level === 0) return false;
+  if (level >= 1 && level <= 3) return true;
   return Boolean(process.stdout.isTTY);
 }
 
@@ -315,18 +344,258 @@ rg "chalk" dist/cli/index.js package.json
 
 Expected: commands exit 0. `package.json` has no chalk. The CLI bundle contains the SGR sequences and does not contain `node_modules/chalk`.
 
-## Sprint 3 — REBUILD `async-mutex`
+## Sprint 3 — REBUILD `cli-table3`
+
+**Semver:** patch. JSON and CSV formatter output stays byte-identical. Border glyphs may differ from `cli-table3`. Daniel can reject this sprint if a downstream tool snapshots those borders.
+**Scope:** `src/cli/formatters.ts` table construction only. `wordWrap: true` is passed only by the entity table and the search-results table. The relation table and the centrality table omit it.
+**Acceptance:** `cli-table3` is gone from `package.json` and `bun.lock`. `formatEntities(..., 'json')` tests still pass. `colWidths` stay cli-table3 full column widths (content width is `max(1, colWidth - 2)`). A fullwidth character counts as width 2. A token wider than the content width hard-breaks when `wordWrap` is true. ANSI in a header does not change the border width.
+
+### Task 5: Plain table used by the formatters
+
+**Files:**
+- Create: `src/cli/plainTable.ts`
+- Create: `tests/unit/cli/plainTable.test.ts`
+- Modify: `src/cli/formatters.ts`
+- Modify: `package.json`, `bun.lock`
+
+**Interfaces:**
+- Consumes: Sprint 2 `ansi` only as cell content (the table must not import chalk)
+- Produces:
+
+```typescript
+export interface PlainTableOptions {
+  head: string[];
+  colWidths: number[];
+  wordWrap?: boolean;
+}
+export class PlainTable {
+  constructor(options: PlainTableOptions);
+  push(cells: string[]): void;
+  toString(): string;
+}
+```
+
+- [ ] **Step 1: Write the failing test**
+
+```typescript
+import { describe, expect, it } from 'vitest';
+import { PlainTable } from '../../../src/cli/plainTable.js';
+
+describe('PlainTable', () => {
+  it('renders a border, a header, and a row', () => {
+    const table = new PlainTable({
+      head: ['A', 'B'],
+      colWidths: [5, 5],
+    });
+    table.push(['1', '2']);
+    const text = table.toString();
+    expect(text).toContain('| A');
+    expect(text).toContain('| 1');
+    expect(text.split('\n')[0].startsWith('+')).toBe(true);
+  });
+
+  it('wraps on whitespace when wordWrap is true and ignores ANSI in the width', () => {
+    const table = new PlainTable({
+      head: ['\u001b[36mH\u001b[39m'],
+      colWidths: [6],
+      wordWrap: true,
+    });
+    table.push(['one two']);
+    const text = table.toString();
+    expect(text).toContain('one');
+    expect(text).toContain('two');
+    expect(text.split('\n')[0]).toBe('+------+');
+  });
+
+  it('counts a fullwidth character as two columns and hard-breaks a long token', () => {
+    const table = new PlainTable({
+      head: ['H'],
+      colWidths: [6],
+      wordWrap: true,
+    });
+    table.push(['你ab']);
+    const text = table.toString();
+    expect(text.split('\n')[3]).toBe('| 你ab |');
+  });
+});
+```
+
+`colWidths: [6]` means six dashes between the `+` characters, matching cli-table3. Content width is 4. The colored header `H` and an uncolored header `H` produce the same border. A fullwidth character uses two of those four columns. `你ab` is width 4 and fits one line; change the cell to `你abcd` in the challenger's test if a hard break is not obvious from `你ab`. The build reviewer keeps a hard-break assertion: a single token wider than the content width splits instead of overflowing the border.
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `bunx vitest run tests/unit/cli/plainTable.test.ts`
+Expected: FAIL, module not found.
+
+- [ ] **Step 3: Implement the table**
+
+```typescript
+/**
+ * Renders the bordered text tables the CLI formatters print.
+ */
+export interface PlainTableOptions {
+  head: string[];
+  colWidths: number[];
+  wordWrap?: boolean;
+}
+
+function stripAnsi(value: string): string {
+  return value.replace(/\u001b\[[0-9;]*m/g, '');
+}
+
+/** Display width. Fullwidth code points and emoji are 2. Combining marks are 0. */
+function charWidth(char: string): number {
+  const cp = char.codePointAt(0) ?? 0;
+  if (cp >= 0x1100 && (
+    cp <= 0x115f || cp === 0x2329 || cp === 0x232a ||
+    (cp >= 0x2e80 && cp <= 0xa4cf && cp !== 0x303f) ||
+    (cp >= 0xac00 && cp <= 0xd7a3) ||
+    (cp >= 0xf900 && cp <= 0xfaff) ||
+    (cp >= 0xfe10 && cp <= 0xfe19) ||
+    (cp >= 0xfe30 && cp <= 0xfe6f) ||
+    (cp >= 0xff00 && cp <= 0xff60) ||
+    (cp >= 0xffe0 && cp <= 0xffe6) ||
+    (cp >= 0x1f300 && cp <= 0x1f64f) ||
+    (cp >= 0x1f900 && cp <= 0x1f9ff)
+  )) return 2;
+  if (cp >= 0x0300 && cp <= 0x036f) return 0;
+  return 1;
+}
+
+function visibleWidth(value: string): number {
+  const plain = stripAnsi(value);
+  let width = 0;
+  for (const char of plain) width += charWidth(char);
+  return width;
+}
+
+function pad(value: string, width: number): string {
+  const gap = width - visibleWidth(value);
+  return gap > 0 ? value + ' '.repeat(gap) : value;
+}
+
+function hardBreak(token: string, width: number): string[] {
+  const parts: string[] = [];
+  let current = '';
+  let currentWidth = 0;
+  for (const char of token) {
+    const w = charWidth(char);
+    if (currentWidth + w > width && current.length > 0) {
+      parts.push(current);
+      current = char;
+      currentWidth = w;
+    } else {
+      current += char;
+      currentWidth += w;
+    }
+  }
+  if (current.length > 0) parts.push(current);
+  return parts.length > 0 ? parts : [''];
+}
+
+function wrap(value: string, width: number, wordWrap: boolean): string[] {
+  const plain = stripAnsi(value);
+  if (!wordWrap || visibleWidth(plain) <= width) return [plain];
+  const lines: string[] = [];
+  let current = '';
+  for (const word of plain.split(' ')) {
+    for (const piece of hardBreak(word, width)) {
+      const next = current.length === 0 ? piece : `${current} ${piece}`;
+      if (visibleWidth(next) > width && current.length > 0) {
+        lines.push(current);
+        current = piece;
+      } else {
+        current = next;
+      }
+    }
+  }
+  if (current.length > 0) lines.push(current);
+  return lines;
+}
+
+export class PlainTable {
+  private readonly rows: string[][] = [];
+
+  constructor(private readonly options: PlainTableOptions) {}
+
+  push(cells: string[]): void {
+    this.rows.push(cells.map((cell) => String(cell)));
+  }
+
+  toString(): string {
+    const widths = this.options.colWidths;
+    const wordWrap = this.options.wordWrap === true;
+    const contentWidth = (colWidth: number) => Math.max(1, colWidth - 2);
+    const border = `+${widths.map((w) => '-'.repeat(Math.max(1, w))).join('+')}+`;
+    const paint = (cells: string[]): string[] => {
+      const wrapped = cells.map((cell, i) => wrap(cell, contentWidth(widths[i] ?? 10), wordWrap));
+      const height = Math.max(1, ...wrapped.map((lines) => lines.length));
+      const out: string[] = [];
+      for (let line = 0; line < height; line++) {
+        const cols = widths.map((width, i) => pad(wrapped[i]?.[line] ?? '', contentWidth(width)));
+        out.push(`| ${cols.join(' | ')} |`);
+      }
+      return out;
+    };
+    return [border, ...paint(this.options.head), border, ...this.rows.flatMap((row) => paint(row)), border].join('\n');
+  }
+}
+```
+
+`colWidths` include cli-table3's default one-space padding on each side, so the border dash count equals `colWidth` and the text is padded to `colWidth - 2`. Headers keep their ANSI; `visibleWidth` ignores those codes. Body cells are plain text today. Colored body wrap is out of scope. `wordWrap` omitted means no wrap. The width helper is the narrow replacement for `string-width` 4, not a full Unicode width library. If a challenger test shows a character whose width disagrees with `string-width` 4 for a real CLI cell, the build reviewer fixes `charWidth`.
+
+- [ ] **Step 4: Run the table test**
+
+Run: `bunx vitest run tests/unit/cli/plainTable.test.ts`
+Expected: PASS
+
+- [ ] **Step 5: Switch formatters and drop the dependency**
+
+In `src/cli/formatters.ts`:
+
+```typescript
+import { PlainTable } from './plainTable.js';
+```
+
+Replace `new Table({ ... })` with `new PlainTable({ ... })`. Keep `head`, `colWidths`, and `wordWrap` arguments as they are. `table.push` and `table.toString()` stay.
+
+Remove `cli-table3` from `dependencies`. Run `bun install`.
+
+Run: `bunx vitest run tests/unit/cli/formatters.test.ts tests/unit/cli/plainTable.test.ts`
+Expected: PASS. JSON and CSV cases in the existing formatter tests are the byte-identity check. If a table-format assertion compares an exact `cli-table3` border, update that assertion to the `PlainTable` border and leave the JSON assertion untouched.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src/cli/plainTable.ts src/cli/formatters.ts tests/unit/cli/plainTable.test.ts tests/unit/cli/formatters.test.ts package.json bun.lock
+git commit -m "refactor: render CLI tables without cli-table3"
+```
+
+### Task 6: Sprint 3 verification
+
+```bash
+bun install --frozen-lockfile
+bun run typecheck
+bun run lint
+bun run test:ci
+bun run build
+rg "cli-table3|string-width" package.json bun.lock dist/cli/index.js
+```
+
+Expected: exit 0, no matches.
+
+## Sprint 4 — REBUILD `async-mutex`
 
 **Semver:** patch. No new public export is required. `RunExclusiveMutex` may stay unexported from `src/utils/index.ts`. If the builder exports it, add a JSDoc first sentence and re-run repo-tools.
 **Scope:** Replace `new Mutex()` / `runExclusive` only. Do not change `src/utils/AsyncMutex.ts` or any `graphMutex.acquire` call. `AsyncMutex` times out; `async-mutex` does not. Mixing them will fail storage tests under load.
 **Acceptance:** `rg "async-mutex" src tests package.json bun.lock` finds no matches. Two `runExclusive` calls on one mutex run in order. A thrown error releases the mutex. There is no 30s timer.
 
-### Task 5: Failing parity test and implementation
+### Task 7: Failing parity test and implementation
 
 **Files:**
 - Create: `src/utils/RunExclusiveMutex.ts`
 - Create: `tests/unit/utils/RunExclusiveMutex.test.ts`
-- Modify: the seven `async-mutex` import sites listed in the spec
+- Modify: the eight `async-mutex` files listed in the spec. Seven construct or type a `runExclusive` mutex. `tests/unit/core/EntityManager.legacyDelete.test.ts` is the eighth and must switch to `AsyncMutex`, because `EntityManager` calls `graphMutex.acquire()`.
 - Modify: `package.json`, `bun.lock`
 
 **Interfaces:**
@@ -376,7 +645,7 @@ describe('RunExclusiveMutex', () => {
   });
 
   it('does not arm a timeout timer', async () => {
-    vi.useFakeTimers();
+    vi.useFakeTimers({ toFake: ['setTimeout', 'setInterval'] });
     const mutex = new RunExclusiveMutex();
     let releaseFirst: (() => void) | undefined;
     const first = mutex.runExclusive(() => new Promise<void>((resolve) => {
@@ -444,13 +713,13 @@ Replace `new Mutex()` with `new RunExclusiveMutex()`.
 
 In `src/agent/harness/InteractionLog.ts`, replace `import type { Mutex } from 'async-mutex'` with `import type { RunExclusiveMutex } from '../../utils/RunExclusiveMutex.js'` and type the field as `RunExclusiveMutex`.
 
-In `tests/unit/core/EntityManager.legacyDelete.test.ts`, construct `RunExclusiveMutex` the same way.
+In `tests/unit/core/EntityManager.legacyDelete.test.ts`, replace `new Mutex()` with `new AsyncMutex()` imported from `src/utils/AsyncMutex.ts`. Do not use `RunExclusiveMutex` there. `EntityManager` calls `acquire()`, and `RunExclusiveMutex` does not implement it.
 
-`runExclusive(...)` call text stays. Do not edit `this.storage.graphMutex.acquire` sites.
+`runExclusive(...)` call text stays. Do not edit `this.storage.graphMutex.acquire` sites. Do not add `acquire` to `RunExclusiveMutex`. Nested `runExclusive` on the same instance deadlocks, which matches `async-mutex` 0.5.0. No production call site re-enters.
 
 - [ ] **Step 6: Remove the dependency**
 
-Delete `async-mutex` from `dependencies`. Run `bun install`. `bun.lock` must not contain `async-mutex` or a direct `tslib` edge that existed only for it. If `tslib` remains because another package needs it, leave it; today only `async-mutex` pulls it.
+Delete `async-mutex` from `dependencies`. Run `bun install`. `bun.lock` must not contain `async-mutex`. `tslib` stays: `@emnapi/core`, `@emnapi/runtime`, `@emnapi/wasi-threads`, and `@tybys/wasm-util` also depend on it.
 
 Run:
 
@@ -467,7 +736,7 @@ git add src/utils/RunExclusiveMutex.ts tests/unit/utils/RunExclusiveMutex.test.t
 git commit -m "refactor: replace async-mutex with RunExclusiveMutex"
 ```
 
-### Task 6: Sprint 3 verification
+### Task 8: Sprint 4 verification
 
 ```bash
 bun install --frozen-lockfile
@@ -482,198 +751,13 @@ Expected: exit 0, and `rg` prints no matches. `src/utils/AsyncMutex.ts` still ex
 
 Challenger adds a test where 100 `runExclusive` callbacks append to an array and the array is `0..99`. That test must pass without fake timers.
 
-## Sprint 4 — REBUILD `cli-table3`
-
-**Semver:** patch. JSON and CSV formatter output stays byte-identical. Table-format text may differ in padding from `cli-table3` and is pinned by new tests. Daniel can reject this sprint if a downstream tool snapshots `cli-table3` borders.
-**Scope:** `src/cli/formatters.ts` table construction only.
-**Acceptance:** `cli-table3` is gone from `package.json` and `bun.lock`. `formatEntities(..., 'json')` tests still pass. Table output contains the header text and the cell text, wraps when `wordWrap` is true, and measures visible width with ANSI codes stripped.
-
-### Task 7: Plain table used by the formatters
-
-**Files:**
-- Create: `src/cli/plainTable.ts`
-- Create: `tests/unit/cli/plainTable.test.ts`
-- Modify: `src/cli/formatters.ts`
-- Modify: `package.json`, `bun.lock`
-
-**Interfaces:**
-- Consumes: Sprint 2 `ansi` only as cell content (the table must not import chalk)
-- Produces:
-
-```typescript
-export interface PlainTableOptions {
-  head: string[];
-  colWidths: number[];
-  wordWrap?: boolean;
-}
-export class PlainTable {
-  constructor(options: PlainTableOptions);
-  push(cells: string[]): void;
-  toString(): string;
-}
-```
-
-- [ ] **Step 1: Write the failing test**
-
-```typescript
-import { describe, expect, it } from 'vitest';
-import { PlainTable } from '../../../src/cli/plainTable.js';
-
-describe('PlainTable', () => {
-  it('renders a border, a header, and a row', () => {
-    const table = new PlainTable({
-      head: ['A', 'B'],
-      colWidths: [5, 5],
-    });
-    table.push(['1', '2']);
-    const text = table.toString();
-    expect(text).toContain('| A');
-    expect(text).toContain('| 1');
-    expect(text.split('\n')[0].startsWith('+')).toBe(true);
-  });
-
-  it('wraps on whitespace when wordWrap is true and ignores ANSI in the width', () => {
-    const table = new PlainTable({
-      head: ['\u001b[36mH\u001b[39m'],
-      colWidths: [6],
-      wordWrap: true,
-    });
-    table.push(['one two']);
-    const text = table.toString();
-    expect(text).toContain('one');
-    expect(text).toContain('two');
-    for (const line of text.split('\n')) {
-      const visible = line.replace(/\u001b\[[0-9;]*m/g, '');
-      expect(visible.length).toBeLessThanOrEqual(8);
-    }
-  });
-});
-```
-
-The visible-length cap of 8 is the width 6 plus two border characters (`|` and the closing `|` is the 8th once padding is counted). If the implementation uses `| ` and ` |`, set the assertion to the exact border width the implementation documents in a comment, and keep the test. The requirement is: a colored header is not wider than an uncolored header of the same letters.
-
-- [ ] **Step 2: Run the test to verify it fails**
-
-Run: `bunx vitest run tests/unit/cli/plainTable.test.ts`
-Expected: FAIL, module not found.
-
-- [ ] **Step 3: Implement the table**
-
-```typescript
-/**
- * Renders the bordered text tables the CLI formatters print.
- */
-export interface PlainTableOptions {
-  head: string[];
-  colWidths: number[];
-  wordWrap?: boolean;
-}
-
-function visibleLength(value: string): number {
-  return value.replace(/\u001b\[[0-9;]*m/g, '').length;
-}
-
-function pad(value: string, width: number): string {
-  const gap = width - visibleLength(value);
-  return gap > 0 ? value + ' '.repeat(gap) : value;
-}
-
-function wrap(value: string, width: number, wordWrap: boolean): string[] {
-  const plain = value.replace(/\u001b\[[0-9;]*m/g, '');
-  if (!wordWrap || plain.length <= width) return [value];
-  const words = plain.split(' ');
-  const lines: string[] = [];
-  let current = '';
-  for (const word of words) {
-    const next = current.length === 0 ? word : `${current} ${word}`;
-    if (next.length > width && current.length > 0) {
-      lines.push(current);
-      current = word;
-    } else {
-      current = next;
-    }
-  }
-  if (current.length > 0) lines.push(current);
-  return lines;
-}
-
-export class PlainTable {
-  private readonly rows: string[][] = [];
-
-  constructor(private readonly options: PlainTableOptions) {}
-
-  push(cells: string[]): void {
-    this.rows.push(cells.map((cell) => String(cell)));
-  }
-
-  toString(): string {
-    const widths = this.options.colWidths;
-    const wordWrap = this.options.wordWrap === true;
-    const border = `+${widths.map((w) => '-'.repeat(w + 2)).join('+')}+`;
-    const paint = (cells: string[]): string[] => {
-      const wrapped = cells.map((cell, i) => wrap(cell, widths[i] ?? 10, wordWrap));
-      const height = Math.max(1, ...wrapped.map((lines) => lines.length));
-      const out: string[] = [];
-      for (let line = 0; line < height; line++) {
-        const cols = widths.map((width, i) => pad(wrapped[i]?.[line] ?? '', width));
-        out.push(`| ${cols.join(' | ')} |`);
-      }
-      return out;
-    };
-    return [border, ...paint(this.options.head), border, ...this.rows.flatMap((row) => paint(row)), border].join('\n');
-  }
-}
-```
-
-Word wrap strips ANSI for the wrapped lines. Formatters pass ANSI only in headers, which are short, so header wrap is not required. Cell wrap of colored body text is out of scope.
-
-- [ ] **Step 4: Run the table test**
-
-Run: `bunx vitest run tests/unit/cli/plainTable.test.ts`
-Expected: PASS
-
-- [ ] **Step 5: Switch formatters and drop the dependency**
-
-In `src/cli/formatters.ts`:
-
-```typescript
-import { PlainTable } from './plainTable.js';
-```
-
-Replace `new Table({ ... })` with `new PlainTable({ ... })`. Keep `head`, `colWidths`, and `wordWrap` arguments as they are. `table.push` and `table.toString()` stay.
-
-Remove `cli-table3` from `dependencies`. Run `bun install`.
-
-Run: `bunx vitest run tests/unit/cli/formatters.test.ts tests/unit/cli/plainTable.test.ts`
-Expected: PASS. JSON and CSV cases in the existing formatter tests are the byte-identity check. If a table-format assertion compares an exact `cli-table3` border, update that assertion to the `PlainTable` border and leave the JSON assertion untouched.
-
-- [ ] **Step 6: Commit**
-
-```bash
-git add src/cli/plainTable.ts src/cli/formatters.ts tests/unit/cli/plainTable.test.ts tests/unit/cli/formatters.test.ts package.json bun.lock
-git commit -m "refactor: render CLI tables without cli-table3"
-```
-
-### Task 8: Sprint 4 verification
-
-```bash
-bun install --frozen-lockfile
-bun run typecheck
-bun run lint
-bun run test:ci
-bun run build
-rg "cli-table3|string-width" package.json bun.lock dist/cli/index.js
-```
-
-Expected: exit 0, no matches.
-
 ## Sprint 5 — MAKE OPTIONAL `chrono-node` (gated)
 
 **Do not open this PR until Daniel has accepted the behavior change in writing.** If he declines, skip the sprint and leave `chrono-node` in `dependencies`. The decision then becomes KEEP.
 
-**Semver:** minor, not patch. Changelog must say: natural-language dates outside `TemporalQueryParser`'s custom patterns require the optional peer `chrono-node`. Without it, those phrases return `undefined` and the process emits one warning. Custom patterns (`last hour`, `past N days`, `this week`, `today`, `yesterday`, `N units ago`) stay dependency-free and keep their current results.
+**Semver:** not a patch. Default if Daniel accepts the behavior change and accepts it landing on every `^4.x` consumer: minor. If he wants `^4.5.0` consumers to keep today's chrono behavior, the release is `5.0.0` and this sprint waits for that major. Changelog must say: natural-language dates outside `TemporalQueryParser`'s custom patterns require the optional peer `chrono-node`. Without it, those phrases return `undefined` and the process emits one warning. Custom patterns (`last hour`, `past N days`, `this week`, `today`, `yesterday`, `N units ago`) stay dependency-free and keep their current results.
 
-**Flag:** this changes `searchByTime` for phrases such as `between Monday and Wednesday` and `since January 1` when the peer is not installed. `danielsimonjr/episodic-memory` 1.7.3 does not depend on MemoryJS. Other `^4.5.0` consumers who called those phrases will see `undefined` until they install `chrono-node`.
+**Flag:** this changes `searchByTime` for phrases such as `between Monday and Wednesday` and `since January 1` when the peer is not installed. `since <date>` throws today if chrono cannot load; the sprint returns `undefined` instead. Current `episodic-memory` `main` (`b1b0d8e`, 1.7.3) does not depend on MemoryJS: `^4.5.0` was added on `cursor/recursa-task0-memoryjs-dep-2f37` and removed in `6b5de905` (PR #35). A minor release still updates every other `^4.5.0` consumer. Daniel chooses minor, `5.0.0`, or skip.
 
 **Acceptance after accept:** `chrono-node` is under `peerDependencies` and `peerDependenciesMeta.chrono-node.optional` is true. It is not under `dependencies`. Custom-pattern tests pass with the module uninstalled. A chrono-only phrase returns `undefined` and warns once when the module is absent. When the module is installed, `between Monday and Wednesday` still returns a range.
 
@@ -757,7 +841,10 @@ Do not change the successful-load path. `parse` and `parseDate` arguments stay `
   "yaml": ">=2.0.0"
 },
 "peerDependenciesMeta": {
-  "chrono-node": { "optional": true }
+  "@huggingface/transformers": { "optional": true },
+  "chrono-node": { "optional": true },
+  "pg": { "optional": true },
+  "yaml": { "optional": true }
 }
 ```
 
@@ -830,8 +917,9 @@ The builder does not open a PR for these. The spec records why.
 ## Plan self-review
 
 - Spec decisions REBUILD and MAKE OPTIONAL each have a sprint. VENDOR has no sprint. KEEP has a table and no tasks.
-- Sprint 3's interface is `RunExclusiveMutex.runExclusive`, not `AsyncMutex.acquire`.
+- Sprint 4's interface is `RunExclusiveMutex.runExclusive`, not `AsyncMutex.acquire`. The legacy-delete fake uses `AsyncMutex.acquire`.
 - Sprint 2's `ansi` keys match the call sites (`cyan`, `bold`, `green`, `red`, `yellow`, `gray`).
-- Sprint 4's `PlainTable` options match `formatters.ts` (`head`, `colWidths`, `wordWrap`).
+- Sprint 3's `PlainTable` options match `formatters.ts` (`head`, `colWidths`, `wordWrap`). `colWidths` include the two padding cells.
 - Sprint 5 is gated and is the only task that edits `CHANGELOG.md`.
 - No step says TBD. Verification commands are exact.
+- Per sprint the handoff is builder deepseek-v41-flash-1017, challenger glm-5p3-flash, build reviewer composer-2.5, build checker/fixer grok-4.6, final PR reviewer grok-4.7.
