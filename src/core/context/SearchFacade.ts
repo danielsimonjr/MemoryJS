@@ -112,8 +112,8 @@ export class SearchFacade {
   }
 
   /**
-   * TemporalSearch - natural-language time-range search (chrono-node parser over
-   * entity timestamps). Lazy; constructed on first access.
+   * TemporalSearch - natural-language time-range search (in-repo English date
+   * parser over entity timestamps). Lazy; constructed on first access.
    */
   get temporalSearch(): TemporalSearch {
     if (!this._temporalSearch) {

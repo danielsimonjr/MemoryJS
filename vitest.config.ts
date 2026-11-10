@@ -4,6 +4,12 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    // Pin the process timezone so date assertions see the same instants on
+    // every host. The in-repo English date parser resolves wall-clock fields
+    // through `Date.UTC`/`getUTC*`, so its output is already host-independent;
+    // pinning TZ keeps other date-sensitive tests comparable across the
+    // Node and Bun lanes.
+    env: { TZ: 'UTC' },
     include: ['tests/**/*.test.ts'],
     // `tests/performance/**` is excluded from the default PARALLEL run; it has its
     // own single-threaded script, `npm run test:perf`.

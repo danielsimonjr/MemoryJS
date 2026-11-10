@@ -2,68 +2,13 @@
  * Temporal Query Parser
  *
  * Feature 3 (Must-Have): Parses natural language temporal expressions into
- * concrete date ranges using chrono-node.
+ * concrete date ranges. Common relative ranges are matched directly; anything
+ * else goes to the in-repo English date parser (`search/enDate`).
  *
  * @module search/TemporalQueryParser
  */
 
-import { createRequire } from 'node:module';
-
-/**
- * Namespace type of chrono-node. Type-only — erased at runtime, so this
- * declaration does NOT trigger a module load.
- */
-type ChronoModule = typeof import('chrono-node');
-
-/**
- * Memoized chrono-node module. chrono-node is the heaviest external
- * dependency on the default import path (~hundreds of ms cold), so it is
- * loaded lazily on first use instead of at module scope (S8).
- */
-let chronoModule: ChronoModule | undefined;
-let chronoLoadPromise: Promise<ChronoModule> | undefined;
-
-/**
- * Normalize ESM/CJS interop shapes: `import('chrono-node')` may surface the
- * API either as named exports on the namespace or under `default`.
- */
-function resolveChronoNamespace(mod: unknown): ChronoModule {
-  const candidate = mod as { parse?: unknown; default?: { parse?: unknown } };
-  if (typeof candidate.parse === 'function') return mod as ChronoModule;
-  if (candidate.default && typeof candidate.default.parse === 'function') {
-    return candidate.default as ChronoModule;
-  }
-  throw new Error('chrono-node module loaded but no parse() export was found');
-}
-
-/**
- * Asynchronously load chrono-node (memoized). Preferred loading path —
- * bundler-friendly (code-splittable) and non-blocking.
- */
-function loadChrono(): Promise<ChronoModule> {
-  if (chronoModule) return Promise.resolve(chronoModule);
-  if (!chronoLoadPromise) {
-    chronoLoadPromise = import('chrono-node').then((mod) => {
-      chronoModule = resolveChronoNamespace(mod);
-      return chronoModule;
-    });
-  }
-  return chronoLoadPromise;
-}
-
-/**
- * Synchronously load chrono-node (memoized). Fallback for the public sync
- * `parseTemporalExpression()` API — uses `createRequire`, which works in
- * both the ESM and CJS builds under Node. Callers that can go async should
- * prefer `parseTemporalExpressionAsync()`, which uses dynamic `import()`.
- */
-function requireChronoSync(): ChronoModule {
-  if (!chronoModule) {
-    const requireModule = createRequire(import.meta.url);
-    chronoModule = resolveChronoNamespace(requireModule('chrono-node'));
-  }
-  return chronoModule;
-}
+import { parseEnDate, parseEnDateStart } from './enDate/parseEnDate.js';
 
 /**
  * A resolved temporal range with concrete Date boundaries.
@@ -92,8 +37,8 @@ export interface ParsedTemporalRange {
 /**
  * Parses natural language temporal expressions into concrete date ranges.
  *
- * Uses chrono-node for robust natural language date parsing with a set
- * of custom patterns for common relative expressions.
+ * Uses the in-repo English date parser for natural language dates, with a
+ * set of custom patterns for common relative expressions.
  *
  * Supported expressions (examples):
  * - "10 minutes ago"
@@ -104,7 +49,8 @@ export interface ParsedTemporalRange {
  * - "this week" / "this month" / "this year"
  * - "between Monday and Wednesday"
  * - "in the past 3 days"
- * - Any expression parseable by chrono-node
+ * - Any expression the English date parser accepts (tomorrow, next Friday,
+ *   ISO dates and instants, month-name dates, clock times, and ranges)
  *
  * @example
  * ```typescript
@@ -136,21 +82,21 @@ export class TemporalQueryParser {
     const trimmed = text.trim();
 
     // Try custom pattern matching first for commonly-used relative ranges.
-    // These never need chrono-node, so the common relative-range case stays
-    // dependency-free.
+    // These return ranges the general parser does not produce (a full
+    // day/week/month span rather than a single point).
     const custom = this.parseCustomPattern(trimmed, ref);
     if (custom) return custom;
 
-    // Fall back to chrono-node for everything else (lazy sync load)
-    return this.parseWithChrono(trimmed, ref);
+    // Fall back to the in-repo English parser for everything else.
+    return this.parseWithEnDate(trimmed, ref);
   }
 
   /**
    * Async variant of {@link parseTemporalExpression}.
    *
-   * Ensures chrono-node is loaded via dynamic `import()` before parsing,
-   * so the load never blocks the event loop with a synchronous `require`.
-   * Prefer this from async call sites (e.g. `TemporalSearch.searchByTimeQuery`).
+   * The in-repo parser needs no module loading, so this resolves
+   * immediately; it stays async for API compatibility with callers that
+   * awaited the previous lazily-loaded parser.
    *
    * @param text - Natural language temporal expression
    * @param referenceDate - Reference date for relative calculations (default: now)
@@ -160,25 +106,11 @@ export class TemporalQueryParser {
     text: string,
     referenceDate?: Date
   ): Promise<ParsedTemporalRange | undefined> {
-    if (!text || text.trim().length === 0) return undefined;
-
-    const ref = referenceDate ?? new Date();
-    const trimmed = text.trim();
-
-    // The "since X" custom pattern consults chrono-node; every other custom
-    // pattern is chrono-free. Preload via dynamic import() so the sync
-    // fallback inside parseCustomPattern hits the memoized module.
-    if (/^since\s/i.test(trimmed)) await loadChrono();
-
-    const custom = this.parseCustomPattern(trimmed, ref);
-    if (custom) return custom;
-
-    await loadChrono();
-    return this.parseWithChrono(trimmed, ref);
+    return this.parseTemporalExpression(text, referenceDate);
   }
 
   /**
-   * Handle common relative range patterns not covered well by chrono-node.
+   * Handle common relative range patterns not covered by the general parser.
    * @internal
    */
   private parseCustomPattern(text: string, ref: Date): ParsedTemporalRange | undefined {
@@ -280,7 +212,7 @@ export class TemporalQueryParser {
     // "since X" → parse X as start, use ref as end
     const sinceMatch = lower.match(/^since\s+(.+)$/);
     if (sinceMatch) {
-      const parsed = requireChronoSync().parseDate(sinceMatch[1], ref, { forwardDate: false });
+      const parsed = parseEnDateStart(sinceMatch[1], ref, { forwardDate: false });
       if (parsed) {
         return { start: parsed, end: new Date(ref), originalExpression: text };
       }
@@ -303,39 +235,39 @@ export class TemporalQueryParser {
   }
 
   /**
-   * Use chrono-node to parse expressions not handled by custom patterns.
+   * Use the in-repo English date parser for expressions the custom patterns
+   * do not handle.
    * @internal
    */
-  private parseWithChrono(text: string, ref: Date): ParsedTemporalRange | undefined {
-    const chrono = requireChronoSync();
+  private parseWithEnDate(text: string, ref: Date): ParsedTemporalRange | undefined {
     // Try to parse as a range (e.g. "between Monday and Wednesday", "Jan 1 to Jan 7")
-    const results = chrono.parse(text, ref, { forwardDate: false });
+    const results = parseEnDate(text, ref, { forwardDate: false });
 
     if (results.length === 0) {
       // Try with forwardDate: true as fallback
-      const forwardResults = chrono.parse(text, ref, { forwardDate: true });
+      const forwardResults = parseEnDate(text, ref, { forwardDate: true });
       if (forwardResults.length === 0) return undefined;
 
       const first = forwardResults[0];
-      const start = first.start.date();
-      const end = first.end ? first.end.date() : new Date(ref);
+      const start = first.start;
+      const end = first.end ?? new Date(ref);
       if (!this.isValidRange(start, end)) return undefined;
       return { start, end, originalExpression: text };
     }
 
     const first = results[0];
-    const start = first.start.date();
+    const start = first.start;
 
     // If the parsed result has an explicit end date, use it
     if (first.end) {
-      const end = first.end.date();
+      const end = first.end;
       if (!this.isValidRange(start, end)) return undefined;
       return { start, end, originalExpression: text };
     }
 
     // If we have multiple parsed dates, use first and last as range
     if (results.length >= 2) {
-      const end = results[results.length - 1].start.date();
+      const end = results[results.length - 1].start;
       if (!this.isValidRange(start, end)) {
         // Swap if needed
         return { start: end, end: start, originalExpression: text };

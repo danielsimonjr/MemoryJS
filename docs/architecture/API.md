@@ -1026,7 +1026,7 @@ clearRankedCache(): void
 
 ### searchByTime (Temporal Search)
 
-Natural-language time-range search via `chrono-node`.
+Natural-language time-range search via the in-repo English date parser (`search/enDate`).
 
 ```text
 async searchByTime(query: string, options?: TemporalSearchOptions): Promise<KnowledgeGraph>

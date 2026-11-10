@@ -538,7 +538,7 @@ export class SearchManager {
   /**
    * Feature 3 (Must-Have): Search entities by a natural language time expression.
    *
-   * Parses the query using chrono-node and returns entities whose
+   * Parses the query with the in-repo English date parser and returns entities whose
    * `createdAt` or `lastModified` timestamp falls within the resolved range.
    *
    * Returns an empty array if the expression cannot be parsed.

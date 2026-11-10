@@ -163,6 +163,13 @@ The dependency stays in `dependencies` until both oracles are green. Then it is 
 
 Semver is a patch when those oracles hold. No type signature changes. No optional peer. No 5.0.0. A new public export would be a minor and is out of this sprint.
 
+**Intentional deviations (recorded 2026-11-10, Sprint 5 implementation).** Both follow from doing all calendar math in UTC (`Date.UTC` / `getUTC*`, no `Intl` zone names), which this sprint's scope requires. Neither changes what the parity corpus asserts at `TZ=UTC`, and neither changes the instants MemoryJS returns for the custom patterns.
+
+- **Host timezone.** chrono-node resolves wall-clock fields in the host timezone (`new Date(year, month-1, day, ...)` plus `getTimezoneOffset()`), so the same phrase yields different instants under different host `TZ`. The in-repo parser resolves in UTC, so a phrase yields the same instant on every host. Before this sprint, every CI lane and the shipped default already ran the parser at `TZ=UTC` for the corpus; after it, results are stable regardless. Frozen expectations were recorded at `TZ=UTC`, and Vitest pins `TZ=UTC`.
+- **Zone abbreviations.** chrono-node maps a trailing abbreviation (`5pm EST`) through `TIMEZONE_ABBR_MAP`, whose daylight-saving rules for `CET`, `CT`, `ET`, `MT`, and `PT` are evaluated in local time. The in-repo parser keeps the same table but evaluates the DST windows in UTC, so a zone-abbreviation phrase can differ from chrono by the size of a local-time DST boundary shift. MemoryJS relies on no zone-abbreviation phrase; they are supported because chrono parsed them.
+
+The dependency is deleted from `dependencies` only after both oracles are green (and it was never added to `devDependencies`). The green ISO strings are recorded in the two test files so later runs do not need the package. `parseEnDate` stays an internal module and is not added to a package barrel. Weekday, month, unit, ordinal, timezone, and parser-expression tables were adapted from `chrono-node` (MIT), so `THIRD_PARTY_NOTICES` carries its copyright and license text and each adapted file names the origin.
+
 #### `commander` @ 15.0.0 — REBUILD (Sprint 6)
 
 | | |

@@ -102,8 +102,8 @@ export class TemporalSearch {
     options: TemporalSearchOptions = {},
     referenceDate?: Date
   ): Promise<Entity[]> {
-    // Async parse: chrono-node (the heaviest external dep) is loaded lazily
-    // via dynamic import() on first use instead of at module scope (S8).
+    // Async parse: the parser is in-repo and synchronous; this await keeps the
+    // call site uniform with other async searches.
     const range = await this.parser.parseTemporalExpressionAsync(query, referenceDate);
     if (!range) return [];
     return this.searchByTimeRange(range, options);
