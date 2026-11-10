@@ -7,14 +7,34 @@
     "`unreferencedAnywhereNotes`'s dynamic-import check (`_dynamic_import_referrers`) only sees `import(...)` calls with a LITERAL string specifier. A dynamic import built from a variable or template literal (e.g. `import(`./cmds/${name}.js`)`, a command-dispatcher pattern) is invisible to it -- 'found none' in a note means no LITERAL match was found, NOT that nothing imports the file."
   ],
   "summary": {
-    "unusedExportCount": 73,
-    "unreferencedAnywhereCount": 0,
-    "referencedInModuleCount": 73,
+    "unusedExportCount": 111,
+    "unreferencedAnywhereCount": 3,
+    "referencedInModuleCount": 108,
     "unclassifiedExportCount": 0,
     "noImporterFileCount": 0
   },
-  "unreferencedAnywhere": {},
-  "unreferencedAnywhereNotes": {},
+  "unreferencedAnywhere": {
+    "src/search/enDate/calendar.ts": [
+      "mostLikelyAdYear"
+    ],
+    "src/search/enDate/components.ts": [
+      "startOfWeekUtc"
+    ],
+    "src/search/enDate/constants.ts": [
+      "TIME_UNITS_NO_ABBR_PATTERN"
+    ]
+  },
+  "unreferencedAnywhereNotes": {
+    "src/search/enDate/calendar.ts": {
+      "mostLikelyAdYear": "Checked for a dynamic import() call with a LITERAL string specifier resolving to 'src/search/enDate/calendar.ts' across the whole repo and found none. This scan can only see import() calls with a literal string specifier -- a dynamic import built from a variable or template literal (e.g. import(`./cmds/${name}.js`)) is invisible to it, so 'found none' means no LITERAL match was found, NOT that nothing imports this. 'mostLikelyAdYear' may still be consumed via such a call. Also verify against consumption this scan cannot see at all (docs examples, published API surface, a runtime-built path/`new Worker(...)`) before deleting."
+    },
+    "src/search/enDate/components.ts": {
+      "startOfWeekUtc": "Checked for a dynamic import() call with a LITERAL string specifier resolving to 'src/search/enDate/components.ts' across the whole repo and found none. This scan can only see import() calls with a literal string specifier -- a dynamic import built from a variable or template literal (e.g. import(`./cmds/${name}.js`)) is invisible to it, so 'found none' means no LITERAL match was found, NOT that nothing imports this. 'startOfWeekUtc' may still be consumed via such a call. Also verify against consumption this scan cannot see at all (docs examples, published API surface, a runtime-built path/`new Worker(...)`) before deleting."
+    },
+    "src/search/enDate/constants.ts": {
+      "TIME_UNITS_NO_ABBR_PATTERN": "Checked for a dynamic import() call with a LITERAL string specifier resolving to 'src/search/enDate/constants.ts' across the whole repo and found none. This scan can only see import() calls with a literal string specifier -- a dynamic import built from a variable or template literal (e.g. import(`./cmds/${name}.js`)) is invisible to it, so 'found none' means no LITERAL match was found, NOT that nothing imports this. 'TIME_UNITS_NO_ABBR_PATTERN' may still be consumed via such a call. Also verify against consumption this scan cannot see at all (docs examples, published API surface, a runtime-built path/`new Worker(...)`) before deleting."
+    }
+  },
   "referencedInModule": {
     "src/adapters/LangChainMemoryAdapter.ts": [
       "ChatMessage",
@@ -24,6 +44,16 @@
     ],
     "src/adapters/RateLimiter.ts": [
       "DEFAULT_MAX_BUCKETS"
+    ],
+    "src/adapters/recursaToolBounds.ts": [
+      "byteSize"
+    ],
+    "src/adapters/recursaToolSupport.ts": [
+      "messageOf"
+    ],
+    "src/agent/AgentEnvDefaults.ts": [
+      "DEFAULT_COGNITIVE_LOAD_MAX",
+      "DEFAULT_ENTROPY_THRESHOLD_BITS"
     ],
     "src/agent/CollaborativeSynthesis.ts": [
       "ConflictResolutionPolicy",
@@ -39,49 +69,106 @@
     "src/agent/PatternDetector.ts": [
       "PatternDetectorOptions"
     ],
-    "src/agent/knowledge/InstructionSetManager.ts": [
-      "InstructionHistorySource",
-      "InstructionPatchResult",
-      "InstructionSetManagerOptions"
+    "src/agent/bootstrap/bootstrapShared.ts": [
+      "MemoryEntityParts",
+      "PartitionableSource"
     ],
-    "src/agent/knowledge/KnowledgeRepository.ts": [
-      "ApplyResult",
-      "KnowledgeRepositoryOptions",
-      "LoadForContextOptions",
-      "LoadedKnowledge",
-      "RollbackResult"
+    "src/agent/harness/InteractionLogFormat.ts": [
+      "MAX_RESULT_LIMIT",
+      "ScanResult",
+      "ScannedRecord",
+      "isInteractionRecord"
     ],
-    "src/agent/knowledge/knowledgeRevision.ts": [
-      "WorkState",
-      "applyOp"
+    "src/agent/harness/InteractionLogRegex.ts": [
+      "CompiledSelectRegex",
+      "MAX_MATCH_LINE_BYTES",
+      "MAX_MATCH_LINE_BYTES_TWO_UNBOUNDED",
+      "SELECT_TIME_BUDGET_MS",
+      "analyzeSelectRegex"
+    ],
+    "src/agent/knowledge/ScratchKnowledge.ts": [
+      "ScratchApplyResult",
+      "ScratchOptions",
+      "ScratchPayload",
+      "SkillMatcher"
+    ],
+    "src/agent/knowledge/knowledgeLoad.ts": [
+      "DEFAULT_MAX_SKILLS",
+      "MAX_TASK_SKILLS"
+    ],
+    "src/agent/learning/ChildKnowledgeOverlay.ts": [
+      "CHILD_REVISIONS_TAG",
+      "OverlayBase"
+    ],
+    "src/agent/learning/Diagnoser.ts": [
+      "buildDiagnosisPrompt"
+    ],
+    "src/agent/learning/KnowledgeEditor.ts": [
+      "buildDraftPrompt",
+      "taskKeywords",
+      "taskRef"
+    ],
+    "src/agent/learning/LeafLearnerContext.ts": [
+      "countBudget"
+    ],
+    "src/agent/learning/LeafLearnerStore.ts": [
+      "ValidationRun"
+    ],
+    "src/agent/learning/LeafRound.ts": [
+      "callContextOf",
+      "completeEvaluation",
+      "resultsFor",
+      "runDedup"
+    ],
+    "src/agent/learning/LearningTrace.ts": [
+      "DEFAULT_TRACE_MAX_ACTIONS",
+      "buildTraceEntity"
+    ],
+    "src/agent/learning/RecursiveChildren.ts": [
+      "RecursiveCtor"
+    ],
+    "src/agent/learning/RecursiveDrive.ts": [
+      "CheckedStart",
+      "mergeDepsOf"
+    ],
+    "src/agent/learning/RecursiveEvaluate.ts": [
+      "LiveEvaluation"
+    ],
+    "src/agent/learning/RecursiveLearnerState.ts": [
+      "LoadedRecursive",
+      "SplitEvidence",
+      "sumTokens"
+    ],
+    "src/agent/learning/RecursiveMerge.ts": [
+      "ValidateAndApplyArgs"
+    ],
+    "src/agent/learning/RecursivePlan.ts": [
+      "normalizeSubsets",
+      "splitContextOf"
+    ],
+    "src/agent/learning/RevisionGeneralize.ts": [
+      "GENERALIZE_DESCRIPTION_JACCARD",
+      "canGeneralize"
+    ],
+    "src/agent/learning/llmJson.ts": [
+      "escapeFenceContent",
+      "escapeHeading"
+    ],
+    "src/agent/learning/revisionMergeShared.ts": [
+      "BODY_MAX_CHARS",
+      "FIELD_MAX_CHARS"
     ],
     "src/agent/procedural/graph/backing/ProceduralGraphState.ts": [
       "PGRevisionListItem"
     ],
-    "src/agent/skills/SkillFormat.ts": [
-      "ParseSkillOptions",
-      "SKILL_FRONT_MATTER_KEYS",
-      "SkillParseFailure",
-      "SkillParseResult"
-    ],
-    "src/agent/skills/SkillManager.ts": [
-      "SkillContextOptions",
-      "SkillListOptions",
-      "SkillMatch",
-      "SkillMatchOptions",
-      "SkillOutcome",
-      "SkillOutcomeResult",
-      "SkillRetireResult",
-      "SkillSimilarityProvider",
-      "SkillUpdateResult"
-    ],
     "src/agent/skills/SkillPublisher.ts": [
-      "ImportParseError",
-      "PublishOptions",
-      "SkillPublishMarker"
+      "SkillPublisherOptions"
+    ],
+    "src/agent/skills/skillRecordUtils.ts": [
+      "LexicalSkillMatch"
     ],
     "src/agent/skills/skillTreeFs.ts": [
-      "ConfinedRead"
+      "TreeDirRefusal"
     ],
     "src/cli/commands/audit.ts": [
       "AUDIT_OPERATIONS"
@@ -92,6 +179,9 @@
       "EXTRA_NUMERIC_VARS",
       "defaultWorkerDirs"
     ],
+    "src/cli/plainTable.ts": [
+      "PlainTableOptions"
+    ],
     "src/core/GraphTraversal.ts": [
       "DEFAULT_ALL_PATHS_MAX_EXPANSIONS",
       "DEFAULT_ALL_PATHS_MAX_PATHS",
@@ -100,6 +190,13 @@
       "RankedNeighborWithRelation",
       "SimilarityProvider",
       "TraversalOptionsWithTracking"
+    ],
+    "src/core/context/BootstrapFacade.ts": [
+      "BootstrapFacadeDeps"
+    ],
+    "src/core/context/LearningFacade.ts": [
+      "DEFAULT_LOOP_LEAF_THRESHOLD",
+      "LearningFacadeDeps"
     ],
     "src/core/context/StorageInfraFacade.ts": [
       "StorageInfraDeps"
@@ -116,7 +213,6 @@
     "src/features/IOManager.ts": [
       "IOManagerOptions",
       "IngestMode",
-      "IngestProduced",
       "IngestTokenUsage",
       "IngestValidationFeedback"
     ],
@@ -133,8 +229,15 @@
       "CorrectQueryOptions",
       "CorrectedQuery"
     ],
-    "src/search/SemanticSearch.ts": [
-      "SemanticSearchOptions"
+    "src/search/enDate/calendar.ts": [
+      "daysBackwardToWeekday",
+      "weekdayOf"
+    ],
+    "src/search/enDate/constants.ts": [
+      "FULL_MONTH_NAME_DICTIONARY",
+      "NUMBER_PATTERN",
+      "TIME_UNIT_DICTIONARY_NO_ABBR",
+      "parseNumberPattern"
     ],
     "src/types/agent-memory.ts": [
       "AtLeastOne",
