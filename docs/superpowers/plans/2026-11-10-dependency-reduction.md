@@ -13,6 +13,10 @@
 ## Global Constraints
 
 - Node production runtime remains `>=22.12.0`. Bun remains `>=1.4.2` and `packageManager` remains `bun@1.4.2`.
+- Bun is the dev toolchain. Node is the deployment runtime. Published code is not required to run under Bun. There is no `bun:sqlite` adapter. Daniel decided this on 2026-11-10 (9:59 AM CT).
+- Every sprint keeps these commands green: `bun install --frozen-lockfile`, `bun run typecheck`, `bun run lint`, `bun run test:ci`, `bun run build`.
+- `bun run test:ci` is the Node test lane. The script in `package.json` is `node -e` plus `execSync('vitest run --exclude=tests/performance/**')`. CI (`.github/workflows/typescript.yml`) runs that command on Ubuntu, macOS, and Windows for Node 22 and Node 24, after installing Bun 1.4.2 and running `bun install --frozen-lockfile`. Do not change `test:ci` to `bun test` or `bun --bun vitest`. `bun run test` (`vitest run` with no `node` prefix) may host Vitest inside Bun; Node-only tests must not depend on that command.
+- A test that needs `node:sqlite` skips only when `typeof Bun !== 'undefined'`. In the Node lane it runs. CI already re-runs `bun run test:ci` with `MEMORY_SQLITE_DRIVER=node` on Ubuntu and Node 24. That step stays. No new Bun-runtime job.
 - `bun.lock` is the lockfile that changes. Do not add a root `package-lock.json`.
 - Public exports in `package.json` `exports` stay. No exported TypeScript name is removed or retyped.
 - `overrides.esbuild` stays `^0.28.1`.
@@ -59,7 +63,7 @@ Handoff on every sprint: builder, then challenger, then the build reviewer recon
 
 **Semver:** none. Dev dependency only. Consumers of `^4.5.0` do not install it.
 **Scope:** `clean` deletes `dist` and nothing else. `prepublishOnly` still runs `bun run clean`.
-**Acceptance:** `rg rimraf package.json bun.lock` finds no matches. `bun run clean` removes a `dist/` directory and exits 0 when `dist/` is already absent.
+**Acceptance:** `rg rimraf package.json bun.lock` finds no matches. `bun run clean` removes a `dist/` directory and exits 0 when `dist/` is already absent. The script stays `node scripts/clean-dist.mjs` and calls `node:fs/promises` `rm` with `{ recursive: true, force: true }`. `bun run clean` needs `node` on `PATH`, which the CI job provides via `actions/setup-node` before Bun. This matches in-flight PR #292. Do not invoke the script with `bun` as the runtime.
 
 ### Task 1: Replace the clean script
 
@@ -166,7 +170,7 @@ Expected: each command exits 0, then `dist removed`.
 
 **Semver:** patch. No public type changes. CLI color codes for the six styles stay the same when color is enabled.
 **Scope:** `src/cli/ansi.ts` plus the two CLI importers. Do not add chalk styles the call sites do not use.
-**Acceptance:** `rg "from 'chalk'" src tests` finds no matches. `dependencies` has no `chalk`. A forced-color string equals chalk 6.0.0's string for each style before chalk is removed. `NO_COLOR=1` returns the input unchanged.
+**Acceptance:** `rg "from 'chalk'" src tests` finds no matches. `dependencies` has no `chalk`. A forced-color string equals chalk 6.0.0's string for each style before chalk is removed. `NO_COLOR=1` returns the input unchanged, including when `FORCE_COLOR` is also set. An empty `NO_COLOR` does not disable color. The helper uses `process.env` and `process.stdout.isTTY`. It has no Bun-only API. Proof is the Node test lane.
 
 ### Task 3: Parity test against chalk, then the helper
 
@@ -349,7 +353,7 @@ Expected: commands exit 0. `package.json` has no chalk. The CLI bundle contains 
 
 **Semver:** patch. JSON and CSV formatter output stays byte-identical. Border glyphs may differ from `cli-table3`. Daniel can reject this sprint if a downstream tool snapshots those borders.
 **Scope:** `src/cli/formatters.ts` table construction only. `wordWrap: true` is passed only by the entity table and the search-results table. The relation table and the centrality table omit it.
-**Acceptance:** `cli-table3` is gone from `package.json` and `bun.lock`. `formatEntities(..., 'json')` tests still pass. `colWidths` stay cli-table3 full column widths (content width is `max(1, colWidth - 2)`). A fullwidth character counts as width 2. A token wider than the content width hard-breaks when `wordWrap` is true. ANSI in a header does not change the border width.
+**Acceptance:** `cli-table3` is gone from `package.json` and `bun.lock`. `formatEntities(..., 'json')` tests still pass. `colWidths` stay cli-table3 full column widths (content width is `max(1, colWidth - 2)`). A fullwidth character counts as width 2. A token wider than the content width hard-breaks when `wordWrap` is true. ANSI in a header does not change the border width. Width is computed in the helper. Do not call `Bun.stringWidth`. The fixtures run in the Node test lane.
 
 ### Task 5: Plain table used by the formatters
 
@@ -587,7 +591,7 @@ Expected: exit 0, no matches.
 
 ## Sprint 4 — REBUILD `async-mutex`
 
-**Semver:** patch. No new public export is required. `RunExclusiveMutex` may stay unexported from `src/utils/index.ts`. If the builder exports it, add a JSDoc first sentence and re-run repo-tools.
+**Semver:** patch. No new public export is required. `RunExclusiveMutex` may stay unexported from `src/utils/index.ts`. If the builder exports it, add a JSDoc first sentence and re-run repo-tools. The mutex is a promise queue. It does not import `node:async_hooks`. The Node test lane is sufficient.
 **Scope:** Replace `new Mutex()` / `runExclusive` only. Do not change `src/utils/AsyncMutex.ts` or any `graphMutex.acquire` call. `AsyncMutex` times out; `async-mutex` does not. Mixing them will fail storage tests under load.
 **Acceptance:** `rg "async-mutex" src tests package.json bun.lock` finds no matches. Two `runExclusive` calls on one mutex run in order. A thrown error releases the mutex. There is no 30s timer.
 
@@ -756,7 +760,7 @@ Challenger adds a test where 100 `runExclusive` callbacks append to an array and
 
 **Decision:** Daniel, 2026-11-10, 9:12 AM CT. Rebuild. Not an optional peer. Not gated. Not a 5.0.0.
 **Semver:** patch, and only after both oracles hold. No consumer-visible behavior change. `parseEnDate` is not exported from a package barrel. Changelog under `## [Unreleased]` says the English date parser is in-repo, custom phrases match the previous parser, and fallback phrases match chrono-node 2.9.1. Do not bump `package.json` `version` in this sprint unless the release process for that patch is already the PR's job.
-**Scope:** `src/search/enDate/` plus `TemporalQueryParser`. Comments in `TemporalSearch.ts`, `SearchManager.ts`, and `SearchFacade.ts` that name chrono-node are updated to name the in-repo parser. No other module imports chrono-node.
+**Scope:** `src/search/enDate/` plus `TemporalQueryParser`. Comments in `TemporalSearch.ts`, `SearchManager.ts`, and `SearchFacade.ts` that name chrono-node are updated to name the in-repo parser. No other module imports chrono-node. Calendar math uses `Date.UTC` and `getUTC*`. It does not use `Intl` timezone names. `TZ=UTC` is set on the Vitest process. The Node lane and a Bun-hosted Vitest then see the same instants for those UTC getters.
 **Acceptance:** `rg "chrono-node" src package.json bun.lock` finds no matches except a MIT attribution line if a pattern table was adapted. At reference `2026-01-15T12:00:00.000Z` with `TZ=UTC`, custom phrases return the same start and end instants as today's `TemporalQueryParser` (not as chrono). Fallback phrases return the same instants as chrono-node 2.9.1 after the same forward-date retry and the same single-result or multi-result range assembly. Text chrono returns no result for still returns `undefined`. A throw from today's `parse` or `parseDate` path still throws. The dependency is removed only after that parity run is green.
 
 ### Task 9: Inventory and failing phrase tests
@@ -944,7 +948,7 @@ The build checker/fixer checks this sprint against the six requirements: custom-
 **Decision:** Daniel, 2026-11-10, 9:13 AM CT. After Sprint 5. Lowest risk of the remaining runtime rebuilds: a mismatch is help text, not stored data.
 **Semver:** patch when every help snapshot matches commander 15.0.0. If a snapshot cannot match, stop and ask Daniel. Do not ship different help as a silent patch.
 **License:** MIT. Add the commander copyright to the file header or `THIRD_PARTY_NOTICES` only if text is adapted.
-**Acceptance:** `rg "from 'commander'" src tests package.json` finds no matches. `memory --help` and each command's `--help` match the recorded commander snapshots. Pipe mode still calls `parseAsync(args, { from: 'user' })`. `exitOverride`, `help`, `alias('i')` on the interactive command, option defaults, variadic arguments, and `choices` still behave as commander 15.0.0 did. `InvalidArgumentError` from `maintenance.ts` still rejects a non-finite number with the message `Expected a finite number`.
+**Acceptance:** `rg "from 'commander'" src tests package.json` finds no matches. `memory --help` and each command's `--help` match the recorded commander snapshots. Pipe mode still calls `parseAsync(args, { from: 'user' })`. Tests pass an explicit argv. They do not read the runner's `process.argv`. `exitOverride` throws instead of calling `process.exit`, so Vitest under `bun run test:ci` stays alive. `help`, `alias('i')` on the interactive command, option defaults, variadic arguments, and `choices` still behave as commander 15.0.0 did. `InvalidArgumentError` from `maintenance.ts` still rejects a non-finite number with the message `Expected a finite number`. The shipped CLI remains a Node bin.
 
 ### Task 13: Help snapshots, then the parser
 
@@ -975,7 +979,7 @@ Expected: exit 0. `package.json` has no `commander`.
 **Decision:** Daniel, 2026-11-10, 9:13 AM CT. After Sprint 6. Higher risk than the CLI because schemas guard stored data and MCP `invalid_args`.
 **Semver:** patch when inferred types and surfaced errors match Zod 4.6.7. No public field is added or removed.
 **License:** MIT. Notice only if Zod source is adapted.
-**Acceptance:** the inventory test lists every `z.` call in `src/`. `formatZodErrors` output matches Zod for the same failures. Recursa tool `safeParse` failures keep the same issue paths and messages. `z.infer` aliases in `src/utils/index.ts` still typecheck.
+**Acceptance:** the inventory test lists every `z.` call in `src/`. `formatZodErrors` output matches Zod for the same failures. Recursa tool `safeParse` failures keep the same issue paths and messages. `z.infer` aliases in `src/utils/index.ts` still typecheck. The replacement is plain TypeScript. It does not touch a runtime-specific module. `bun run typecheck` and the Node test lane are the proof.
 
 ### Task 15: Inventory, parity, then removal
 
@@ -998,7 +1002,7 @@ Same verification block as Sprint 6. `package.json` has no `zod`.
 **Decision:** Daniel, 2026-11-10, 9:13 AM CT. After Sprint 7.
 **Semver:** patch when fuzzy-search results and pool stats match. The public TypeScript exports do not change.
 **License:** Apache-2.0. Notice in `THIRD_PARTY_NOTICES` if any workerpool text is adapted.
-**Acceptance:** `WorkerPoolManager` uses `node:worker_threads`. `cpus`, `pool` (with a script and without one), `exec`, `timeout`, `cancel`, `stats`, `terminate` (with and without `force`), `worker`, `maxWorkers`, `workerType` including `'process'`, and `workerThreadOpts: { type: 'module' }` behave like workerpool 10.2.0. `rg "@danielsimonjr/workerpool" src package.json` finds no package import. Comment mentions may remain.
+**Acceptance:** `WorkerPoolManager` uses `node:worker_threads`. `cpus`, `pool` (with a script and without one), `exec`, `timeout`, `cancel`, `stats`, `terminate` (with and without `force`), `worker`, `maxWorkers`, `workerType` including `'process'` via `node:child_process`, and `workerThreadOpts: { type: 'module' }` behave like workerpool 10.2.0. `rg "@danielsimonjr/workerpool" src package.json` finds no package import. Comment mentions may remain. Parity runs in the Node test lane (`bun run test:ci`). Do not point that script at the Bun runtime. Bun's `worker_threads` support is not the contract.
 
 ### Task 17: Pool parity, then removal
 
@@ -1018,14 +1022,15 @@ Same verification block as Sprint 6. `package.json` has no `@danielsimonjr/worke
 ## Sprint 9 — REBUILD `better-sqlite3` (gated)
 
 **Decision:** Daniel, 2026-11-10, 9:13 AM CT. Last, because it is the storage engine.
-**Gate:** `node:sqlite` was added in 22.5.0 behind `--experimental-sqlite`, unflagged in 22.13.0 (`nodejs/node#55890`), and given FTS5 in 22.16.0 (`nodejs/node#57621`). `engines.node` is `>=22.12.0`. WAL is a default SQLite pragma and is not the FTS5 gap. The CI job name `ci` installs the newest Node 22 and Node 24, so a green matrix does not cover 22.12 through 22.15. This sprint is GATED on that fact. Ask Daniel. Do not bump `engines` here. Do not delete `better-sqlite3` here. A later major, only after Daniel accepts it, may set `engines.node` to `>=22.16.0` and then run the probe below.
+**Gate:** `node:sqlite` was added in 22.5.0 behind `--experimental-sqlite`, unflagged in 22.13.0 (`nodejs/node#55890`), and given FTS5 in 22.16.0 (`nodejs/node#57621`). `engines.node` is `>=22.12.0`. WAL is a default SQLite pragma and is not the FTS5 gap. The CI job name `ci` installs the newest Node 22 and Node 24, so a green matrix does not cover 22.12 through 22.15. This sprint is GATED on that fact. Ask Daniel. Do not bump `engines` here. Do not delete `better-sqlite3` here. A later major, only after Daniel accepts it, may set `engines.node` to `>=22.16.0` and then run the probe below. The target is `node:sqlite` on Node. Do not add a `bun:sqlite` backend. Bun has no `node:sqlite`.
+**Test lane:** Developers still type `bun run test:ci`. That script starts Node, so the probe loads `node:sqlite` there. The file skips only when `typeof Bun !== 'undefined'`, and the skip message says the Node lane is `bun run test:ci`. CI already runs that command on Node 22 and Node 24, and re-runs it with `MEMORY_SQLITE_DRIVER=node` on Ubuntu Node 24. Keep both. Do not add a Bun-runtime job for this sprint.
 **Semver:** no release in this sprint while the gate is closed. The follow-up that bumps `engines.node` to `>=22.16.0` is a major. Query results, transactions, WAL, and pragmas must match better-sqlite3 13.0.3 before that major deletes the native module.
 **License:** MIT. Notice only if better-sqlite3 text is adapted.
 **Acceptance while gated:** the spec and this plan state the version facts, and `package.json` still depends on `better-sqlite3`. **Acceptance of the later major:** `SQLiteStorage` constructs `createNodeSqliteDatabaseCtor()` by default. A benchmark records rows/sec against the native module on one CI runner and is committed as a note in the PR, not as a flaky assertion. `better-sqlite3` and `@types/better-sqlite3` are gone from the root `package.json`. `scripts/rebuild-native.mjs` no longer lists it. `doctor.ts` no longer requires the addon. `scripts/node-runtime-smoke.mjs` no longer requires it. Both `tsup.config.ts` `external` entries drop it. `tools/migrate-from-jsonl-to-sqlite` is not edited. `SqliteProceduralGraphBacking` keeps calling `resolveSQLiteDatabaseCtor()`.
 
 ### Task 19: Stability probe
 
-- [ ] **Step 1: Add `tests/unit/core/node-sqlite-probe.test.ts`.** It skips only when `isNodeSqliteAvailable()` is false, and when it skips it prints the Node version. On a pass it creates a temp database, sets `journal_mode = WAL`, creates an FTS5 table, inserts, queries, and rolls back a transaction.
+- [ ] **Step 1: Add `tests/unit/core/node-sqlite-probe.test.ts`.** It skips only when `typeof Bun !== 'undefined'` (Vitest hosted by Bun, where `node:sqlite` does not exist). On Node it does not skip. A failure to load `node:sqlite` on Node, or a failed FTS5, WAL, transaction, pragma, or prepared statement, fails the test. On a pass it creates a temp database, sets `journal_mode = WAL`, creates an FTS5 table, inserts through a prepared statement, queries, checks a pragma, and rolls back a transaction. Run it with `bun run test:ci` so the process is Node.
 - [ ] **Step 2: Do not treat a pass on the six `ci` jobs as permission to delete `better-sqlite3`.** Those jobs run the newest Node 22. Record the probe's Node version. The sprint stays GATED until Daniel accepts `engines.node` `>=22.16.0`.
 
 ### Task 20: Parity and removal, only in the major Daniel accepts after Task 19
@@ -1059,6 +1064,7 @@ The builder does not open a PR for these. The spec records why.
 - Sprint 4's interface is `RunExclusiveMutex.runExclusive`, not `AsyncMutex.acquire`. The legacy-delete fake uses `AsyncMutex.acquire`.
 - Sprint 2's `ansi` keys match the call sites (`cyan`, `bold`, `green`, `red`, `yellow`, `gray`).
 - Sprint 3's `PlainTable` options match `formatters.ts` (`head`, `colWidths`, `wordWrap`). `colWidths` include the two padding cells.
-- Sprint 5 rebuilds chrono-node with two oracles. Sprints 6–8 rebuild commander, Zod, and workerpool in that risk order. Sprint 9 stays gated because FTS5 needs Node 22.16.0 and the engines floor is 22.12.0. Sprints 5–8 may each add a changelog note. Sprint 9 adds one only in the major Daniel accepts. A behavior change is not allowed when parity holds.
+- Sprint 5 rebuilds chrono-node with two oracles. Sprints 6–8 rebuild commander, Zod, and workerpool in that risk order. Sprint 9 stays gated because FTS5 needs Node 22.16.0 and the engines floor is 22.12.0. It uses `node:sqlite` only, reached through `bun run test:ci`. Sprints 5–8 may each add a changelog note. Sprint 9 adds one only in the major Daniel accepts. A behavior change is not allowed when parity holds.
+- Bun develops and Node ships. No sprint requires the published program to run under Bun.
 - No step says TBD. Verification commands are exact.
 - Per sprint the handoff is builder deepseek-v41-flash-1017, challenger glm-5p3-flash, build reviewer composer-2.5, build checker/fixer grok-4.6, final PR reviewer grok-4.7.

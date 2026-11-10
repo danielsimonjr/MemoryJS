@@ -18,6 +18,7 @@ Cut third-party packages MemoryJS installs and ships, without changing the publi
 - Vendoring large packages. No dependency in this inventory is both small enough and license-clean enough that copying the upstream source is better than a narrow in-repo replacement or than keeping the package.
 - Changing `tools/*` packages. They are not part of the published `files` list (`dist`, `scripts/rebuild-native.mjs`, `README.md`, `LICENSE`).
 - A major version inside Sprints 1–8. Public exports, CLI flag names, storage formats, and environment variables stay as they are. The only major this design allows is a later Sprint 9 PR that Daniel accepts, and its only break is `engines.node` moving to `>=22.16.0`.
+- Running the published library or the CLI under Bun. Bun is the development toolchain. Node is the deployment runtime. There is no `bun:sqlite` adapter.
 
 ## Roles for later sprints
 
@@ -301,7 +302,8 @@ KEEP packages have no sprint.
 
 These lines are binding on every sprint. The plan repeats them.
 
-- Node production runtime remains `>=22.12.0`. Bun remains `>=1.4.2` and `packageManager` remains `bun@1.4.2`.
+- Node production runtime remains `>=22.12.0`. Bun remains `>=1.4.2` and `packageManager` remains `bun@1.4.2`. Bun installs, runs scripts, and drives CI. The published `dist/` and the CLI run on Node 22 and Node 24. They are not required to run inside the Bun runtime.
+- Daniel decided on 2026-11-10 (9:59 AM CT) that every sprint keeps the Bun dev workflow green: `bun install --frozen-lockfile`, `bun run typecheck`, `bun run lint`, `bun run test:ci`, and `bun run build`. What CI actually runs is recorded under "Dev toolchain and the Node test lane" below. A sprint does not add a Bun-runtime matrix.
 - `bun.lock` is the lockfile that changes. Do not add a root `package-lock.json`.
 - Public exports in `package.json` `exports` stay. No exported TypeScript name is removed or retyped.
 - `overrides.esbuild` stays `^0.28.1`.
@@ -313,12 +315,38 @@ These lines are binding on every sprint. The plan repeats them.
 - `npx --yes @danielsimonjr/repo-tools@2.3.0 docs check src` and `npx --yes @danielsimonjr/repo-tools@2.3.0 check . --docs=docs/architecture` must exit 0 when a sprint adds an exported symbol. New exports need a JSDoc block whose first sentence says what the function does.
 - No force-push, rebase, amend, or `--no-verify`. No publish.
 
+## Dev toolchain and the Node test lane
+
+Daniel decided on 2026-11-10 (9:59 AM CT): Bun is how the repo is developed. Node is what ships.
+
+Checked against `.github/workflows/typescript.yml` and `package.json` on 2026-11-10:
+
+- Job `ci` is a matrix of Ubuntu, macOS, and Windows, and Node 22 and Node 24. Each leg also installs Bun 1.4.2. Install is `bun install --frozen-lockfile`. Typecheck, lint, test, and build are `bun run typecheck`, `bun run lint`, `bun run test:ci`, and `bun run build`.
+- `test:ci` is not `bun test`. The script is `node -e` which sets `IGNORE_UNHANDLED_REJECTIONS` and then `child_process.execSync('vitest run --exclude=tests/performance/**')`. `bun run test:ci` therefore starts Node, and Vitest's workers are Node children. `vitest.config.ts` sets `environment: 'node'`. That is the Node test lane. `node:sqlite` can load there when the `node` on `PATH` is new enough.
+- `scripts.test` is `vitest run` with no `node` prefix. `bun run test` may execute that bin inside Bun. Sprints must not move `test:ci` onto `bun --bun` or `bun test`.
+- One extra step, Ubuntu and Node 24 only, re-runs `bun run test:ci` with `MEMORY_SQLITE_DRIVER=node`. That is already the Node lane for the built-in driver. A later step runs `node scripts/node-runtime-smoke.mjs` on the built CJS bundle. CI does not execute the suite inside Bun, and this design does not add that job.
+- `node:sqlite` is absent in Bun. Sprint 9 does not add `bun:sqlite`. Probe and parity tests for `node:sqlite` run in the Node lane (`bun run test:ci` and the Ubuntu Node 24 step). A test file may skip only when `typeof Bun !== 'undefined'` (Vitest hosted by Bun, where `node:sqlite` cannot load). The Node lane must not skip. CI covers that lane on Node 22 and Node 24 today, and the driver step covers `MEMORY_SQLITE_DRIVER=node` on Node 24.
+
+Per-sprint audit for the Bun dev workflow. None of these require the published code to run under Bun.
+
+| Sprint | Node-only API? | Dev-workflow note |
+|---|---|---|
+| 1 `rimraf` | `node:fs/promises` `rm` inside `scripts/clean-dist.mjs`, invoked as `node scripts/clean-dist.mjs` | `bun run clean` needs `node` on `PATH`. CI installs Node before Bun. `fs.rm({ recursive: true, force: true })` is the Node 22 call. In-flight PR #292 already uses that shape. No Bun-runtime change. |
+| 2 `chalk` | No. The helper reads `NO_COLOR` and `FORCE_COLOR` and `process.stdout.isTTY` | Same env checks on the Node test lane. Empty `NO_COLOR` does not disable color. A non-empty `NO_COLOR` wins over `FORCE_COLOR`. |
+| 3 `cli-table3` | No. Width is a pure function | Do not call `Bun.stringWidth`. The fixtures run in the Node lane and must match the recorded `string-width` 4 cases. |
+| 4 `async-mutex` | No. Promise FIFO | No `node:async_hooks`. The queue behaves the same in the Node test lane. |
+| 5 date parser | No, if it keeps `Date.UTC` and `getUTC*` | Tests launch with `TZ=UTC`. Do not use `Intl` timezone names. Local getters are not the oracle. |
+| 6 `commander` | `process.argv` and `process.exit` in the shipped CLI, which is Node | Tests call `parse` / `parseAsync` with an explicit argv and `{ from: 'user' }`. `exitOverride` throws. They do not depend on Bun's argv. |
+| 7 `zod` | No. Pure functions | `safeParse`, `z.infer`, and `toJSONSchema` run in the Node lane. |
+| 8 worker pool | `node:worker_threads` and, for `workerType: 'process'`, `node:child_process` | Required proof is the Node lane (`bun run test:ci`). Do not retarget that script at Bun. Bun 1.4's worker implementation is not the deployment target. |
+| 9 `better-sqlite3` | `node:sqlite` on Node only | No `bun:sqlite`. Tests run via `bun run test:ci` so the process is Node. Skip only when `typeof Bun !== 'undefined'`. Still gated on Daniel for an `engines.node` bump to `>=22.16.0`. |
+
 ## Success criteria
 
 - After Sprints 1–8, root `devDependencies` no longer lists `rimraf`, and root `dependencies` and `devDependencies` no longer list `chalk`, `async-mutex`, `cli-table3`, `chrono-node`, `commander`, `zod`, or `@danielsimonjr/workerpool`. Sprint 9 removes `better-sqlite3` and `@types/better-sqlite3` only in the major Daniel accepts for `engines.node` `>=22.16.0`. Until then they stay.
 - `bun.lock` no longer contains those keys or `rimraf`'s `glob` / `minimatch` chain unless some other direct dependency still pulls them (today none does).
 - `rg "from 'chalk'|from 'cli-table3'|from 'async-mutex'|from 'chrono-node'|rimraf" src package.json` finds no matches.
-- `bun run test:ci`, `bun run typecheck`, `bun run lint`, and `bun run build` exit 0.
+- `bun install --frozen-lockfile`, `bun run typecheck`, `bun run lint`, `bun run test:ci`, and `bun run build` exit 0. `bun run test:ci` still starts with `node -e` so Vitest runs on Node. `node:sqlite` tests skip only when `typeof Bun !== 'undefined'`.
 - Exported type names from `src/utils/index.ts` and the CLI's command names are unchanged.
 - Sprint 5's recorded corpus at `2026-01-15T12:00:00.000Z` in UTC matches today's custom-pattern instants, and matches chrono-node 2.9.1 on the fallback phrases. Text chrono returns no result for still returns `undefined`. A throw from `parse` or `parseDate` still throws.
 
@@ -327,5 +355,6 @@ These lines are binding on every sprint. The plan repeats them.
 - No package in `package.json` is missing a decision.
 - VENDOR is defined and unused on purpose.
 - `AsyncMutex` is distinguished from the `async-mutex` replacement so a builder cannot "reuse the existing mutex."
-- Sprint 5 rebuilds chrono-node. Sprints 6–8 rebuild commander, Zod, and workerpool. Sprint 9 stays gated: latest Node 22 on CI is not the `>=22.12.0` floor, and FTS5 needs 22.16.0. Optional peers and the dev toolchain have no rebuild sprint.
+- Sprint 5 rebuilds chrono-node. Sprints 6–8 rebuild commander, Zod, and workerpool. Sprint 9 stays gated: latest Node 22 on CI is not the `>=22.12.0` floor, and FTS5 needs 22.16.0. It targets `node:sqlite` only. Optional peers and the dev toolchain have no rebuild sprint.
+- Bun develops; Node ships. The Node test lane is `bun run test:ci`. There is no `bun:sqlite` path.
 - Tool packages and the esbuild override are explicit keeps.
