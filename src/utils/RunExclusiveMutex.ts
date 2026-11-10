@@ -1,12 +1,9 @@
 /**
- * Run-exclusive mutex.
+ * FIFO mutex whose `runExclusive` has no timeout and no queue cap.
  *
- * FIFO promise queue whose `runExclusive` matches the mutex this repo used
- * before Sprint 4 of the dependency-reduction plan (the `runExclusive` contract
- * of that package, version 0.5.0): the release happens in a `finally`, so a throw
- * or a rejection frees the next waiter, the callback's return value passes
- * through, and there is no timeout and no queue cap. A waiter also settles in the
- * same number of microtask turns as before (pinned in
+ * The release happens in a `finally`, so a throw or a rejection frees the next
+ * waiter, the callback's return value passes through, and a waiter settles in
+ * the same number of microtask turns as the previous mutex (pinned in
  * `tests/unit/utils/RunExclusiveMutex.test.ts`), so callers and their tests
  * cannot observe the swap. It is not reentrant: a nested `runExclusive` on the
  * same instance waits for the outer section to finish.

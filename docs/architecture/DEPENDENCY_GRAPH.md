@@ -6997,7 +6997,7 @@ Reachable from a root: **404** of 404 files. Dormant: **0** (0 orphaned, 0 test-
 
 ---
 
-### `src/utils/RunExclusiveMutex.ts` - Run-exclusive mutex.
+### `src/utils/RunExclusiveMutex.ts` - FIFO mutex whose `runExclusive` has no timeout and no queue cap.
 
 **Exports:**
 - Classes: `RunExclusiveMutex`
