@@ -5,7 +5,7 @@
  * @internal
  */
 
-import { z } from 'zod';
+import { z } from '../../utils/schema.js';
 import type { PGCompletionProvider } from '../procedural/graph/CompletionProvider.js';
 import type { KnowledgeRevisionRecord, RevisionOp } from '../../types/skills.js';
 

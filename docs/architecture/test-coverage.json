@@ -1,26 +1,24 @@
 {
   "metadata": {
-    "totalSourceFiles": 413,
-    "totalTestFiles": 563,
-    "testedCount": 379,
-    "untestedCount": 34,
-    "coveragePercent": "91.8",
+    "totalSourceFiles": 414,
+    "totalTestFiles": 566,
+    "testedCount": 382,
+    "untestedCount": 32,
+    "coveragePercent": "92.3",
     "effectiveCoverage": {
       "policyLoaded": false,
-      "activeFiles": 413,
-      "testedActive": 379,
-      "activeUntested": 34,
+      "activeFiles": 414,
+      "testedActive": 382,
+      "activeUntested": 32,
       "excludedTotal": 0,
-      "percent": "91.8",
+      "percent": "92.3",
       "breakdown": {
-        "active_untested": 34
+        "active_untested": 32
       }
     }
   },
   "untestedFiles": [
     "src/adapters/recursaToolBounds.ts",
-    "src/adapters/recursaToolSchemas.ts",
-    "src/adapters/recursaToolSupport.ts",
     "src/agent/bootstrap/bootstrapShared.ts",
     "src/agent/harness/InteractionLogBlobs.ts",
     "src/agent/learning/ChildKnowledgeOverlay.ts",
@@ -62,6 +60,8 @@
     "src/adapters/RestRouter.ts",
     "src/adapters/index.ts",
     "src/adapters/pagination.ts",
+    "src/adapters/recursaToolSchemas.ts",
+    "src/adapters/recursaToolSupport.ts",
     "src/agent/AccessTracker.ts",
     "src/agent/AgentEnvDefaults.ts",
     "src/agent/AgentMemoryConfig.ts",
@@ -421,6 +421,7 @@
     "src/utils/postingIndex.ts",
     "src/utils/relationHelpers.ts",
     "src/utils/relationValidation.ts",
+    "src/utils/schema.ts",
     "src/utils/schemas.ts",
     "src/utils/searchAlgorithms.ts",
     "src/utils/searchCache.ts",
@@ -508,8 +509,12 @@
       "tests/unit/exports-barrels.test.ts"
     ],
     "src/adapters/recursaToolBounds.ts": [],
-    "src/adapters/recursaToolSchemas.ts": [],
-    "src/adapters/recursaToolSupport.ts": [],
+    "src/adapters/recursaToolSchemas.ts": [
+      "tests/unit/utils/schema.parity.test.ts"
+    ],
+    "src/adapters/recursaToolSupport.ts": [
+      "tests/unit/utils/schema.parity.test.ts"
+    ],
     "src/agent/AccessTracker.ts": [
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts",
@@ -1709,7 +1714,8 @@
       "tests/unit/agent/procedural/graph/ProceduralGraphSchemas.test.ts",
       "tests/unit/agent/procedural/graph/hardening.test.ts",
       "tests/unit/exports-barrels.recursa.test.ts",
-      "tests/unit/exports-barrels.test.ts"
+      "tests/unit/exports-barrels.test.ts",
+      "tests/unit/utils/schema.parity.test.ts"
     ],
     "src/agent/procedural/graph/ProceduralGraphSerializer.ts": [
       "tests/file-path.test.ts",
@@ -5947,6 +5953,11 @@
       "tests/unit/utils/textSimilarity.tokenSets.test.ts",
       "tests/unit/utils/tokenEstimate.test.ts"
     ],
+    "src/utils/schema.ts": [
+      "tests/unit/utils/schema.challenger.test.ts",
+      "tests/unit/utils/schema.parity.test.ts",
+      "tests/unit/utils/schemas.test.ts"
+    ],
     "src/utils/schemas.ts": [
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts",
@@ -5957,6 +5968,7 @@
       "tests/unit/types/entity-content-hash.test.ts",
       "tests/unit/utils/entityUtils.test.ts",
       "tests/unit/utils/formatters.test.ts",
+      "tests/unit/utils/schema.parity.test.ts",
       "tests/unit/utils/schemas.test.ts",
       "tests/unit/utils/schemas.validateResult.test.ts",
       "tests/unit/utils/searchAlgorithms.test.ts",
@@ -11883,7 +11895,19 @@
       "src/utils/relationValidation.ts",
       "src/types/types.ts"
     ],
+    "tests/unit/utils/schema.challenger.test.ts": [
+      "src/utils/schema.ts"
+    ],
+    "tests/unit/utils/schema.inventory.test.ts": [],
+    "tests/unit/utils/schema.parity.test.ts": [
+      "src/utils/schema.ts",
+      "src/utils/schemas.ts",
+      "src/adapters/recursaToolSchemas.ts",
+      "src/adapters/recursaToolSupport.ts",
+      "src/agent/procedural/graph/ProceduralGraphSchemas.ts"
+    ],
     "tests/unit/utils/schemas.test.ts": [
+      "src/utils/schema.ts",
       "src/utils/index.ts",
       "src/utils/errors.ts",
       "src/utils/errorSuggestions.ts",
@@ -12110,14 +12134,6 @@
   "classifiedUntested": [
     {
       "file": "src/adapters/recursaToolBounds.ts",
-      "category": null
-    },
-    {
-      "file": "src/adapters/recursaToolSchemas.ts",
-      "category": null
-    },
-    {
-      "file": "src/adapters/recursaToolSupport.ts",
       "category": null
     },
     {

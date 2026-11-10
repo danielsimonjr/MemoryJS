@@ -1,11 +1,11 @@
 {
-  "totalFiles": 1022,
+  "totalFiles": 1031,
   "byDisposition": {
-    "reachable": 409,
+    "reachable": 410,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 577,
+    "test": 585,
     "tool": 10,
     "config": 2,
     "bench": 5,
@@ -14,8 +14,8 @@
   "byArea": {
     "benchmarks": 5,
     "examples": 15,
-    "src": 413,
-    "tests": 577,
+    "src": 414,
+    "tests": 585,
     "tools": 10,
     "config": 2
   },
@@ -2945,6 +2945,13 @@
       "area": "src",
       "disposition": "reachable",
       "loc": 44
+    },
+    {
+      "file": "src/utils/schema.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 1641
     },
     {
       "file": "src/utils/schemas.ts",
@@ -6839,6 +6846,41 @@
       "loc": 27
     },
     {
+      "file": "tests/unit/utils/helpers/captureSchemaParity.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 158
+    },
+    {
+      "file": "tests/unit/utils/helpers/captureSchemaSynthetic.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 67
+    },
+    {
+      "file": "tests/unit/utils/helpers/schemaParityCases.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 640
+    },
+    {
+      "file": "tests/unit/utils/helpers/schemaParityFormat.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 99
+    },
+    {
+      "file": "tests/unit/utils/helpers/schemaSyntheticCases.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 216
+    },
+    {
       "file": "tests/unit/utils/ids.test.ts",
       "package": "(root)",
       "area": "tests",
@@ -6956,6 +6998,27 @@
       "area": "tests",
       "disposition": "test",
       "loc": 237
+    },
+    {
+      "file": "tests/unit/utils/schema.challenger.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 268
+    },
+    {
+      "file": "tests/unit/utils/schema.inventory.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 231
+    },
+    {
+      "file": "tests/unit/utils/schema.parity.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 221
     },
     {
       "file": "tests/unit/utils/schemas.test.ts",

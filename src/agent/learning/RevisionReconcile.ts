@@ -14,7 +14,7 @@
  * @internal
  */
 
-import { z } from 'zod';
+import { z } from '../../utils/schema.js';
 import type { RevisionOp, SkillRecord } from '../../types/skills.js';
 import { fencedText, inlineSafe } from './llmJson.js';
 import {

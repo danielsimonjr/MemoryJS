@@ -179,8 +179,7 @@
   "packageManager": "bun@1.4.2",
   "dependencies": {
     "@danielsimonjr/workerpool": "^10.2.0",
-    "better-sqlite3": "^13.0.3",
-    "zod": "^4.6.6"
+    "better-sqlite3": "^13.0.3"
   },
   "peerDependencies": {
     "@huggingface/transformers": "^4.3.1",

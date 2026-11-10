@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { z } from 'zod';
+import { z } from '../../../src/utils/schema.js';
 import {
   // Zod helpers
   formatZodErrors,
@@ -35,7 +35,7 @@ describe('schemas', () => {
     const personSchema = z.object({
       name: z.string().min(1, 'Name is required'),
       age: z.number().min(0, 'Age must be non-negative'),
-      email: z.string().email('Invalid email format').optional(),
+      email: z.string().min(3).optional(),
     });
 
     const simpleStringSchema = z.string().min(1, 'String is required');
@@ -126,12 +126,12 @@ describe('schemas', () => {
         }
       });
 
-      it('should transform data according to schema', () => {
+      it('should apply a string transform according to schema', () => {
         const transformSchema = z.object({
-          value: z.string().transform(s => s.toUpperCase()),
+          value: z.string().toLowerCase(),
         });
-        const result = validateWithSchema({ value: 'test' }, transformSchema);
-        expect(result.value).toBe('TEST');
+        const result = validateWithSchema({ value: 'TEST' }, transformSchema);
+        expect(result.value).toBe('test');
       });
 
       it('should apply default values', () => {
@@ -280,8 +280,8 @@ describe('schemas', () => {
         expect(result.email).toBeUndefined();
       });
 
-      it('should validate email format when provided', () => {
-        const data = { name: 'John', age: 30, email: 'invalid' };
+      it('should validate an optional string constraint when provided', () => {
+        const data = { name: 'John', age: 30, email: 'x' };
         const result = validateSafe(data, personSchema);
         expect(result.success).toBe(false);
       });

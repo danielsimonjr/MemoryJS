@@ -10,7 +10,7 @@
  * @experimental Part of the Recursa evaluation layer (spec RS-25).
  */
 
-import { z } from 'zod';
+import { z } from '../../utils/schema.js';
 import type { CriterionResult, TaskRecord } from '../../types/learning.js';
 import type { PGCompletionProvider } from '../procedural/graph/CompletionProvider.js';
 import { DeterministicJudge, type RubricJudge } from './DeterministicJudge.js';

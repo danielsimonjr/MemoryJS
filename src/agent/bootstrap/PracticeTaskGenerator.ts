@@ -13,7 +13,7 @@
  * @experimental Spec RS-13. Template wording and the LLM prompt may change.
  */
 
-import { z } from 'zod';
+import { z } from '../../utils/schema.js';
 import type { Entity, IGraphStorage } from '../../types/types.js';
 import type { NavigationNodeRecord, SkillSource } from '../../types/skills.js';
 import type { Criterion, TaskRecord } from '../../types/learning.js';

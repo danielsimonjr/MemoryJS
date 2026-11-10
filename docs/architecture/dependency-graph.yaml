@@ -1,8 +1,8 @@
 metadata:
   name: "@danielsimonjr/memoryjs"
-  totalFiles: 413
+  totalFiles: 414
   totalModules: 12
-  totalExports: 2879
+  totalExports: 2897
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -108,15 +108,15 @@ modules:
         - DEFAULT_MAX_BUCKETS
     src/adapters/RecursaToolAdapter.ts:
       description: "RecursaToolAdapter: the reference implementation of the Recursa harness tool surface (spec"
-      externalDependencies:
-        - package: zod
-          imports:
-            - z
+      externalDependencies: []
       nodeDependencies:
         - module: path
           imports:
             - dirname
       internalDependencies:
+        - file: ../utils/schema.js
+          imports:
+            - z
         - file: ../core/ManagerContext.js
           imports:
             - ManagerContext
@@ -389,12 +389,12 @@ modules:
         - boundResult
     src/adapters/recursaToolSchemas.ts:
       description: Argument schemas of the Recursa tool adapter (spec section 3.8). Each schema validates the
-      externalDependencies:
-        - package: zod
-          imports:
-            - z
+      externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../utils/schema.js
+          imports:
+            - z
         - file: ../agent/harness/InteractionLogFormat.js
           imports:
             - INTERACTION_KINDS
@@ -422,16 +422,16 @@ modules:
         - evalRunSchema
     src/adapters/recursaToolSupport.ts:
       description: "Shared plumbing of the Recursa tool adapter: the stable failure codes, the mapping of thrown"
-      externalDependencies:
-        - package: zod
-          imports:
-            - z
+      externalDependencies: []
       nodeDependencies:
         - module: path
           imports:
             - isAbsolute
             - resolve
       internalDependencies:
+        - file: ../utils/schema.js
+          imports:
+            - z
         - file: ../utils/errors.js
           imports:
             - ValidationError
@@ -3097,12 +3097,12 @@ modules:
         - MAX_REF_CHARS
     src/agent/bootstrap/ExplorationNotes.ts:
       description: "Exploration notes (Recursa RS-12): one convention skill per corpus, written as a cheatsheet."
-      externalDependencies:
-        - package: zod
-          imports:
-            - z
+      externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../../utils/schema.js
+          imports:
+            - z
         - file: ../../types/types.js
           imports:
             - IGraphStorage
@@ -3163,12 +3163,12 @@ modules:
         - skillNameFor
     src/agent/bootstrap/PracticeTaskGenerator.ts:
       description: "Practice task generator (Recursa RS-13): turns navigation nodes and source metadata into"
-      externalDependencies:
-        - package: zod
-          imports:
-            - z
+      externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../../utils/schema.js
+          imports:
+            - z
         - file: ../../types/types.js
           imports:
             - Entity
@@ -3589,12 +3589,12 @@ modules:
         - stratifiedSplit
     src/agent/evaluation/LLMRubricJudge.ts:
       description: LLM-backed rubric judge with zod-validated JSON output and per-criterion deterministic fallback.
-      externalDependencies:
-        - package: zod
-          imports:
-            - z
+      externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../../utils/schema.js
+          imports:
+            - z
         - file: ../../types/learning.js
           imports:
             - CriterionResult
@@ -6107,12 +6107,12 @@ modules:
         - CHILD_REVISIONS_TAG
     src/agent/learning/Diagnoser.ts:
       description: "Diagnoser (spec RS-15): classifies why a failed task failed and records failure memory."
-      externalDependencies:
-        - package: zod
-          imports:
-            - z
+      externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../../utils/schema.js
+          imports:
+            - z
         - file: ../FailureManager.js
           imports:
             - FailureManager
@@ -6212,15 +6212,15 @@ modules:
         - DEFAULT_CHILD_CONCURRENCY
     src/agent/learning/KnowledgeEditor.ts:
       description: "KnowledgeEditor (spec RS-16): turns diagnoses into one knowledge revision."
-      externalDependencies:
-        - package: zod
-          imports:
-            - z
+      externalDependencies: []
       nodeDependencies:
         - module: crypto
           imports:
             - randomUUID
       internalDependencies:
+        - file: ../../utils/schema.js
+          imports:
+            - z
         - file: ../skills/SkillManager.js
           imports:
             - SkillManager
@@ -7458,15 +7458,16 @@ modules:
         - GENERALIZE_DESCRIPTION_JACCARD
     src/agent/learning/RevisionMerger.ts:
       description: "RevisionMerger (spec RS-20): merges the knowledge revisions of child learners into one revision."
-      externalDependencies:
-        - package: zod
-          imports:
-            - z
+      externalDependencies: []
       nodeDependencies:
         - module: crypto
           imports:
             - randomUUID
       internalDependencies:
+        - file: ../../utils/schema.js
+          imports:
+            - z
+          typeOnly: true
         - file: ../../types/skills.js
           imports:
             - RevisionOp
@@ -7534,12 +7535,12 @@ modules:
         - RevisionMerger
     src/agent/learning/RevisionReconcile.ts:
       description: "Step 2 of the revision merger (spec RS-20, §3.7 S7): reconcile `skill.update` /"
-      externalDependencies:
-        - package: zod
-          imports:
-            - z
+      externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../../utils/schema.js
+          imports:
+            - z
         - file: ../../types/skills.js
           imports:
             - RevisionOp
@@ -7999,12 +8000,12 @@ modules:
         - OBSERVATION_CHUNK_CHARS
     src/agent/learning/revisionMergeShared.ts:
       description: Types and helpers shared by the revision merger's steps (spec RS-20).
-      externalDependencies:
-        - package: zod
-          imports:
-            - z
+      externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../../utils/schema.js
+          imports:
+            - z
         - file: ../procedural/graph/CompletionProvider.js
           imports:
             - PGCompletionProvider
@@ -8421,12 +8422,12 @@ modules:
         - proposeEdits
     src/agent/procedural/graph/ProceduralGraphSchemas.ts:
       description: Zod v4 schemas for Procedural Graph snapshots and refiner edit sets.
-      externalDependencies:
-        - package: zod
-          imports:
-            - z
+      externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../../../utils/schema.js
+          imports:
+            - z
         - file: ../../../types/proceduralGraph.js
           imports:
             - PGDiagnostic
@@ -20481,16 +20482,63 @@ modules:
         - validateRelationMetadata
         - validateRelationsMetadata
         - allRelationsValidMetadata
+    src/utils/schema.ts:
+      description: In-repo schema validator for the subset of Zod 4.6.7 that MemoryJS uses.
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies: []
+      exports:
+        - z
+        - BaseSchema
+        - StringSchema
+        - NumberSchema
+        - BooleanSchema
+        - NullSchema
+        - UnknownSchema
+        - LiteralSchema
+        - EnumSchema
+        - ArraySchema
+        - TupleSchema
+        - ObjectSchema
+        - RecordSchema
+        - UnionSchema
+        - DiscriminatedUnionSchema
+        - OptionalSchema
+        - NullableSchema
+        - DefaultSchema
+      classes:
+        - BaseSchema
+        - StringSchema
+        - NumberSchema
+        - BooleanSchema
+        - NullSchema
+        - UnknownSchema
+        - LiteralSchema
+        - EnumSchema
+        - ArraySchema
+        - TupleSchema
+        - ObjectSchema
+        - RecordSchema
+        - UnionSchema
+        - DiscriminatedUnionSchema
+        - OptionalSchema
+        - NullableSchema
+        - DefaultSchema
+      interfaces:
+        - SchemaIssue
+        - ToJSONSchemaParams
+      constants:
+        - z
     src/utils/schemas.ts:
       description: Validation Schemas and Helpers
-      externalDependencies:
-        - package: zod
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ./schema.js
           imports:
             - z
             - ZodSchema
             - ZodError
-      nodeDependencies: []
-      internalDependencies:
         - file: ./constants.js
           imports:
             - IMPORTANCE_RANGE
@@ -21347,6 +21395,7 @@ dependencyGraph:
         - src/utils/postingIndex.ts
         - src/utils/relationHelpers.ts
         - src/utils/relationValidation.ts
+        - src/utils/schema.ts
         - src/utils/schemas.ts
         - src/utils/searchAlgorithms.ts
         - src/utils/searchCache.ts
@@ -21367,29 +21416,29 @@ reachability:
     - src/index.ts
     - src/sqlite.ts
     - src/workers/levenshteinWorker.ts
-  reachableCount: 413
+  reachableCount: 414
   dormantCount: 0
   orphaned: []
   testOnly: []
 statistics:
-  totalTypeScriptFiles: 413
+  totalTypeScriptFiles: 414
   totalModules: 12
-  totalLinesOfCode: 131669
-  totalExports: 2879
-  totalClasses: 285
-  totalInterfaces: 837
+  totalLinesOfCode: 133310
+  totalExports: 2897
+  totalClasses: 302
+  totalInterfaces: 839
   totalFunctions: 682
   totalTypeGuards: 49
   totalEnums: 4
-  totalConstants: 193
+  totalConstants: 194
   totalReExports: 1716
-  totalTypeOnlyImports: 873
+  totalTypeOnlyImports: 874
   runtimeCircularDeps: 0
   typeOnlyCircularDeps: 15
   entryRoots: 4
-  reachableFiles: 413
+  reachableFiles: 414
   dormantFiles: 0
   orphanedFiles: 0
   testOnlyFiles: 0
   unusedFilesCount: 0
-  unusedExportsCount: 135
+  unusedExportsCount: 165

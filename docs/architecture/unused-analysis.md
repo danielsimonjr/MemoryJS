@@ -10,9 +10,9 @@
 - **Dormant files** (runtime code on disk, unreachable from any entry/build root): 0
   - **Orphaned (reachable from nothing — delete/wire candidates)**: 0
   - **Test-only (exercised by a test, ships nothing)**: 0
-- **Potentially unused exports**: 135
-  - **Unreferenced anywhere (deletion candidates)**: 3
-  - **Referenced in-module (type contracts / helpers backing live exports)**: 132
+- **Potentially unused exports**: 165
+  - **Unreferenced anywhere (deletion candidates)**: 4
+  - **Referenced in-module (type contracts / helpers backing live exports)**: 161
 
 Seeded reachability roots (4):
 
@@ -61,6 +61,10 @@ parser can't see (dynamic access, docs examples, published-API contract) before 
 
 - `TIME_UNITS_NO_ABBR_PATTERN` (constant)
 
+### `src/utils/schema.ts`
+
+- `ZodIssue` (type)
+
 ## Referenced In-Module (type contracts / helpers backing live exports)
 
 Not imported cross-file, but referenced within their own module — they type or
@@ -88,10 +92,6 @@ support exports that ARE used, so they cannot be deleted in isolation.
 ### `src/adapters/recursaToolBounds.ts`
 
 - `byteSize` (function) — 5 in-file refs
-
-### `src/adapters/recursaToolSupport.ts`
-
-- `messageOf` (function) — 7 in-file refs
 
 ### `src/agent/AgentEnvDefaults.ts`
 
@@ -396,6 +396,39 @@ support exports that ARE used, so they cannot be deleted in isolation.
 ### `src/utils/jsonlMapFile.ts`
 
 - `JsonlMapParseOptions` (interface) — 1 in-file ref
+
+### `src/utils/schema.ts`
+
+- `BaseSchema` (class) — 25 in-file refs
+- `StringSchema` (class) — 4 in-file refs
+- `NumberSchema` (class) — 2 in-file refs
+- `BooleanSchema` (class) — 2 in-file refs
+- `NullSchema` (class) — 2 in-file refs
+- `UnknownSchema` (class) — 2 in-file refs
+- `LiteralSchema` (class) — 2 in-file refs
+- `EnumSchema` (class) — 2 in-file refs
+- `ArraySchema` (class) — 2 in-file refs
+- `TupleSchema` (class) — 2 in-file refs
+- `ObjectSchema` (class) — 2 in-file refs
+- `RecordSchema` (class) — 2 in-file refs
+- `UnionSchema` (class) — 2 in-file refs
+- `DiscriminatedUnionSchema` (class) — 2 in-file refs
+- `OptionalSchema` (class) — 2 in-file refs
+- `NullableSchema` (class) — 2 in-file refs
+- `DefaultSchema` (class) — 2 in-file refs
+- `SchemaIssue` (interface) — 11 in-file refs
+- `ToJSONSchemaParams` (interface) — 1 in-file ref
+- `IssuePath` (type) — 1 in-file ref
+- `SafeParseResult` (type) — 1 in-file ref
+- `MessageParams` (type) — 13 in-file refs
+- `RefineParams` (type) — 2 in-file refs
+- `SchemaShape` (type) — 11 in-file refs
+- `AnySchema` (type) — 60 in-file refs
+- `ObjectOutput` (type) — 1 in-file ref
+- `infer` (type) — 6 in-file refs
+- `output` (type) — 11 in-file refs
+- `input` (type) — 83 in-file refs
+- `ZodType` (type) — 1 in-file ref
 
 ### `src/utils/searchCache.ts`
 

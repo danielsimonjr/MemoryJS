@@ -8,22 +8,20 @@
 
 | Metric | Count |
 |--------|-------|
-| Total Source Files | 413 |
-| Total Test Files | 563 |
-| Source Files with Tests | 379 |
-| Source Files without Tests | 34 |
-| Coverage (raw, direct-import) | **91.8%** |
+| Total Source Files | 414 |
+| Total Test Files | 566 |
+| Source Files with Tests | 382 |
+| Source Files without Tests | 32 |
+| Coverage (raw, direct-import) | **92.3%** |
 ---
 
 ## Source Files Without Test Coverage
 
-The following 34 source files are not directly imported by any test file:
+The following 32 source files are not directly imported by any test file:
 
 ### adapters/
 
 - `src/adapters/recursaToolBounds.ts` → Expected test: `tests/unit/adapters/recursaToolBounds.test.ts`
-- `src/adapters/recursaToolSchemas.ts` → Expected test: `tests/unit/adapters/recursaToolSchemas.test.ts`
-- `src/adapters/recursaToolSupport.ts` → Expected test: `tests/unit/adapters/recursaToolSupport.test.ts`
 
 ### agent/
 
@@ -88,6 +86,8 @@ The following 34 source files are not directly imported by any test file:
 | `adapters/RestRouter.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `ApiKeyAuthMiddleware.test.ts`, `RecursaToolAdapterSafety.test.ts`, `RestRouter.test.ts`, `rest-input-security.test.ts`, `rest-tenancy.test.ts`, `rest-unscoped-warning.test.ts`, `exports-barrels.recursa.test.ts`, `exports-barrels.test.ts` |
 | `adapters/index.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `RecursaToolAdapterSafety.test.ts`, `exports-barrels.recursa.test.ts`, `exports-barrels.test.ts` |
 | `adapters/pagination.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `RecursaToolAdapterSafety.test.ts`, `pagination.test.ts`, `exports-barrels.recursa.test.ts`, `exports-barrels.test.ts` |
+| `adapters/recursaToolSchemas.ts` | `schema.parity.test.ts` |
+| `adapters/recursaToolSupport.ts` | `schema.parity.test.ts` |
 | `agent/AccessTracker.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AccessTracker.recordBatch.test.ts`, `AccessTracker.test.ts`, `AgentMemoryManager.test.ts`, `ConnectivitySignals.test.ts`, `ConsolidationPipeline.mergeDelta.test.ts`, `ConsolidationPipeline.mergeRace.test.ts`, `ConsolidationPipeline.promoteBatch.test.ts`, `ContextProfileManager.test.ts`, `ContextWindowManager.eviction.test.ts`, `ContextWindowManager.knowledge.test.ts`, `ContextWindowManager.test.ts`, `DecayEngine.reinforceBatch.test.ts`, `DecayEngine.test.ts`, `InMemoryBackend.test.ts`, `SalienceEngine-heap-pins.test.ts`, `SalienceEngine.test.ts`, `SessionCheckpoint.test.ts`, `ManagerContext.test.ts`, `exports-barrels.recursa.test.ts`, `exports-barrels.test.ts` |
 | `agent/AgentEnvDefaults.ts` | `AgentEnvDefaults.test.ts` |
 | `agent/AgentMemoryConfig.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ConnectivitySignals.test.ts`, `AgentMemoryFacade.test.ts`, `exports-barrels.recursa.test.ts`, `exports-barrels.test.ts` |
@@ -207,7 +207,7 @@ The following 34 source files are not directly imported by any test file:
 | `graph/ProceduralGraphEvolution.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `ProceduralGraphEvolution.test.ts`, `hardening.test.ts`, `exports-barrels.recursa.test.ts`, `exports-barrels.test.ts` |
 | `graph/ProceduralGraphManager.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `GuardedComponentEdit.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `ProceduralGraphManager.test.ts`, `hardening.test.ts`, `exports-barrels.recursa.test.ts`, `exports-barrels.test.ts` |
 | `graph/ProceduralGraphRefiner.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `ProceduralGraphRefiner.test.ts`, `hardening.test.ts`, `exports-barrels.recursa.test.ts`, `exports-barrels.test.ts` |
-| `graph/ProceduralGraphSchemas.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `ProceduralGraphSchemas.test.ts`, `hardening.test.ts`, `exports-barrels.recursa.test.ts`, `exports-barrels.test.ts` |
+| `graph/ProceduralGraphSchemas.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `ProceduralGraphSchemas.test.ts`, `hardening.test.ts`, `exports-barrels.recursa.test.ts`, `exports-barrels.test.ts`, `schema.parity.test.ts` |
 | `graph/ProceduralGraphSerializer.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `ProceduralGraphEvolution.test.ts`, `ProceduralGraphSerializer.test.ts`, `exports-barrels.recursa.test.ts`, `exports-barrels.test.ts` |
 | `graph/ProceduralGraphSession.ts` | `file-path.test.ts`, `procedural-graph-guidance.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `ProceduralGraphSession.test.ts`, `appendixF.test.ts`, `hardening.test.ts`, `exports-barrels.recursa.test.ts`, `exports-barrels.test.ts` |
 | `graph/ProceduralGraphValidator.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `ProceduralGraphEvolution.test.ts`, `ProceduralGraphValidator.test.ts`, `hardening.test.ts`, `exports-barrels.recursa.test.ts`, `exports-barrels.test.ts` |
@@ -447,7 +447,8 @@ The following 34 source files are not directly imported by any test file:
 | `utils/postingIndex.ts` | `postingIndex.test.ts` |
 | `utils/relationHelpers.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `exports-barrels.recursa.test.ts`, `exports-barrels.test.ts`, `RankedSearch.test.ts`, `SearchFilterChain.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `relationHelpers.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts`, `textSimilarity.tokenSets.test.ts`, `tokenEstimate.test.ts`, `walkParents.test.ts` |
 | `utils/relationValidation.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `exports-barrels.recursa.test.ts`, `exports-barrels.test.ts`, `RankedSearch.test.ts`, `SearchFilterChain.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `relationValidation.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts`, `textSimilarity.tokenSets.test.ts`, `tokenEstimate.test.ts` |
-| `utils/schemas.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `exports-barrels.recursa.test.ts`, `exports-barrels.test.ts`, `RankedSearch.test.ts`, `SearchFilterChain.test.ts`, `entity-content-hash.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `schemas.test.ts`, `schemas.validateResult.test.ts`, `searchAlgorithms.test.ts`, `textSimilarity.tokenSets.test.ts`, `tokenEstimate.test.ts`, `update-entity-schema-strip.test.ts` |
+| `utils/schema.ts` | `schema.challenger.test.ts`, `schema.parity.test.ts`, `schemas.test.ts` |
+| `utils/schemas.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `exports-barrels.recursa.test.ts`, `exports-barrels.test.ts`, `RankedSearch.test.ts`, `SearchFilterChain.test.ts`, `entity-content-hash.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `schema.parity.test.ts`, `schemas.test.ts`, `schemas.validateResult.test.ts`, `searchAlgorithms.test.ts`, `textSimilarity.tokenSets.test.ts`, `tokenEstimate.test.ts`, `update-entity-schema-strip.test.ts` |
 | `utils/searchAlgorithms.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `exports-barrels.recursa.test.ts`, `exports-barrels.test.ts`, `FuzzySearchPerformance.test.ts`, `RankedSearch.test.ts`, `SearchFilterChain.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts`, `textSimilarity.tokenSets.test.ts`, `tokenEstimate.test.ts`, `levenshteinWorker.test.ts` |
 | `utils/searchCache.ts` | `file-path.test.ts`, `storage-dedup-safety.test.ts`, `knowledge-graph.test.ts`, `write-path-delta.test.ts`, `exports-barrels.recursa.test.ts`, `exports-barrels.test.ts`, `FuzzySearchPerformance.test.ts`, `RankedSearch.test.ts`, `SearchFilterChain.test.ts`, `cache-isolation.test.ts`, `pruneExpiredEntries.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts`, `searchCache.test.ts`, `searchCacheForEach.test.ts`, `textSimilarity.tokenSets.test.ts`, `tokenEstimate.test.ts` |
 | `utils/sidecarPath.ts` | `InteractionLog.hardening.test.ts`, `StorageInfraFacade.test.ts`, `sidecarPath.test.ts` |
@@ -1010,7 +1011,10 @@ The following 34 source files are not directly imported by any test file:
 | `utils/postingIndex.test.ts` | 1 files |
 | `utils/relationHelpers.test.ts` | 2 files |
 | `utils/relationValidation.test.ts` | 2 files |
-| `utils/schemas.test.ts` | 38 files |
+| `utils/schema.challenger.test.ts` | 1 files |
+| `utils/schema.inventory.test.ts` | 0 files |
+| `utils/schema.parity.test.ts` | 5 files |
+| `utils/schemas.test.ts` | 39 files |
 | `utils/schemas.validateResult.test.ts` | 1 files |
 | `utils/searchAlgorithms.test.ts` | 38 files |
 | `utils/searchCache.test.ts` | 1 files |
