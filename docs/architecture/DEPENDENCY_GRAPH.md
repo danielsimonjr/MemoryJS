@@ -42,7 +42,7 @@ The codebase is organized into the following modules:
 - **core**: 36 files
 - **features**: 18 files
 - **entry**: 1 file
-- **search**: 55 files
+- **search**: 63 files
 - **security**: 5 files
 - **root**: 1 file
 - **types**: 14 files
@@ -61,7 +61,7 @@ Seeded build/entry roots (package `exports`, `bin` targets, tsup entries, script
 - `src/sqlite.ts`
 - `src/workers/levenshteinWorker.ts`
 
-Reachable from a root: **404** of 404 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
+Reachable from a root: **412** of 412 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
 
 ---
 
@@ -6400,10 +6400,10 @@ Reachable from a root: **404** of 404 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/search/TemporalQueryParser.ts` - Temporal Query Parser
 
-**Node.js Built-in Dependencies:**
-| Module | Import |
-|--------|--------|
-| `module` | `createRequire` |
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `./enDate/parseEnDate.js` | `parseEnDate, parseEnDateStart` | Import |
 
 **Exports:**
 - Classes: `TemporalQueryParser`
@@ -6442,6 +6442,111 @@ Reachable from a root: **404** of 404 files. Dormant: **0** (0 orphaned, 0 test-
 - Interfaces: `SQLiteStorageWithEmbeddings`
 - Functions: `isEmbeddingStorage`, `createVectorStore`
 - Re-exports: `cosineSimilarity`
+
+---
+
+### `src/search/enDate/calendar.ts` - Calendar arithmetic for the in-repo English date parser.
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `./types.js` | `Duration` | Import (type-only) |
+
+**Exports:**
+- Functions: `weekdayOf`, `daysForwardToWeekday`, `daysBackwardToWeekday`, `daysToWeekday`, `addDuration`, `reverseDuration`, `mostLikelyAdYear`, `yearClosestToRef`
+
+---
+
+### `src/search/enDate/components.ts` - Component bookkeeping for the in-repo English date parser.
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `./types.js` | `ComponentKey, Components, Duration, ParseContext` | Import (type-only) |
+| `./calendar.js` | `addDuration` | Import |
+| `./types.js` | `MERIDIEM_AM, MERIDIEM_PM` | Import |
+
+**Exports:**
+- Functions: `createComponents`, `getComponent`, `assign`, `imply`, `isCertain`, `unset`, `isOnlyTime`, `isOnlyDate`, `isOnlyWeekday`, `isDateWithUnknownYear`, `isValidDate`, `toDate`, `startOfWeekUtc`, `implySimilarDate`, `assignSimilarDate`, `implySimilarTime`, `assignSimilarTime`, `addDurationAsImplied`, `createRelativeFromReference`, `cloneComponents`
+
+---
+
+### `src/search/enDate/constants.ts` - Word tables and duration parsing for the in-repo English date parser.
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `./types.js` | `Duration` | Import (type-only) |
+
+**Exports:**
+- Functions: `matchAnyPattern`, `parseNumberPattern`, `parseOrdinalNumberPattern`, `parseYear`, `parseDuration`
+- Constants: `WEEKDAY_DICTIONARY`, `FULL_MONTH_NAME_DICTIONARY`, `MONTH_DICTIONARY`, `TIME_UNIT_DICTIONARY_NO_ABBR`, `TIME_UNIT_DICTIONARY`, `NUMBER_PATTERN`, `ORDINAL_NUMBER_PATTERN`, `YEAR_PATTERN`, `TIME_UNITS_PATTERN`, `TIME_UNITS_NO_ABBR_PATTERN`
+
+---
+
+### `src/search/enDate/parseEnDate.ts` - In-repo English natural-language date parser.
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `./types.js` | `EnDateOptions, EnDateResult, ParseContext, ParsedResult` | Import (type-only) |
+| `./parsers.js` | `createParsers, EnParser` | Import |
+| `./refiners.js` | `createRefiners, EnRefiner` | Import |
+| `./components.js` | `toDate` | Import |
+
+**Exports:**
+- Functions: `parseEnDate`, `parseEnDateStart`
+
+---
+
+### `src/search/enDate/parsers.ts` - English date parsers for the in-repo date parser.
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `./types.js` | `Components, ParseContext, ParsedResult` | Import (type-only) |
+| `./types.js` | `MERIDIEM_AM, MERIDIEM_PM` | Import |
+| `./constants.js` | `MONTH_DICTIONARY, ORDINAL_NUMBER_PATTERN, TIME_UNIT_DICTIONARY, TIME_UNITS_PATTERN, WEEKDAY_DICTIONARY, YEAR_PATTERN, matchAnyPattern, parseDuration, parseOrdinalNumberPattern, parseYear` | Import |
+| `./components.js` | `addDurationAsImplied, assign, assignSimilarDate, assignSimilarTime, createComponents, createRelativeFromReference, getComponent, imply, implySimilarTime, unset` | Import |
+| `./calendar.js` | `daysToWeekday, reverseDuration, yearClosestToRef` | Import |
+
+**Exports:**
+- Interfaces: `EnParser`
+- Functions: `createParsers`
+
+---
+
+### `src/search/enDate/refiners.ts` - English date refiners for the in-repo date parser.
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `./types.js` | `ComponentKey, Components, ParseContext, ParsedResult` | Import (type-only) |
+| `./types.js` | `MERIDIEM_PM` | Import |
+| `./components.js` | `assign, assignSimilarDate, cloneComponents, createRelativeFromReference, getComponent, imply, implySimilarDate, isCertain, isDateWithUnknownYear, isOnlyDate, isOnlyTime, isOnlyWeekday, isValidDate, toDate` | Import |
+| `./calendar.js` | `addDuration, daysForwardToWeekday, reverseDuration` | Import |
+| `./constants.js` | `parseDuration, parseYear` | Import |
+| `./timezones.js` | `timezoneOffsetFor` | Import |
+
+**Exports:**
+- Interfaces: `EnRefiner`
+- Functions: `createRefiners`
+
+---
+
+### `src/search/enDate/timezones.ts` - Timezone abbreviation table for the in-repo English date parser.
+
+**Exports:**
+- Functions: `timezoneOffsetFor`
+
+---
+
+### `src/search/enDate/types.ts` - Internal value types for the in-repo English date parser.
+
+**Exports:**
+- Interfaces: `EnDateResult`, `EnDateOptions`, `Components`, `ParsedResult`, `ParseContext`
+- Types: `ComponentKey`, `Duration`
+- Constants: `MERIDIEM_AM`, `MERIDIEM_PM`
 
 ---
 
@@ -7754,7 +7859,7 @@ graph TD
         N63[EmbeddingService]
         N64[EvidencePathBuilder]
         N65[FuzzySearch]
-        N66[...45 more]
+        N66[...53 more]
     end
 
     subgraph Security
@@ -7885,21 +7990,21 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 404 |
+| Total TypeScript Files | 412 |
 | Total Modules | 12 |
-| Total Lines of Code | 126996 |
-| Total Exports | 2823 |
+| Total Lines of Code | 129628 |
+| Total Exports | 2873 |
 | Total Re-exports | 1716 |
 | Total Classes | 280 |
-| Total Interfaces | 826 |
-| Total Functions | 643 |
-| Total Type Guards | 43 |
+| Total Interfaces | 833 |
+| Total Functions | 681 |
+| Total Type Guards | 49 |
 | Total Enums | 4 |
-| Type-only Imports | 867 |
+| Type-only Imports | 873 |
 | Runtime Circular Deps | 0 |
 | Type-only Circular Deps | 15 |
 | Entry/Build Roots | 4 |
-| Reachable Files | 404 |
+| Reachable Files | 412 |
 | Dormant Files (orphaned / test-only) | 0 (0 / 0) |
 
 ---
