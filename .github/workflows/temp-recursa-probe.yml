@@ -1,8 +1,9 @@
 name: TEMP recursa perf probe
 
 # TEMPORARY diagnostic workflow for the Windows recursa-timeout investigation.
-# Deleted before merge. Runs the same instrumented probe on Linux and Windows so the
-# per-phase timings can be compared directly, plus the real test files.
+# Deleted before merge. A/B on the same runner: the "before" job reverts src/ to master
+# (the tests are unchanged), the "after" job keeps the branch. Both then run the same
+# single test file, so the comparison isolates the fix from runner noise.
 
 on:
   push:
@@ -14,43 +15,68 @@ permissions:
 
 jobs:
   probe:
-    name: probe (${{ matrix.os }}, ${{ matrix.node }})
+    name: ${{ matrix.leg }} (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        node: [22]
+        leg: [before, after]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
-          node-version: ${{ matrix.node }}
+          node-version: 22
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: '1.4.2'
 
+      # BEFORE: restore src/ (and the docs generator inputs) to master, keeping the branch's tests.
+      - name: Revert src to master (before leg)
+        if: matrix.leg == 'before'
+        shell: bash
+        run: |
+          git checkout origin/master -- src/
+          git status --short src/ | head
+
       - name: Install dependencies
         run: bun install --frozen-lockfile
+
+      - name: recursa-loop alone (5 repeats)
+        shell: bash
+        run: |
+          for i in 1 2 3 4 5; do
+            echo "===== repeat $i ====="
+            bunx vitest run tests/integration/agent/recursa-loop.test.ts --reporter=verbose 2>&1 \
+              | grep -E "recursa-loop|Test Files|Tests  "
+          done
+
+      - name: recursa-end-to-end alone (5 repeats)
+        shell: bash
+        run: |
+          for i in 1 2 3 4 5; do
+            echo "===== repeat $i ====="
+            bunx vitest run tests/integration/agent/recursa-end-to-end.test.ts --reporter=verbose 2>&1 \
+              | grep -E "recursa-end-to-end|Test Files|Tests  "
+          done
+
+      - name: RecursiveLearner step parity alone (5 repeats)
+        shell: bash
+        run: |
+          for i in 1 2 3 4 5; do
+            echo "===== repeat $i ====="
+            bunx vitest run tests/unit/agent/learning/RecursiveLearner.test.ts --reporter=verbose 2>&1 \
+              | grep -E "step API|Test Files|Tests  "
+          done
 
       - name: Probe (3 runs)
         shell: bash
         run: |
           for i in 1 2 3; do
-            echo "===== run $i ====="
+            echo "===== probe $i ====="
             bunx tsx scripts/recursa-perf-probe.ts
-          done
-
-      - name: Real tests (3 repeats)
-        shell: bash
-        run: |
-          for i in 1 2 3; do
-            echo "===== repeat $i ====="
-            bunx vitest run \
-              tests/integration/agent/recursa-loop.test.ts \
-              tests/integration/agent/recursa-end-to-end.test.ts \
-              tests/unit/agent/learning/RecursiveLearner.test.ts \
-              --reporter=verbose
           done
