@@ -1,4 +1,5 @@
 import { mkdir, writeFile, access, symlink, mkdtemp, chmod } from 'node:fs/promises';
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFile } from 'node:child_process';
@@ -6,6 +7,28 @@ import { promisify } from 'node:util';
 import { describe, expect, it, beforeAll } from 'vitest';
 
 const execFileAsync = promisify(execFile);
+
+/**
+ * Probe once whether this environment can create directory symlinks.
+ * Windows denies that without Developer Mode or elevation (EPERM).
+ */
+function probeDirSymlinkSupport(): { ok: true } | { ok: false; reason: string } {
+  let dir: string | undefined;
+  try {
+    dir = mkdtempSync(join(tmpdir(), 'memoryjs-clean-symlink-probe-'));
+    const target = join(dir, 'target');
+    mkdirSync(target);
+    symlinkSync(target, join(dir, 'link'), 'dir');
+    return { ok: true };
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code ?? String(err);
+    return { ok: false, reason: `this environment cannot create directory symlinks (${code})` };
+  } finally {
+    if (dir) rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+const dirSymlinkSupport = probeDirSymlinkSupport();
 
 const root = async () => mkdtemp(join(tmpdir(), 'memoryjs-clean-edges-'));
 const dist = (r: string) => join(r, 'dist');
@@ -26,31 +49,40 @@ describe('scripts/clean-dist.mjs edge cases', () => {
     await expect(access(dist(r))).rejects.toMatchObject({ code: 'ENOENT' });
   });
 
-  it('unlinks a dist symlink and preserves its target', async () => {
-    const r = await root();
-    const target = await mkdtemp(join(tmpdir(), 'memoryjs-clean-target-'));
-    await writeFile(join(target, 'keep.txt'), 'x');
-    await symlink(target, dist(r), 'dir');
-    await run(r);
-    await expect(access(dist(r))).rejects.toMatchObject({ code: 'ENOENT' });
-    await expect(access(join(target, 'keep.txt'))).resolves.toBeUndefined();
-  });
+  it.skipIf(!dirSymlinkSupport.ok)(
+    `unlinks a dist symlink and preserves its target${dirSymlinkSupport.ok ? '' : ` [skipped: ${dirSymlinkSupport.reason}]`}`,
+    async () => {
+      const r = await root();
+      const target = await mkdtemp(join(tmpdir(), 'memoryjs-clean-target-'));
+      await writeFile(join(target, 'keep.txt'), 'x');
+      await symlink(target, dist(r), 'dir');
+      await run(r);
+      await expect(access(dist(r))).rejects.toMatchObject({ code: 'ENOENT' });
+      await expect(access(join(target, 'keep.txt'))).resolves.toBeUndefined();
+    },
+  );
 
-  it('removes a broken dist symlink and exits 0', async () => {
-    const r = await root();
-    await symlink(join(tmpdir(), 'memoryjs-clean-nowhere'), dist(r), 'dir');
-    await run(r);
-    await expect(access(dist(r))).rejects.toMatchObject({ code: 'ENOENT' });
-  });
+  it.skipIf(!dirSymlinkSupport.ok || process.platform === 'win32')(
+    'removes a broken dist symlink and exits 0',
+    async () => {
+      const r = await root();
+      await symlink(join(tmpdir(), 'memoryjs-clean-nowhere'), dist(r), 'dir');
+      await run(r);
+      await expect(access(dist(r))).rejects.toMatchObject({ code: 'ENOENT' });
+    },
+  );
 
-  it('removes dist containing a symlink loop without following it', async () => {
-    const r = await root();
-    const d = dist(r);
-    await mkdir(join(d, 'loop'), { recursive: true });
-    await symlink(join(d, 'loop'), join(d, 'loop', 'self'), 'dir');
-    await run(r);
-    await expect(access(d)).rejects.toMatchObject({ code: 'ENOENT' });
-  });
+  it.skipIf(!dirSymlinkSupport.ok)(
+    `removes dist containing a symlink loop without following it${dirSymlinkSupport.ok ? '' : ` [skipped: ${dirSymlinkSupport.reason}]`}`,
+    async () => {
+      const r = await root();
+      const d = dist(r);
+      await mkdir(join(d, 'loop'), { recursive: true });
+      await symlink(join(d, 'loop'), join(d, 'loop', 'self'), 'dir');
+      await run(r);
+      await expect(access(d)).rejects.toMatchObject({ code: 'ENOENT' });
+    },
+  );
 
   it('removes deeply nested dist contents', async () => {
     const r = await root();
@@ -62,18 +94,20 @@ describe('scripts/clean-dist.mjs edge cases', () => {
     await expect(access(dist(r))).rejects.toMatchObject({ code: 'ENOENT' });
   });
 
-  it('propagates failure with a nonzero exit when dist cannot be deleted', async () => {
-    if (process.platform === 'win32') return;
-    const r = await root();
-    const d = dist(r);
-    await mkdir(join(d, 'sub'), { recursive: true });
-    await writeFile(join(d, 'sub', 'a.js'), 'x');
-    await chmod(join(d, 'sub'), 0o555);
-    try {
-      await expect(run(r)).rejects.toMatchObject({ code: 1 });
-      await expect(access(d)).resolves.toBeUndefined();
-    } finally {
-      await chmod(join(d, 'sub'), 0o755);
-    }
-  });
+  it.skipIf(process.platform === 'win32')(
+    'propagates failure with a nonzero exit when dist cannot be deleted',
+    async () => {
+      const r = await root();
+      const d = dist(r);
+      await mkdir(join(d, 'sub'), { recursive: true });
+      await writeFile(join(d, 'sub', 'a.js'), 'x');
+      await chmod(join(d, 'sub'), 0o555);
+      try {
+        await expect(run(r)).rejects.toMatchObject({ code: 1 });
+        await expect(access(d)).resolves.toBeUndefined();
+      } finally {
+        await chmod(join(d, 'sub'), 0o755);
+      }
+    },
+  );
 });
