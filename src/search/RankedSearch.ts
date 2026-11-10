@@ -6,6 +6,7 @@
  * @module search/RankedSearch
  */
 
+import { BoundedTopK } from '../utils/boundedTopK.js';
 import type {
   DocumentVector,
   Entity,
@@ -237,7 +238,7 @@ export class RankedSearch {
     }
 
     // Return cached index if already loaded
-    const cached = this.indexManager.getIndex();
+    const cached = this.indexManager.getIndexForSearch();
     if (cached) {
       return cached;
     }
@@ -308,7 +309,7 @@ export class RankedSearch {
     // the boost applied before final truncation.
     const boostActive = this.graphPrior !== null && this.graphBoost > 0;
     const scoringLimit = boostActive
-      ? Math.max(effectiveLimit, SEARCH_LIMITS.MAX)
+      ? Number.POSITIVE_INFINITY
       : effectiveLimit;
     let scored: SearchResult[];
     if (index) {
@@ -325,7 +326,9 @@ export class RankedSearch {
     // Optional graph-connectivity boost (off unless setGraphPrior enabled it)
     scored = await this.applyGraphBoost(scored);
 
-    return scored.slice(0, effectiveLimit);
+    const top = new BoundedTopK<SearchResult>(effectiveLimit, (a, b) => b.score - a.score);
+    for (const result of scored) top.add(result);
+    return top.sorted();
   }
 
   /**
@@ -355,7 +358,7 @@ export class RankedSearch {
     index: TFIDFIndex,
     limit: number
   ): SearchResult[] {
-    const results: SearchResult[] = [];
+    const results = new BoundedTopK<SearchResult>(limit, (a, b) => b.score - a.score);
 
     for (const entity of entities) {
       const docVector = index.documents.get(entity.name);
@@ -408,7 +411,7 @@ export class RankedSearch {
 
       // Only include entities with non-zero scores
       if (totalScore > 0) {
-        results.push({
+        results.add({
           entity,
           score: totalScore,
           matchedFields,
@@ -417,9 +420,7 @@ export class RankedSearch {
     }
 
     // Sort by score descending and apply limit
-    return results
-      .sort((a, b) => b.score - a.score)
-      .slice(0, limit);
+    return results.sorted();
   }
 
   /**
@@ -435,7 +436,7 @@ export class RankedSearch {
     limit: number,
     corpusEntities: Entity[] = entities,
   ): SearchResult[] {
-    const results: SearchResult[] = [];
+    const results = new BoundedTopK<SearchResult>(limit, (a, b) => b.score - a.score);
 
     // Check if cache needs invalidation.
     if (this.eventDriven) {
@@ -541,7 +542,7 @@ export class RankedSearch {
 
       // Only include entities with non-zero scores
       if (totalScore > 0) {
-        results.push({
+        results.add({
           entity,
           score: totalScore,
           matchedFields,
@@ -550,8 +551,6 @@ export class RankedSearch {
     }
 
     // Sort by score descending and apply limit
-    return results
-      .sort((a, b) => b.score - a.score)
-      .slice(0, limit);
+    return results.sorted();
   }
 }

@@ -42,11 +42,11 @@ The codebase is organized into the following modules:
 - **core**: 36 files
 - **features**: 18 files
 - **entry**: 1 file
-- **search**: 54 files
+- **search**: 55 files
 - **security**: 5 files
 - **root**: 1 file
 - **types**: 14 files
-- **utils**: 50 files
+- **utils**: 51 files
 - **workers**: 1 file
 
 ---
@@ -61,7 +61,7 @@ Seeded build/entry roots (package `exports`, `bin` targets, tsup entries, script
 - `src/sqlite.ts`
 - `src/workers/levenshteinWorker.ts`
 
-Reachable from a root: **399** of 399 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
+Reachable from a root: **401** of 401 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
 
 ---
 
@@ -5714,6 +5714,7 @@ Reachable from a root: **399** of 399 files. Dormant: **0** (0 orphaned, 0 test-
 |------|---------|------|
 | `../types/index.js` | `Entity, IGraphStorage, SearchResult` | Import (type-only) |
 | `../utils/constants.js` | `SEARCH_LIMITS` | Import |
+| `../utils/boundedTopK.js` | `BoundedTopK` | Import |
 | `../utils/graphCopy.js` | `borrowGraphView` | Import |
 | `./ftsCandidates.js` | `getFtsCandidateNames, FtsOwner` | Import |
 
@@ -5872,17 +5873,18 @@ Reachable from a root: **399** of 399 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `../types/index.js` | `Entity, KnowledgeGraph` | Import (type-only) |
+| `../types/index.js` | `Entity, KnowledgeGraph, LowercaseData` | Import (type-only) |
 | `../core/GraphStorage.js` | `GraphStorage` | Import (type-only) |
 | `../utils/CachePressureCoordinator.js` | `CachePressureCoordinator` | Import (type-only) |
 | `../utils/index.js` | `levenshteinDistance` | Import |
 | `../utils/logger.js` | `logger` | Import |
-| `../utils/searchCache.js` | `cleanupExpiredEntries, evictOldest` | Import |
+| `../utils/searchCache.js` | `cleanupExpiredEntries, evictOldest, getGraphGenerations` | Import |
 | `../utils/constants.js` | `FUZZY_SEARCH_LIMITS, SEARCH_LIMITS` | Import |
 | `./SearchFilterChain.js` | `SearchFilterChain, SearchFilters` | Import |
 | `./NGramIndex.js` | `NGramIndex` | Import |
 | `./BloomPreScreener.js` | `BloomPreScreener` | Import (type-only) |
 | `./inducedSubgraph.js` | `collectInducedRelations` | Import |
+| `../workers/levenshteinWorker.js` | `WorkerInput` | Import (type-only) |
 
 **Exports:**
 - Classes: `FuzzySearch`
@@ -5990,6 +5992,21 @@ Reachable from a root: **399** of 399 files. Dormant: **0** (0 orphaned, 0 test-
 **Exports:**
 - Classes: `LLMSearchExecutor`
 - Interfaces: `ExecutorGraphSource`, `LLMSearchExecutorOptions`, `LLMExecuteOptions`, `ExplainedEntityResult`
+
+---
+
+### `src/search/LSHVectorStore.ts` - Approximate retrieval with exact cosine reranking of candidates. Small corpora
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../types/index.js` | `IVectorStore, VectorSearchResult` | Import (type-only) |
+| `../utils/textSimilarity.js` | `cosineSimilarity` | Import |
+| `../utils/boundedTopK.js` | `BoundedTopK` | Import |
+
+**Exports:**
+- Classes: `LSHVectorStore`
+- Interfaces: `LSHVectorStoreOptions`
 
 ---
 
@@ -6192,6 +6209,7 @@ Reachable from a root: **399** of 399 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../utils/boundedTopK.js` | `BoundedTopK` | Import |
 | `../types/index.js` | `DocumentVector, Entity, GraphEventType, IGraphStorage, SearchResult, TFIDFIndex, TokenizedEntity` | Import (type-only) |
 | `../core/GraphEventEmitter.js` | `GraphEventEmitter` | Import (type-only) |
 | `../utils/CachePressureCoordinator.js` | `CachePressureCoordinator` | Import (type-only) |
@@ -6379,6 +6397,7 @@ Reachable from a root: **399** of 399 files. Dormant: **0** (0 orphaned, 0 test-
 |--------|--------|
 | `fs/promises` | `* as fs` |
 | `path` | `* as path` |
+| `crypto` | `randomUUID` |
 
 **Internal Dependencies:**
 | File | Imports | Type |
@@ -6482,7 +6501,8 @@ Reachable from a root: **399** of 399 files. Dormant: **0** (0 orphaned, 0 test-
 | `./EmbeddingCache.js` | `EmbeddingCache, DEFAULT_EMBEDDING_CACHE_OPTIONS, EmbeddingCacheStats, EmbeddingCacheOptions` | Re-export |
 | `./IncrementalIndexer.js` | `IncrementalIndexer, DEFAULT_INDEXER_OPTIONS, IndexOperationType, IndexOperation, IncrementalIndexerOptions, FlushResult` | Re-export |
 | `./VectorStore.js` | `InMemoryVectorStore, SQLiteVectorStore, createVectorStore, cosineSimilarity, SQLiteStorageWithEmbeddings` | Re-export |
-| `./SemanticSearch.js` | `SemanticSearch, entityToText` | Re-export |
+| `./LSHVectorStore.js` | `LSHVectorStore, LSHVectorStoreOptions` | Re-export |
+| `./SemanticSearch.js` | `SemanticSearch, entityToText, SemanticSearchOptions` | Re-export |
 | `./TFIDFIndexManager.js` | `TFIDFIndexManager` | Re-export |
 | `./TFIDFEventSync.js` | `TFIDFEventSync` | Re-export |
 | `./QueryCostEstimator.js` | `QueryCostEstimator, SearchLayer, ExtendedQueryCostEstimate, LayerRecommendationOptions, TokenEstimationOptions, AdaptiveDepthConfig` | Re-export |
@@ -6523,7 +6543,7 @@ Reachable from a root: **399** of 399 files. Dormant: **0** (0 orphaned, 0 test-
 | `./tiered/ITieredIndex.js` | `ITieredIndex, IIndexTier, TierAccessStats` | Re-export (type-only) |
 
 **Exports:**
-- Re-exports: `BasicSearch`, `RankedSearch`, `BooleanSearch`, `FuzzySearch`, `FuzzySearchOptions`, `SearchSuggestions`, `SavedSearchManager`, `SearchManager`, `SearchFilterChain`, `SearchFilters`, `ValidatedPagination`, `OpenAIEmbeddingService`, `LocalEmbeddingService`, `LlamaCppEmbeddingService`, `MockEmbeddingService`, `createEmbeddingService`, `l2Normalize`, `QUERY_PREFIX`, `DOCUMENT_PREFIX`, `EmbeddingProgressCallback`, `LlamaCppEmbeddingOptions`, `EmbeddingCache`, `DEFAULT_EMBEDDING_CACHE_OPTIONS`, `EmbeddingCacheStats`, `EmbeddingCacheOptions`, `IncrementalIndexer`, `DEFAULT_INDEXER_OPTIONS`, `IndexOperationType`, `IndexOperation`, `IncrementalIndexerOptions`, `FlushResult`, `InMemoryVectorStore`, `SQLiteVectorStore`, `createVectorStore`, `cosineSimilarity`, `SQLiteStorageWithEmbeddings`, `SemanticSearch`, `entityToText`, `TFIDFIndexManager`, `TFIDFEventSync`, `QueryCostEstimator`, `SearchLayer`, `ExtendedQueryCostEstimate`, `LayerRecommendationOptions`, `TokenEstimationOptions`, `AdaptiveDepthConfig`, `SymbolicSearch`, `SymbolicResult`, `HybridSearchManager`, `DEFAULT_HYBRID_WEIGHTS`, `DEFAULT_NEIGHBOR_TOP_K`, `DEFAULT_NEIGHBOR_DAMPING`, `HybridSearchLayer`, `GraphHybridOptions`, `GraphHybridSearchResult`, `NeighborExpansionOptions`, `GraphRankPrior`, `DEFAULT_MAX_PAGERANK_ENTITIES`, `GraphRankPriorOptions`, `QueryAnalyzer`, `QueryPlanner`, `ReflectionManager`, `ReflectionOptions`, `ReflectionResult`, `RefinementHistoryEntry`, `BM25Search`, `STOPWORDS`, `DEFAULT_BM25_CONFIG`, `BM25DocumentEntry`, `BM25Index`, `BM25Config`, `OptimizedInvertedIndex`, `IndexMemoryUsage`, `PostingListResult`, `HybridScorer`, `DEFAULT_SCORER_WEIGHTS`, `SemanticLayerResult`, `LexicalSearchResult`, `SymbolicSearchResult`, `GraphLayerResult`, `ScoredResult`, `HybridWeights`, `HybridScorerOptions`, `ParallelSearchExecutor`, `LayerTiming`, `ParallelSearchResult`, `ParallelSearchOptions`, `EarlyTerminationManager`, `AdequacyCheck`, `EarlyTerminationOptions`, `EarlyTerminationResult`, `QueryPlanCache`, `CachedQueryEntry`, `QueryPlanCacheStats`, `QueryPlanCacheOptions`, `QuantizedVectorStore`, `QuantizationParams`, `QuantizedVectorStoreStats`, `QuantizedSearchResult`, `QuantizedVectorStoreOptions`, `QueryLogger`, `QueryLoggerConfig`, `QueryParser`, `matchesPhrase`, `isPrefixPattern`, `matchesPrefix`, `ProximitySearch`, `ProximityMatch`, `ProximityMatchLocation`, `TemporalQueryParser`, `ParsedTemporalRange`, `TemporalSearch`, `TemporalFilterField`, `TemporalSearchOptions`, `NGramIndex`, `NGramIndexStats`, `LLMQueryPlanner`, `LLMProvider`, `StructuredQuery`, `LLMQueryPlannerConfig`, `LLMSearchExecutor`, `LLMSearchExecutorOptions`, `LLMExecuteOptions`, `ExplainedEntityResult`, `ExecutorGraphSource`, `SpellChecker`, `SpellCheckerConfig`, `SuggestOptions`, `SpellSuggestion`, `EvidencePathBuilder`, `DEFAULT_EVIDENCE_MAX_DEPTH`, `DEFAULT_EVIDENCE_MAX_PATHS_PER_RESULT`, `EvidenceAnchor`, `EvidencePathSet`, `MaterializedViewsManager`, `ViewDefinition`, `ViewSnapshot`, `BloomFilter`, `BloomPreScreener`, `BloomPreScreenerOptions`, `PartialIndexAdvisor`, `FilterObservation`, `IndexRecommendation`, `PartialIndexAdvisorOptions`, `formatQueryPlanAscii`, `ExplainPlanResult`, `TieredIndex`, `buildTieredIndex`, `TieredIndexOptions`, `TieredIndexBuildOptions`, `LRUHotTier`, `LRUHotTierOptions`, `DiskWarmTier`, `DiskWarmTierOptions`, `BrotliColdTier`, `BrotliColdTierOptions`, `EvidenceLayer`, `EvidencePath`, `EvidencePathOptions`, `EvidencePathRelation`, `ExplainHybridOptions`, `ExplainedHybridSearchResult`, `ITieredIndex`, `IIndexTier`, `TierAccessStats`
+- Re-exports: `BasicSearch`, `RankedSearch`, `BooleanSearch`, `FuzzySearch`, `FuzzySearchOptions`, `SearchSuggestions`, `SavedSearchManager`, `SearchManager`, `SearchFilterChain`, `SearchFilters`, `ValidatedPagination`, `OpenAIEmbeddingService`, `LocalEmbeddingService`, `LlamaCppEmbeddingService`, `MockEmbeddingService`, `createEmbeddingService`, `l2Normalize`, `QUERY_PREFIX`, `DOCUMENT_PREFIX`, `EmbeddingProgressCallback`, `LlamaCppEmbeddingOptions`, `EmbeddingCache`, `DEFAULT_EMBEDDING_CACHE_OPTIONS`, `EmbeddingCacheStats`, `EmbeddingCacheOptions`, `IncrementalIndexer`, `DEFAULT_INDEXER_OPTIONS`, `IndexOperationType`, `IndexOperation`, `IncrementalIndexerOptions`, `FlushResult`, `InMemoryVectorStore`, `SQLiteVectorStore`, `createVectorStore`, `cosineSimilarity`, `SQLiteStorageWithEmbeddings`, `LSHVectorStore`, `LSHVectorStoreOptions`, `SemanticSearch`, `entityToText`, `SemanticSearchOptions`, `TFIDFIndexManager`, `TFIDFEventSync`, `QueryCostEstimator`, `SearchLayer`, `ExtendedQueryCostEstimate`, `LayerRecommendationOptions`, `TokenEstimationOptions`, `AdaptiveDepthConfig`, `SymbolicSearch`, `SymbolicResult`, `HybridSearchManager`, `DEFAULT_HYBRID_WEIGHTS`, `DEFAULT_NEIGHBOR_TOP_K`, `DEFAULT_NEIGHBOR_DAMPING`, `HybridSearchLayer`, `GraphHybridOptions`, `GraphHybridSearchResult`, `NeighborExpansionOptions`, `GraphRankPrior`, `DEFAULT_MAX_PAGERANK_ENTITIES`, `GraphRankPriorOptions`, `QueryAnalyzer`, `QueryPlanner`, `ReflectionManager`, `ReflectionOptions`, `ReflectionResult`, `RefinementHistoryEntry`, `BM25Search`, `STOPWORDS`, `DEFAULT_BM25_CONFIG`, `BM25DocumentEntry`, `BM25Index`, `BM25Config`, `OptimizedInvertedIndex`, `IndexMemoryUsage`, `PostingListResult`, `HybridScorer`, `DEFAULT_SCORER_WEIGHTS`, `SemanticLayerResult`, `LexicalSearchResult`, `SymbolicSearchResult`, `GraphLayerResult`, `ScoredResult`, `HybridWeights`, `HybridScorerOptions`, `ParallelSearchExecutor`, `LayerTiming`, `ParallelSearchResult`, `ParallelSearchOptions`, `EarlyTerminationManager`, `AdequacyCheck`, `EarlyTerminationOptions`, `EarlyTerminationResult`, `QueryPlanCache`, `CachedQueryEntry`, `QueryPlanCacheStats`, `QueryPlanCacheOptions`, `QuantizedVectorStore`, `QuantizationParams`, `QuantizedVectorStoreStats`, `QuantizedSearchResult`, `QuantizedVectorStoreOptions`, `QueryLogger`, `QueryLoggerConfig`, `QueryParser`, `matchesPhrase`, `isPrefixPattern`, `matchesPrefix`, `ProximitySearch`, `ProximityMatch`, `ProximityMatchLocation`, `TemporalQueryParser`, `ParsedTemporalRange`, `TemporalSearch`, `TemporalFilterField`, `TemporalSearchOptions`, `NGramIndex`, `NGramIndexStats`, `LLMQueryPlanner`, `LLMProvider`, `StructuredQuery`, `LLMQueryPlannerConfig`, `LLMSearchExecutor`, `LLMSearchExecutorOptions`, `LLMExecuteOptions`, `ExplainedEntityResult`, `ExecutorGraphSource`, `SpellChecker`, `SpellCheckerConfig`, `SuggestOptions`, `SpellSuggestion`, `EvidencePathBuilder`, `DEFAULT_EVIDENCE_MAX_DEPTH`, `DEFAULT_EVIDENCE_MAX_PATHS_PER_RESULT`, `EvidenceAnchor`, `EvidencePathSet`, `MaterializedViewsManager`, `ViewDefinition`, `ViewSnapshot`, `BloomFilter`, `BloomPreScreener`, `BloomPreScreenerOptions`, `PartialIndexAdvisor`, `FilterObservation`, `IndexRecommendation`, `PartialIndexAdvisorOptions`, `formatQueryPlanAscii`, `ExplainPlanResult`, `TieredIndex`, `buildTieredIndex`, `TieredIndexOptions`, `TieredIndexBuildOptions`, `LRUHotTier`, `LRUHotTierOptions`, `DiskWarmTier`, `DiskWarmTierOptions`, `BrotliColdTier`, `BrotliColdTierOptions`, `EvidenceLayer`, `EvidencePath`, `EvidencePathOptions`, `EvidencePathRelation`, `ExplainHybridOptions`, `ExplainedHybridSearchResult`, `ITieredIndex`, `IIndexTier`, `TierAccessStats`
 
 ---
 
@@ -7043,6 +7063,13 @@ Reachable from a root: **399** of 399 files. Dormant: **0** (0 orphaned, 0 test-
 - Classes: `WorkerTaskManager`
 - Interfaces: `TaskSubmitOptions`, `TaskHandle`, `WorkerTaskManagerStats`
 - Functions: `getWorkerTaskManager`, `_resetWorkerTaskManagerForTests`, `batchProcessViaWorkers`
+
+---
+
+### `src/utils/boundedTopK.ts` - boundedTopK module
+
+**Exports:**
+- Classes: `BoundedTopK`
 
 ---
 
@@ -7580,13 +7607,13 @@ Reachable from a root: **399** of 399 files. Dormant: **0** (0 orphaned, 0 test-
 |------|--------------|------------|
 | `src/core/ManagerContext` | 97 files | 10 files |
 | `src/types/types` | 1 file | 85 files |
-| `src/types/index` | 13 files | 69 files |
+| `src/types/index` | 13 files | 70 files |
 | `src/types/agent-memory` | 3 files | 73 files |
 | `src/agent/index` | 70 files | 1 file |
 | `src/utils/index` | 37 files | 27 files |
 | `src/core/GraphStorage` | 16 files | 47 files |
 | `src/core/EntityManager` | 12 files | 48 files |
-| `src/search/index` | 50 files | 1 file |
+| `src/search/index` | 51 files | 1 file |
 | `src/utils/errors` | 0 files | 42 files |
 | `src/utils/logger` | 0 files | 38 files |
 | `src/agent/AgentMemoryManager` | 33 files | 3 files |
@@ -7595,7 +7622,7 @@ Reachable from a root: **399** of 399 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/core/context/AgentMemoryFacade` | 32 files | 1 file |
 | `src/agent/knowledge/KnowledgeRepository` | 14 files | 18 files |
 | `src/agent/learning/RecursiveLearner` | 23 files | 7 files |
-| `src/utils/textSimilarity` | 0 files | 29 files |
+| `src/utils/textSimilarity` | 0 files | 30 files |
 | `src/agent/bootstrap/Bootstrapper` | 25 files | 3 files |
 | `src/cli/commands/helpers` | 4 files | 23 files |
 | `src/agent/ConsolidationPipeline` | 19 files | 7 files |
@@ -7611,11 +7638,11 @@ Reachable from a root: **399** of 399 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/search/SearchManager` | 17 files | 5 files |
 | `src/agent/learning/LearningTrace` | 10 files | 11 files |
 | `src/agent/skills/SkillManager` | 11 files | 10 files |
+| `src/search/RankedSearch` | 12 files | 9 files |
 | `src/utils/entityUtils` | 3 files | 18 files |
 | `src/agent/learning/LeafLearner` | 10 files | 10 files |
 | `src/core/ObservationManager` | 12 files | 8 files |
 | `src/features/IOManager` | 16 files | 4 files |
-| `src/search/RankedSearch` | 11 files | 9 files |
 | `src/types/proceduralGraph` | 0 files | 20 files |
 | `src/utils/constants` | 0 files | 20 files |
 
@@ -7737,7 +7764,7 @@ graph TD
         N63[EmbeddingService]
         N64[EvidencePathBuilder]
         N65[FuzzySearch]
-        N66[...44 more]
+        N66[...45 more]
     end
 
     subgraph Security
@@ -7777,7 +7804,7 @@ graph TD
         N91[MemoryMonitor]
         N92[SchemaValidator]
         N93[WorkerPoolManager]
-        N94[...40 more]
+        N94[...41 more]
     end
 
     subgraph Workers
@@ -7868,21 +7895,21 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 399 |
+| Total TypeScript Files | 401 |
 | Total Modules | 12 |
-| Total Lines of Code | 126159 |
-| Total Exports | 2815 |
-| Total Re-exports | 1713 |
-| Total Classes | 276 |
-| Total Interfaces | 824 |
+| Total Lines of Code | 126617 |
+| Total Exports | 2820 |
+| Total Re-exports | 1716 |
+| Total Classes | 278 |
+| Total Interfaces | 825 |
 | Total Functions | 643 |
 | Total Type Guards | 43 |
 | Total Enums | 4 |
-| Type-only Imports | 864 |
+| Type-only Imports | 866 |
 | Runtime Circular Deps | 0 |
 | Type-only Circular Deps | 15 |
 | Entry/Build Roots | 4 |
-| Reachable Files | 399 |
+| Reachable Files | 401 |
 | Dormant Files (orphaned / test-only) | 0 (0 / 0) |
 
 ---

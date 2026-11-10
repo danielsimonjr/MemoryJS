@@ -23,8 +23,7 @@
  * cache write-through. Out-of-process writers are NOT supported in v1 —
  * `clearCache()` plus a fresh `loadGraph()` is the manual recovery path.
  *
- * Search: simple LIKE-based for v1; the `to_tsvector` / `tsquery` path is
- * deferred. The `fullTextSearch` method falls back to substring scoring.
+ * Search uses PostgreSQL tsvector indexes and ts_rank scoring.
  *
  * @module core/PostgreSQLStorage
  */
@@ -76,6 +75,18 @@ const ENTITY_COLUMNS = [
   'content_hash', 'valid_from', 'valid_until', 'observation_meta',
   'lifecycle_status', 'extra',
 ] as const;
+
+// Conservative cap below PostgreSQL's 65,535 bind-parameter limit. Bounded
+// batches also avoid constructing unbounded SQL strings during large imports.
+const MAX_INSERT_PARAMETERS = 60_000;
+const MAX_INSERT_ROWS = 1_000;
+
+const RELATION_COLUMNS = ['from_name', 'to_name', 'relation_type', 'metadata', 'created_at',
+  'last_modified', 'weight', 'confidence', 'properties', 'extra'] as const;
+
+const FIRST_CLASS_RELATION_KEYS = new Set(['from', 'to', 'relationType', 'metadata', 'createdAt',
+  'lastModified', 'weight', 'confidence', 'properties']);
+const UNSAFE_EXTENSION_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
 
 const FIRST_CLASS_ENTITY_KEYS = new Set<string>([
   'name', 'entityType', 'observations', 'parentId', 'tags', 'importance',
@@ -148,6 +159,12 @@ CREATE TABLE IF NOT EXISTS relations (
   PRIMARY KEY (from_name, to_name, relation_type)
 );
 
+ALTER TABLE relations ADD COLUMN IF NOT EXISTS last_modified TIMESTAMPTZ;
+ALTER TABLE relations ADD COLUMN IF NOT EXISTS weight DOUBLE PRECISION;
+ALTER TABLE relations ADD COLUMN IF NOT EXISTS confidence DOUBLE PRECISION;
+ALTER TABLE relations ADD COLUMN IF NOT EXISTS properties JSONB;
+ALTER TABLE relations ADD COLUMN IF NOT EXISTS extra JSONB;
+
 CREATE INDEX IF NOT EXISTS idx_relations_to ON relations(to_name);
 CREATE INDEX IF NOT EXISTS idx_relations_type ON relations(relation_type);
 `;
@@ -167,6 +184,10 @@ export class PostgreSQLStorage implements IGraphStorage {
   private pool: PgPool | null = null;
   private cache: KnowledgeGraph | null = null;
   private nameIndex = new Map<string, Entity>();
+  private entityPositions = new Map<string, number>();
+  private typeIndex = new Map<string, Set<string>>();
+  private lowercaseCache = new Map<string, LowercaseData>();
+  private relationKeys = new Set<string>();
   private outgoingRelations = new Map<string, Relation[]>();
   private incomingRelations = new Map<string, Relation[]>();
   private pendingAppends = 0;
@@ -220,7 +241,7 @@ export class PostgreSQLStorage implements IGraphStorage {
   private entityToRow(entity: Entity): Record<string, unknown> {
     const extra: Record<string, unknown> = {};
     for (const key of Object.keys(entity)) {
-      if (!FIRST_CLASS_ENTITY_KEYS.has(key)) {
+      if (!FIRST_CLASS_ENTITY_KEYS.has(key) && !UNSAFE_EXTENSION_KEYS.has(key)) {
         extra[key] = (entity as unknown as Record<string, unknown>)[key];
       }
     }
@@ -278,9 +299,7 @@ export class PostgreSQLStorage implements IGraphStorage {
     if (row.lifecycle_status != null) {
       entity.lifecycleStatus = columnText(row.lifecycle_status) as Entity['lifecycleStatus'];
     }
-    if (row.extra != null && typeof row.extra === 'object') {
-      Object.assign(entity, row.extra);
-    }
+    mergeExtensionFields(entity, row.extra, FIRST_CLASS_ENTITY_KEYS);
     return entity;
   }
 
@@ -290,6 +309,13 @@ export class PostgreSQLStorage implements IGraphStorage {
       to: String(row.to_name),
       relationType: String(row.relation_type),
     };
+    if (row.metadata != null) relation.metadata = row.metadata as Relation['metadata'];
+    if (row.properties != null) relation.properties = row.properties as Relation['properties'];
+    if (row.weight != null) relation.weight = Number(row.weight);
+    if (row.confidence != null) relation.confidence = Number(row.confidence);
+    if (row.created_at != null) relation.createdAt = columnIso(row.created_at);
+    if (row.last_modified != null) relation.lastModified = columnIso(row.last_modified);
+    mergeExtensionFields(relation, row.extra, FIRST_CLASS_RELATION_KEYS);
     return relation;
   }
 
@@ -297,10 +323,18 @@ export class PostgreSQLStorage implements IGraphStorage {
 
   private rebuildIndexes(graph: KnowledgeGraph): void {
     this.nameIndex.clear();
+    this.entityPositions.clear();
+    this.typeIndex.clear();
+    this.lowercaseCache.clear();
+    this.relationKeys.clear();
     this.outgoingRelations.clear();
     this.incomingRelations.clear();
-    for (const e of graph.entities) this.nameIndex.set(e.name, e);
+    graph.entities.forEach((entity, position) => {
+      this.entityPositions.set(entity.name, position);
+      this.indexEntity(entity);
+    });
     for (const r of graph.relations) {
+      this.relationKeys.add(relationCacheKey(r));
       const outArr = this.outgoingRelations.get(r.from) ?? [];
       outArr.push(r);
       this.outgoingRelations.set(r.from, outArr);
@@ -308,6 +342,35 @@ export class PostgreSQLStorage implements IGraphStorage {
       inArr.push(r);
       this.incomingRelations.set(r.to, inArr);
     }
+  }
+
+  /** Refresh derived indexes after a successful database write. */
+  private indexEntity(entity: Entity): void {
+    const previous = this.nameIndex.get(entity.name);
+    if (previous && previous.entityType !== entity.entityType) {
+      const names = this.typeIndex.get(previous.entityType);
+      names?.delete(entity.name);
+      if (names?.size === 0) this.typeIndex.delete(previous.entityType);
+    }
+    this.nameIndex.set(entity.name, entity);
+    let names = this.typeIndex.get(entity.entityType);
+    if (!names) {
+      names = new Set();
+      this.typeIndex.set(entity.entityType, names);
+    }
+    names.add(entity.name);
+    this.lowercaseCache.set(entity.name, computeLowercase(entity));
+  }
+
+  private cacheEntity(entity: Entity): void {
+    if (!this.cache) return;
+    const position = this.entityPositions.get(entity.name);
+    if (position !== undefined) this.cache.entities[position] = entity;
+    else {
+      this.entityPositions.set(entity.name, this.cache.entities.length);
+      this.cache.entities.push(entity);
+    }
+    this.indexEntity(entity);
   }
 
   // ==================== IGraphStorage — read ====================
@@ -369,6 +432,16 @@ export class PostgreSQLStorage implements IGraphStorage {
    */
   async saveGraph(callerGraph: KnowledgeGraph): Promise<void> {
     const graph = deepCopyPlain(callerGraph);
+    // Match database conflict semantics before writing, so the live cache and
+    // a subsequent hydration contain the same records. Entity upserts keep
+    // the last value; relations use ON CONFLICT DO NOTHING (first value).
+    graph.entities = [...new Map(graph.entities.map(entity => [entity.name, entity])).values()];
+    const uniqueRelations = new Map<string, Relation>();
+    for (const relation of graph.relations) {
+      const key = relationCacheKey(relation);
+      if (!uniqueRelations.has(key)) uniqueRelations.set(key, relation);
+    }
+    graph.relations = [...uniqueRelations.values()];
     await this.initSchema();
     const pool = await this.getPool();
     // Truncate-and-reinsert is the simplest correct implementation. For very
@@ -381,12 +454,8 @@ export class PostgreSQLStorage implements IGraphStorage {
     try {
       if (client) await client.query('BEGIN');
       await db.query('TRUNCATE entities, relations');
-      for (const entity of graph.entities) {
-        await this.insertEntityRow(db, entity);
-      }
-      for (const relation of graph.relations) {
-        await this.insertRelationRow(db, relation);
-      }
+      await this.insertEntityRows(db, graph.entities);
+      await this.insertRelationRows(db, graph.relations);
       if (client) await client.query('COMMIT');
     } catch (error) {
       if (client) {
@@ -405,25 +474,55 @@ export class PostgreSQLStorage implements IGraphStorage {
     this.pendingAppends = 0;
   }
 
-  private async insertEntityRow(pool: PgQueryable, entity: Entity): Promise<void> {
-    const row = this.entityToRow(entity);
-    const cols = ENTITY_COLUMNS.join(', ');
-    const placeholders = ENTITY_COLUMNS.map((_, i) => `$${i + 1}`).join(', ');
-    const values = ENTITY_COLUMNS.map((c) => row[c as keyof typeof row]);
-    await pool.query(
-      `INSERT INTO entities (${cols}) VALUES (${placeholders})
-       ON CONFLICT (name) DO UPDATE SET ${ENTITY_COLUMNS.filter((c) => c !== 'name')
-         .map((c) => `${c} = EXCLUDED.${c}`).join(', ')}`,
-      values,
-    );
+  private async insertEntityRows(db: PgQueryable, entities: Entity[]): Promise<void> {
+    const batchSize = Math.min(MAX_INSERT_ROWS, Math.floor(MAX_INSERT_PARAMETERS / ENTITY_COLUMNS.length));
+    for (let start = 0; start < entities.length; start += batchSize) {
+      // PostgreSQL rejects updating one conflicting key twice in a statement.
+      // Last-write-wins matches the previous sequential insertion behavior.
+      const batch = new Map(entities.slice(start, start + batchSize).map(entity => [entity.name, entity]));
+      const params: unknown[] = [];
+      const tuples: string[] = [];
+      for (const entity of batch.values()) {
+        const row = this.entityToRow(entity);
+        tuples.push(`(${ENTITY_COLUMNS.map(column => {
+          params.push(row[column]);
+          return `$${params.length}`;
+        }).join(', ')})`);
+      }
+      await db.query(
+        `INSERT INTO entities (${ENTITY_COLUMNS.join(', ')}) VALUES ${tuples.join(', ')}
+         ON CONFLICT (name) DO UPDATE SET ${ENTITY_COLUMNS.filter(column => column !== 'name')
+           .map(column => `${column} = EXCLUDED.${column}`).join(', ')}`,
+        params,
+      );
+    }
   }
 
-  private async insertRelationRow(pool: PgQueryable, relation: Relation): Promise<void> {
-    await pool.query(
-      `INSERT INTO relations (from_name, to_name, relation_type)
-       VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
-      [relation.from, relation.to, relation.relationType],
-    );
+  private async insertEntityRow(db: PgQueryable, entity: Entity): Promise<void> {
+    await this.insertEntityRows(db, [entity]);
+  }
+
+  private async insertRelationRows(db: PgQueryable, relations: Relation[]): Promise<void> {
+    const batchSize = Math.min(MAX_INSERT_ROWS, Math.floor(MAX_INSERT_PARAMETERS / RELATION_COLUMNS.length));
+    for (let start = 0; start < relations.length; start += batchSize) {
+      const params: unknown[] = [];
+      const tuples = relations.slice(start, start + batchSize).map(relation => {
+        const first = params.length + 1;
+        const { from, to, relationType, metadata, createdAt, lastModified, weight, confidence, properties, ...extra } = relation;
+        params.push(from, to, relationType, metadata ?? null, createdAt ?? null, lastModified ?? null,
+          weight ?? null, confidence ?? null, properties ?? null, Object.keys(extra).length ? extra : null);
+        return `(${RELATION_COLUMNS.map((_, index) => `$${first + index}`).join(', ')})`;
+      });
+      await db.query(
+        `INSERT INTO relations (${RELATION_COLUMNS.join(', ')})
+         VALUES ${tuples.join(', ')} ON CONFLICT DO NOTHING`,
+        params,
+      );
+    }
+  }
+
+  private async insertRelationRow(db: PgQueryable, relation: Relation): Promise<void> {
+    await this.insertRelationRows(db, [relation]);
   }
 
   /**
@@ -436,11 +535,7 @@ export class PostgreSQLStorage implements IGraphStorage {
     await this.ensureLoaded();
     const pool = await this.getPool();
     await this.insertEntityRow(pool, entity);
-    if (!this.cache) return;
-    const existingIdx = this.cache.entities.findIndex((e) => e.name === entity.name);
-    if (existingIdx >= 0) this.cache.entities[existingIdx] = entity;
-    else this.cache.entities.push(entity);
-    this.nameIndex.set(entity.name, entity);
+    this.cacheEntity(entity);
     this.pendingAppends += 1;
   }
 
@@ -455,10 +550,9 @@ export class PostgreSQLStorage implements IGraphStorage {
     const pool = await this.getPool();
     await this.insertRelationRow(pool, relation);
     if (!this.cache) return;
-    const duplicate = this.cache.relations.some(
-      (r) => r.from === relation.from && r.to === relation.to && r.relationType === relation.relationType,
-    );
-    if (!duplicate) {
+    const key = relationCacheKey(relation);
+    if (!this.relationKeys.has(key)) {
+      this.relationKeys.add(key);
       this.cache.relations.push(relation);
       const outArr = this.outgoingRelations.get(relation.from) ?? [];
       outArr.push(relation);
@@ -476,17 +570,13 @@ export class PostgreSQLStorage implements IGraphStorage {
     if (!existing) return false;
     const merged: Entity = {
       ...existing,
-      ...updates,
+      ...deepCopyPlain(updates),
       name: entityName,
       lastModified: updates.lastModified ?? new Date().toISOString(),
     };
     const pool = await this.getPool();
     await this.insertEntityRow(pool, merged);
-    if (this.cache) {
-      const idx = this.cache.entities.findIndex((e) => e.name === entityName);
-      if (idx >= 0) this.cache.entities[idx] = merged;
-    }
-    this.nameIndex.set(entityName, merged);
+    this.cacheEntity(merged);
     this.pendingAppends += 1;
     return true;
   }
@@ -498,6 +588,10 @@ export class PostgreSQLStorage implements IGraphStorage {
   clearCache(): void {
     this.cache = null;
     this.nameIndex.clear();
+    this.entityPositions.clear();
+    this.typeIndex.clear();
+    this.lowercaseCache.clear();
+    this.relationKeys.clear();
     this.outgoingRelations.clear();
     this.incomingRelations.clear();
     this.pendingAppends = 0;
@@ -514,23 +608,22 @@ export class PostgreSQLStorage implements IGraphStorage {
   }
 
   getEntitiesByType(entityType: string): Entity[] {
-    const result: Entity[] = [];
-    for (const entity of this.nameIndex.values()) {
-      if (entity.entityType === entityType) result.push(entity);
-    }
-    return result;
+    return [...(this.typeIndex.get(entityType) ?? [])]
+      .sort((a, b) => this.entityPositions.get(a)! - this.entityPositions.get(b)!)
+      .map(name => this.nameIndex.get(name)!);
   }
 
   getEntityTypes(): string[] {
-    const types = new Set<string>();
-    for (const entity of this.nameIndex.values()) types.add(entity.entityType);
-    return Array.from(types);
+    // Preserve graph order even after an entity changes type.
+    return [...this.typeIndex].map(([type, names]) => {
+      let position = Infinity;
+      for (const name of names) position = Math.min(position, this.entityPositions.get(name)!);
+      return { type, position };
+    }).sort((a, b) => a.position - b.position).map(entry => entry.type);
   }
 
   getLowercased(entityName: string): LowercaseData | undefined {
-    const e = this.nameIndex.get(entityName);
-    if (!e) return undefined;
-    return computeLowercase(e);
+    return this.lowercaseCache.get(entityName);
   }
 
   getRelationsFrom(entityName: string): Relation[] {
@@ -632,4 +725,18 @@ function columnText(value: unknown): string {
 /** ISO-8601 form of a `pg` timestamp column (Date or parseable string). */
 function columnIso(value: unknown): string {
   return new Date(value instanceof Date ? value : columnText(value)).toISOString();
+}
+
+/** Collision-free composite key, including names containing delimiters. */
+function relationCacheKey(relation: Relation): string {
+  return JSON.stringify([relation.from, relation.to, relation.relationType]);
+}
+
+/** Merge only extension data: canonical columns and object internals win. */
+function mergeExtensionFields(target: object, extra: unknown, reserved: ReadonlySet<string>): void {
+  if (extra === null || typeof extra !== 'object' || Array.isArray(extra)) return;
+  for (const [key, value] of Object.entries(extra)) {
+    if (reserved.has(key) || UNSAFE_EXTENSION_KEYS.has(key)) continue;
+    Object.defineProperty(target, key, { value, enumerable: true, writable: true, configurable: true });
+  }
 }

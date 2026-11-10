@@ -9,6 +9,7 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { randomUUID } from 'node:crypto';
 import type { TFIDFIndex, DocumentVector, KnowledgeGraph, ReadonlyKnowledgeGraph } from '../types/index.js';
 import { tokenize } from '../utils/index.js';
 import type { IIndexHealth, IndexHealthSnapshot } from '../utils/IIndexHealth.js';
@@ -25,6 +26,41 @@ interface SerializedTFIDFIndex {
   documents: Array<[string, DocumentVector]>;
   idf: Array<[string, number]>;
   documentFrequency?: Array<[string, number]>;
+  snapshotId?: string;
+}
+
+/** Map-compatible IDF values evaluated against current N and document frequencies. */
+class LazyIDFMap extends Map<string, number> {
+  constructor(private readonly frequencies: Map<string, number>, private readonly count: () => number) {
+    super();
+    for (const term of frequencies.keys()) super.set(term, 0);
+  }
+
+  override get(term: string): number | undefined {
+    if (!super.has(term)) return undefined;
+    const frequency = this.frequencies.get(term) ?? 0;
+    return frequency > 0 ? Math.log(this.count() / frequency) : super.get(term);
+  }
+
+  override *entries(): MapIterator<[string, number]> {
+    for (const term of super.keys()) yield [term, this.get(term)!];
+  }
+
+  override *values(): MapIterator<number> {
+    for (const term of super.keys()) yield this.get(term)!;
+  }
+
+  override [Symbol.iterator](): MapIterator<[string, number]> { return this.entries(); }
+
+  override forEach(callback: (value: number, key: string, map: Map<string, number>) => void, thisArg?: unknown): void {
+    for (const [term, value] of this.entries()) callback.call(thisArg, value, term, this);
+  }
+}
+
+interface IndexDelta {
+  snapshotId: string;
+  lastUpdated: string;
+  documents: Array<[string, DocumentVector | null]>;
 }
 
 /**
@@ -36,43 +72,31 @@ export class TFIDFIndexManager implements IIndexHealth {
   /** Number of indexed documents containing each term. */
   private documentFrequency: Map<string, number> = new Map();
 
-  /**
-   * S5: deferred-IDF batching. While > 0, the incremental document methods
-   * (`addDocument` / `removeDocument` / `updateDocument`) skip their IDF
-   * recalculation and set {@link deferredIdfDirty} instead; a single
-   * vocabulary-sized `recalculateAllIDF()` runs when the outermost
-   * {@link endIdfBatch} closes. Nesting-safe (depth counter).
-   */
+  /** Nesting-safe batching defers removal of obsolete IDF keys; values are lazy. */
   private idfBatchDepth = 0;
-  /** True when at least one batched op skipped an IDF recalculation. */
+  /** True when a batch has changed document statistics. */
   private deferredIdfDirty = false;
+  private dirtyNames = new Set<string>();
+  private snapshotId: string | undefined;
+  private needsSnapshot = true;
+  private journalRecords = 0;
+  private saveQueue: Promise<void> = Promise.resolve();
+  private changedTerms = new Set<string>();
+  private generation = 0;
+  private removedSinceSave = new Set<string>();
+  private documentOrder = new Map<string, number>();
+  private nextDocumentOrder = 0;
 
   constructor(storageDir: string) {
     this.indexPath = path.join(storageDir, '.indexes', INDEX_FILENAME);
   }
 
-  /**
-   * S5: open a deferred-IDF batch. Incremental document mutations made
-   * before the matching {@link endIdfBatch} update term frequencies
-   * and document frequencies immediately but defer the O(vocabulary) IDF
-   * recalculation, so a batch of B mutations pays for exactly one IDF pass.
-   * Always pair with `endIdfBatch()` in a try/finally.
-   *
-   * The public single-document methods keep their immediate-recalculation
-   * behavior when no batch is open.
-   */
+  /** Open a batch of document mutations; pair with endIdfBatch in finally. */
   beginIdfBatch(): void {
     this.idfBatchDepth++;
   }
 
-  /**
-   * S5: close a deferred-IDF batch. When the outermost batch closes and any
-   * batched mutation deferred an IDF recalculation, a single full
-   * `recalculateAllIDF()` runs. A full recalculation is a superset of the
-   * per-term recalculation `updateDocument` would have done — IDF is
-   * `log(N/df)`, a pure function of the final document set — so batched
-   * results are identical to sequential unbatched calls.
-   */
+  /** Close a batch, pruning obsolete keys once without a vocabulary-wide pass. */
   endIdfBatch(): void {
     if (this.idfBatchDepth === 0) {
       return;
@@ -99,6 +123,7 @@ export class TFIDFIndexManager implements IIndexHealth {
    * @returns Newly built TF-IDF index
    */
   async buildIndex(graph: ReadonlyKnowledgeGraph): Promise<TFIDFIndex> {
+    this.generation++;
     const documents = new Map<string, DocumentVector>();
     const documentFrequency = new Map<string, number>();
 
@@ -131,12 +156,12 @@ export class TFIDFIndexManager implements IIndexHealth {
 
     // Derive IDF directly from the incrementally maintained document
     // frequencies instead of rescanning every document for every term.
-    const idf = new Map<string, number>();
-    const totalDocs = documents.size;
-    for (const [term, docCount] of documentFrequency) {
-      idf.set(term, Math.log(totalDocs / docCount));
-    }
     this.documentFrequency = documentFrequency;
+    const idf = new LazyIDFMap(documentFrequency, () => documents.size);
+    this.needsSnapshot = true;
+    this.dirtyNames.clear();
+    this.changedTerms.clear();
+    this.resetDocumentOrder(documents);
 
     this.index = {
       version: INDEX_VERSION,
@@ -145,7 +170,7 @@ export class TFIDFIndexManager implements IIndexHealth {
       idf,
     };
 
-    return this.index;
+    return this.getIndex()!;
   }
 
   /**
@@ -162,7 +187,8 @@ export class TFIDFIndexManager implements IIndexHealth {
       return this.buildIndex(graph);
     }
 
-    const updatedDocuments = new Map(this.index.documents);
+    this.generation++;
+    const updatedDocuments = this.index.documents;
     const changedEntities = new Map<string, (typeof graph.entities)[number]>();
     for (const entity of graph.entities) {
       if (changedEntityNames.has(entity.name)) {
@@ -171,6 +197,7 @@ export class TFIDFIndexManager implements IIndexHealth {
     }
 
     for (const entityName of changedEntityNames) {
+      this.dirtyNames.add(entityName);
       const oldDocument = updatedDocuments.get(entityName);
       if (oldDocument) this.decrementDocumentFrequency(oldDocument);
 
@@ -178,9 +205,12 @@ export class TFIDFIndexManager implements IIndexHealth {
       if (entity) {
         const document = this.buildDocumentVector(entity);
         updatedDocuments.set(entityName, document);
+        if (!oldDocument) this.documentOrder.set(entityName, this.nextDocumentOrder++);
         this.incrementDocumentFrequency(document);
       } else {
         updatedDocuments.delete(entityName);
+        this.removedSinceSave.add(entityName);
+        this.documentOrder.delete(entityName);
       }
     }
 
@@ -192,7 +222,7 @@ export class TFIDFIndexManager implements IIndexHealth {
     };
     this.recalculateAllIDF();
 
-    return this.index;
+    return this.getIndex()!;
   }
 
   /**
@@ -201,24 +231,58 @@ export class TFIDFIndexManager implements IIndexHealth {
    * @returns Loaded index or undefined if not found
    */
   async loadIndex(): Promise<TFIDFIndex | undefined> {
+    const operation = this.saveQueue.then(() => this.readIndex());
+    this.saveQueue = operation.then(() => {}, () => {});
+    return operation;
+  }
+
+  private async readIndex(): Promise<TFIDFIndex | undefined> {
+    const generation = this.generation;
     try {
       const data = await fs.readFile(this.indexPath, 'utf-8');
       const serialized: SerializedTFIDFIndex = JSON.parse(data);
 
+      const documents = new Map(serialized.documents);
+      const snapshotId = serialized.snapshotId;
+      let journalRecords = 0;
+      if (snapshotId) {
+        let journal = '';
+        try { journal = await fs.readFile(`${this.indexPath}.journal`, 'utf-8'); }
+        catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+        // An interrupted append can leave a partial final line. Only complete records commit.
+        const lines = journal.split('\n');
+        lines.pop();
+        for (const line of lines) {
+          if (!line) continue;
+          const delta: IndexDelta = JSON.parse(line);
+          if (delta.snapshotId !== snapshotId) continue;
+          for (const [name, document] of delta.documents) {
+            if (document) documents.set(name, document);
+            else documents.delete(name);
+          }
+          serialized.lastUpdated = delta.lastUpdated;
+          journalRecords++;
+        }
+        // Repair an incomplete tail before another append can concatenate onto it.
+        if (journal && !journal.endsWith('\n')) {
+          await fs.truncate(`${this.indexPath}.journal`, Buffer.byteLength(journal.slice(0, journal.lastIndexOf('\n') + 1)));
+        }
+      }
+      if (generation !== this.generation) return this.index;
+      this.snapshotId = snapshotId;
+      this.journalRecords = journalRecords;
+      this.documentFrequency = this.calculateDocumentFrequency(documents);
       this.index = {
         version: serialized.version,
         lastUpdated: serialized.lastUpdated,
-        documents: new Map(serialized.documents),
-        idf: new Map(serialized.idf),
+        documents,
+        idf: new LazyIDFMap(this.documentFrequency, () => documents.size),
       };
-      this.documentFrequency =
-        serialized.documentFrequency && (
-          serialized.documentFrequency.length > 0 || this.index.documents.size === 0
-        )
-          ? new Map(serialized.documentFrequency)
-          : this.calculateDocumentFrequency(this.index.documents);
+      this.dirtyNames.clear();
+      this.resetDocumentOrder(documents);
+      this.needsSnapshot = !this.snapshotId;
 
-      return this.index;
+      return this.getIndex();
     } catch {
       // Index doesn't exist or is invalid
       return undefined;
@@ -231,28 +295,70 @@ export class TFIDFIndexManager implements IIndexHealth {
    * @param index - Index to save (uses cached index if not provided)
    */
   async saveIndex(index?: TFIDFIndex): Promise<void> {
-    const indexToSave = index || this.index;
-    if (!indexToSave) {
-      throw new Error('No index to save');
+    const operation = this.saveQueue.then(() => this.persistIndex(index));
+    this.saveQueue = operation.catch(() => {});
+    return operation;
+  }
+
+  private async persistIndex(index?: TFIDFIndex): Promise<void> {
+    if (!index && !this.index) throw new Error('No index to save');
+    await fs.mkdir(path.dirname(this.indexPath), { recursive: true });
+    const indexToSave = index ?? this.index;
+    if (!indexToSave) throw new Error('No index to save');
+    const ownIndex = indexToSave === this.index;
+    const dirty = this.dirtyNames;
+    const removed = this.removedSinceSave;
+    this.dirtyNames = new Set();
+    this.removedSinceSave = new Set();
+    const mustSnapshot = index !== undefined || !ownIndex || this.needsSnapshot || !this.snapshotId || this.journalRecords >= 256;
+    try {
+      if (mustSnapshot) {
+        const snapshotId = randomUUID();
+        const serialized: SerializedTFIDFIndex = {
+          version: indexToSave.version,
+          lastUpdated: indexToSave.lastUpdated,
+          documents: Array.from(indexToSave.documents.entries()),
+          idf: Array.from(indexToSave.idf.entries()),
+          documentFrequency: Array.from((ownIndex ? this.documentFrequency : this.calculateDocumentFrequency(indexToSave.documents)).entries()),
+          snapshotId,
+        };
+        const temporary = `${this.indexPath}.${snapshotId}.tmp`;
+        try {
+          await fs.writeFile(temporary, JSON.stringify(serialized), 'utf-8');
+          await fs.rename(temporary, this.indexPath);
+        } finally {
+          await fs.unlink(temporary).catch(() => {});
+        }
+        // Old journal records carry the old snapshot ID, so crash replay cannot overwrite this snapshot.
+        await fs.writeFile(`${this.indexPath}.journal`, '', 'utf-8');
+        if (ownIndex && this.index === indexToSave) {
+          this.snapshotId = snapshotId;
+          this.needsSnapshot = false;
+          this.journalRecords = 0;
+        } else {
+          this.needsSnapshot = true;
+        }
+      } else if (dirty.size > 0) {
+        const delta: IndexDelta = {
+          snapshotId: this.snapshotId!,
+          lastUpdated: indexToSave.lastUpdated,
+          documents: [
+            ...Array.from(removed, name => [name, null] as [string, null]),
+            ...Array.from(dirty)
+              .filter(name => indexToSave.documents.has(name))
+              .sort((a, b) => (this.documentOrder.get(a) ?? 0) - (this.documentOrder.get(b) ?? 0))
+              .map(name => [name, indexToSave.documents.get(name)!] as [string, DocumentVector]),
+          ],
+        };
+        await fs.appendFile(`${this.indexPath}.journal`, `${JSON.stringify(delta)}\n`, 'utf-8');
+        this.journalRecords++;
+      }
+    } catch (error) {
+      for (const name of dirty) this.dirtyNames.add(name);
+      for (const name of removed) this.removedSinceSave.add(name);
+      this.needsSnapshot = true;
+      throw error;
     }
-
-    // Ensure index directory exists
-    const indexDir = path.dirname(this.indexPath);
-    await fs.mkdir(indexDir, { recursive: true });
-
-    // Serialize Map objects to arrays for JSON
-    const frequencies = indexToSave === this.index
-      ? this.documentFrequency
-      : this.calculateDocumentFrequency(indexToSave.documents);
-    const serialized: SerializedTFIDFIndex = {
-      version: indexToSave.version,
-      lastUpdated: indexToSave.lastUpdated,
-      documents: Array.from(indexToSave.documents.entries()),
-      idf: Array.from(indexToSave.idf.entries()),
-      documentFrequency: Array.from(frequencies.entries()),
-    };
-
-    await fs.writeFile(this.indexPath, JSON.stringify(serialized, null, 2), 'utf-8');
   }
 
   /**
@@ -261,6 +367,17 @@ export class TFIDFIndexManager implements IIndexHealth {
    * @returns Cached index or undefined if not loaded
    */
   getIndex(): TFIDFIndex | undefined {
+    // Materialize native Map storage for consumers using structuredClone.
+    // Retained references still provide fresh lazy get/iteration after mutations;
+    // call getIndex again before native cloning to refresh its stored values.
+    if (this.index) {
+      for (const [term, value] of this.index.idf) this.index.idf.set(term, value);
+    }
+    return this.index;
+  }
+
+  /** Internal search accessor: query-term reads do not materialize the vocabulary. */
+  getIndexForSearch(): TFIDFIndex | undefined {
     return this.index;
   }
 
@@ -268,8 +385,22 @@ export class TFIDFIndexManager implements IIndexHealth {
    * Clear the cached index and delete from disk.
    */
   async clearIndex(): Promise<void> {
+    const operation = this.saveQueue.then(() => this.clearPersistedIndex());
+    this.saveQueue = operation.catch(() => {});
+    return operation;
+  }
+
+  private async clearPersistedIndex(): Promise<void> {
+    this.generation++;
+    this.needsSnapshot = true;
+    this.snapshotId = undefined;
+    this.dirtyNames.clear();
+    this.removedSinceSave.clear();
+    this.documentOrder.clear();
     this.index = undefined;
-    this.documentFrequency.clear();
+    this.documentFrequency = new Map();
+    this.changedTerms.clear();
+    await fs.unlink(`${this.indexPath}.journal`).catch(() => {});
     try {
       await fs.unlink(this.indexPath);
     } catch {
@@ -332,10 +463,13 @@ export class TFIDFIndexManager implements IIndexHealth {
       return;
     }
 
+    this.generation++;
+    this.dirtyNames.add(entity.name);
     const oldDocument = this.index.documents.get(entity.name);
     if (oldDocument) this.decrementDocumentFrequency(oldDocument);
     const document = this.buildDocumentVector(entity);
     this.index.documents.set(entity.name, document);
+    if (!oldDocument) this.documentOrder.set(entity.name, this.nextDocumentOrder++);
     this.incrementDocumentFrequency(document);
 
     // Update IDF for ALL terms because N changed (total document count)
@@ -378,8 +512,12 @@ export class TFIDFIndexManager implements IIndexHealth {
       return;
     }
 
+    this.generation++;
+    this.dirtyNames.add(entityName);
     // Remove from documents map
     this.index.documents.delete(entityName);
+    this.removedSinceSave.add(entityName);
+    this.documentOrder.delete(entityName);
     this.decrementDocumentFrequency(document);
 
     // Update IDF for ALL terms because N changed (total document count)
@@ -417,6 +555,8 @@ export class TFIDFIndexManager implements IIndexHealth {
       return;
     }
 
+    this.generation++;
+    this.dirtyNames.add(entity.name);
     const oldDocument = this.index.documents.get(entity.name);
     const oldTerms = oldDocument ? new Set(Object.keys(oldDocument.terms)) : new Set<string>();
 
@@ -427,6 +567,7 @@ export class TFIDFIndexManager implements IIndexHealth {
     // Update documents map
     if (oldDocument) this.decrementDocumentFrequency(oldDocument);
     this.index.documents.set(entity.name, document);
+    if (!oldDocument) this.documentOrder.set(entity.name, this.nextDocumentOrder++);
     this.incrementDocumentFrequency(document);
 
     // Find terms that changed (added or removed)
@@ -463,6 +604,13 @@ export class TFIDFIndexManager implements IIndexHealth {
     this.index.lastUpdated = new Date().toISOString();
   }
 
+  private resetDocumentOrder(documents: Map<string, DocumentVector>): void {
+    this.documentOrder.clear();
+    this.nextDocumentOrder = 0;
+    for (const name of documents.keys()) this.documentOrder.set(name, this.nextDocumentOrder++);
+    this.removedSinceSave.clear();
+  }
+
   private buildDocumentVector(entity: {
     name: string;
     entityType: string;
@@ -482,6 +630,8 @@ export class TFIDFIndexManager implements IIndexHealth {
         term,
         (this.documentFrequency.get(term) ?? 0) + 1,
       );
+      this.index?.idf.set(term, 0);
+      this.changedTerms.add(term);
     }
   }
 
@@ -489,7 +639,10 @@ export class TFIDFIndexManager implements IIndexHealth {
     for (const term of Object.keys(document.terms)) {
       const next = (this.documentFrequency.get(term) ?? 0) - 1;
       if (next > 0) this.documentFrequency.set(term, next);
-      else this.documentFrequency.delete(term);
+      else {
+        this.documentFrequency.delete(term);
+        this.changedTerms.add(term);
+      }
     }
   }
 
@@ -512,59 +665,16 @@ export class TFIDFIndexManager implements IIndexHealth {
    * @private
    */
   private recalculateIDFForTerms(terms: Set<string>): void {
-    if (!this.index) {
-      return;
-    }
-
-    const totalDocs = this.index.documents.size;
-    if (totalDocs === 0) {
-      // No documents, clear all IDF for these terms
-      for (const term of terms) {
-        this.index.idf.delete(term);
-      }
-      return;
-    }
-
+    // Prune only the affected keys; values themselves are evaluated lazily.
     for (const term of terms) {
-      const docCount = this.documentFrequency.get(term) ?? 0;
-
-      if (docCount > 0) {
-        // IDF = log(N / df) where N = total docs, df = doc frequency
-        const idfScore = Math.log(totalDocs / docCount);
-        this.index.idf.set(term, idfScore);
-      } else {
-        // Term no longer exists in any document
-        this.index.idf.delete(term);
-      }
+      if (!this.documentFrequency.has(term)) this.index?.idf.delete(term);
+      this.changedTerms.delete(term);
     }
   }
 
-  /**
-   * Phase 10 Sprint 3: Recalculate IDF scores for ALL terms in the index.
-   *
-   * Called when the total document count changes (add/remove document).
-   * @private
-   */
+  /** Retained as the batch boundary hook; lazy IDF needs no vocabulary pass. */
   private recalculateAllIDF(): void {
-    if (!this.index) {
-      return;
-    }
-
-    const totalDocs = this.index.documents.size;
-
-    if (totalDocs === 0) {
-      // No documents, clear all IDF
-      this.index.idf.clear();
-      return;
-    }
-
-    // Clear old IDF and recalculate
-    this.index.idf.clear();
-    for (const [term, docCount] of this.documentFrequency) {
-      // IDF = log(N / df) where N = total docs, df = doc frequency
-      const idfScore = Math.log(totalDocs / docCount);
-      this.index.idf.set(term, idfScore);
-    }
+    this.recalculateIDFForTerms(this.changedTerms);
   }
 
   /**

@@ -1,0 +1,65 @@
+{
+  "commit": "5ceb972545baa2c6cd44d21d18e3e7c3aa05c668",
+  "sourceDirty": true,
+  "date": "2026-11-10T14:30:48.137Z",
+  "node": "v24.22.1",
+  "platform": "linux",
+  "cpu": "AMD EPYC 9V74 80-Core Processor",
+  "resolverSupported": false,
+  "nodeEnv": "production",
+  "entities": 10000,
+  "lexical": {
+    "selective": {
+      "firstCallMs": 2.609629000000041,
+      "p50Ms": 0.35699900000003026,
+      "p95Ms": 0.7700219999999831,
+      "samples": 100,
+      "warmupCalls": 10
+    },
+    "broad": {
+      "firstCallMs": 0.8370539999999664,
+      "p50Ms": 0.6401060000000598,
+      "p95Ms": 1.1287940000000845,
+      "samples": 100,
+      "warmupCalls": 10
+    }
+  },
+  "fuzzyFiltered": {
+    "firstCallMs": 22.21342900000002,
+    "p50Ms": 10.54952400000002,
+    "p95Ms": 16.469859999999926,
+    "samples": 100,
+    "warmupCalls": 10
+  },
+  "tfidf": {
+    "update100Ms": 2.3618850000000293,
+    "append100Ms": 347.145528,
+    "persistMs": 56.23076399999991,
+    "reloadMs": 53.58519000000024,
+    "journalBytes": 0,
+    "snapshotBytes": 5928988
+  },
+  "ann": null,
+  "semantic": {
+    "rebuildMap": {
+      "firstCallMs": 3.1963550000000396,
+      "p50Ms": 1.6349679999998443,
+      "p95Ms": 3.666154000000006,
+      "samples": 100,
+      "warmupCalls": 10
+    },
+    "indexedResolver": {
+      "firstCallMs": 1.6161489999999503,
+      "p50Ms": 1.640396000000237,
+      "p95Ms": 1.9296229999999923,
+      "samples": 100,
+      "warmupCalls": 10
+    }
+  },
+  "rssBytes": 356872192,
+  "notes": [
+    "Single-process measurements; compare identical machine/runtime/environment.",
+    "Indexes are initialized before measurement; firstCallMs is not process-cold latency.",
+    "Timings are observations, not CI assertions."
+  ]
+}

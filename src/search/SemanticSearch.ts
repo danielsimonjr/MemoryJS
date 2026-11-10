@@ -56,10 +56,10 @@ export function entityToText(entity: Entity): string {
  * Convert vector store hits into semantic results with entity lookup.
  *
  * Hits below the threshold are skipped. The excluded name is skipped when it is set.
- * A hit whose name has no entity in the map is skipped. The list stops at the limit.
- * The function does not use `this`, so a caller reads the entity map itself.
+ * A hit whose name has no entity is skipped. The list stops at the limit.
+ * The caller supplies a lookup reflecting the searched graph.
  *
- * @param entityMap - Entities by name
+ * @param resolveEntity - Resolve an entity name in the searched graph
  * @param vectorResults - Hits from the vector store, best first
  * @param effectiveLimit - Maximum number of results
  * @param minSimilarity - Minimum similarity threshold
@@ -67,7 +67,7 @@ export function entityToText(entity: Entity): string {
  * @returns Semantic results in the order of the hits
  */
 function toSemanticResults(
-  entityMap: Map<string, Entity>,
+  resolveEntity: (name: string) => Entity | undefined,
   vectorResults: VectorSearchResult[],
   effectiveLimit: number,
   minSimilarity: number,
@@ -84,7 +84,7 @@ function toSemanticResults(
       continue;
     }
 
-    const entity = entityMap.get(result.name);
+    const entity = resolveEntity(result.name);
     if (entity) {
       results.push({
         entity,
@@ -106,6 +106,8 @@ function toSemanticResults(
 export interface SemanticSearchOptions {
   /** Optional text-to-vector cache, normally wired by ManagerContext. */
   embeddingCache?: EmbeddingCache;
+  /** Optional authoritative lookup; called only for hits. Must reflect the supplied graph. */
+  resolveEntity?: (name: string, graph: ReadonlyKnowledgeGraph) => Entity | undefined;
   /** Called after one or more embeddings are inserted into the cache. */
   onCacheInsert?: () => void;
 }
@@ -138,6 +140,7 @@ export class SemanticSearch {
   private indexedCount = 0;
   private embeddingCache?: EmbeddingCache;
   private onCacheInsert?: () => void;
+  private resolveEntity?: SemanticSearchOptions['resolveEntity'];
 
   /** Pending or completed load of the vector store */
   private storeReady?: Promise<void>;
@@ -156,6 +159,7 @@ export class SemanticSearch {
     this.embeddingService = embeddingService;
     this.vectorStore = vectorStore || new InMemoryVectorStore();
     this.embeddingCache = options.embeddingCache;
+    this.resolveEntity = options.resolveEntity;
     this.onCacheInsert = options.onCacheInsert;
   }
 
@@ -392,21 +396,23 @@ export class SemanticSearch {
   }
 
   /**
-   * Build a name → entity lookup map from a knowledge graph.
+   * Resolve hits through an explicit authoritative lookup, or build a fresh map.
    *
    * Shared by {@link search} and {@link findSimilar}. Not cached: the graph
    * object may be mutated between calls, so the map is rebuilt each time to
    * avoid stale-lookup bugs.
    *
    * @param graph - Knowledge graph to index
-   * @returns Map keyed by entity name
+   * @returns Entity lookup for this graph
    */
-  private buildEntityMap(graph: ReadonlyKnowledgeGraph): Map<string, Entity> {
+  private entityResolver(graph: ReadonlyKnowledgeGraph): (name: string) => Entity | undefined {
+    const resolver = this.resolveEntity;
+    if (resolver) return name => resolver(name, graph);
     const entityMap = new Map<string, Entity>();
     for (const entity of graph.entities) {
       entityMap.set(entity.name, entity);
     }
-    return entityMap;
+    return name => entityMap.get(name);
   }
 
   /**
@@ -426,7 +432,8 @@ export class SemanticSearch {
   ): Promise<SemanticSearchResult[]> {
     await this.ensureStoreReady();
     // Ensure limit is within bounds
-    const effectiveLimit = Math.min(limit, SEMANTIC_SEARCH_LIMITS.MAX_LIMIT);
+    const effectiveLimit = Number.isNaN(limit) ? 0 : Math.max(0, Math.floor(Math.min(limit, SEMANTIC_SEARCH_LIMITS.MAX_LIMIT)));
+    if (effectiveLimit === 0) return [];
 
     // Generate embedding for query
     const queryEmbedding = await this.embedCached(`query:${query}`, query, 'query');
@@ -434,7 +441,7 @@ export class SemanticSearch {
     // Search vector store
     const vectorResults = this.vectorStore.search(queryEmbedding, effectiveLimit * 2); // Get extra for filtering
 
-    return toSemanticResults(this.buildEntityMap(graph), vectorResults, effectiveLimit, minSimilarity);
+    return toSemanticResults(this.entityResolver(graph), vectorResults, effectiveLimit, minSimilarity);
   }
 
   /**
@@ -454,25 +461,26 @@ export class SemanticSearch {
   ): Promise<SemanticSearchResult[]> {
     await this.ensureStoreReady();
     // Get the entity's embedding
-    const embedding = this.vectorStore.get(entityName);
+    let embedding = this.vectorStore.get(entityName);
     if (!embedding) {
       // Try to find and index the entity
-      const entity = graph.entities.find(e => e.name === entityName);
-      if (entity) {
-        await this.indexEntity(entity);
-        return this.findSimilar(graph, entityName, limit, minSimilarity);
-      }
-      return [];
+      const entity = this.resolveEntity
+        ? this.resolveEntity(entityName, graph)
+        : graph.entities.find(e => e.name === entityName);
+      if (!entity || !await this.indexEntity(entity)) return [];
+      embedding = this.vectorStore.get(entityName);
+      if (!embedding) return [];
     }
 
     // Ensure limit is within bounds
-    const effectiveLimit = Math.min(limit, SEMANTIC_SEARCH_LIMITS.MAX_LIMIT);
+    const effectiveLimit = Number.isNaN(limit) ? 0 : Math.max(0, Math.floor(Math.min(limit, SEMANTIC_SEARCH_LIMITS.MAX_LIMIT)));
+    if (effectiveLimit === 0) return [];
 
     // Search vector store (request extra to filter out self)
     const vectorResults = this.vectorStore.search(embedding, effectiveLimit + 1);
 
     return toSemanticResults(
-      this.buildEntityMap(graph),
+      this.entityResolver(graph),
       vectorResults,
       effectiveLimit,
       minSimilarity,

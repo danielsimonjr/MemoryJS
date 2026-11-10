@@ -1,8 +1,8 @@
 metadata:
   name: "@danielsimonjr/memoryjs"
-  totalFiles: 399
+  totalFiles: 401
   totalModules: 12
-  totalExports: 2815
+  totalExports: 2820
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -14413,6 +14413,9 @@ modules:
         - file: ../utils/constants.js
           imports:
             - SEARCH_LIMITS
+        - file: ../utils/boundedTopK.js
+          imports:
+            - BoundedTopK
         - file: ../utils/graphCopy.js
           imports:
             - borrowGraphView
@@ -14696,6 +14699,7 @@ modules:
           imports:
             - Entity
             - KnowledgeGraph
+            - LowercaseData
           typeOnly: true
         - file: ../core/GraphStorage.js
           imports:
@@ -14715,6 +14719,7 @@ modules:
           imports:
             - cleanupExpiredEntries
             - evictOldest
+            - getGraphGenerations
         - file: ../utils/constants.js
           imports:
             - FUZZY_SEARCH_LIMITS
@@ -14733,6 +14738,10 @@ modules:
         - file: ./inducedSubgraph.js
           imports:
             - collectInducedRelations
+        - file: ../workers/levenshteinWorker.js
+          imports:
+            - WorkerInput
+          typeOnly: true
       exports:
         - DEFAULT_FUZZY_THRESHOLD
         - FuzzySearch
@@ -14950,6 +14959,28 @@ modules:
         - LLMSearchExecutorOptions
         - LLMExecuteOptions
         - ExplainedEntityResult
+    src/search/LSHVectorStore.ts:
+      description: Approximate retrieval with exact cosine reranking of candidates. Small corpora
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../types/index.js
+          imports:
+            - IVectorStore
+            - VectorSearchResult
+          typeOnly: true
+        - file: ../utils/textSimilarity.js
+          imports:
+            - cosineSimilarity
+        - file: ../utils/boundedTopK.js
+          imports:
+            - BoundedTopK
+      exports:
+        - LSHVectorStore
+      classes:
+        - LSHVectorStore
+      interfaces:
+        - LSHVectorStoreOptions
     src/search/MaterializedViews.ts:
       description: Materialized Search Views
       externalDependencies: []
@@ -15242,6 +15273,9 @@ modules:
       externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../utils/boundedTopK.js
+          imports:
+            - BoundedTopK
         - file: ../types/index.js
           imports:
             - DocumentVector
@@ -15603,6 +15637,9 @@ modules:
         - module: path
           imports:
             - "* as path"
+        - module: crypto
+          imports:
+            - randomUUID
       internalDependencies:
         - file: ../types/index.js
           imports:
@@ -15810,10 +15847,16 @@ modules:
             - cosineSimilarity
             - SQLiteStorageWithEmbeddings
           reExport: true
+        - file: ./LSHVectorStore.js
+          imports:
+            - LSHVectorStore
+            - LSHVectorStoreOptions
+          reExport: true
         - file: ./SemanticSearch.js
           imports:
             - SemanticSearch
             - entityToText
+            - SemanticSearchOptions
           reExport: true
         - file: ./TFIDFIndexManager.js
           imports:
@@ -16096,8 +16139,11 @@ modules:
         - createVectorStore
         - cosineSimilarity
         - SQLiteStorageWithEmbeddings
+        - LSHVectorStore
+        - LSHVectorStoreOptions
         - SemanticSearch
         - entityToText
+        - SemanticSearchOptions
         - TFIDFIndexManager
         - TFIDFEventSync
         - QueryCostEstimator
@@ -16262,8 +16308,11 @@ modules:
         - createVectorStore
         - cosineSimilarity
         - SQLiteStorageWithEmbeddings
+        - LSHVectorStore
+        - LSHVectorStoreOptions
         - SemanticSearch
         - entityToText
+        - SemanticSearchOptions
         - TFIDFIndexManager
         - TFIDFEventSync
         - QueryCostEstimator
@@ -18363,6 +18412,15 @@ modules:
         - getWorkerTaskManager
         - _resetWorkerTaskManagerForTests
         - batchProcessViaWorkers
+    src/utils/boundedTopK.ts:
+      description: boundedTopK module
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies: []
+      exports:
+        - BoundedTopK
+      classes:
+        - BoundedTopK
     src/utils/compressedCache.ts:
       description: Compressed Cache Utility
       externalDependencies: []
@@ -20820,6 +20878,7 @@ dependencyGraph:
         - src/search/IncrementalIndexer.ts
         - src/search/LLMQueryPlanner.ts
         - src/search/LLMSearchExecutor.ts
+        - src/search/LSHVectorStore.ts
         - src/search/MaterializedViews.ts
         - src/search/NGramIndex.ts
         - src/search/OptimizedInvertedIndex.ts
@@ -20897,6 +20956,7 @@ dependencyGraph:
         - src/utils/SchemaValidator.ts
         - src/utils/WorkerPoolManager.ts
         - src/utils/WorkerTaskManager.ts
+        - src/utils/boundedTopK.ts
         - src/utils/compressedCache.ts
         - src/utils/compression/CompressedMap.ts
         - src/utils/compression/ICompressionAdapter.ts
@@ -20945,29 +21005,29 @@ reachability:
     - src/index.ts
     - src/sqlite.ts
     - src/workers/levenshteinWorker.ts
-  reachableCount: 399
+  reachableCount: 401
   dormantCount: 0
   orphaned: []
   testOnly: []
 statistics:
-  totalTypeScriptFiles: 399
+  totalTypeScriptFiles: 401
   totalModules: 12
-  totalLinesOfCode: 126159
-  totalExports: 2815
-  totalClasses: 276
-  totalInterfaces: 824
+  totalLinesOfCode: 126617
+  totalExports: 2820
+  totalClasses: 278
+  totalInterfaces: 825
   totalFunctions: 643
   totalTypeGuards: 43
   totalEnums: 4
   totalConstants: 180
-  totalReExports: 1713
-  totalTypeOnlyImports: 864
+  totalReExports: 1716
+  totalTypeOnlyImports: 866
   runtimeCircularDeps: 0
   typeOnlyCircularDeps: 15
   entryRoots: 4
-  reachableFiles: 399
+  reachableFiles: 401
   dormantFiles: 0
   orphanedFiles: 0
   testOnlyFiles: 0
   unusedFilesCount: 0
-  unusedExportsCount: 119
+  unusedExportsCount: 118

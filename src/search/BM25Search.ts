@@ -11,6 +11,7 @@
 
 import type { Entity, IGraphStorage, SearchResult } from '../types/index.js';
 import { SEARCH_LIMITS } from '../utils/constants.js';
+import { BoundedTopK } from '../utils/boundedTopK.js';
 import { borrowGraphView } from '../utils/graphCopy.js';
 import { getFtsCandidateNames, type FtsOwner } from './ftsCandidates.js';
 
@@ -101,12 +102,24 @@ export const DEFAULT_BM25_CONFIG: BM25Config = {
 export class BM25Search {
   private index: BM25Index | null = null;
   private config: BM25Config;
+  private postings = new Map<string, Set<string>>();
+  private documentOrder = new Map<string, number>();
+  private nextOrder = 0;
 
   constructor(
     private storage: IGraphStorage,
     config: Partial<BM25Config> = {}
   ) {
     this.config = { ...DEFAULT_BM25_CONFIG, ...config };
+  }
+
+  private indexPosting(entry: BM25DocumentEntry): void {
+    this.documentOrder.set(entry.entityName, this.nextOrder++);
+    for (const term of entry.termFreqs.keys()) {
+      let posting = this.postings.get(term);
+      if (!posting) this.postings.set(term, posting = new Set());
+      posting.add(entry.entityName);
+    }
   }
 
   /**
@@ -152,6 +165,9 @@ export class BM25Search {
    */
   async buildIndex(): Promise<void> {
     const graph = await this.storage.loadGraph();
+    this.postings.clear();
+    this.documentOrder.clear();
+    this.nextOrder = 0;
     const documents = new Map<string, BM25DocumentEntry>();
     const documentFrequency = new Map<string, number>();
     const termsSeen = new Set<string>();
@@ -184,6 +200,7 @@ export class BM25Search {
       };
 
       documents.set(entity.name, entry);
+      this.indexPosting(entry);
       totalDocLength += tokens.length;
     }
 
@@ -203,8 +220,8 @@ export class BM25Search {
    *
    * The graph does not reload per query.
    * The method scores candidates from the in-memory index.
-   * The method requests only the entity of each returned hit from the storage.
-   * The method uses the public lookup for these requests.
+   * The method resolves matching candidate entities through the public lookup
+   * before bounded selection, so stale hits cannot consume a result slot.
    * The method builds matched fields for each returned hit only.
    * Outside production, each returned entity is a frozen copy, as `loadGraph()` provides.
    * A caller cannot mutate the storage cache through a result.
@@ -247,7 +264,11 @@ export class BM25Search {
 
     const { k1, b } = this.config;
     const { documents, documentFrequency, avgDocLength, totalDocs } = this.index;
-    const scored: Array<{ entityName: string; docEntry: BM25DocumentEntry; score: number }> = [];
+    const cap = Number.isFinite(effectiveLimit) ? Math.max(0, Math.floor(effectiveLimit)) : 0;
+    if (cap === 0) return [];
+    const scored = new BoundedTopK<{ entityName: string; docEntry: BM25DocumentEntry; score: number; entity?: Entity; order: number }>(
+      cap, (x, y) => y.score - x.score || x.order - y.order,
+    );
 
     // IDF is a per-term corpus constant: compute it once per query term.
     const idfByTerm = new Map<string, number>();
@@ -257,9 +278,35 @@ export class BM25Search {
       idfByTerm.set(term, df > 0 ? Math.log((totalDocs - df + 0.5) / (df + 0.5) + 1) : 0);
     }
 
-    // Calculate BM25 score for each document
-    for (const [entityName, docEntry] of documents) {
-      if (candidateNames !== null && !candidateNames.has(entityName)) continue;
+    // Only documents with a query term can have a positive score. Iterating
+    // postings avoids a corpus scan on JSONL as well as storage-native FTS.
+    let names: Iterable<string>;
+    const postingSize = [...idfByTerm.keys()].reduce((sum, term) => sum + (this.postings.get(term)?.size ?? 0), 0);
+    const dense = candidateNames === null && postingSize >= documents.size / 2;
+    if (dense) {
+      names = [];
+    } else if (candidateNames !== null && candidateNames.size < postingSize) {
+      names = candidateNames;
+    } else if (idfByTerm.size === 1 && candidateNames === null) {
+      names = this.postings.get(queryTerms[0]) ?? [];
+    } else {
+      const union = new Set<string>();
+      for (const term of idfByTerm.keys()) {
+        for (const name of this.postings.get(term) ?? []) {
+          if (candidateNames === null || candidateNames.has(name)) union.add(name);
+        }
+      }
+      names = union;
+    }
+    // Dense queries are cheaper as a sequential map walk than as thousands
+    // of indexed lookups. Selective queries still visit postings only.
+    const entries: Iterable<[string, BM25DocumentEntry | undefined]> = dense
+      ? documents
+      : (function* () { for (const name of names) yield [name, documents.get(name)] as [string, BM25DocumentEntry | undefined]; })();
+    let denseOrder = 0;
+    for (const [entityName, docEntry] of entries) {
+      const order = dense ? denseOrder++ : this.documentOrder.get(entityName)!;
+      if (!docEntry) continue;
 
       // Length normalisation is per document, shared by all query terms.
       const denominatorBase = k1 * (1 - b + b * (docEntry.docLength / avgDocLength));
@@ -277,27 +324,18 @@ export class BM25Search {
       }
 
       if (score > 0) {
-        scored.push({ entityName, docEntry, score });
+        // Resolve before selection so stale hits cannot consume a top-k slot.
+        const candidate = { entityName, docEntry, score, order };
+        if (!scored.wouldAccept(candidate)) continue;
+        const entity = this.storage.getEntityByName(entityName);
+        if (entity) scored.add({ ...candidate, entity });
       }
     }
 
-    // Sort by score in descending order. The sort is stable: ties keep the index order.
-    // Then resolve the entities of the returned hits.
-    // Skip a document if its entity left the storage after the index was built.
-    // The next document fills the place of the skipped document.
-    scored.sort((x, y) => y.score - x.score);
-    const cap = Number.isFinite(effectiveLimit) ? Math.max(0, Math.floor(effectiveLimit)) : 0;
     const results: SearchResult[] = [];
-    for (const { entityName, docEntry, score } of scored) {
-      if (results.length >= cap) break;
-      const live = this.storage.getEntityByName(entityName);
-      if (!live) continue;
-      const entity = borrowGraphView(live);
-      results.push({
-        entity,
-        score,
-        matchedFields: this.matchedFieldsOf(entity, queryTerms, docEntry),
-      });
+    for (const { docEntry, score, entity: live } of scored.sorted()) {
+      const entity = borrowGraphView(live!);
+      results.push({ entity, score, matchedFields: this.matchedFieldsOf(entity, queryTerms, docEntry) });
     }
     return results;
   }
@@ -344,61 +382,11 @@ export class BM25Search {
     const graph = await this.storage.loadGraph();
     const entityMap = new Map(graph.entities.map(e => [e.name, e]));
 
-    // Process each changed entity
     for (const entityName of changedEntityNames) {
+      this.removeDocument(entityName);
       const entity = entityMap.get(entityName);
-      const existingEntry = this.index.documents.get(entityName);
-
-      if (existingEntry) {
-        // Remove old term frequencies from document frequency counts
-        for (const [term] of existingEntry.termFreqs) {
-          const df = this.index.documentFrequency.get(term) || 0;
-          if (df <= 1) {
-            this.index.documentFrequency.delete(term);
-          } else {
-            this.index.documentFrequency.set(term, df - 1);
-          }
-        }
-        this.index.documents.delete(entityName);
-      }
-
-      if (entity) {
-        // Add new entry
-        const text = this.entityToText(entity);
-        const tokens = this.tokenize(text);
-        const termFreqs = new Map<string, number>();
-        const termsSeen = new Set<string>();
-
-        for (const token of tokens) {
-          termFreqs.set(token, (termFreqs.get(token) || 0) + 1);
-          if (!termsSeen.has(token)) {
-            termsSeen.add(token);
-            this.index.documentFrequency.set(
-              token,
-              (this.index.documentFrequency.get(token) || 0) + 1
-            );
-          }
-        }
-
-        const entry: BM25DocumentEntry = {
-          entityName: entity.name,
-          termFreqs,
-          docLength: tokens.length,
-        };
-
-        this.index.documents.set(entityName, entry);
-      }
+      if (entity) this.addDocument(entity);
     }
-
-    // Recalculate average document length
-    this.index.totalDocs = this.index.documents.size;
-    let totalLength = 0;
-    for (const doc of this.index.documents.values()) {
-      totalLength += doc.docLength;
-    }
-    this.index.avgDocLength = this.index.totalDocs > 0
-      ? totalLength / this.index.totalDocs
-      : 0;
   }
 
   /**
@@ -444,6 +432,7 @@ export class BM25Search {
       docLength: tokens.length,
     };
     this.index.documents.set(entity.name, entry);
+    this.indexPosting(entry);
 
     // Maintain running average document length.
     const oldTotalLength = this.index.avgDocLength * this.index.totalDocs;
@@ -494,6 +483,12 @@ export class BM25Search {
     }
 
     this.index.documents.delete(entityName);
+    this.documentOrder.delete(entityName);
+    for (const term of entry.termFreqs.keys()) {
+      const posting = this.postings.get(term);
+      posting?.delete(entityName);
+      if (posting?.size === 0) this.postings.delete(term);
+    }
 
     // O(1) running-average update: subtract the removed doc's length from
     // the previous total and divide by the new doc count.
@@ -511,6 +506,9 @@ export class BM25Search {
    */
   clearIndex(): void {
     this.index = null;
+    this.postings.clear();
+    this.documentOrder.clear();
+    this.nextOrder = 0;
   }
 
   /**

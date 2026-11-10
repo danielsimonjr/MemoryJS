@@ -1,25 +1,32 @@
 {
-  "totalFiles": 984,
+  "totalFiles": 993,
   "byDisposition": {
-    "reachable": 395,
+    "reachable": 397,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 554,
+    "test": 560,
     "tool": 10,
     "config": 2,
-    "bench": 4,
+    "bench": 5,
     "example": 15
   },
   "byArea": {
-    "benchmarks": 4,
+    "benchmarks": 5,
     "examples": 15,
-    "src": 399,
-    "tests": 554,
+    "src": 401,
+    "tests": 560,
     "tools": 10,
     "config": 2
   },
   "files": [
+    {
+      "file": "benchmarks/performance-plan-bench.ts",
+      "package": "(root)",
+      "area": "benchmarks",
+      "disposition": "bench",
+      "loc": 141
+    },
     {
       "file": "benchmarks/review-bench.ts",
       "package": "(root)",
@@ -1859,7 +1866,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 636
+      "loc": 743
     },
     {
       "file": "src/core/RefIndex.ts",
@@ -2097,7 +2104,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 544
+      "loc": 542
     },
     {
       "file": "src/search/BooleanSearch.ts",
@@ -2146,7 +2153,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 645
+      "loc": 659
     },
     {
       "file": "src/search/GraphRankPrior.ts",
@@ -2188,7 +2195,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 273
+      "loc": 276
     },
     {
       "file": "src/search/inducedSubgraph.ts",
@@ -2210,6 +2217,13 @@
       "area": "src",
       "disposition": "reachable",
       "loc": 226
+    },
+    {
+      "file": "src/search/LSHVectorStore.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 159
     },
     {
       "file": "src/search/MaterializedViews.ts",
@@ -2314,7 +2328,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 558
+      "loc": 557
     },
     {
       "file": "src/search/ReflectionManager.ts",
@@ -2356,7 +2370,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 578
+      "loc": 586
     },
     {
       "file": "src/search/SpellChecker.ts",
@@ -2398,7 +2412,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 604
+      "loc": 714
     },
     {
       "file": "src/search/tiered/BrotliColdTier.ts",
@@ -2602,6 +2616,13 @@
       "area": "src",
       "disposition": "reachable",
       "loc": 526
+    },
+    {
+      "file": "src/utils/boundedTopK.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 57
     },
     {
       "file": "src/utils/CachePressureCoordinator.ts",
@@ -2944,7 +2965,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "build-entry",
-      "loc": 132
+      "loc": 135
     },
     {
       "file": "tests/edge-cases/edge-cases.test.ts",
@@ -4869,7 +4890,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 193
+      "loc": 203
     },
     {
       "file": "tests/unit/core/columns/columns-review-fixes.test.ts",
@@ -5275,7 +5296,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 420
+      "loc": 528
     },
     {
       "file": "tests/unit/core/rebuild-native.test.ts",
@@ -5810,6 +5831,13 @@
       "loc": 1323
     },
     {
+      "file": "tests/unit/search/FuzzySearchPerformance.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 102
+    },
+    {
       "file": "tests/unit/search/FuzzySearchWorkerPath.test.ts",
       "package": "(root)",
       "area": "tests",
@@ -5894,6 +5922,13 @@
       "loc": 87
     },
     {
+      "file": "tests/unit/search/LexicalCandidateSelection.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 59
+    },
+    {
       "file": "tests/unit/search/LlamaCppEmbeddingService.test.ts",
       "package": "(root)",
       "area": "tests",
@@ -5920,6 +5955,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 193
+    },
+    {
+      "file": "tests/unit/search/LSHVectorStore.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 77
     },
     {
       "file": "tests/unit/search/MaterializedViews.test.ts",
@@ -6150,14 +6192,21 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 248
+      "loc": 250
     },
     {
       "file": "tests/unit/search/searchTwinsTfidf.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 178
+      "loc": 150
+    },
+    {
+      "file": "tests/unit/search/SemanticSearch.resolver.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 62
     },
     {
       "file": "tests/unit/search/SemanticSearch.test.ts",
@@ -6214,6 +6263,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 742
+    },
+    {
+      "file": "tests/unit/search/TFIDFIncrementalPersistence.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 103
     },
     {
       "file": "tests/unit/search/TFIDFIndexManager.test.ts",
@@ -6353,7 +6409,7 @@
       "package": "(root)",
       "area": "tools",
       "disposition": "tool",
-      "loc": 373
+      "loc": 374
     },
     {
       "file": "tests/unit/tools/segment-jsonl.test.ts",
@@ -6445,6 +6501,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 672
+    },
+    {
+      "file": "tests/unit/utils/boundedTopK.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 18
     },
     {
       "file": "tests/unit/utils/CachePressureCoordinator.test.ts",

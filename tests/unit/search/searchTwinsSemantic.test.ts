@@ -169,7 +169,8 @@ describe('SemanticSearch member lookups', () => {
       'embeddingService',
       'embeddingCache',
       'vectorStore',
-      'buildEntityMap',
+      'entityResolver',
+      'resolveEntity',
     ]);
   });
 
@@ -186,7 +187,8 @@ describe('SemanticSearch member lookups', () => {
       'storeReady',
       'vectorStore',
       'vectorStore',
-      'buildEntityMap',
+      'entityResolver',
+      'resolveEntity',
     ]);
   });
 });

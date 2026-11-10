@@ -1,0 +1,73 @@
+{
+  "commit": "5ceb972545baa2c6cd44d21d18e3e7c3aa05c668",
+  "sourceDirty": true,
+  "date": "2026-11-10T14:30:56.015Z",
+  "node": "v24.22.1",
+  "platform": "linux",
+  "cpu": "AMD EPYC 9V74 80-Core Processor",
+  "resolverSupported": true,
+  "nodeEnv": "production",
+  "entities": 10000,
+  "lexical": {
+    "selective": {
+      "firstCallMs": 0.16085199999997712,
+      "p50Ms": 0.02194299999996474,
+      "p95Ms": 0.05215899999996054,
+      "samples": 100,
+      "warmupCalls": 10
+    },
+    "broad": {
+      "firstCallMs": 4.5851129999999785,
+      "p50Ms": 0.5776619999999184,
+      "p95Ms": 1.0301150000000234,
+      "samples": 100,
+      "warmupCalls": 10
+    }
+  },
+  "fuzzyFiltered": {
+    "firstCallMs": 5.084216999999967,
+    "p50Ms": 0.5400750000000016,
+    "p95Ms": 0.8409500000000207,
+    "samples": 100,
+    "warmupCalls": 10
+  },
+  "tfidf": {
+    "update100Ms": 1.801821000000018,
+    "append100Ms": 1.2183300000000372,
+    "persistMs": 0.7913340000000062,
+    "reloadMs": 88.68735400000003,
+    "journalBytes": 37929,
+    "snapshotBytes": 3288669
+  },
+  "ann": {
+    "recallAt10": 0.867,
+    "meanCandidates": 3657.93,
+    "corpusSize": 10000,
+    "dimensions": 64,
+    "queryCount": 100,
+    "exactTotalMs": 207.082584,
+    "approximateTotalMs": 309.43542999999954
+  },
+  "semantic": {
+    "rebuildMap": {
+      "firstCallMs": 3.6566510000000108,
+      "p50Ms": 1.709340999999995,
+      "p95Ms": 2.7682800000000043,
+      "samples": 100,
+      "warmupCalls": 10
+    },
+    "indexedResolver": {
+      "firstCallMs": 1.1871920000000955,
+      "p50Ms": 0.8053459999998722,
+      "p95Ms": 1.4713809999998375,
+      "samples": 100,
+      "warmupCalls": 10
+    }
+  },
+  "rssBytes": 327675904,
+  "notes": [
+    "Single-process measurements; compare identical machine/runtime/environment.",
+    "Indexes are initialized before measurement; firstCallMs is not process-cold latency.",
+    "Timings are observations, not CI assertions."
+  ]
+}

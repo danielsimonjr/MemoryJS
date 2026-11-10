@@ -327,7 +327,8 @@ describe('plan-doc-audit / runAudit end-to-end (no symbols)', () => {
 describe('plan-doc-audit / CLI exit codes', () => {
   let tmpRoot: string;
   const script = join(process.cwd(), 'tools/plan-doc-audit/audit.ts');
-  const tsx = join(process.cwd(), 'node_modules/.bin/tsx');
+  // The loader avoids the tsx CLI's IPC server and platform-specific .bin shim.
+  const tsxLoader = import.meta.resolve('tsx');
 
   beforeEach(() => {
     tmpRoot = mkdtempSync(join(tmpdir(), 'plan-doc-exit-'));
@@ -351,7 +352,7 @@ describe('plan-doc-audit / CLI exit codes', () => {
   });
 
   function run(args: string[]): { status: number | null; stdout: string } {
-    const r = spawnSync(tsx, [script, ...args], { cwd: tmpRoot, encoding: 'utf-8' });
+    const r = spawnSync(process.execPath, ['--import', tsxLoader, script, ...args], { cwd: tmpRoot, encoding: 'utf-8' });
     return { status: r.status, stdout: r.stdout };
   }
 
