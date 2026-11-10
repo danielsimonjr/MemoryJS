@@ -3,7 +3,7 @@
  *
  * Every expectation here was recorded from commander 15.0.0 by running the real
  * MemoryJS command tree through it. The recorder is
- * `scripts/capture-cli-parity.ts`; its output is
+ * `tests/unit/cli/helpers/captureCliParity.ts`; its output is
  * `tests/unit/cli/fixtures/parseArgsPinned.json`. These tests replay the same
  * argv through `src/cli/parseArgs.ts`, so the parity claim keeps being checked
  * after commander has been removed from the dependency list.

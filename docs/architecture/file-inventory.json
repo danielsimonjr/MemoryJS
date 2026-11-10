@@ -1,11 +1,11 @@
 {
-  "totalFiles": 1019,
+  "totalFiles": 1022,
   "byDisposition": {
     "reachable": 409,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 574,
+    "test": 577,
     "tool": 10,
     "config": 2,
     "bench": 5,
@@ -15,7 +15,7 @@
     "benchmarks": 5,
     "examples": 15,
     "src": 413,
-    "tests": 574,
+    "tests": 577,
     "tools": 10,
     "config": 2
   },
@@ -291,7 +291,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 200
+      "loc": 203
     },
     {
       "file": "src/agent/bootstrap/BoundaryRecorder.ts",
@@ -305,7 +305,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 497
+      "loc": 550
     },
     {
       "file": "src/agent/bootstrap/ExplorationNotes.ts",
@@ -536,7 +536,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 457
+      "loc": 537
     },
     {
       "file": "src/agent/GuardedComponentEdit.ts",
@@ -697,7 +697,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 443
+      "loc": 537
     },
     {
       "file": "src/agent/learning/index.ts",
@@ -732,7 +732,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 380
+      "loc": 402
     },
     {
       "file": "src/agent/learning/LeafLearnerContext.ts",
@@ -795,7 +795,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 488
+      "loc": 679
     },
     {
       "file": "src/agent/learning/llmJson.ts",
@@ -837,7 +837,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 485
+      "loc": 489
     },
     {
       "file": "src/agent/learning/RecursiveLearnerState.ts",
@@ -1796,7 +1796,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1607
+      "loc": 1629
     },
     {
       "file": "src/core/EntityStateMachine.ts",
@@ -1817,7 +1817,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1863
+      "loc": 1872
     },
     {
       "file": "src/core/GraphTraversal.ts",
@@ -2755,7 +2755,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 270
+      "loc": 285
     },
     {
       "file": "src/utils/entityUtils.ts",
@@ -3924,7 +3924,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 737
+      "loc": 762
     },
     {
       "file": "tests/unit/agent/GuardedComponentEdit.test.ts",
@@ -4060,6 +4060,13 @@
       "loc": 254
     },
     {
+      "file": "tests/unit/agent/learning/DiagnoserBatchDurability.challenger.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 146
+    },
+    {
       "file": "tests/unit/agent/learning/InProcessLearnHandler.concurrency.test.ts",
       "package": "(root)",
       "area": "tests",
@@ -4148,7 +4155,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 189
+      "loc": 268
     },
     {
       "file": "tests/unit/agent/learning/RecursiveCriteria.test.ts",
@@ -4184,6 +4191,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 66
+    },
+    {
+      "file": "tests/unit/agent/learning/RecursiveWriteBudget.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 154
     },
     {
       "file": "tests/unit/agent/learning/RevisionMerger.test.ts",
@@ -4977,6 +4991,13 @@
       "loc": 65
     },
     {
+      "file": "tests/unit/cli/recorderDoc.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 53
+    },
+    {
       "file": "tests/unit/cli/search-extended.test.ts",
       "package": "(root)",
       "area": "tests",
@@ -5177,7 +5198,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 869
+      "loc": 903
     },
     {
       "file": "tests/unit/core/EntityStateMachine.test.ts",

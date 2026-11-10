@@ -149,6 +149,31 @@ describe('FailureManager', () => {
       await expect(fm.record(validInput({ applicability_hint: '' }))).rejects.toThrow(/applicability_hint/i);
     });
 
+    it('recordMany does not re-append records a refused batch already committed', async () => {
+      const entities: Entity[] = [];
+      const committedStorage = {
+        appendEntity: vi.fn(async (entity: Entity) => {
+          entities.push(entity);
+        }),
+        appendEntities: vi.fn(async (batch: Entity[]) => {
+          for (const entity of batch) entities.push(entity);
+          throw new Error('fsync failed after write');
+        }),
+        loadGraph: vi.fn(async () => ({ entities, relations: [] })),
+        getEntityByName: vi.fn((name: string) => entities.find((e) => e.name === name)),
+        updateEntity: vi.fn(async () => true),
+      } as unknown as IGraphStorage;
+      const committedFm = new FailureManager(committedStorage, createFakeEntityManager(committedStorage));
+      const many = await committedFm.recordMany([
+        { input: validInput({ context: 'first failure context text' }) },
+        { input: validInput({ context: 'second failure context text' }) },
+      ]);
+      expect(many[0]).toBeDefined();
+      expect(many[1]).toBeDefined();
+      expect(entities.filter((e) => e.name === many[0]!.id)).toHaveLength(1);
+      expect(entities.filter((e) => e.name === many[1]!.id)).toHaveLength(1);
+    });
+
     it('accepts optional alternative_taken and sourceSessionId', async () => {
       const rec = await fm.record(
         validInput({ alternative_taken: 'Reduced salt rounds to 8 + queued hashing', sourceSessionId: 'sess-abc' })

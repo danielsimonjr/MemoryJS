@@ -1163,7 +1163,9 @@ export class EntityManager {
    * as it loads and saves the graph only once. All updates are applied atomically.
    * The lastModified timestamp is automatically updated for all entities.
    *
-   * @param updates - Array of updates, each containing entity name and changes
+   * @param updates - Array of updates, each containing entity name, changes, and optional
+   *   `expectedVersion` (same OCC contract as {@link updateEntity}; one stale version refuses the
+   *   whole batch before any write)
    * @returns Promise resolving to array of updated entities
    * @throws EntityNotFoundError If any entity is not found
    * @throws ValidationError If any update data is invalid
@@ -1190,18 +1192,22 @@ export class EntityManager {
    * ```
    */
   async batchUpdate(
-    updates: Array<{ name: string; updates: Partial<Entity> }>
+    updates: Array<{ name: string; updates: Partial<Entity>; expectedVersion?: number }>
   ): Promise<Entity[]> {
     // Validate all updates first. Sec7: the PARSED (stripped) data is
     // what gets applied — unknown keys are dropped, not passed through.
-    const sanitizedBatch: Array<{ name: string; updates: Partial<Entity> }> = [];
-    for (const { name, updates: updateData } of updates) {
+    const sanitizedBatch: Array<{ name: string; updates: Partial<Entity>; expectedVersion?: number }> = [];
+    for (const { name, updates: updateData, expectedVersion } of updates) {
       const validation = UpdateEntitySchema.safeParse(updateData);
       if (!validation.success) {
         const errors = validation.error.issues.map((e) => `${e.path.join('.')}: ${e.message}`);
         throw new ValidationError('Invalid update data', errors);
       }
-      sanitizedBatch.push({ name, updates: validation.data as Partial<Entity> });
+      sanitizedBatch.push({
+        name,
+        updates: validation.data as Partial<Entity>,
+        ...(expectedVersion !== undefined ? { expectedVersion } : {}),
+      });
     }
 
     const release = await this.storage.graphMutex.acquire();
@@ -1228,14 +1234,30 @@ export class EntityManager {
         }
       }
 
+      await this.storage.ensureLoaded();
+      for (const item of sanitizedBatch) {
+        if (item.expectedVersion === undefined) continue;
+        const existing = this.storage.getEntityByName(item.name);
+        if (!existing) continue;
+        const liveVersion = existing.version ?? 1;
+        if (liveVersion !== item.expectedVersion) {
+          throw new VersionConflictError(item.name, item.expectedVersion, liveVersion);
+        }
+        item.updates = { ...item.updates, version: liveVersion + 1 };
+      }
+
       // S2: single delta write (one fsync / one SQLite transaction).
       // The storage primitive validates all names first (throws
       // EntityNotFoundError before mutating anything — same all-or-
       // nothing semantics as the previous full-graph save), sanitizes
       // each update, stamps the shared timestamp, and emits
-      // entity:updated per entity.
+      // entity:updated per entity. Per-item `expectedVersion` is checked
+      // above under this mutex so OCC stays atomic with the one commit.
       const timestamp = new Date().toISOString();
-      const results = await this.updateEntitiesCompat(sanitizedBatch, { timestamp });
+      const results = await this.updateEntitiesCompat(
+        sanitizedBatch.map(({ name, updates: entityUpdates }) => ({ name, updates: entityUpdates })),
+        { timestamp },
+      );
 
       if (befores) {
         for (const updated of results) {

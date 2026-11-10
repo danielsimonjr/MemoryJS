@@ -2,7 +2,7 @@
  * Pinned-behavior tests for the parser surface the MemoryJS tree does not use.
  *
  * The expectations were recorded from commander 15.0.0 by
- * `scripts/capture-cli-parity.ts` into
+ * `tests/unit/cli/helpers/captureCliParity.ts` into
  * `tests/unit/cli/fixtures/parseArgsPinned.json` (`synthetic` block), running a
  * small synthetic command tree twice: once through commander and then through
  * `src/cli/parseArgs.ts`. This file replays the same argv through the in-repo

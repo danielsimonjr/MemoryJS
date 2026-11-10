@@ -186,11 +186,26 @@ export async function durableAppendFile(
  */
 export async function restrictSensitiveFilePermissions(target: string): Promise<void> {
   const stat = await fs.stat(target);
-  const current = stat.mode & 0o777;
+  await restrictModeFromStat(target, stat.mode);
+}
+
+/**
+ * Apply the owner-only mode an append needs, given a mode already read for the file.
+ *
+ * POSIX only, and cheap: the caller passes the mode from the `stat` it needed anyway, so an
+ * append no longer pays a second `stat` just to look at permissions. On Windows `chmod` cannot
+ * express `0600` — it only toggles the read-only bit — so a restriction there could never make the
+ * next `stat` match and re-issued itself on every append. Windows file access is governed by the
+ * parent directory's ACLs, so the restriction is skipped on that platform.
+ *
+ * @param target - File to restrict.
+ * @param mode - Its current `st_mode` bits.
+ */
+export async function restrictModeFromStat(target: string, mode: number): Promise<void> {
+  if (process.platform === 'win32') return;
+  const current = mode & 0o777;
   const restricted = current & 0o600;
-  if (restricted !== current) {
-    await fs.chmod(target, restricted);
-  }
+  if (restricted !== current) await fs.chmod(target, restricted);
 }
 
 /** Mode for a replacement: preserve tighter existing permissions. */

@@ -826,6 +826,7 @@ Reachable from a root: **413** of 413 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../utils/logger.js` | `logger` | Import |
 | `../types/types.js` | `Entity, IGraphStorage` | Import (type-only) |
 | `../types/agent-memory.js` | `FailureEntity, FailureLifecycle, FailureRecord, MarkResolvedResult` | Import (type-only) |
 | `../types/agent-memory.js` | `BLAMED_COMPONENT_KINDS, isFailureMemory, isHeuristicMemory, toIsoDateTime` | Import |
@@ -2197,7 +2198,7 @@ Reachable from a root: **413** of 413 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `../FailureManager.js` | `FailureManager` | Import (type-only) |
+| `../FailureManager.js` | `FailureManager, FailureInput` | Import (type-only) |
 | `../AgentReflectionManager.js` | `AgentReflectionManager` | Import (type-only) |
 | `../harness/InteractionLog.js` | `InteractionLog` | Import (type-only) |
 | `../procedural/graph/CompletionProvider.js` | `PGCompletionProvider` | Import (type-only) |
@@ -4422,7 +4423,7 @@ Reachable from a root: **413** of 413 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `../utils/graphCopy.js` | `borrowGraphView, deepCopyPlain` | Import |
-| `../utils/durableWriteFile.js` | `durableWriteFile, restrictSensitiveFilePermissions` | Import |
+| `../utils/durableWriteFile.js` | `durableWriteFile, restrictModeFromStat` | Import |
 | `../utils/RunExclusiveMutex.js` | `RunExclusiveMutex` | Import |
 | `../types/index.js` | `KnowledgeGraph, Entity, Relation, ReadonlyKnowledgeGraph, IGraphStorage, LowercaseData` | Import (type-only) |
 | `../utils/searchCache.js` | `clearAllSearchCaches, bumpEntityGeneration, bumpRelationGeneration` | Import |
@@ -7161,7 +7162,7 @@ Reachable from a root: **413** of 413 files. Dormant: **0** (0 orphaned, 0 test-
 
 **Exports:**
 - Classes: `DurableReplaceError`
-- Functions: `writeSyncedTmp`, `durableWriteFile`, `renameOver`, `syncParentDirectory`, `durableAppendFile`, `restrictSensitiveFilePermissions`
+- Functions: `writeSyncedTmp`, `durableWriteFile`, `renameOver`, `syncParentDirectory`, `durableAppendFile`, `restrictSensitiveFilePermissions`, `restrictModeFromStat`
 
 ---
 
@@ -7617,7 +7618,7 @@ Reachable from a root: **413** of 413 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/core/EntityManager` | 12 files | 48 files |
 | `src/search/index` | 51 files | 1 file |
 | `src/utils/errors` | 0 files | 42 files |
-| `src/utils/logger` | 0 files | 38 files |
+| `src/utils/logger` | 0 files | 39 files |
 | `src/agent/AgentMemoryManager` | 33 files | 3 files |
 | `src/types/learning` | 2 files | 34 files |
 | `src/types/skills` | 1 file | 34 files |
@@ -7899,12 +7900,12 @@ graph TD
 |----------|-------|
 | Total TypeScript Files | 413 |
 | Total Modules | 12 |
-| Total Lines of Code | 131176 |
-| Total Exports | 2878 |
+| Total Lines of Code | 131669 |
+| Total Exports | 2879 |
 | Total Re-exports | 1716 |
 | Total Classes | 285 |
 | Total Interfaces | 837 |
-| Total Functions | 681 |
+| Total Functions | 682 |
 | Total Type Guards | 49 |
 | Total Enums | 4 |
 | Type-only Imports | 873 |

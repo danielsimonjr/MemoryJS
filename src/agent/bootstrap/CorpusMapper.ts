@@ -416,8 +416,18 @@ export class CorpusMapper {
     conflictLines: Map<string, string[]>,
   ): Promise<void> {
     const now = nowIso();
+    // A parent link for a node this flush creates is written with the create. Previously every
+    // link was a `setEntityParent` call after the fact, and that call validated against
+    // `loadGraph()`'s borrowed view (deep-frozen off production) before each write on its own: 36
+    // links meant 36 validation passes and 36 durable appends. Links to an already-stored node
+    // still go through the hierarchy manager. Conflict observations on stored nodes use one
+    // `batchUpdate` with per-entity `expectedVersion` OCC and a single durable commit.
+    const parentOf = new Map<string, string>();
+    for (const { child, parent } of persist.parents) parentOf.set(child, parent);
+    const creating = new Set(persist.nodes.map((info) => info.name));
     for (const info of persist.nodes) {
       const lines = conflictLines.get(info.name) ?? [];
+      const parent = parentOf.get(info.name);
       persist.entities.push(
         buildMemoryEntity({
           name: info.name,
@@ -426,26 +436,30 @@ export class CorpusMapper {
           value: info.record,
           observations: [`[navigation] level ${info.record.level}: ${info.record.title}`, ...lines],
           contentHash: info.record.contentHash,
+          ...(parent !== undefined ? { parentId: parent } : {}),
           now,
         }),
       );
     }
-    if (persist.entities.length > 0) await this.entityManager.createEntities(persist.entities);
+    if (persist.entities.length > 0) await this.entityManager.createEntities(parentFirst(persist.entities, persist.parents));
 
+    const conflictUpdates: Array<{ name: string; updates: Partial<Entity>; expectedVersion: number }> = [];
     for (const [name, lines] of conflictLines) {
       const info = leaves.get(name);
       const stored = this.storage.getEntityByName(name);
       if (!info || info.fresh || !stored) continue;
       const toAdd = lines.filter((line) => !stored.observations.includes(line));
       if (toAdd.length === 0) continue;
-      await this.entityManager.updateEntity(
+      conflictUpdates.push({
         name,
-        { observations: [...stored.observations, ...toAdd] } as Partial<Entity>,
-        { expectedVersion: stored.version ?? 1 },
-      );
+        updates: { observations: [...stored.observations, ...toAdd] } as Partial<Entity>,
+        expectedVersion: stored.version ?? 1,
+      });
     }
+    if (conflictUpdates.length > 0) await this.entityManager.batchUpdate(conflictUpdates);
     if (persist.relations.length > 0) await this.relationManager.createRelations(persist.relations);
     for (const { child, parent } of persist.parents) {
+      if (creating.has(child)) continue;
       await this.hierarchy.setEntityParent(child, parent);
     }
   }
@@ -471,6 +485,45 @@ function buildSourceEntity(name: string, ref: string, now: string): Entity {
 }
 
 export { defaultPartitioner };
+
+/**
+ * Order entities so every node comes after the parent it names.
+ *
+ * Setting `parentId` at creation avoids a follow-up `setEntityParent` per link (each of those
+ * validates against `loadGraph()`'s borrowed view and writes on its own), but both backends require
+ * the parent row to exist first: SQLite enforces `parentId` as a foreign key. Nodes whose parent
+ * is not part of this batch keep their input position, and a cycle cannot occur because the
+ * navigation tree is built top-down.
+ *
+ * @param entities - Entities to create.
+ * @param parents - Child-to-parent links among them.
+ * @returns The same entities, parents before children.
+ */
+function parentFirst(entities: Entity[], parents: ReadonlyArray<{ child: string; parent: string }>): Entity[] {
+  const batch = new Set(entities.map((e) => e.name));
+  const parentOf = new Map<string, string>();
+  for (const { child, parent } of parents) if (batch.has(child) && batch.has(parent)) parentOf.set(child, parent);
+  if (parentOf.size === 0) return entities;
+  const ordered: Entity[] = [];
+  const emitted = new Set<string>();
+  const emit = (entity: Entity, seen: Set<string>): void => {
+    if (emitted.has(entity.name) || seen.has(entity.name)) return;
+    const parentName = parentOf.get(entity.name);
+    if (parentName !== undefined) {
+      const parent = entities.find((e) => e.name === parentName);
+      if (parent) {
+        seen.add(entity.name);
+        emit(parent, seen);
+        seen.delete(entity.name);
+      }
+    }
+    if (emitted.has(entity.name)) return;
+    emitted.add(entity.name);
+    ordered.push(entity);
+  };
+  for (const entity of entities) emit(entity, new Set());
+  return ordered;
+}
 
 /**
  * Maximum length of a source ref: the spec's 512-character ceiling, lowered so that the
