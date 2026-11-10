@@ -139,7 +139,7 @@ function isStaleFtsPostingError(error: unknown): boolean {
     /fts5: missing row \d+ from content table/i.test(error.message)
   );
 }
-import { Mutex } from 'async-mutex';
+import { RunExclusiveMutex } from '../utils/RunExclusiveMutex.js';
 import type { KnowledgeGraph, Entity, Relation, ReadonlyKnowledgeGraph, IGraphStorage, LowercaseData } from '../types/index.js';
 import {
   clearAllSearchCaches,
@@ -210,7 +210,7 @@ export class SQLiteStorage implements IGraphStorage {
    * Note: SQLite itself handles file-level locking, but we need
    * to protect our in-memory cache and index operations.
    */
-  private mutex = new Mutex();
+  private mutex = new RunExclusiveMutex();
 
   /**
    * Application-level mutex for managers to serialize validate+mutate+save.

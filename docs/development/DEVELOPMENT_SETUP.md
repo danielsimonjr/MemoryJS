@@ -69,12 +69,8 @@ bun install
 ```
 
 This installs:
-- **Production dependencies**: `@danielsimonjr/workerpool`, `async-mutex`, `better-sqlite3`, `commander`, `zod`
-- **Dev dependencies**: `vitest`, `typescript`, `tsx`, `tsup`, `oxlint`, `@types/*`
-
-There are no date-parsing dependencies: English natural-language dates are parsed
-in-repo (`src/search/enDate/`). `chrono-node`, `chalk`, `cli-table3`, and `rimraf`
-were removed by the dependency-reduction sprints (see `CHANGELOG.md`).
+- **Production dependencies**: `better-sqlite3`, `zod`, `chrono-node`, `commander`, `@danielsimonjr/workerpool`
+- **Dev dependencies**: `vitest`, `typescript`, `tsx`, `@types/*`
 
 ### 3. Build Project
 

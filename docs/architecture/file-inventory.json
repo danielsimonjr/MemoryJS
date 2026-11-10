@@ -1,7 +1,7 @@
 {
-  "totalFiles": 1010,
+  "totalFiles": 1003,
   "byDisposition": {
-    "reachable": 407,
+    "reachable": 400,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
@@ -14,7 +14,7 @@
   "byArea": {
     "benchmarks": 5,
     "examples": 15,
-    "src": 411,
+    "src": 404,
     "tests": 567,
     "tools": 10,
     "config": 2
@@ -2149,62 +2149,6 @@
       "loc": 928
     },
     {
-      "file": "src/search/enDate/calendar.ts",
-      "package": "@danielsimonjr/memoryjs",
-      "area": "src",
-      "disposition": "reachable",
-      "loc": 193
-    },
-    {
-      "file": "src/search/enDate/components.ts",
-      "package": "@danielsimonjr/memoryjs",
-      "area": "src",
-      "disposition": "reachable",
-      "loc": 358
-    },
-    {
-      "file": "src/search/enDate/constants.ts",
-      "package": "@danielsimonjr/memoryjs",
-      "area": "src",
-      "disposition": "reachable",
-      "loc": 310
-    },
-    {
-      "file": "src/search/enDate/parseEnDate.ts",
-      "package": "@danielsimonjr/memoryjs",
-      "area": "src",
-      "disposition": "reachable",
-      "loc": 117
-    },
-    {
-      "file": "src/search/enDate/parsers.ts",
-      "package": "@danielsimonjr/memoryjs",
-      "area": "src",
-      "disposition": "reachable",
-      "loc": 972
-    },
-    {
-      "file": "src/search/enDate/refiners.ts",
-      "package": "@danielsimonjr/memoryjs",
-      "area": "src",
-      "disposition": "reachable",
-      "loc": 533
-    },
-    {
-      "file": "src/search/enDate/timezones.ts",
-      "package": "@danielsimonjr/memoryjs",
-      "area": "src",
-      "disposition": "reachable",
-      "loc": 133
-    },
-    {
-      "file": "src/search/enDate/types.ts",
-      "package": "@danielsimonjr/memoryjs",
-      "area": "src",
-      "disposition": "reachable",
-      "loc": 84
-    },
-    {
       "file": "src/search/EvidencePathBuilder.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
@@ -2461,7 +2405,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 349
+      "loc": 417
     },
     {
       "file": "src/search/TemporalSearch.ts",
@@ -2931,6 +2875,13 @@
       "area": "src",
       "disposition": "reachable",
       "loc": 257
+    },
+    {
+      "file": "src/utils/RunExclusiveMutex.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 44
     },
     {
       "file": "src/utils/schemas.ts",
@@ -5922,20 +5873,6 @@
       "loc": 1094
     },
     {
-      "file": "tests/unit/search/enDate.inventory.test.ts",
-      "package": "(root)",
-      "area": "tests",
-      "disposition": "test",
-      "loc": 94
-    },
-    {
-      "file": "tests/unit/search/enDate.parity.test.ts",
-      "package": "(root)",
-      "area": "tests",
-      "disposition": "test",
-      "loc": 207
-    },
-    {
       "file": "tests/unit/search/EvidencePathBuilder.test.ts",
       "package": "(root)",
       "area": "tests",
@@ -6360,7 +6297,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 54
+      "loc": 64
     },
     {
       "file": "tests/unit/search/TemporalQueryParser.test.ts",
@@ -6874,6 +6811,20 @@
       "loc": 507
     },
     {
+      "file": "tests/unit/utils/RunExclusiveMutex.challenger.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 200
+    },
+    {
+      "file": "tests/unit/utils/RunExclusiveMutex.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 237
+    },
+    {
       "file": "tests/unit/utils/schemas.test.ts",
       "package": "(root)",
       "area": "tests",
@@ -7088,7 +7039,7 @@
       "package": "(root)",
       "area": "config",
       "disposition": "config",
-      "loc": 70
+      "loc": 64
     }
   ]
 }

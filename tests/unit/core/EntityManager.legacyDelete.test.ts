@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { Mutex } from 'async-mutex';
+import { AsyncMutex } from '../../../src/utils/AsyncMutex.js';
 import { EntityManager } from '../../../src/core/EntityManager.js';
 import type { GraphStorage } from '../../../src/core/GraphStorage.js';
 import type { KnowledgeGraph } from '../../../src/types/index.js';
@@ -15,7 +15,7 @@ import type { KnowledgeGraph } from '../../../src/types/index.js';
 function makeLegacyStorage(graph: KnowledgeGraph) {
   const saved: KnowledgeGraph[] = [];
   const storage = {
-    graphMutex: new Mutex(),
+    graphMutex: new AsyncMutex(),
     ensureLoaded: async () => {},
     getEntityByName: () => undefined,
     getGraphForMutation: async () => graph,

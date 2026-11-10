@@ -8,11 +8,11 @@
 
 import { promises as fs } from 'fs';
 import { dirname } from 'path';
-import { Mutex } from 'async-mutex';
+import { RunExclusiveMutex } from '../../utils/RunExclusiveMutex.js';
 import { ErrorCode } from '../../utils/errors.js';
 import { InteractionLogError, truncateToBytes } from './InteractionLogFormat.js';
 
-const MUTEXES = new Map<string, Mutex>();
+const MUTEXES = new Map<string, RunExclusiveMutex>();
 
 /**
  * The mutex for a log path, shared by every InteractionLog instance in this process.
@@ -21,9 +21,9 @@ const MUTEXES = new Map<string, Mutex>();
  * @param path - Absolute log path
  * @returns The shared mutex
  */
-export function sharedMutex(path: string): Mutex {
+export function sharedMutex(path: string): RunExclusiveMutex {
   let m = MUTEXES.get(path);
-  if (!m) MUTEXES.set(path, (m = new Mutex()));
+  if (!m) MUTEXES.set(path, (m = new RunExclusiveMutex()));
   return m;
 }
 

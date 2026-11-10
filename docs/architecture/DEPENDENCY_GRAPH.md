@@ -42,11 +42,11 @@ The codebase is organized into the following modules:
 - **core**: 36 files
 - **features**: 18 files
 - **entry**: 1 file
-- **search**: 63 files
+- **search**: 55 files
 - **security**: 5 files
 - **root**: 1 file
 - **types**: 14 files
-- **utils**: 51 files
+- **utils**: 52 files
 - **workers**: 1 file
 
 ---
@@ -61,7 +61,7 @@ Seeded build/entry roots (package `exports`, `bin` targets, tsup entries, script
 - `src/sqlite.ts`
 - `src/workers/levenshteinWorker.ts`
 
-Reachable from a root: **411** of 411 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
+Reachable from a root: **404** of 404 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
 
 ---
 
@@ -1813,11 +1813,6 @@ Reachable from a root: **411** of 411 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/agent/harness/InteractionLog.ts` - InteractionLog: an append-only JSONL sidecar of model turns, tool calls,
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `async-mutex` | `Mutex` |
-
 **Node.js Built-in Dependencies:**
 | Module | Import |
 |--------|--------|
@@ -1828,6 +1823,7 @@ Reachable from a root: **411** of 411 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../../utils/RunExclusiveMutex.js` | `RunExclusiveMutex` | Import (type-only) |
 | `../../utils/sidecarPath.js` | `sidecarPath` | Import |
 | `../../utils/durableWriteFile.js` | `durableAppendFile` | Import |
 | `./InteractionLogRegex.js` | `compileSelectRegex, matchSelectLines` | Import |
@@ -1848,11 +1844,6 @@ Reachable from a root: **411** of 411 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/agent/harness/InteractionLogBlobs.ts` - File helpers for InteractionLog: tolerant log reads, tail reads, exclusive blob writes
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `async-mutex` | `Mutex` |
-
 **Node.js Built-in Dependencies:**
 | Module | Import |
 |--------|--------|
@@ -1862,6 +1853,7 @@ Reachable from a root: **411** of 411 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../../utils/RunExclusiveMutex.js` | `RunExclusiveMutex` | Import |
 | `../../utils/errors.js` | `ErrorCode` | Import |
 | `./InteractionLogFormat.js` | `InteractionLogError, truncateToBytes` | Import |
 
@@ -4513,11 +4505,6 @@ Reachable from a root: **411** of 411 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/core/GraphStorage.ts` - Graph Storage
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `async-mutex` | `Mutex` |
-
 **Node.js Built-in Dependencies:**
 | Module | Import |
 |--------|--------|
@@ -4529,6 +4516,7 @@ Reachable from a root: **411** of 411 files. Dormant: **0** (0 orphaned, 0 test-
 |------|---------|------|
 | `../utils/graphCopy.js` | `borrowGraphView, deepCopyPlain` | Import |
 | `../utils/durableWriteFile.js` | `durableWriteFile, restrictSensitiveFilePermissions` | Import |
+| `../utils/RunExclusiveMutex.js` | `RunExclusiveMutex` | Import |
 | `../types/index.js` | `KnowledgeGraph, Entity, Relation, ReadonlyKnowledgeGraph, IGraphStorage, LowercaseData` | Import (type-only) |
 | `../utils/searchCache.js` | `clearAllSearchCaches, bumpEntityGeneration, bumpRelationGeneration` | Import |
 | `../utils/indexes.js` | `NameIndex, TypeIndex, LowercaseCache, RelationIndex, ObservationIndex` | Import |
@@ -4749,11 +4737,6 @@ Reachable from a root: **411** of 411 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/core/RefIndex.ts` - Ref Index
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `async-mutex` | `Mutex` |
-
 **Node.js Built-in Dependencies:**
 | Module | Import |
 |--------|--------|
@@ -4762,6 +4745,7 @@ Reachable from a root: **411** of 411 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../utils/RunExclusiveMutex.js` | `RunExclusiveMutex` | Import |
 | `../utils/durableWriteFile.js` | `durableWriteFile` | Import |
 | `../utils/errors.js` | `RefConflictError` | Import |
 | `../utils/indexes.js` | `addToSetBucket, removeFromSetBucket` | Import |
@@ -4796,7 +4780,6 @@ Reachable from a root: **411** of 411 files. Dormant: **0** (0 orphaned, 0 test-
 |---------|--------|
 | `better-sqlite3` | `Database` |
 | `better-sqlite3` | `Database, Statement` |
-| `async-mutex` | `Mutex` |
 
 **Node.js Built-in Dependencies:**
 | Module | Import |
@@ -4810,6 +4793,7 @@ Reachable from a root: **411** of 411 files. Dormant: **0** (0 orphaned, 0 test-
 |------|---------|------|
 | `../utils/graphCopy.js` | `borrowGraphView, deepCopyPlain` | Import |
 | `./nodeSqliteAdapter.js` | `createNodeSqliteDatabaseCtor, isNodeSqliteAvailable` | Import |
+| `../utils/RunExclusiveMutex.js` | `RunExclusiveMutex` | Import |
 | `../types/index.js` | `KnowledgeGraph, Entity, Relation, ReadonlyKnowledgeGraph, IGraphStorage, LowercaseData` | Import (type-only) |
 | `../utils/searchCache.js` | `clearAllSearchCaches, bumpEntityGeneration, bumpRelationGeneration` | Import |
 | `../utils/indexes.js` | `NameIndex, RelationIndex, TypeIndex, computeLowercase` | Import |
@@ -4895,11 +4879,6 @@ Reachable from a root: **411** of 411 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/core/columns/JsonlColumnStore.ts` - JsonlColumnStore — JSONL-sidecar-backed `IColumnStore<T>`
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `async-mutex` | `Mutex` |
-
 **Node.js Built-in Dependencies:**
 | Module | Import |
 |--------|--------|
@@ -4908,6 +4887,7 @@ Reachable from a root: **411** of 411 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../../utils/RunExclusiveMutex.js` | `RunExclusiveMutex` | Import |
 | `../../utils/durableWriteFile.js` | `durableWriteFile` | Import |
 | `../../utils/jsonlMapFile.js` | `parseJsonlMapLines, serializeJsonlMap` | Import |
 | `../../utils/mutateMapWithFlushRollback.js` | `clearMapWithFlushRollback, deleteFromMapWithFlushRollback, mutateMapWithFlushRollback` | Import |
@@ -6420,10 +6400,10 @@ Reachable from a root: **411** of 411 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/search/TemporalQueryParser.ts` - Temporal Query Parser
 
-**Internal Dependencies:**
-| File | Imports | Type |
-|------|---------|------|
-| `./enDate/parseEnDate.js` | `parseEnDate, parseEnDateStart` | Import |
+**Node.js Built-in Dependencies:**
+| Module | Import |
+|--------|--------|
+| `module` | `createRequire` |
 
 **Exports:**
 - Classes: `TemporalQueryParser`
@@ -6462,111 +6442,6 @@ Reachable from a root: **411** of 411 files. Dormant: **0** (0 orphaned, 0 test-
 - Interfaces: `SQLiteStorageWithEmbeddings`
 - Functions: `isEmbeddingStorage`, `createVectorStore`
 - Re-exports: `cosineSimilarity`
-
----
-
-### `src/search/enDate/calendar.ts` - Calendar arithmetic for the in-repo English date parser.
-
-**Internal Dependencies:**
-| File | Imports | Type |
-|------|---------|------|
-| `./types.js` | `Duration` | Import (type-only) |
-
-**Exports:**
-- Functions: `weekdayOf`, `daysForwardToWeekday`, `daysBackwardToWeekday`, `daysToWeekday`, `addDuration`, `reverseDuration`, `mostLikelyAdYear`, `yearClosestToRef`
-
----
-
-### `src/search/enDate/components.ts` - Component bookkeeping for the in-repo English date parser.
-
-**Internal Dependencies:**
-| File | Imports | Type |
-|------|---------|------|
-| `./types.js` | `ComponentKey, Components, Duration, ParseContext` | Import (type-only) |
-| `./calendar.js` | `addDuration` | Import |
-| `./types.js` | `MERIDIEM_AM, MERIDIEM_PM` | Import |
-
-**Exports:**
-- Functions: `createComponents`, `getComponent`, `assign`, `imply`, `isCertain`, `unset`, `isOnlyTime`, `isOnlyDate`, `isOnlyWeekday`, `isDateWithUnknownYear`, `isValidDate`, `toDate`, `startOfWeekUtc`, `implySimilarDate`, `assignSimilarDate`, `implySimilarTime`, `assignSimilarTime`, `addDurationAsImplied`, `createRelativeFromReference`, `cloneComponents`
-
----
-
-### `src/search/enDate/constants.ts` - Word tables and duration parsing for the in-repo English date parser.
-
-**Internal Dependencies:**
-| File | Imports | Type |
-|------|---------|------|
-| `./types.js` | `Duration` | Import (type-only) |
-
-**Exports:**
-- Functions: `matchAnyPattern`, `parseNumberPattern`, `parseOrdinalNumberPattern`, `parseYear`, `parseDuration`
-- Constants: `WEEKDAY_DICTIONARY`, `FULL_MONTH_NAME_DICTIONARY`, `MONTH_DICTIONARY`, `TIME_UNIT_DICTIONARY_NO_ABBR`, `TIME_UNIT_DICTIONARY`, `NUMBER_PATTERN`, `ORDINAL_NUMBER_PATTERN`, `YEAR_PATTERN`, `TIME_UNITS_PATTERN`, `TIME_UNITS_NO_ABBR_PATTERN`
-
----
-
-### `src/search/enDate/parseEnDate.ts` - In-repo English natural-language date parser.
-
-**Internal Dependencies:**
-| File | Imports | Type |
-|------|---------|------|
-| `./types.js` | `EnDateOptions, EnDateResult, ParseContext, ParsedResult` | Import (type-only) |
-| `./parsers.js` | `createParsers, EnParser` | Import |
-| `./refiners.js` | `createRefiners, EnRefiner` | Import |
-| `./components.js` | `toDate` | Import |
-
-**Exports:**
-- Functions: `parseEnDate`, `parseEnDateStart`
-
----
-
-### `src/search/enDate/parsers.ts` - English date parsers for the in-repo date parser.
-
-**Internal Dependencies:**
-| File | Imports | Type |
-|------|---------|------|
-| `./types.js` | `Components, ParseContext, ParsedResult` | Import (type-only) |
-| `./types.js` | `MERIDIEM_AM, MERIDIEM_PM` | Import |
-| `./constants.js` | `MONTH_DICTIONARY, ORDINAL_NUMBER_PATTERN, TIME_UNIT_DICTIONARY, TIME_UNITS_PATTERN, WEEKDAY_DICTIONARY, YEAR_PATTERN, matchAnyPattern, parseDuration, parseOrdinalNumberPattern, parseYear` | Import |
-| `./components.js` | `addDurationAsImplied, assign, assignSimilarDate, assignSimilarTime, createComponents, createRelativeFromReference, getComponent, imply, implySimilarTime, unset` | Import |
-| `./calendar.js` | `daysToWeekday, reverseDuration, yearClosestToRef` | Import |
-
-**Exports:**
-- Interfaces: `EnParser`
-- Functions: `createParsers`
-
----
-
-### `src/search/enDate/refiners.ts` - English date refiners for the in-repo date parser.
-
-**Internal Dependencies:**
-| File | Imports | Type |
-|------|---------|------|
-| `./types.js` | `ComponentKey, Components, ParseContext, ParsedResult` | Import (type-only) |
-| `./types.js` | `MERIDIEM_PM` | Import |
-| `./components.js` | `assign, assignSimilarDate, cloneComponents, createRelativeFromReference, getComponent, imply, implySimilarDate, isCertain, isDateWithUnknownYear, isOnlyDate, isOnlyTime, isOnlyWeekday, isValidDate, toDate` | Import |
-| `./calendar.js` | `addDuration, daysForwardToWeekday, reverseDuration` | Import |
-| `./constants.js` | `parseDuration, parseYear` | Import |
-| `./timezones.js` | `timezoneOffsetFor` | Import |
-
-**Exports:**
-- Interfaces: `EnRefiner`
-- Functions: `createRefiners`
-
----
-
-### `src/search/enDate/timezones.ts` - Timezone abbreviation table for the in-repo English date parser.
-
-**Exports:**
-- Functions: `timezoneOffsetFor`
-
----
-
-### `src/search/enDate/types.ts` - Internal value types for the in-repo English date parser.
-
-**Exports:**
-- Interfaces: `EnDateResult`, `EnDateOptions`, `Components`, `ParsedResult`, `ParseContext`
-- Types: `ComponentKey`, `Duration`
-- Constants: `MERIDIEM_AM`, `MERIDIEM_PM`
 
 ---
 
@@ -6738,15 +6613,11 @@ Reachable from a root: **411** of 411 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/search/tiered/MapFileTier.ts` - MapFileTier — shared base of the file-backed index tiers
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `async-mutex` | `Mutex` |
-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
 | `../../utils/mutateMapWithFlushRollback.js` | `clearMapWithFlushRollback, deleteFromMapWithFlushRollback` | Import |
+| `../../utils/RunExclusiveMutex.js` | `RunExclusiveMutex` | Import |
 | `../../utils/jsonlMapFile.js` | `parseJsonlMapLines, serializeJsonlMap, JsonlMapFormat` | Import |
 | `./ITieredIndex.js` | `IIndexTier` | Import (type-only) |
 
@@ -7123,6 +6994,13 @@ Reachable from a root: **411** of 411 files. Dormant: **0** (0 orphaned, 0 test-
 - Interfaces: `ComponentMemoryUsage`, `MemoryUsageStats`, `MemoryThresholds`, `MemoryAlert`
 - Types: `MemoryChangeCallback`
 - Constants: `globalMemoryMonitor`
+
+---
+
+### `src/utils/RunExclusiveMutex.ts` - FIFO mutex whose `runExclusive` has no timeout and no queue cap.
+
+**Exports:**
+- Classes: `RunExclusiveMutex`
 
 ---
 
@@ -7722,8 +7600,8 @@ Reachable from a root: **411** of 411 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/types/index` | 13 files | 70 files |
 | `src/types/agent-memory` | 3 files | 73 files |
 | `src/agent/index` | 70 files | 1 file |
+| `src/core/GraphStorage` | 17 files | 47 files |
 | `src/utils/index` | 37 files | 27 files |
-| `src/core/GraphStorage` | 16 files | 47 files |
 | `src/core/EntityManager` | 12 files | 48 files |
 | `src/search/index` | 51 files | 1 file |
 | `src/utils/errors` | 0 files | 42 files |
@@ -7876,7 +7754,7 @@ graph TD
         N63[EmbeddingService]
         N64[EvidencePathBuilder]
         N65[FuzzySearch]
-        N66[...53 more]
+        N66[...45 more]
     end
 
     subgraph Security
@@ -7914,9 +7792,9 @@ graph TD
         N89[IIndexHealth]
         N90[IndexHealthMonitor]
         N91[MemoryMonitor]
-        N92[SchemaValidator]
-        N93[WorkerPoolManager]
-        N94[...41 more]
+        N92[RunExclusiveMutex]
+        N93[SchemaValidator]
+        N94[...42 more]
     end
 
     subgraph Workers
@@ -7981,6 +7859,7 @@ graph TD
     N33 --> N34
     N33 --> N53
     N35 --> N76
+    N36 --> N92
     N36 --> N76
     N36 --> N35
     N37 --> N76
@@ -7997,7 +7876,6 @@ graph TD
     N39 --> N41
     N39 --> N36
     N39 --> N33
-    N39 --> N40
 ```
 
 ---
@@ -8007,21 +7885,21 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 411 |
+| Total TypeScript Files | 404 |
 | Total Modules | 12 |
-| Total Lines of Code | 129584 |
-| Total Exports | 2872 |
+| Total Lines of Code | 126996 |
+| Total Exports | 2823 |
 | Total Re-exports | 1716 |
-| Total Classes | 279 |
-| Total Interfaces | 833 |
-| Total Functions | 681 |
-| Total Type Guards | 49 |
+| Total Classes | 280 |
+| Total Interfaces | 826 |
+| Total Functions | 643 |
+| Total Type Guards | 43 |
 | Total Enums | 4 |
-| Type-only Imports | 872 |
+| Type-only Imports | 867 |
 | Runtime Circular Deps | 0 |
 | Type-only Circular Deps | 15 |
 | Entry/Build Roots | 4 |
-| Reachable Files | 411 |
+| Reachable Files | 404 |
 | Dormant Files (orphaned / test-only) | 0 (0 / 0) |
 
 ---

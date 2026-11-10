@@ -8,7 +8,7 @@
  */
 
 import { promises as fs } from 'fs';
-import { Mutex } from 'async-mutex';
+import { RunExclusiveMutex } from '../utils/RunExclusiveMutex.js';
 import { durableWriteFile } from '../utils/durableWriteFile.js';
 import { RefConflictError } from '../utils/errors.js';
 import { addToSetBucket, removeFromSetBucket } from '../utils/indexes.js';
@@ -43,7 +43,7 @@ export interface RefIndexStats {
  * Persisted as a JSONL sidecar file. In-memory Map is the source of truth once
  * loaded; reads never hit disk after the first load.
  *
- * Uses async-mutex so concurrent callers do not corrupt the JSONL file.
+ * Uses a `RunExclusiveMutex` so concurrent callers do not corrupt the JSONL file.
  *
  * @example
  * ```typescript
@@ -60,7 +60,7 @@ export class RefIndex {
   private reverseIndex: Map<string, Set<string>> = new Map();
 
   /** Guards all file I/O and map mutations */
-  private mutex = new Mutex();
+  private mutex = new RunExclusiveMutex();
 
   /** Whether the index has been loaded from disk */
   private loaded = false;
