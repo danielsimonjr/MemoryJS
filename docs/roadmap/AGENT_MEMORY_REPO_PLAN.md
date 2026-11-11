@@ -92,11 +92,16 @@ Every new module is in `src/features/amr/` and carries `@experimental`. Tests ar
 
 - Extract the shared confinement code of `skillTreeFs.ts` without a change in its behavior. The `SkillPublisher` tests run unchanged as the regression gate.
 - Build the confined reader on it. Exclude `.git` and its case and alias variants. Detect case-fold duplicates and reserved Windows names.
+  - The reader checks the real path of each file. A real-path segment below the root that is `.git` or an `ignore` name is refused, so a junction or a committed symlink to `.git` cannot expose it.
+  - The reader opens a handle. The reader then checks the handle again for regular file, size, real path and file identity.
+  - No fs error escapes. An error becomes a reason, a warning or an issue with a short code, never an absolute path.
 - Write `loadAmrContext(root, opts)`:
   - It reads `MEMORY.md` first, then the bullets above `## Index`, then the links, with byte, file and depth limits from config.
   - It returns a labelled data block.
   - It fails loudly when `MEMORY.md` is missing.
-- Write `checkAmr(root)`. It is read-only. It reports dangling links, bad dates, case duplicates, traversal, secret-pattern hits and the size of `## Index`.
+- Write `checkAmr(root)`. `checkAmr` is read-only. It reports dangling links, unsafe link targets, bad dates, malformed metadata, case duplicates, traversal, unparseable files and the size of `MEMORY.md`.
+  - `checkAmr` resolves link targets without a read. `checkAmr` reads each walked file once.
+- Budgets bound the I/O: the loader reads no more files when a budget is full. A `MEMORY.md` above the byte budget is cut and marked `[truncated]`. Each file header holds the nonce of the data block.
 - Tests:
   - Traversal links: `../x`, `/etc/passwd`, `C:\x`, `a\b`, `a//b`, NUL and `CON`.
   - A directory junction that points out of the root.
@@ -113,7 +118,7 @@ The write guards come before the first write, so the scanner runs on every write
 - Clean check: read the exit code of `status --porcelain` and compare the realpath of `rev-parse --show-toplevel` with the root (case-insensitive on Windows).
 - After `add`, the staged set must equal the intended set. "Nothing to commit" is a no-op.
 - Secret scanner: block and report. It ships a default pattern file that an environment variable can override. Tests build their secret fixtures at runtime, so no key-shaped literal is committed.
-- Confined writer: `.md` files only. Temp files go in the directory that `git rev-parse --absolute-git-dir` names, because `.git` is a file in a linked worktree or a submodule. Every write passes the secret scanner.
+- Confined writer: `.md` files only. Temp files go in the directory that `git rev-parse --absolute-git-dir` names, because `.git` is a file in a linked worktree or a submodule. Every write passes the secret scanner. `checkAmr` also reports secret-pattern hits from this phase on.
 - Tests:
   - Set `GIT_DIR` to a decoy repo and assert that the decoy is unchanged.
   - Isolate the git config with `GIT_CONFIG_GLOBAL` and `GIT_CONFIG_NOSYSTEM`, and assert that a missing identity fails.
