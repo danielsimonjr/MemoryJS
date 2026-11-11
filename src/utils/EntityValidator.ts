@@ -160,17 +160,7 @@ export class EntityValidator {
     for (const rule of this.config.rules) {
       try {
         const result = await rule.validate(entity);
-
-        if (!result.valid) {
-          const issue = this.issueFor(rule, result, entity);
-
-          if (issue.severity === 'error') {
-            errors.push(issue);
-            if (this.config.failFast) break;
-          } else {
-            warnings.push(issue);
-          }
-        }
+        if (this.foldRuleResult(rule, entity, result, errors, warnings) === 'break') break;
       } catch (error) {
         errors.push(this.errorIssueFor(rule, error));
         if (this.config.failFast) break;
@@ -211,16 +201,7 @@ export class EntityValidator {
           throw new Error(`Rule "${rule.name}" is async. Use validate() instead of validateSync()`);
         }
 
-        if (!result.valid) {
-          const issue = this.issueFor(rule, result, entity);
-
-          if (issue.severity === 'error') {
-            errors.push(issue);
-            if (this.config.failFast) break;
-          } else {
-            warnings.push(issue);
-          }
-        }
+        if (this.foldRuleResult(rule, entity, result, errors, warnings) === 'break') break;
       } catch (error) {
         errors.push(this.errorIssueFor(rule, error));
         if (this.config.failFast) break;
@@ -228,6 +209,33 @@ export class EntityValidator {
     }
 
     return this.buildResult(errors, warnings, entity);
+  }
+
+  /**
+   * Fold one rule outcome into the error/warning buckets.
+   *
+   * @param rule - Rule that ran
+   * @param entity - Entity that was validated
+   * @param result - Non-promise result the rule returned (already unwrapped by `validate`)
+   * @param errors - Error bucket to append to
+   * @param warnings - Warning bucket to append to
+   * @returns `'break'` when `failFast` is set and an error was recorded, otherwise `'continue'`
+   */
+  private foldRuleResult(
+    rule: EntityValidationRule,
+    entity: Entity,
+    result: EntityRuleResult,
+    errors: EntityValidationIssue[],
+    warnings: EntityValidationIssue[],
+  ): 'break' | 'continue' {
+    if (result.valid) return 'continue';
+    const issue = this.issueFor(rule, result, entity);
+    if (issue.severity === 'error') {
+      errors.push(issue);
+      return this.config.failFast ? 'break' : 'continue';
+    }
+    warnings.push(issue);
+    return 'continue';
   }
 
   /**
