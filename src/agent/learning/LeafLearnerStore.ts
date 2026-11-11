@@ -305,6 +305,34 @@ export function taskRecordsJson(tasks: readonly TaskRecord[]): string {
 }
 
 /**
+ * Re-hydrate task records by id from the trace's one-time `[leaf-tasks]` observation.
+ *
+ * Error strings name `label`, so the leaf and recursive loaders keep their own wording.
+ *
+ * @param traces - Trace manager.
+ * @param traceId - Trace id.
+ * @param taskIds - Task ids, in the order they must be returned.
+ * @param label - `'LeafLearner'` or `'RecursiveLearner'`; used verbatim in errors.
+ * @returns The tasks in `taskIds` order.
+ * @throws Error when the trace has no task records, or one id is not in them.
+ */
+export async function loadTasksByIds(
+  traces: LearningTrace,
+  traceId: string,
+  taskIds: readonly string[],
+  label: 'LeafLearner' | 'RecursiveLearner',
+): Promise<TaskRecord[]> {
+  const tasksJson = await traces.readTasks(traceId);
+  if (tasksJson === undefined) throw new Error(`${label}: trace "${traceId}" has no task records`);
+  const byId = new Map((JSON.parse(tasksJson) as TaskRecord[]).map((t) => [t.id, t] as const));
+  return taskIds.map((id) => {
+    const task = byId.get(id);
+    if (!task) throw new Error(`${label}: trace "${traceId}" lacks task ${id}`);
+    return task;
+  });
+}
+
+/**
  * Read a run record from its trace, re-hydrating `tasks` from the `[leaf-tasks]` observation.
  *
  * @param traces - Trace manager.
@@ -317,13 +345,6 @@ export async function loadRun(traces: LearningTrace, traceId: string): Promise<L
   if (json === undefined) throw new Error(`LeafLearner: trace "${traceId}" has no leaf-learner state`);
   const stored = JSON.parse(json) as Omit<LeafRun, 'tasks'>;
   if (stored.schema !== 1 || typeof stored.stateRev !== 'number') throw new Error(`LeafLearner: unsupported state schema ${String(stored.schema)}`);
-  const tasksJson = await traces.readTasks(traceId);
-  if (tasksJson === undefined) throw new Error(`LeafLearner: trace "${traceId}" has no task records`);
-  const byId = new Map((JSON.parse(tasksJson) as TaskRecord[]).map((t) => [t.id, t] as const));
-  const tasks = stored.taskIds.map((id) => {
-    const task = byId.get(id);
-    if (!task) throw new Error(`LeafLearner: trace "${traceId}" lacks task ${id}`);
-    return task;
-  });
+  const tasks = await loadTasksByIds(traces, traceId, stored.taskIds, 'LeafLearner');
   return { ...stored, tasks };
 }

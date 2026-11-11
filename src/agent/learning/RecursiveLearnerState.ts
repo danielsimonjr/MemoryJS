@@ -25,7 +25,7 @@ import type { IsoDateTime } from '../../types/agent-memory.js';
 import type { LearningTrace } from './LearningTrace.js';
 import type { AccountantState } from './LearningAccountant.js';
 import type { LeafPhase } from './types.js';
-import { loadRun, summarize } from './LeafLearnerStore.js';
+import { loadRun, loadTasksByIds, summarize } from './LeafLearnerStore.js';
 
 /** Default maximum number of nested recursion levels below the root. */
 export const DEFAULT_MAX_DEPTH = 2;
@@ -233,14 +233,7 @@ export async function loadRecursive(traces: LearningTrace, traceId: string): Pro
   if (state.kind !== 'recursive' || state.schema !== 2) {
     throw new Error(`RecursiveLearner: trace "${traceId}" is not a recursive run`);
   }
-  const tasksJson = await traces.readTasks(traceId);
-  if (tasksJson === undefined) throw new Error(`RecursiveLearner: trace "${traceId}" has no task records`);
-  const byId = new Map((JSON.parse(tasksJson) as TaskRecord[]).map((t) => [t.id, t] as const));
-  const tasks = state.taskIds.map((id) => {
-    const task = byId.get(id);
-    if (!task) throw new Error(`RecursiveLearner: trace "${traceId}" lacks task ${id}`);
-    return task;
-  });
+  const tasks = await loadTasksByIds(traces, traceId, state.taskIds, 'RecursiveLearner');
   return { state, tasks };
 }
 
