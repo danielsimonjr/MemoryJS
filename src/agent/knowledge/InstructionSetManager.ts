@@ -32,6 +32,7 @@ import type { GraphStorage } from '../../core/GraphStorage.js';
 import { VersionConflictError } from '../../utils/errors.js';
 import { readEnvNumber } from '../../utils/envConfig.js';
 import { fitInOrder, shortId } from './knowledgeDigest.js';
+import { privateRecordEntity } from './privateRecordEntity.js';
 
 /** Roles accepted by the instruction-set manager. */
 const ROLES: readonly InstructionSetRole[] = ['solver', 'learner', 'shared'];
@@ -289,20 +290,15 @@ function cloneSection(section: InstructionSection): InstructionSection {
  * `KnowledgeRepository`, which creates sets during rollback.
  */
 export function buildInstructionSetEntity(record: InstructionSetRecord, now: string): InstructionSetEntity {
-  return {
+  return privateRecordEntity({
     name: record.id,
     entityType: 'instruction_set',
     observations: [`[instruction_set] role: ${record.role}`],
-    createdAt: now,
-    lastModified: now,
-    importance: 5,
+    now,
     memoryType: 'instruction_set',
-    visibility: 'private',
-    accessCount: 0,
     confidence: 1,
-    confirmationCount: 0,
-    version: 1,
-    instructionSetRecord: record,
-  } as unknown as InstructionSetEntity;
+    recordKey: 'instructionSetRecord',
+    record,
+  }) as unknown as InstructionSetEntity;
 }
 

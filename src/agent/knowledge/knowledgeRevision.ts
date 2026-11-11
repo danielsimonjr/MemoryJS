@@ -29,6 +29,7 @@ import {
 import { buildInstructionSetEntity } from './InstructionSetManager.js';
 import { SKILL_KIND_VALUES, mintSkillId, skillDedupHash, skillObservations } from '../skills/skillRecordUtils.js';
 import { canonicalKnowledgeJson, clone, compareIds, sha256Hex, shortId } from './knowledgeDigest.js';
+import { privateRecordEntity } from './privateRecordEntity.js';
 
 /** Pre-write plan entry; `origin` is the revision op index responsible for it. */
 export type PlannedWrite =
@@ -209,21 +210,16 @@ export function applyOp(op: RevisionOp, work: WorkState, now: string, index: num
         createdAt: toIsoDateTime(now),
         lastUpdatedAt: toIsoDateTime(now),
       };
-      const entity = {
+      const entity = privateRecordEntity({
         name: id,
         entityType: 'heuristic',
         observations: [`[heuristic] ${op.condition} → ${op.action}`],
-        createdAt: now,
-        lastModified: now,
-        importance: 5,
+        now,
         memoryType: 'heuristic',
-        visibility: 'private',
-        accessCount: 0,
         confidence: 0.5,
-        confirmationCount: 0,
-        version: 1,
-        heuristicRecord: record,
-      } as unknown as Entity;
+        recordKey: 'heuristicRecord',
+        record,
+      }) as unknown as Entity;
       work.creates.push({ entity, origin: index });
       work.touched.set(id, index);
       return undefined;
@@ -243,21 +239,16 @@ export function applyOp(op: RevisionOp, work: WorkState, now: string, index: num
         generalization_confidence: 0.5,
         evidenceHash: sha256Hex(JSON.stringify(['learning', [...evidence].sort(compareIds)])),
       };
-      const entity = {
+      const entity = privateRecordEntity({
         name: id,
         entityType: 'reflection',
         observations: [`[reflection] ${op.summary}`],
-        createdAt: now,
-        lastModified: now,
-        importance: 5,
+        now,
         memoryType: 'reflection',
-        visibility: 'private',
-        accessCount: 0,
         confidence: 0.5,
-        confirmationCount: 0,
-        version: 1,
-        reflectionRecord: record,
-      } as unknown as Entity;
+        recordKey: 'reflectionRecord',
+        record,
+      }) as unknown as Entity;
       work.creates.push({ entity, origin: index });
       work.touched.set(id, index);
       return undefined;
@@ -269,22 +260,17 @@ export function applyOp(op: RevisionOp, work: WorkState, now: string, index: num
 
 /** Entity for a skill record (used when a skill has no live entity yet). */
 function buildSkillEntity(record: SkillRecord, now: string): Entity {
-  return {
+  return privateRecordEntity({
     name: record.id,
     entityType: 'skill',
     observations: skillObservations(record),
-    contentHash: skillDedupHash(record.name, record.body),
-    createdAt: now,
-    lastModified: now,
-    importance: 5,
+    now,
     memoryType: 'skill',
-    visibility: 'private',
-    accessCount: 0,
     confidence: 1,
-    confirmationCount: 0,
-    version: 1,
-    skillRecord: record,
-  } as unknown as Entity;
+    contentHash: skillDedupHash(record.name, record.body),
+    recordKey: 'skillRecord',
+    record,
+  });
 }
 
 /**
