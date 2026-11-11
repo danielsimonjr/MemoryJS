@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Drop every repo-tools clone pair whose overlapping AST is genuine shared behavior by extracting a helper (or parameterized core) **before** rewriting call sites, while leaving chrono-node parity shapes and unrelated containment hits alone.
+**Goal:** Drop every repo-tools clone pair whose overlapping AST is genuine shared behavior by extracting a helper (or parameterized core) **before** rewriting call sites. Chrono-node's split export names stay; their bodies may delegate to one internal helper. Unrelated containment hits stay only when the overlap is not a behavior both sides actually perform.
 
-**Architecture:** One implementation PR. Tests that pin current behavior land first and must fail if the helper is wired with the wrong semantics. Helpers stay next to their callers (no new public package exports). `src/search/enDate/` keeps chrono-node's split function names even when two bodies look alike.
+**Architecture:** One implementation PR. Tests that pin current behavior land first and must fail if the helper is wired with the wrong semantics. Helpers stay next to their callers (no new public package exports, no barrel re-exports). `src/search/enDate/` keeps chrono-node's split function names; `implySimilar*` / `assignSimilar*` and the two time-pattern checkers become thin wrappers over a parameterized core.
 
 **Tech Stack:** TypeScript, Vitest, `npx -y @danielsimonjr/repo-tools@2.6.0 clones . --out ../clone-inventory` (write outside the repo; never commit `inventory.jsonl` / `clones.json`).
 
@@ -13,7 +13,7 @@
 - Baseline (confirmed 2026-11-11 on `de3f30cf`): **415 files, 1849 units (`minNodes=50`), 2 exact groups, 27 near pairs** (the 27 include the 2 exact groups as `jStruct=1` rows). Daniel's "25 near pairs" are the 25 rows that are not text-identical exact clones.
 - Plan-only branch does not change `src/`. This document is the spec for a later implementation PR.
 - Do not merge code whose runtime behavior differs (BFS visit-on-enqueue vs DFS visit-on-pop must stay distinct even if they share setup).
-- Do not "unify" `imply*` vs `assign*` in `src/search/enDate/` into one exported function; chrono-node exposes both.
+- Do not collapse `implySimilarTime` and `assignSimilarTime` (or the date siblings) into one exported function. Chrono-node exposes both names. Both bodies must call one internal writer parameterized by `imply` vs `assign`.
 - New exported symbols need a JSDoc first sentence that says what the function does (`repo-tools docs check src`). Prefer `@internal` helpers not re-exported from barrels.
 - Verification after implementation: `bun install --frozen-lockfile`, `bun run typecheck`, `bun run lint`, `bun run test:ci`, `bun run build`, then clones with `--out` outside the repo. Do not commit inventory dumps.
 - No force-push, rebase, amend, `--no-verify`, merge, tag, release, or publish on the planner or builder branches.
@@ -24,8 +24,8 @@
 |---|---|---|
 | files | 415 | 415 (or 416 only if a new helper file is justified; prefer editing existing files) |
 | units (`minNodes=50`) | 1849 | ~1840–1855 (helpers add units; shrunk callers may fall below 50) |
-| **exact groups** | **2** | **1** (`implySimilarTime` / `assignSimilarTime` remains) |
-| **near pairs** | **27** | **10** (3 enDate chrono-parity + 7 containment / unrelated-semantics hits listed as KEEP) |
+| **exact groups** | **2** | **0** (E1 imported; E2/N2 bodies delegate to one writer, wrappers fall under `minNodes`) |
+| **near pairs** | **27** | **6** (N6, N18, N20, N23, N24, N25). Task 17 fails if any REFACTOR row is still reported. |
 
 If a KEEP pair disappears because a caller shrank below `minNodes=50`, that is success; do not restore padding to keep the pair. If a REFACTOR pair remains above threshold, the extract was too thin — move more of the shared loop into the helper until the pair drops.
 
@@ -47,7 +47,11 @@ If a KEEP pair disappears because a caller shrank below `minNodes=50`, that is s
 | `src/core/GraphTraversal.ts` | Shared traversal setup + neighbor walk; BFS/DFS keep visit timing |
 | `src/features/IOManager.ts` | Shared XML node/edge loop for GraphML and GEXF |
 | `src/utils/EntityValidator.ts` | Shared rule-result folding |
-| `src/search/BloomFilter.ts` | Shared `hashPositions` iterator |
+| `src/search/BloomFilter.ts` | Shared `applyHashBits(item, mode)` — no per-call closure, no index array |
+| `src/search/enDate/components.ts` | Internal `copySimilarFields` used by imply/assign date and time |
+| `src/search/enDate/parsers.ts` | Internal `checkAndReturnTimePattern` used by both checkers |
+| `src/core/storageCache.ts` | `omitNamedEndpoints` used by `deleteNamesFromSnapshot` and `ArchiveManager` |
+| `src/agent/knowledge/knowledgeRevision.ts` | `privateRecordEntity` shell shared with `buildTraceEntity` |
 | `src/core/PostgreSQLStorage.ts` | Shared optional-column apply helper |
 | `src/cli/commands/helpers.ts` | Shared `emitJson` |
 | `src/cli/commands/{heuristic,observationDedup,cache,reindex,spell}.ts` | Use `emitJson` |
@@ -63,36 +67,36 @@ Ids match the REPORT.md order. `j` = jStruct, `c` = containment.
 | # | Pair | j/c | Decision | Why (verifiable) |
 |---|---|---|---|---|
 | E1 / N1 | `LLMRubricJudge.raceAbort` ↔ `llmJson.raceAbort` | 1.00/1.00 | **REFACTOR** | Byte-identical (local copy vs export). Judge already documents the mirror in `llmJson.ts` header. |
-| E2 / N2 | `implySimilarTime` ↔ `assignSimilarTime` | 1.00/1.00 | **KEEP** | Chrono-node `ENTimeExpressionParser` / component helpers: `imply` does not overwrite certain fields; `assign` does. Same field list is the chrono API, not a bug. Do not collapse to one export. |
+| E2 / N2 | `implySimilarTime` ↔ `assignSimilarTime` | 1.00/1.00 | **REFACTOR** | Bodies (`components.ts` 242–262) are the same five keys (`hour`, `minute`, `second`, `millisecond`, `meridiem` from `getUTCHours() < 12`) passed to `imply` vs `assign`. Extract `copySimilarFields(components, target, keys, write)`. Keep both exports as wrappers. `imply` still no-ops when `known[key]` is set (`components.ts` 80–83); `assign` still clears `implied`. Also route `implySimilarDate` / `assignSimilarDate` (218–234, not in the baseline report) through the same writer so the sibling shape cannot become a new exact group. |
 | N3 | `SalienceEngine.calculateTaskRelevance` ↔ `calculateQueryRelevance` | 0.79/0.94 | **REFACTOR** | Both already call `semanticOr`; remaining shared core is name/observation substring scoring with different weights and one extra `entityType` / `taskId` check. Parameterize those weights. |
 | N4 | `KnowledgeRepository.loadForContext` ↔ `ScratchKnowledge.loadForContext` | 0.76/0.91 | **REFACTOR** | Candidate list → `fitInOrder` → id harvest is identical; skill *source* (live `skills.match` vs in-memory matcher) stays in each class. |
 | N5 | `QueryCostEstimator.scoreLexicalLayer` ↔ `scoreSemanticLayer` | 0.74/0.88 | **REFACTOR** | Same skeleton: base score, word-count bump, `AND\|OR\|NOT` bump, `analysis.questionType` bumps. Tables differ. |
-| N6 | `ExtractTimezoneAbbrRefiner.refine` ↔ `MergeWeekdayComponentRefiner.refine` | 0.73/0.92 | **KEEP** | Chrono-node refiners with different regex and effects (timezone offset vs weekday merge). Shared `results` loop is the refiner interface, not shared behavior. |
+| N6 | `ExtractTimezoneAbbrRefiner.refine` ↔ `MergeWeekdayComponentRefiner.refine` | 0.73/0.92 | **KEEP** | Bodies re-read (`refiners.ts` 99–161). Abbr refiner scans a trailing `TIMEZONE_NAME_SUFFIX`, calls `timezoneOffsetFor`, and `assign`s `timezoneOffset` only when not already certain. Weekday refiner pairwise-merges when `isOnlyWeekday` meets a certain `day` across `/^,?\s*$/`, then `cloneComponents` + `assign` weekday. No common regex, predicate, or assignment. Do not fold either into `mergeAdjacent`. |
 | N7 | `StringSchema._parse` ↔ `NumberSchema._parse` | 0.73/0.90 | **REFACTOR** | Shared invalid-type issue construction (`makeIssue` + `invalidTypeMessage` + `pushIssue`). Number also rejects NaN/Infinity via `received`. |
 | N8 | `ConsolidationScheduler.constructor` ↔ `DecayScheduler.constructor` | 0.69/0.95 | **REFACTOR (shrink)** | Already share `fillDefaults` + `unrefInterval`. Clone is the inlined default-object + callback copy. Move defaults to module `const`; do **not** invent a scheduler base class (cycle bodies differ: pipeline vs decay). |
 | N9 | `loadRun` ↔ `loadRecursive` | 0.69/0.86 | **REFACTOR** | Shared `readTasks` + `JSON.parse` + `taskIds.map` rehydrate. Schema/kind checks stay in each loader. |
 | N10 | `AgentReflectionManager.archive` ↔ `FailureManager.markResolved` | 0.66/0.86 | **REFACTOR** | Shared OCC pattern: `getEntityByName` → type guard → already-done short circuit → timestamped record patch → `updateEntity({ expectedVersion })` → `versionedWriteFailure`. Record shapes differ. |
 | N11 | `GraphTraversal.bfs` ↔ `dfs` | 0.65/0.80 | **REFACTOR (core only)** | Shared: missing-start empty result, `visited`/`nodes`/`depths`/`parents`, `getNeighborsWithRelations`, `maxDepth`. **Not** shared: BFS marks visited on enqueue; DFS on pop; parent-first-wins only on DFS. Keep two public methods. |
-| N12 | `checkAndReturnWithoutFollowingPattern` ↔ `checkAndReturnWithFollowingPattern` | 0.65/0.83 | **KEEP** | Chrono-node `ENTimeExpressionParser` pair (with vs without a following time range). Different regex and reject rules (`/^\d$/` vs `/^\d+-\d+$/`). |
+| N12 | `checkAndReturnWithoutFollowingPattern` ↔ `checkAndReturnWithFollowingPattern` | 0.65/0.83 | **REFACTOR** | Shared tail (`parsers.ts` 615–638): if the captured ending contains `.` and fails `/\d(\.\d{2})+$/`, return null; if `parseInt(ending, 10) > 24`, return null. Differing prefix rejects (`/^\d$/`, `/^\d\d\d+$/`, `/\d[apAP]$/` vs `/^\d+-\d+$/`) and the range regex (also rejects `parseInt(startingNumbers) > 24`) are parameters. Extract `checkAndReturnTimePattern(result, kind: 'bare' \| 'range')`. Keep both chrono names as wrappers. |
 | N13 | `IOManager.exportAsGraphML` ↔ `exportAsGEXF` | 0.65/0.91 | **REFACTOR** | Shared walk: entities → escaped ids + type/observations; relations → escaped endpoints + incrementing edge id. Element names and extra GraphML keys differ. |
 | N14 | `EntityValidator.validate` ↔ `validateSync` | 0.65/0.89 | **REFACTOR** | Shared error/warning buckets, `issueFor`, `failFast`, `errorIssueFor`, `buildResult`. Sync path uniquely rejects `Promise` results. |
 | N15 | `ContextWindowManager.constructor` ↔ `SalienceEngine.constructor` | 0.63/0.84 | **REFACTOR (shrink)** | Already `fillDefaults`. Clone is two large default literals inside constructors. Hoist `DEFAULT_*_CONFIG`. Do not share a base class (different deps: `ContextProfileManager` vs `SummarizationService`/`FreshnessManager`). |
 | N16 | `BloomFilter.add` ↔ `mayContain` | 0.60/0.78 | **REFACTOR** | Identical `doubleHash` + `h1 + i*h2` bit index loop. `add` ORs the bit; `mayContain` returns false on unset. Hot path: keep the helper in-file, no extra allocations per hash. |
 | N17 | `PostgreSQLStorage.rowToEntity` ↔ `rowToRelation` | 0.58/1.00 | **REFACTOR** | Shared optional-column copy (`columnText` / `columnIso` / `Number` / skip null) plus `mergeExtensionFields`. Column maps differ. |
-| N18 | `LearningTrace.flush` ↔ `RecursiveDrive` `run` (`runChildren`) | 0.54/0.90 | **KEEP** | `flush` serializes OCC writes on a per-id promise tail (`flushTails`). `runChildren` fans out child learners under `runAll` + `AbortController`. Containment of "queue a promise, abort listener, then/catch". No one helper can serve both without lying. |
+| N18 | `LearningTrace.flush` ↔ `RecursiveDrive.runChildren` | 0.54/0.90 | **KEEP** | Re-read. `flush` (`LearningTrace.ts` 506–524) chains `flushTails` so both fulfill and reject still call `writeOps`, then deletes the tail. `runChildren` (`RecursiveDrive.ts` 73–122) adds an abort listener, `runAll`s children, and on `AbortError` stops for budget. `flush` takes no `AbortSignal`. A shared "then both branches" helper would hide the OCC tail vs the fan-out. |
 | N19 | `registerHeuristicCommands` ↔ `registerObservationDedupCommands` | 0.43/0.93 | **REFACTOR** | Shared `emitJson` (also copied in `cache.ts`, `reindex.ts`, `spell.ts`) and `runAction` + `program.command` + `.option` + `.action`. Extract `emitJson`; leave command trees as data in each file (heuristic CRUD ≠ obs-dedup find). |
-| N20 | `LeafLearnerDeps` `editor.edit` ↔ `makeRound` | 0.41/0.91 | **KEEP** | Containment of a 67-node object-literal factory (`makeRound`) inside an adapter that calls `KnowledgeEditor.edit`. Unrelated types (`KnowledgeRevisionRecord` vs `PGRoundRecord`). |
+| N20 | `LeafLearnerDeps` `editor.edit` ↔ `makeRound` | 0.41/0.91 | **KEEP** | Re-read. `editor.edit` (`LeafLearnerDeps.ts` 92–109) builds a `KnowledgeEditContext` and returns `parts.editor.edit(...)`. `makeRound` (`ProceduralGraphEvolution.ts` 862–878) copies `PGRoundRecord` fields and optionally spreads `candidateRevisionId`. Overlap is `...(cond ? { key } : {})`, not a shared record. Calling `makeRound` here would not typecheck. |
 | N21 | `DecayEngine.calculateDecayFactor` ↔ `clampedHalfLifeScore` | 0.38/0.96 | **REFACTOR** | After TTL/importance adjust `effectiveHalfLife`, the ageHours + `halfLifeFactor` + clamp is exactly `clampedHalfLifeScore(lastAccessedAt, effectiveHalfLife)`. Empty timestamp already returns 0 in both. |
 | N22 | `BasicSearch.openNodes` ↔ `BooleanSearch.booleanSearch` | 0.23/0.91 | **REFACTOR** | Shared `collectInducedRelations` wrap: entities → `KnowledgeGraph`. Boolean AST, cache, pagination stay in `booleanSearch`. Extract `inducedSubgraph(storage, entities)`. |
-| N23 | `parseVerdicts` ↔ `makeRound` | 0.19/0.91 | **KEEP** | Containment: rubric Map vs `PGRoundRecord` factory. No shared domain. |
-| N24 | `createLeafLearnerDeps` ↔ `makeRound` | 0.12/0.91 | **KEEP** | Containment of `makeRound` inside adapter factory. |
-| N25 | `Bootstrapper.run` ↔ `makeRound` | 0.09/0.95 | **KEEP** | Containment of `makeRound` inside corpus→learn pipeline. |
-| N26 | `deleteNamesFromSnapshot` ↔ `ArchiveManager.archiveEntities` | 0.09/0.97 | **KEEP** | `deleteNamesFromSnapshot` mutates an in-memory `KnowledgeGraph` cache after a durable delete. `archiveEntities` scores entities, writes an archive file, then deletes. jStruct 0.085; only generic "filter names out of a graph" overlaps. |
-| N27 | `knowledgeRevision.applyOp` ↔ `LearningTrace.buildTraceEntity` | 0.06/0.90 | **KEEP** | `applyOp` is a 1000+ node opcode switch. `buildTraceEntity` is a 57-node `learning_trace` entity factory. Containment of object-literal field lists; different entity types. |
+| N23 | `parseVerdicts` ↔ `makeRound` | 0.19/0.91 | **KEEP** | Re-read. `parseVerdicts` (`LLMRubricJudge.ts` 147–173) parses a JSON array into `Map<criterionId, CriterionResult>` and optionally spreads `note`. No `PGRoundRecord` fields. jStruct 0.19 is the optional-spread shape inside the larger parser, which also does schema checks `makeRound` does not. |
+| N24 | `createLeafLearnerDeps` ↔ `makeRound` | 0.12/0.91 | **KEEP** | Re-read. The factory returns `{ diagnoser, editor }` adapters. The contained shape is the same optional-spread as N20 (sessionId, signal, dedup, solverInstructionSetId). It never builds a round record. |
+| N25 | `Bootstrapper.run` ↔ `makeRound` | 0.09/0.95 | **KEEP** | Re-read (`Bootstrapper.ts` 140–202). Pipeline is map → boundaries → notes → practice tasks → optional `learn` → `repository.snapshot`. The return is `BootstrapResult` with an optional `learn` spread. No round factory; jStruct 0.09. |
+| N26 | `deleteNamesFromSnapshot` ↔ `ArchiveManager.archiveEntities` | 0.09/0.97 | **REFACTOR** | The overlap is not generic. `archiveEntities` copies the snapshot filter twice (`ArchiveManager.ts` 221–226 and 263–266): drop entities whose name is in the set, drop relations whose `from` or `to` is in the set. That is the whole body of `deleteNamesFromSnapshot` (`storageCache.ts` 269–277). Extract `omitNamedEndpoints` and call it from both. Scoring, archive file, and governance stay in `archiveEntities`. |
+| N27 | `knowledgeRevision.applyOp` ↔ `LearningTrace.buildTraceEntity` | 0.06/0.90 | **REFACTOR** | The contained literal is the private-memory shell, not an unrelated object. `buildTraceEntity` (`LearningTrace.ts` 630–645) and `applyOp`'s `heuristic.add` / `memory.reflect` literals (`knowledgeRevision.ts` 212–226 and 246–260) plus `buildSkillEntity` (271–287) all set `name`, `entityType`, `observations`, `createdAt`, `lastModified`, `importance: 5`, `memoryType`, `visibility: 'private'`, `accessCount: 0`, `confirmationCount: 0`, `version: 1`, then a confidence and one record field. Extract `privateRecordEntity`. Confidence stays `1` for learning_trace and skill, `0.5` for heuristic and reflection. `contentHash` stays skill-only. |
 
-**KEEP count (must remain unless they fall below `minNodes`):** E2/N2, N6, N12, N18, N20, N23, N24, N25, N26, N27 → 10 near pairs, 1 exact group.
+**KEEP count (must remain unless they fall below `minNodes`):** N6, N18, N20, N23, N24, N25 → 6 near pairs, 0 exact groups.
 
-**REFACTOR count:** E1/N1, N3, N4, N5, N7, N8, N9, N10, N11, N13, N14, N15, N16, N17, N19, N21, N22 → 17 near rows (16 unique extracts; N8 and N15 are constructor shrinks).
+**REFACTOR count:** E1/N1, E2/N2, N3, N4, N5, N7, N8, N9, N10, N11, N12, N13, N14, N15, N16, N17, N19, N21, N22, N26, N27 → 21 near rows. N8 and N15 are constructor shrinks. E2 also covers the under-threshold date sibling. N27 also covers `buildSkillEntity`, which is the same shell and must not be left behind as a replacement pair.
 
 ---
 
@@ -377,7 +381,7 @@ private beginTraversal(startEntity: string, options: TraversalOptions): {
 
 - [ ] **Steps:** tests for missing start, parent maps on a diamond graph (BFS vs DFS parents differ), maxDepth → extract setup only → commit `refactor: share GraphTraversal walk setup`
 
-**Risks:** Unifying the loops into one `mode: 'bfs'|'dfs'` function is allowed only if diamond-parent tests pass unchanged. Prefer two loops sharing setup if a single loop is hard to verify.
+**Risks:** Hot path (centrality, shortest path). Share setup once per call, not a per-neighbor callback. BFS (`GraphTraversal.ts` 313–316) marks `visited` and sets `parent` on enqueue and uses an index cursor (`queueHead`), not `shift()`. DFS (351–367) marks `visited` on pop and sets `parent` only when `!parents.has(neighbor)`. A diamond test must fail if those two timings are swapped. Unifying into `mode: 'bfs'|'dfs'` is allowed only when that test passes unchanged. Do not change public `bfs` / `dfs` signatures.
 
 ---
 
@@ -431,7 +435,7 @@ private foldRuleResult(
 
 ---
 
-### Task 12: Bloom `forEachHashBit`
+### Task 12: Bloom `applyHashBits`
 
 **Files:**
 - Modify: `src/search/BloomFilter.ts`
@@ -440,17 +444,17 @@ private foldRuleResult(
 **Interfaces:**
 
 ```typescript
-private forEachHashBit(item: string, visit: (byte: number, mask: number) => boolean | void): void
+private applyHashBits(item: string, mode: 'or' | 'test'): boolean
 ```
 
-`add`: `this.bits[byte] = (this.bits[byte] ?? 0) | mask` (visit always continues).
-`mayContain`: return false from visit when bit unset; after loop return true.
+One direct method. Do **not** take a `visit` callback: `add` / `mayContain` sit on the fuzzy pre-screen hot path, and a fresh closure per call allocates. Do **not** build an array of indexes.
 
-No arrays of indexes (hot path).
+`mode: 'or'`: `this.bits[byte] = (this.bits[byte] ?? 0) | mask`, then `add` does `this.inserted++`.
+`mode: 'test'`: return `false` when `((this.bits[byte] ?? 0) & mask) === 0`; after the loop return `true`.
 
 - [ ] **Steps:** pin add then mayContain true; missing item false; does not allocate → extract → commit `refactor: share BloomFilter hash-bit loop`
 
-**Risks:** `% this.bitCount`, `idx >>> 3`, `1 << (idx & 7)` must not change. `inserted++` only in `add`.
+**Risks:** `% this.bitCount`, `idx >>> 3`, `1 << (idx & 7)` must not change. `inserted++` only in `add`. A branch on `mode` inside the hash loop is the intended shape (one mode per call, predictable). Public `add` / `mayContain` / `clear` / `size` signatures stay.
 
 ---
 
@@ -493,7 +497,7 @@ export function emitJson(payload: unknown): void {
 }
 ```
 
-Do not invent `registerJsonSubcommands` unless N19 still clones after this extract; command option lists are product surface.
+`emitJson` alone will not drop N19. The pair is the two `register*` functions (`heuristic.ts` 23–120 vs `observationDedup.ts` 52–80). Containment is the repeated `.command().description().option().action(runAction → emitJson)` skeleton, not the 3-line logger. Also add an internal `addJsonCommand(parent, spec)` that performs `command` + `option` list + `runAction` + `emitJson`. Callers pass option specs as data (`flags`, `description`, `parse`). Heuristic `match` stays a manual try/catch (`heuristic.ts` 68–87) and must not go through `runAction`. If N19 is still reported after both extracts, the helper did not absorb the skeleton — enlarge it. Do not merge heuristic CRUD with Jaccard find into one command table (different managers and flags). `emitJson` and `addJsonCommand` stay off the package barrel.
 
 - [ ] **Steps:** add helpers test with a mock `console.log` → replace five local copies → commit `refactor: share CLI emitJson`
 
@@ -550,7 +554,7 @@ Implementation: `names = new Set(entities.map(e => e.name)); return { entities, 
 - [ ] **Step 3:** `bun run typecheck && bun run lint && bun run test:ci && bun run build`
 - [ ] **Step 4:** Commit only if src still dirty after Task 16. Do not commit clone dumps.
 
-**Expected clones:** exact groups = 1 (N2/E2 only); near pairs = 10 KEEP rows. A leftover REFACTOR pair means the helper did not absorb the shared loop — enlarge the helper, do not lower `minNodes`.
+**Expected clones:** exact groups = 0; near pairs = 6 (N6, N18, N20, N23, N24, N25). A leftover REFACTOR pair means the helper did not absorb the shared loop — enlarge the helper, do not lower `minNodes`, and do not reclassify it as KEEP.
 
 ---
 
@@ -559,5 +563,140 @@ Implementation: `names = new Set(entities.map(e => e.name)); return { entities, 
 - Spec coverage: all 2 exact + 25 additional near pairs are in the classification table with REFACTOR extract or a KEEP reason that cites the other function's different control flow.
 - No TBD/placeholder extracts.
 - Helper names in later tasks match Task 2/7/8 interfaces.
-- enDate KEEP set is exactly N2, N6, N12.
+- enDate KEEP set is exactly N6. E2/N2 and N12 are parameterized cores behind the chrono names.
 - Architecture docs CI does not read this plan path; implementation PRs that add src exports must still satisfy `repo-tools docs check src`.
+
+## Plan review
+
+Reviewed 2026-11-11 by reading both function bodies for every pair (not the planner's summary). Decisions below are what changed in this revision.
+
+**Flipped KEEP → REFACTOR**
+
+- **E2/N2.** The two functions are the same five time fields. The only semantic difference is the writer (`imply` does not overwrite `known`; `assign` does). A shared `copySimilarFields(..., write)` keeps both exports and both semantics. Exact-group target moves from 1 to 0. The date pair (`implySimilarDate` / `assignSimilarDate`) is the same shape and is under `minNodes` today; it goes through the same writer so it cannot reappear as an exact group.
+- **N12.** The shared tail is real: dotted-ending reject via `/\d(\.\d{2})+$/` and `parseInt > 24`. The differing regexes are parameters of `checkAndReturnTimePattern`. Chrono names stay as wrappers. "Different regex" was not a reason to keep the duplicated reject.
+- **N26.** `archiveEntities` inlines `deleteNamesFromSnapshot`'s filter twice, including "either endpoint". That is shared behavior at jStruct 0.09. `omitNamedEndpoints` is the core. Scoring and the archive file stay put.
+- **N27.** The contained 57-node literal is the same private-entity shell (importance 5, visibility private, accessCount 0, confirmationCount 0, version 1) with a different `confidence` and record key. `buildSkillEntity` is included so the extract does not create a replacement pair. Instruction-set entities are in only when the field list matches.
+
+**KEEP that survived the challenge**
+
+- **N6.** Abbr refiner is a suffix scan plus `timezoneOffset`. Weekday refiner is an adjacent merge plus `cloneComponents`. No shared predicate to parameterize.
+- **N18.** `flush` has a per-id OCC tail and no abort signal. `runChildren` fans out under `runAll` and an `AbortController`. The promise `.then` on both branches is not a shared operation.
+- **N20, N23, N24, N25.** Each large function was read. None constructs a `PGRoundRecord`. The containment is optional object spread (`candidateRevisionId` in `makeRound` vs `note` / `signal` / `learn` elsewhere). A spread helper would not be shared domain behavior and would not remove `makeRound`'s field list from those units without rewriting unrelated option passing.
+
+**REFACTOR challenges that changed the extract, not the decision**
+
+- **N11 (kept REFACTOR).** Setup-only extract stays. Added an explicit ban on a per-neighbor callback (centrality hot path) and a diamond test that fails if visit-on-enqueue is swapped with visit-on-pop. Public `bfs` / `dfs` signatures do not change.
+- **N16 (kept REFACTOR).** Replaced the planned `visit` callback with `applyHashBits(item, mode)`. A closure per `add` / `mayContain` allocates on the Bloom pre-screen path. No index array. Bit math and `inserted++` stay where they are.
+- **N19 (kept REFACTOR).** `emitJson` is necessary and not sufficient: the reported pair is the two `register*` functions, and the overlap is the repeated command/action skeleton. Task 14 now also requires `addJsonCommand`. Heuristic `match` stays on its manual try/catch. Task 17 treats a remaining N19 row as a failed extract.
+
+**Counts.** 21 near rows are REFACTOR, 6 are KEEP. Both exact groups are in the REFACTOR set, so exact groups go to 0 and near pairs go to 6. That holds only if each extract absorbs the shared loop (Task 17 gate). N19 is the row most likely to miss the cutoff if `addJsonCommand` is skipped.
+
+**Not changed.** E1 symbol-identity risk (`unique symbol` vs `Symbol('aborted')`), schema issue order, OCC microtask timing, and "no new barrel exports" still stand. No `src/` edits in this review.
+
+---
+
+### Task 18: `copySimilarFields` for imply/assign date and time
+
+**Files:**
+- Modify: `src/search/enDate/components.ts` (`implySimilarDate`, `assignSimilarDate`, `implySimilarTime`, `assignSimilarTime`)
+- Test: existing enDate / chrono parity tests (do not weaken fixtures)
+
+**Interfaces:**
+
+```typescript
+function copySimilarFields(
+  components: Components,
+  target: Date,
+  keys: readonly ComponentKey[],
+  write: typeof imply | typeof assign,
+): Components
+```
+
+Time keys: `hour`, `minute`, `second`, `millisecond`, then `meridiem` from `target.getUTCHours() < 12 ? MERIDIEM_AM : MERIDIEM_PM` (that value is not a `Date` getter; pass it as an extra key/value or handle it inside the time wrappers before the call — do not recompute it differently for imply vs assign).
+
+Date keys: `day` = `getUTCDate()`, `month` = `getUTCMonth() + 1`, `year` = `getUTCFullYear()`.
+
+Exported names stay. `createRelativeFromReference` still calls `assignSimilarTime` / `implySimilarTime` by those names.
+
+- [ ] **Steps:** pin a case where the field is already `known` (imply leaves it, assign replaces it and deletes `implied`) for both date and time → extract → parity tests PASS → commit `refactor: share enDate similar-field copy`
+
+**Risks:** `imply` returns early when `known[key] !== undefined` and must not delete `implied`. `assign` writes `known` and `delete`s `implied`. Public exports stay. No behavior change in `createRelativeFromReference` (time-bearing durations still assign both, date-bearing still imply time).
+
+---
+
+### Task 19: `checkAndReturnTimePattern`
+
+**Files:**
+- Modify: `src/search/enDate/parsers.ts` (both checkers and their call sites at the end of `ENTimeExpressionParser.extract`)
+- Test: existing time-expression parser tests. Add cases if missing: single digit rejected on the bare path; `1-2` rejected on the range path; ending `25` rejected on both; a `.50`-style ending that fails `/\d(\.\d{2})+$/` rejected on both; range also rejects when the *start* number is `> 24`.
+
+**Interfaces:**
+
+```typescript
+function checkAndReturnTimePattern(result: ParsedResult, kind: 'bare' | 'range'): ParsedResult | null
+```
+
+`bare` keeps `/^\d$/`, `/^\d\d\d+$/`, `/\d[apAP]$/`, and `/[^\d:.](\d[\d.]+)$/`.
+`range` keeps `/^\d+-\d+$/` and `/[^\d:.](\d[\d.]+)\s*-\s*(\d[\d.]+)$/`, and rejects when either captured number parses `> 24`.
+Both share the `.` / cents check and the ending `> 24` check. Both return `result` unchanged when they accept.
+
+- [ ] **Steps:** add the reject cases (PASS on current wrappers) → extract → same tests PASS → commit `refactor: share EN time-pattern reject checks`
+
+**Risks:** The two regexes are not interchangeable. `extract` must still call the bare checker when there is no following match (`parsers.ts` 685–686) and the range checker after a following time is merged (695). Do not rename the chrono functions.
+
+---
+
+### Task 20: `omitNamedEndpoints` for snapshot delete and archive
+
+**Files:**
+- Modify: `src/core/storageCache.ts` `deleteNamesFromSnapshot`
+- Modify: `src/features/ArchiveManager.ts` both filter sites (~221 and ~263)
+- Test: existing storage-cache and archive tests. Pin: an entity in the set is removed; a relation is removed when **either** endpoint is in the set; a relation with both endpoints outside the set stays.
+
+**Interfaces:**
+
+```typescript
+export function omitNamedEndpoints(
+  graph: { entities: readonly Entity[]; relations: readonly Relation[] },
+  nameSet: ReadonlySet<string>,
+): { entities: Entity[]; relations: Relation[] }
+```
+
+`deleteNamesFromSnapshot` assigns the result back onto `cache` (same mutation as today). `archiveEntities` uses the result for `postArchiveGraph` and for the graph it saves. Do not skip governance preflight or the archive file write.
+
+- [ ] **Steps:** pin endpoint-either-side removal → replace both inline filters and the snapshot helper body → commit `refactor: share omitNamedEndpoints graph filter`
+
+**Risks:** `deleteNamesFromSnapshot` currently mutates `cache.entities` / `cache.relations` in place. Callers that hold those array references must still observe the new arrays (assignment, not an in-place `splice`, matches today). Archive dry-run must not call this on the live graph.
+
+---
+
+### Task 21: `privateRecordEntity` shell
+
+**Files:**
+- Modify: `src/agent/learning/LearningTrace.ts` `buildTraceEntity`
+- Modify: `src/agent/knowledge/knowledgeRevision.ts` `heuristic.add`, `memory.reflect`, `buildSkillEntity` (and `buildInstructionSetEntity` if it uses the same shell — read it first; include it only when the field set matches)
+- Test: learning-trace create tests and knowledge-revision apply tests. Snapshot the entity objects (confidence, `contentHash` presence, record property name).
+
+**Interfaces:**
+
+```typescript
+function privateRecordEntity(
+  fields: {
+    name: string;
+    entityType: string;
+    observations: string[];
+    now: string;
+    memoryType: string;
+    confidence: number;
+    contentHash?: string;
+    recordKey: string;
+    record: unknown;
+  },
+): Entity
+```
+
+`buildTraceEntity` keeps its public signature and its `as LearningTraceEntity` cast. Heuristic and reflection stay `as unknown as Entity` with `confidence: 0.5`. Skill keeps `contentHash` and `confidence: 1`. Do not export this helper from a barrel.
+
+- [ ] **Steps:** characterize one entity per kind (learning_trace, heuristic, reflection, skill) → extract → same objects → commit `refactor: share private memory entity shell`
+
+**Risks:** `createdAt` / `lastModified` for these literals are the `now` argument, not `toIsoDateTime(now)` (the nested records use `toIsoDateTime`). Do not swap them. Instruction-set entities use a different observation and may omit fields — leave them alone unless the field list matches exactly. `applyOp` validation strings stay in the switch.
