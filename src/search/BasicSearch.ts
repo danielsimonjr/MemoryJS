@@ -13,7 +13,7 @@ import type { CachePressureCoordinator } from '../utils/CachePressureCoordinator
 import { isWithinDateRange, SEARCH_LIMITS, searchCaches } from '../utils/index.js';
 import { getCacheOwnerId } from '../utils/searchCache.js';
 import { SearchFilterChain, type SearchFilters } from './SearchFilterChain.js';
-import { collectInducedRelations } from './inducedSubgraph.js';
+import { collectInducedRelations, inducedSubgraph } from './inducedSubgraph.js';
 
 /** Performs basic text search with optional filters and caching. */
 export class BasicSearch {
@@ -103,10 +103,7 @@ export class BasicSearch {
 
     const requestedNames = new Set(names);
     const filteredEntities = graph.entities.filter(e => requestedNames.has(e.name));
-    const filteredEntityNames = new Set(filteredEntities.map(e => e.name));
-    const filteredRelations = collectInducedRelations(this.storage, filteredEntityNames);
-
-    return { entities: filteredEntities, relations: filteredRelations };
+    return inducedSubgraph(this.storage, filteredEntities);
   }
 
   /** Search by date range with optional filters and pagination. */

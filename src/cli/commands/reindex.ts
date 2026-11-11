@@ -21,12 +21,8 @@ import { dirname } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { RankedSearch } from '../../search/RankedSearch.js';
 import type { GraphStorage } from '../../core/GraphStorage.js';
-import { getOptions, createContext, createLogger } from './helpers.js';
+import { getOptions, createContext, createLogger, emitJson } from './helpers.js';
 import { formatError } from '../formatters.js';
-
-function emitJson(payload: unknown): void {
-  console.log(JSON.stringify(payload, null, 2));
-}
 
 /**
  * Register the `reindex` command.

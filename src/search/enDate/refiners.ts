@@ -207,29 +207,60 @@ const forwardDateRefiner: EnRefiner = {
   },
 };
 
+/**
+ * Merge a date with an adjacent relative duration through {@link mergeAdjacent}.
+ *
+ * `after-date` reads `+2 days` / `-1 week` from the following result and anchors on the current
+ * date. `follow-by-date` reads `2 days after` / `3 days before` from the current result and
+ * anchors on the following date. Sign reversal, duration source, and the merge-predicate stay
+ * kind-specific so swapping those would fail the relative-merge pins.
+ *
+ * @param context - Parse context (text + reference date).
+ * @param results - Adjacent parser hits.
+ * @param kind - Which result holds the duration vs the calendar date.
+ * @returns The merged result list.
+ */
+function mergeRelativeAdjacent(
+  context: ParseContext,
+  results: ParsedResult[],
+  kind: 'after-date' | 'follow-by-date',
+): ParsedResult[] {
+  return mergeAdjacent(
+    context,
+    results,
+    (textBetween, current, next) => {
+      if (!/^\s*$/i.test(textBetween)) return false;
+      if (kind === 'after-date') return /^[+-]/.test(next.text);
+      return (
+        /(\s+(before|from)|\s+(after|since))$/i.test(current.text) &&
+        getComponent(next.start, 'day') !== undefined &&
+        getComponent(next.start, 'month') !== undefined &&
+        getComponent(next.start, 'year') !== undefined
+      );
+    },
+    (textBetween, current, next) => {
+      const durationText = kind === 'after-date' ? next.text : current.text;
+      let duration = parseDuration(durationText);
+      if (!duration) return current;
+      const reverse =
+        kind === 'after-date' ? /^-/.test(next.text) : /\s+(before|from)$/i.test(current.text);
+      if (reverse) duration = reverseDuration(duration);
+      const anchor = kind === 'after-date' ? current.start : next.start;
+      const start = createRelativeFromReference({ ...context, refDate: toDate(anchor) }, duration);
+      return {
+        index: current.index,
+        text: current.text + textBetween + next.text,
+        start,
+      };
+    },
+  );
+}
+
 /** Merge a result that names a date with a following `+2 days` / `-1 week`. */
 const mergeRelativeAfterDateRefiner: EnRefiner = {
   name: 'MergeRelativeAfterDateRefiner',
   refine(context, results) {
-    return mergeAdjacent(
-      context,
-      results,
-      (textBetween, _current, next) => /^\s*$/i.test(textBetween) && /^[+-]/.test(next.text),
-      (textBetween, current, next) => {
-        let duration = parseDuration(next.text);
-        if (!duration) return current;
-        if (/^-/.test(next.text)) duration = reverseDuration(duration);
-        const start = createRelativeFromReference(
-          { ...context, refDate: toDate(current.start) },
-          duration
-        );
-        return {
-          index: current.index,
-          text: current.text + textBetween + next.text,
-          start,
-        };
-      }
-    );
+    return mergeRelativeAdjacent(context, results, 'after-date');
   },
 };
 
@@ -237,30 +268,7 @@ const mergeRelativeAfterDateRefiner: EnRefiner = {
 const mergeRelativeFollowByDateRefiner: EnRefiner = {
   name: 'MergeRelativeFollowByDateRefiner',
   refine(context, results) {
-    return mergeAdjacent(
-      context,
-      results,
-      (textBetween, current, next) =>
-        /^\s*$/i.test(textBetween) &&
-        /(\s+(before|from)|\s+(after|since))$/i.test(current.text) &&
-        getComponent(next.start, 'day') !== undefined &&
-        getComponent(next.start, 'month') !== undefined &&
-        getComponent(next.start, 'year') !== undefined,
-      (textBetween, current, next) => {
-        let duration = parseDuration(current.text);
-        if (!duration) return current;
-        if (/\s+(before|from)$/i.test(current.text)) duration = reverseDuration(duration);
-        const start = createRelativeFromReference(
-          { ...context, refDate: toDate(next.start) },
-          duration
-        );
-        return {
-          index: current.index,
-          text: current.text + textBetween + next.text,
-          start,
-        };
-      }
-    );
+    return mergeRelativeAdjacent(context, results, 'follow-by-date');
   },
 };
 

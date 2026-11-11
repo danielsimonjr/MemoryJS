@@ -612,30 +612,38 @@ function resolveForComparison(components: Components): number {
   return Date.UTC(year, month - 1, day, hour, getComponent(components, 'minute') ?? 0);
 }
 
-function checkAndReturnWithoutFollowingPattern(result: ParsedResult): ParsedResult | null {
-  if (/^\d$/.test(result.text)) return null;
-  if (/^\d\d\d+$/.test(result.text)) return null;
-  if (/\d[apAP]$/.test(result.text)) return null;
-
-  const endingWithNumbers = /[^\d:.](\d[\d.]+)$/.exec(result.text);
+/**
+ * Shared tail of the two time-pattern checkers: reject an ending with a `.` that is not a run of
+ * `\.\d{2}` groups, then reject an ending over 24 (and, on the range path, a start over 24).
+ *
+ * @param result - Candidate result whose `text` is checked
+ * @param kind - `'bare'` for a single time, `'range'` for a merged `start-end` text
+ * @returns `result` when it is acceptable, `null` when it must be rejected
+ */
+function checkAndReturnTimePattern(result: ParsedResult, kind: 'bare' | 'range'): ParsedResult | null {
+  const endingPattern = kind === 'bare'
+    ? /[^\d:.](\d[\d.]+)$/
+    : /[^\d:.](\d[\d.]+)\s*-\s*(\d[\d.]+)$/;
+  const endingWithNumbers = endingPattern.exec(result.text);
   if (endingWithNumbers) {
-    const endingNumbers = endingWithNumbers[1];
+    const endingNumbers = endingWithNumbers[kind === 'bare' ? 1 : 2]!;
     if (endingNumbers.includes('.') && !/\d(\.\d{2})+$/.test(endingNumbers)) return null;
     if (parseInt(endingNumbers, 10) > 24) return null;
+    if (kind === 'range' && parseInt(endingWithNumbers[1]!, 10) > 24) return null;
   }
   return result;
 }
 
+function checkAndReturnWithoutFollowingPattern(result: ParsedResult): ParsedResult | null {
+  if (/^\d$/.test(result.text)) return null;
+  if (/^\d\d\d+$/.test(result.text)) return null;
+  if (/\d[apAP]$/.test(result.text)) return null;
+  return checkAndReturnTimePattern(result, 'bare');
+}
+
 function checkAndReturnWithFollowingPattern(result: ParsedResult): ParsedResult | null {
   if (/^\d+-\d+$/.test(result.text)) return null;
-  const endingWithNumbers = /[^\d:.](\d[\d.]+)\s*-\s*(\d[\d.]+)$/.exec(result.text);
-  if (endingWithNumbers) {
-    const startingNumbers = endingWithNumbers[1];
-    const endingNumbers = endingWithNumbers[2];
-    if (endingNumbers.includes('.') && !/\d(\.\d{2})+$/.test(endingNumbers)) return null;
-    if (parseInt(endingNumbers, 10) > 24 || parseInt(startingNumbers, 10) > 24) return null;
-  }
-  return result;
+  return checkAndReturnTimePattern(result, 'range');
 }
 
 const timeExpressionParser: EnParser = {

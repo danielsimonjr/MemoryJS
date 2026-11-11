@@ -16,27 +16,24 @@
  * @experimental Part of the Recursa knowledge-repository work (spec RS-17).
  */
 
-import type { InstructionSetRecord, InstructionSetRole, RevisionOp, SkillId, SkillRecord } from '../../types/skills.js';
-import type { FailureRecord } from '../../types/agent-memory.js';
-import { readEnvNumber } from '../../utils/envConfig.js';
-import { estimateTokensFromText } from '../../utils/tokenEstimate.js';
-import { instructionItemsFor, renderInstructionItems, type InstructionItem } from './InstructionSetManager.js';
-import { assertBudgetTokens, clone, fitInOrder } from './knowledgeDigest.js';
+import type { InstructionSetRecord, RevisionOp, SkillId, SkillRecord } from '../../types/skills.js';
+import { clone } from './knowledgeDigest.js';
 import { safeApplyOp, workFrom } from './knowledgeRevision.js';
 import { rankSkillsLexically } from '../skills/skillRecordUtils.js';
-import { resolveMaxSkills, selectSkills, skillIdsForTaskIds } from './knowledgeLoad.js';
+import {
+  skillIdsForTaskIds,
+  toLoadItems,
+  packLoadedKnowledge,
+  prepareLoad,
+  loadSkillMatches,
+} from './knowledgeLoad.js';
 import type { FailureLookupLike, LoadedKnowledge, LoadForContextOptions, SkillMatchLike } from './KnowledgeRepository.js';
 
-/** Default token budget, matching `KnowledgeRepository.loadForContext`. */
-const DEFAULT_BUDGET_TOKENS = 4000;
 /** Maximum failures returned by one load, matching the live path. */
 const LOOKUP_LIMIT = 5;
 
 /** Items rendered by {@link ScratchKnowledge.loadForContext}, in priority order. */
-export type LoadItem =
-  | { kind: 'instruction'; item: InstructionItem }
-  | { kind: 'skill'; match: SkillMatchLike }
-  | { kind: 'failure'; failure: FailureRecord };
+export type { LoadItem } from './knowledgeLoad.js';
 
 /** Live payload a scratch copy is seeded from. */
 export interface ScratchPayload {
@@ -69,27 +66,7 @@ const defaultMatcher: SkillMatcher = (query, skills, limit) => rankSkillsLexical
  * @param items - Items already selected by the budget.
  * @returns Markdown text.
  */
-export function renderLoadedKnowledge(role: InstructionSetRole, items: readonly LoadItem[]): string {
-  const groups: string[] = [];
-  const instructions = items.flatMap((x) => (x.kind === 'instruction' ? [x.item] : []));
-  if (instructions.length > 0) groups.push(`## Instructions (${role})\n\n${renderInstructionItems(instructions)}`);
-  const skills = items.flatMap((x) => (x.kind === 'skill' ? [x.match.skill] : []));
-  if (skills.length > 0) {
-    const blocks = skills.map((skill) => {
-      const refs = skill.sources.map((source) => source.ref).join(', ') || 'none';
-      return `### ${skill.name} (uncertainty ${skill.uncertainty}, sources: ${refs})\n\n${skill.body}`;
-    });
-    groups.push(`## Skills\n\n${blocks.join('\n\n')}`);
-  }
-  const failures = items.flatMap((x) => (x.kind === 'failure' ? [x.failure] : []));
-  if (failures.length > 0) {
-    const lines = failures.map(
-      (f) => `- ${f.failure_mode} → ${f.alternative_taken ?? f.root_cause} (applies when: ${f.applicability_hint})`,
-    );
-    groups.push(`## Failure lessons\n\n${lines.join('\n')}`);
-  }
-  return groups.join('\n\n');
-}
+export { renderLoadedKnowledge } from './knowledgeLoad.js';
 
 /**
  * Mutable, storage-free copy of `K` used to validate a revision.
@@ -159,32 +136,14 @@ export class ScratchKnowledge {
    * @throws RangeError when `budgetTokens` is negative or not finite.
    */
   async loadForContext(options: LoadForContextOptions): Promise<LoadedKnowledge> {
-    const budget = assertBudgetTokens(options.budgetTokens ?? DEFAULT_BUDGET_TOKENS, 'ScratchKnowledge.loadForContext');
-    const multiplier = options.multiplier ?? readEnvNumber('MEMORY_CONTEXT_TOKEN_MULTIPLIER', 1.3);
-    const want = new Set(options.sections ?? ['instructions', 'skills', 'failures']);
-    const instructions = want.has('instructions') ? instructionItemsFor(this.sets, options.role) : [];
+    const setup = prepareLoad(options, 'ScratchKnowledge.loadForContext', this.sets);
     const live = this.skills.filter((skill) => skill.retired === undefined);
-    const maxSkills = resolveMaxSkills(options.maxSkills);
     const byId = new Map(live.map((skill) => [skill.id as string, skill] as const));
     const included = (options.includeSkillIds ?? []).flatMap((id) => byId.get(id) ?? []);
-    const matches: SkillMatchLike[] = want.has('skills')
-      ? selectSkills(included, this.matcher(options.taskHint, live, maxSkills), maxSkills).map((skill) => ({ skill, score: 0, matched: [] }))
+    const matches: SkillMatchLike[] = setup.want.has('skills')
+      ? loadSkillMatches(included, this.matcher(options.taskHint, live, setup.maxSkills), setup.maxSkills)
       : [];
-    const failures = want.has('failures') ? await this.failures.lookupForTask(options.taskHint, { limit: LOOKUP_LIMIT }) : [];
-    const candidates: LoadItem[] = [
-      ...instructions.map((item): LoadItem => ({ kind: 'instruction', item })),
-      ...matches.map((match): LoadItem => ({ kind: 'skill', match })),
-      ...failures.map((failure): LoadItem => ({ kind: 'failure', failure })),
-    ];
-    const render = (items: readonly LoadItem[]): string => renderLoadedKnowledge(options.role, items);
-    const kept = fitInOrder(candidates, render, budget, multiplier);
-    const markdown = render(kept);
-    return {
-      markdown,
-      skillIds: kept.flatMap((x) => (x.kind === 'skill' ? [x.match.skill.id] : [])),
-      instructionSetIds: [...new Set(kept.flatMap((x) => (x.kind === 'instruction' ? [x.item.setId] : [])))],
-      failureIds: kept.flatMap((x) => (x.kind === 'failure' ? [x.failure.id] : [])),
-      tokens: estimateTokensFromText(markdown, multiplier),
-    };
+    const failures = setup.want.has('failures') ? await this.failures.lookupForTask(options.taskHint, { limit: LOOKUP_LIMIT }) : [];
+    return packLoadedKnowledge(options.role, toLoadItems(setup.instructions, matches, failures), setup.budget, setup.multiplier);
   }
 }

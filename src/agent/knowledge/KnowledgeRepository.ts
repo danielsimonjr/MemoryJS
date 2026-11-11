@@ -35,31 +35,26 @@ import type { FailureRecord } from '../../types/agent-memory.js';
 import { BatchTransaction } from '../../core/TransactionManager.js';
 import { EntityManager } from '../../core/EntityManager.js';
 import type { GraphStorage } from '../../core/GraphStorage.js';
-import { readEnvNumber } from '../../utils/envConfig.js';
-import { estimateTokensFromText } from '../../utils/tokenEstimate.js';
-import {
-  instructionItemsFor,
-  type InstructionSetManager,
-} from './InstructionSetManager.js';
+import type { InstructionSetManager } from './InstructionSetManager.js';
 import {
   clone,
   diffSnapshots,
   digestOf,
-  assertBudgetTokens,
-  fitInOrder,
   type KnowledgeDiff,
 } from './knowledgeDigest.js';
 import { safeApplyOp, planWrites, workFrom, type PlannedWrite } from './knowledgeRevision.js';
-import { ScratchKnowledge, renderLoadedKnowledge, type LoadItem } from './ScratchKnowledge.js';
+import { ScratchKnowledge } from './ScratchKnowledge.js';
 import { rankSkillsLexically } from '../skills/skillRecordUtils.js';
 import {
   findSnapshot,
   latestSnapshotId,
   memoryRefsOf,
   payloadOf,
-  resolveMaxSkills,
-  selectSkills,
   skillIdsForTaskIds,
+  toLoadItems,
+  packLoadedKnowledge,
+  prepareLoad,
+  loadSkillMatches,
 } from './knowledgeLoad.js';
 
 export type { KnowledgeDiff, IdDelta } from './knowledgeDigest.js';
@@ -171,7 +166,6 @@ export interface LoadedKnowledge {
   tokens: number;
 }
 
-const DEFAULT_BUDGET_TOKENS = 4000;
 const LOOKUP_LIMIT = 5;
 /** Label prefix of the snapshot `applyRevision` takes. */
 const REVISION_LABEL_PREFIX = 'revision:';
@@ -375,32 +369,14 @@ export class KnowledgeRepository {
    * @throws RangeError when `budgetTokens` is negative or not finite.
    */
   async loadForContext(options: LoadForContextOptions): Promise<LoadedKnowledge> {
-    const budget = assertBudgetTokens(options.budgetTokens ?? DEFAULT_BUDGET_TOKENS, 'loadForContext');
-    const multiplier = options.multiplier ?? readEnvNumber('MEMORY_CONTEXT_TOKEN_MULTIPLIER', 1.3);
-    const want = new Set(options.sections ?? ['instructions', 'skills', 'failures']);
-    const instructions = want.has('instructions') ? instructionItemsFor(await this.instructionSets.list(), options.role) : [];
-    const maxSkills = resolveMaxSkills(options.maxSkills);
+    const setup = prepareLoad(options, 'loadForContext', await this.instructionSets.list());
     const included = (options.includeSkillIds ?? []).flatMap((id) => this.skills.get(id) ?? []);
-    const matched = want.has('skills') ? await this.skills.match(options.taskHint, { limit: maxSkills }) : [];
-    const matches = want.has('skills')
-      ? selectSkills(included, matched.map((m) => m.skill), maxSkills).map((skill) => ({ skill, score: 0, matched: [] }))
+    const matched = setup.want.has('skills') ? await this.skills.match(options.taskHint, { limit: setup.maxSkills }) : [];
+    const matches = setup.want.has('skills')
+      ? loadSkillMatches(included, matched.map((m) => m.skill), setup.maxSkills)
       : [];
-    const failures = want.has('failures') ? await this.failures.lookupForTask(options.taskHint, { limit: LOOKUP_LIMIT }) : [];
-    const candidates: LoadItem[] = [
-      ...instructions.map((item): LoadItem => ({ kind: 'instruction', item })),
-      ...matches.map((match): LoadItem => ({ kind: 'skill', match })),
-      ...failures.map((failure): LoadItem => ({ kind: 'failure', failure })),
-    ];
-    const render = (items: readonly LoadItem[]): string => renderLoadedKnowledge(options.role, items);
-    const kept = fitInOrder(candidates, render, budget, multiplier);
-    const markdown = render(kept);
-    return {
-      markdown,
-      skillIds: kept.flatMap((x) => (x.kind === 'skill' ? [x.match.skill.id] : [])),
-      instructionSetIds: [...new Set(kept.flatMap((x) => (x.kind === 'instruction' ? [x.item.setId] : [])))],
-      failureIds: kept.flatMap((x) => (x.kind === 'failure' ? [x.failure.id] : [])),
-      tokens: estimateTokensFromText(markdown, multiplier),
-    };
+    const failures = setup.want.has('failures') ? await this.failures.lookupForTask(options.taskHint, { limit: LOOKUP_LIMIT }) : [];
+    return packLoadedKnowledge(options.role, toLoadItems(setup.instructions, matches, failures), setup.budget, setup.multiplier);
   }
 
   // ==================== Internal ====================

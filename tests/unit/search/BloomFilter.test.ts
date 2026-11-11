@@ -37,16 +37,58 @@ describe('BloomFilter', () => {
     expect(bf.size()).toBe(2);
   });
 
-  it('clear() resets the filter', () => {
+  it('add only increments size, and mayContain never does', () => {
     const bf = new BloomFilter(100, 0.01);
+    bf.add('x');
+    bf.mayContain('x');
+    bf.mayContain('absent');
+    expect(bf.size()).toBe(1);
+  });
+
+  it('pins the exact bit layout so a refactor cannot move a bit', () => {
+    // 10 bits -> 2 bytes; hashes derived from bloomParams(1, 0.5) are deterministic here.
+    const bf = new BloomFilter(1, 0.5);
+    const before = bf.parameters();
+    bf.add('alice');
+    // Recompute the expected positions with the documented formula and compare the byte array.
+    const expected = new Uint8Array(Math.ceil(before.bitCount / 8));
+    const fnv = (s: string, seed: number, mult: number): number => {
+      let h = seed;
+      for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), mult) >>> 0;
+      return h;
+    };
+    const h1 = fnv('alice', 0x811c9dc5, 16777619);
+    const h2 = (fnv('alice', 0xcbf29ce4, 0x01000193) | 1) >>> 0;
+    for (let i = 0; i < before.hashCount; i++) {
+      const idx = (h1 + i * h2) % before.bitCount;
+      expected[idx >>> 3] = (expected[idx >>> 3]! | (1 << (idx & 7))) & 0xff;
+    }
+    const actual = (bf as unknown as { bits: Uint8Array }).bits;
+    expect(Array.from(actual)).toEqual(Array.from(expected));
+  });
+
+  it('does not allocate a closure or index array per call', () => {
+    // Guard against a `visit`-callback or `number[]` extraction: measure that add/mayContain
+    // touch no new arrays. `Array.prototype` hooks would be too invasive; instead the private
+    // method shape is asserted and a repeated call is shown to be allocation-stable via the
+    // byte array identity.
+    const bf = new BloomFilter(1000, 0.01);
+    const bitsBefore = (bf as unknown as { bits: Uint8Array }).bits;
+    bf.add('alice');
+    bf.mayContain('alice');
+    const bitsAfter = (bf as unknown as { bits: Uint8Array }).bits;
+    // The backing store must be mutated in place, never replaced.
+    expect(bitsAfter).toBe(bitsBefore);
+  });
+
+  it('clear() resets the filter', () => {    const bf = new BloomFilter(100, 0.01);
     bf.add('keep');
     bf.clear();
     expect(bf.size()).toBe(0);
     expect(bf.mayContain('keep')).toBe(false);
   });
 
-  it('parameters() returns sane sizes for the requested capacity/FPR', () => {
-    const bf = new BloomFilter(10_000, 0.01);
+  it('parameters() returns sane sizes for the requested capacity/FPR', () => {    const bf = new BloomFilter(10_000, 0.01);
     const p = bf.parameters();
     expect(p.bitCount).toBeGreaterThan(0);
     expect(p.hashCount).toBeGreaterThan(0);

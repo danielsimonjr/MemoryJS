@@ -524,4 +524,99 @@ describe('PostgreSQLStorage', () => {
       await expect(storage.close()).resolves.toBeUndefined();
     });
   });
+
+  describe('row mapping (pinned before the optional-column extract)', () => {
+    type Mappers = {
+      rowToEntity(row: Record<string, unknown>): Entity;
+      rowToRelation(row: Record<string, unknown>): Relation;
+    };
+    const mappers = (): Mappers => storage as unknown as Mappers;
+
+    /** Minimal required entity row: only the three NOT NULL columns. */
+    const entityRow = (over: Record<string, unknown> = {}): Record<string, unknown> => ({
+      name: 'A',
+      entity_type: 't',
+      observations: ['o'],
+      ...over,
+    });
+
+    it('omits every optional entity field when the column is absent', () => {
+      const mapped = mappers().rowToEntity(entityRow());
+      expect(Object.keys(mapped).sort()).toEqual(['entityType', 'name', 'observations']);
+    });
+
+    it('omits an optional field whose column is SQL NULL', () => {
+      const mapped = mappers().rowToEntity(entityRow({ importance: null, ttl: null, project_id: null }));
+      expect('importance' in mapped).toBe(false);
+      expect('ttl' in mapped).toBe(false);
+      expect('projectId' in mapped).toBe(false);
+    });
+
+    it('maps each optional column with its own converter', () => {
+      const mapped = mappers().rowToEntity(
+        entityRow({
+          importance: '7',
+          ttl: '1000',
+          confidence: '0.5',
+          version: '3',
+          is_latest: 1,
+          created_at: '2026-01-01T00:00:00.000Z',
+          lifecycle_status: 'active',
+          observation_meta: { a: 1 },
+        }),
+      );
+      expect(mapped.importance).toBe(7);
+      expect(mapped.ttl).toBe(1000);
+      expect(mapped.confidence).toBe(0.5);
+      expect(mapped.version).toBe(3);
+      expect(mapped.isLatest).toBe(true);
+      expect(mapped.createdAt).toBe('2026-01-01T00:00:00.000Z');
+      expect(mapped.lifecycleStatus).toBe('active');
+      expect(mapped.observationMeta).toEqual({ a: 1 });
+    });
+
+    it('keeps tags only when the column is an array', () => {
+      expect(mappers().rowToEntity(entityRow({ tags: ['x'] })).tags).toEqual(['x']);
+      expect('tags' in mappers().rowToEntity(entityRow({ tags: 'x' }))).toBe(false);
+    });
+
+    it('merges the JSONB extra column last, without overriding first-class keys', () => {
+      const mapped = mappers().rowToEntity(
+        entityRow({ extra: { extension: 'ok', name: 'evil', entityType: 'evil' } }) as Record<string, unknown>,
+      ) as Entity & { extension?: string };
+      expect(mapped.name).toBe('A');
+      expect(mapped.entityType).toBe('t');
+      expect(mapped.extension).toBe('ok');
+    });
+
+    it('uses String() for the required relation keys and converts optional ones', () => {
+      const mapped = mappers().rowToRelation({
+        from_name: 'A',
+        to_name: 'B',
+        relation_type: 'r',
+        weight: '0.5',
+        confidence: '0.8',
+        created_at: '2026-01-01T00:00:00.000Z',
+      });
+      expect(mapped.from).toBe('A');
+      expect(mapped.to).toBe('B');
+      expect(mapped.relationType).toBe('r');
+      expect(mapped.weight).toBe(0.5);
+      expect(mapped.confidence).toBe(0.8);
+      expect(mapped.createdAt).toBe('2026-01-01T00:00:00.000Z');
+    });
+
+    it('omits absent relation optionals and merges relation extra last', () => {
+      const bare = mappers().rowToRelation({ from_name: 'A', to_name: 'B', relation_type: 'r' });
+      expect(Object.keys(bare).sort()).toEqual(['from', 'relationType', 'to']);
+      const withExtra = mappers().rowToRelation({
+        from_name: 'A',
+        to_name: 'B',
+        relation_type: 'r',
+        extra: { extension: 'ok', from: 'evil' },
+      }) as Relation & { extension?: string };
+      expect(withExtra.from).toBe('A');
+      expect(withExtra.extension).toBe('ok');
+    });
+  });
 });

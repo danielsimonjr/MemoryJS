@@ -63,13 +63,7 @@ export class BloomFilter {
 
   /** Add an item to the filter. */
   add(item: string): void {
-    const [h1, h2] = doubleHash(item);
-    for (let i = 0; i < this.hashCount; i++) {
-      const idx = (h1 + i * h2) % this.bitCount;
-      const byte = idx >>> 3;
-      const mask = 1 << (idx & 7);
-      this.bits[byte] = (this.bits[byte] ?? 0) | mask;
-    }
+    this.applyHashBits(item, 'or');
     this.inserted++;
   }
 
@@ -79,12 +73,31 @@ export class BloomFilter {
    * definitely absent.
    */
   mayContain(item: string): boolean {
+    return this.applyHashBits(item, 'test');
+  }
+
+  /**
+   * Walk the item's `k` bit positions once, either setting them (`'or'`) or
+   * checking them (`'test'`).
+   *
+   * Runs on the fuzzy pre-screen hot path, so it allocates nothing: no
+   * closure, no index array. The mode branch is loop-invariant and predicted.
+   *
+   * @param item - Item to hash
+   * @param mode - `'or'` sets each bit; `'test'` returns false at the first unset bit
+   * @returns `'test'`: whether every bit was set. `'or'`: always `true`.
+   */
+  private applyHashBits(item: string, mode: 'or' | 'test'): boolean {
     const [h1, h2] = doubleHash(item);
     for (let i = 0; i < this.hashCount; i++) {
       const idx = (h1 + i * h2) % this.bitCount;
       const byte = idx >>> 3;
       const mask = 1 << (idx & 7);
-      if (((this.bits[byte] ?? 0) & mask) === 0) return false;
+      if (mode === 'or') {
+        this.bits[byte] = (this.bits[byte] ?? 0) | mask;
+      } else if (((this.bits[byte] ?? 0) & mask) === 0) {
+        return false;
+      }
     }
     return true;
   }

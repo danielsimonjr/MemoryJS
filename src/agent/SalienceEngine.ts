@@ -38,6 +38,22 @@ function limitCount(limit: number, size: number): number {
   return Number.isFinite(limit) ? Math.min(size, Math.floor(limit)) : size;
 }
 
+/** Fully-populated default salience config, hoisted out of the constructor. */
+const DEFAULT_SALIENCE_ENGINE_CONFIG: Required<SalienceEngineConfig> = {
+  importanceWeight: 0.25,
+  recencyWeight: 0.25,
+  frequencyWeight: 0.2,
+  contextWeight: 0.2,
+  noveltyWeight: 0.1,
+  recencyDecayHours: 24,
+  sessionBoostFactor: 1.0,
+  recentEntityBoostFactor: 0.7,
+  useSemanticSimilarity: true,
+  uniquenessThreshold: 0.5,
+  freshnessWeight: 0.15,
+  connectivityWeight: 0,
+};
+
 /**
  * Calculates multi-factor salience scores for memories.
  *
@@ -80,21 +96,7 @@ export class SalienceEngine {
     this.decayEngine = decayEngine;
     this.summarizationService = new SummarizationService();
     this.freshnessManager = new FreshnessManager(storage);
-    const defaults: Required<SalienceEngineConfig> = {
-      importanceWeight: 0.25,
-      recencyWeight: 0.25,
-      frequencyWeight: 0.2,
-      contextWeight: 0.2,
-      noveltyWeight: 0.1,
-      recencyDecayHours: 24,
-      sessionBoostFactor: 1.0,
-      recentEntityBoostFactor: 0.7,
-      useSemanticSimilarity: true,
-      uniquenessThreshold: 0.5,
-      freshnessWeight: 0.15,
-      connectivityWeight: 0,
-    };
-    this.config = fillDefaults(config, defaults);
+    this.config = fillDefaults(config, DEFAULT_SALIENCE_ENGINE_CONFIG);
   }
 
   // ==================== Main Salience Calculation ====================
@@ -355,15 +357,7 @@ export class SalienceEngine {
     if (entity.taskId === taskDescription) {
       return 1.0;
     }
-    return this.semanticOr(entity, taskDescription, (e, taskLower) => {
-      if (e.name.toLowerCase().includes(taskLower)) {
-        return 0.8;
-      }
-      if (e.observations?.some(o => o.toLowerCase().includes(taskLower))) {
-        return 0.5;
-      }
-      return 0;
-    });
+    return this.fieldRelevance(entity, taskDescription, { name: 0.8, observation: 0.5 });
   }
 
   /**
@@ -390,18 +384,7 @@ export class SalienceEngine {
    * @returns Score between 0 and 1
    */
   calculateQueryRelevance(entity: AgentEntity, queryText: string): number {
-    return this.semanticOr(entity, queryText, (e, queryLower) => {
-      if (e.name.toLowerCase().includes(queryLower)) {
-        return 1.0;
-      }
-      if (e.entityType.toLowerCase().includes(queryLower)) {
-        return 0.7;
-      }
-      if (e.observations?.some(o => o.toLowerCase().includes(queryLower))) {
-        return 0.5;
-      }
-      return 0;
-    });
+    return this.fieldRelevance(entity, queryText, { name: 1.0, entityType: 0.7, observation: 0.5 });
   }
 
   /**
@@ -421,8 +404,37 @@ export class SalienceEngine {
     });
   }
 
-  private semanticOr(
+  /**
+   * Substring relevance over entity fields with per-field scores, or semantic similarity when enabled.
+   *
+   * Tiers are checked in order (name, entity type, observations) and the first hit wins; a field
+   * whose score is omitted never matches.
+   *
+   * @param entity - Entity to score
+   * @param text - Task, query or intent text
+   * @param scores - Score for each field tier
+   * @returns Score between 0 and 1
+   */
+  private fieldRelevance(
     entity: AgentEntity,
+    text: string,
+    scores: { name?: number; observation?: number; entityType?: number },
+  ): number {
+    return this.semanticOr(entity, text, (e, lowered) => {
+      if (scores.name !== undefined && e.name.toLowerCase().includes(lowered)) {
+        return scores.name;
+      }
+      if (scores.entityType !== undefined && e.entityType.toLowerCase().includes(lowered)) {
+        return scores.entityType;
+      }
+      if (scores.observation !== undefined && e.observations?.some(o => o.toLowerCase().includes(lowered))) {
+        return scores.observation;
+      }
+      return 0;
+    });
+  }
+
+  private semanticOr(    entity: AgentEntity,
     text: string,
     fallback: (entity: AgentEntity, lowered: string) => number,
   ): number {

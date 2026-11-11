@@ -8,12 +8,14 @@
  */
 
 import { Command } from '../parseArgs.js';
-import { runAction, getOptions, createContext, createLogger } from './helpers.js';
+import { getOptions, createContext, createLogger, addJsonCommand, emitJson } from './helpers.js';
 import { formatError } from '../formatters.js';
 
-function emitJson(payload: unknown): void {
-  console.log(JSON.stringify(payload, null, 2));
-}
+/** Options shared by the heuristic subcommands that emit JSON. */
+const PRIORITY_OPTION = { flags: '-p, --priority <n>', description: 'Priority (numeric; higher wins ties)', parse: parseFloat } as const;
+const CONFIDENCE_OPTION = { flags: '-c, --confidence <n>', description: 'Initial confidence 0–1', parse: parseFloat } as const;
+const IMPORTANCE_OPTION = { flags: '-i, --importance <n>', description: 'Importance 0–10', parse: parseFloat } as const;
+const AGENT_ID_OPTION = { flags: '-a, --agent-id <id>', description: 'Owning agent ID' } as const;
 
 /**
  * Register the `heuristic` command group: `add`, `list`, `count`, `get`, `match`, `reinforce`, `contradict`, `conflicts`, `remove` and `clear`.
@@ -25,13 +27,11 @@ export function registerHeuristicCommands(program: Command): void {
     .command('heuristic')
     .description('Manage condition→action heuristic guidelines (add, match, reinforce, conflicts)');
 
-  h.command('add <condition> <action>')
-    .description('Add a heuristic guideline. Returns the assigned id.')
-    .option('-p, --priority <n>', 'Priority (numeric; higher wins ties)', parseFloat)
-    .option('-c, --confidence <n>', 'Initial confidence 0–1', parseFloat)
-    .option('-i, --importance <n>', 'Importance 0–10', parseFloat)
-    .option('-a, --agent-id <id>', 'Owning agent ID')
-    .action(runAction(program, async (ctx, _options, _logger, condition: string, action: string, opts: Record<string, unknown>) => {
+  addJsonCommand<[string, string]>(h, program, {
+    name: 'add <condition> <action>',
+    description: 'Add a heuristic guideline. Returns the assigned id.',
+    options: [PRIORITY_OPTION, CONFIDENCE_OPTION, IMPORTANCE_OPTION, AGENT_ID_OPTION],
+    body: async (_options, ctx, condition, action, opts) => {
       const id = await ctx.heuristicManager.add({
         condition,
         action,
@@ -40,31 +40,43 @@ export function registerHeuristicCommands(program: Command): void {
         importance: opts.importance as number | undefined,
         agentId: opts.agentId as string | undefined,
       });
-      emitJson({ id });
-    }));
+      return { id };
+    },
+  });
 
-  h.command('list')
-    .description('List all heuristics')
-    .action(runAction(program, async (ctx, _options, _logger) => {
+  addJsonCommand(h, program, {
+    name: 'list',
+    description: 'List all heuristics',
+    options: [],
+    body: async (_options, ctx) => {
       const heuristics = await ctx.heuristicManager.list();
-      emitJson({ heuristics, count: heuristics.length });
-    }));
+      return { heuristics, count: heuristics.length };
+    },
+  });
 
-  h.command('count')
-    .description('Print the current heuristic count')
-    .action(runAction(program, async (ctx, _options, _logger) => {
+  addJsonCommand(h, program, {
+    name: 'count',
+    description: 'Print the current heuristic count',
+    options: [],
+    body: async (_options, ctx) => {
       const count = await ctx.heuristicManager.size();
-      emitJson({ count });
-    }));
+      return { count };
+    },
+  });
 
-  h.command('get <id>')
-    .description('Get a heuristic by id')
-    .action(runAction(program, async (ctx, _options, _logger, id: string) => {
+  addJsonCommand<[string]>(h, program, {
+    name: 'get <id>',
+    description: 'Get a heuristic by id',
+    options: [],
+    body: async (_options, ctx, id) => {
       await ctx.storage.ensureLoaded();
       const heuristic = ctx.heuristicManager.get(id);
-      emitJson({ id, heuristic: heuristic ?? null });
-    }));
+      return { id, heuristic: heuristic ?? null };
+    },
+  });
 
+  // `match` keeps its manual try/catch: it is the one heuristic action that does not use
+  // `runAction` (its error path logs through the logger and exits 1 directly).
   h.command('match <input...>')
     .description('Match heuristics whose condition fits the given input')
     .option('-l, --limit <n>', 'Max matches to return', (v) => parseInt(v, 10))
@@ -86,39 +98,54 @@ export function registerHeuristicCommands(program: Command): void {
       }
     });
 
-  h.command('reinforce <id>')
-    .description('Reinforce a heuristic (bump confidence toward 1)')
-    .action(runAction(program, async (ctx, _options, _logger, id: string) => {
+  addJsonCommand<[string]>(h, program, {
+    name: 'reinforce <id>',
+    description: 'Reinforce a heuristic (bump confidence toward 1)',
+    options: [],
+    body: async (_options, ctx, id) => {
       const result = await ctx.heuristicManager.reinforce(id);
-      emitJson({ id, result });
-    }));
+      return { id, result };
+    },
+  });
 
-  h.command('contradict <id>')
-    .description('Record a contradiction (decreases confidence)')
-    .action(runAction(program, async (ctx, _options, _logger, id: string) => {
+  addJsonCommand<[string]>(h, program, {
+    name: 'contradict <id>',
+    description: 'Record a contradiction (decreases confidence)',
+    options: [],
+    body: async (_options, ctx, id) => {
       const result = await ctx.heuristicManager.recordContradiction(id);
-      emitJson({ id, result });
-    }));
+      return { id, result };
+    },
+  });
 
-  h.command('conflicts')
-    .description('Detect heuristics with conflicting actions for similar conditions')
-    .action(runAction(program, async (ctx, _options, _logger) => {
+  addJsonCommand(h, program, {
+    name: 'conflicts',
+    description: 'Detect heuristics with conflicting actions for similar conditions',
+    options: [],
+    body: async (_options, ctx) => {
       const conflicts = await ctx.heuristicManager.detectConflicts();
-      emitJson({ conflicts, count: conflicts.length });
-    }));
+      return { conflicts, count: conflicts.length };
+    },
+  });
 
-  h.command('remove <id>')
-    .description('Remove a heuristic by id')
-    .action(runAction(program, async (ctx, _options, _logger, id: string) => {
+  addJsonCommand<[string]>(h, program, {
+    name: 'remove <id>',
+    description: 'Remove a heuristic by id',
+    options: [],
+    body: async (_options, ctx, id) => {
       await ctx.storage.ensureLoaded();
       const removed = await ctx.heuristicManager.remove(id);
-      emitJson({ id, removed });
-    }));
+      return { id, removed };
+    },
+  });
 
-  h.command('clear')
-    .description('Remove all heuristics. Destructive; no --dry-run yet.')
-    .action(runAction(program, async (ctx, _options, _logger) => {
+  addJsonCommand(h, program, {
+    name: 'clear',
+    description: 'Remove all heuristics. Destructive; no --dry-run yet.',
+    options: [],
+    body: async (_options, ctx) => {
       await ctx.heuristicManager.clear();
-      emitJson({ cleared: true });
-    }));
+      return { cleared: true };
+    },
+  });
 }

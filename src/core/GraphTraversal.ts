@@ -274,6 +274,46 @@ export class GraphTraversal {
   }
 
   /**
+   * Empty traversal result, returned when the start entity does not exist.
+   *
+   * @returns A result with no nodes, depths or parents.
+   */
+  private emptyTraversal(): TraversalResult {
+    return { nodes: [], depths: new Map(), parents: new Map() };
+  }
+
+  /**
+   * Shared setup for {@link bfs} and {@link dfs}: resolve options and allocate the result maps.
+   *
+   * Visit timing stays with the callers — BFS marks visited on enqueue, DFS on pop — so this
+   * method only performs work that is identical for both and runs once per traversal call.
+   *
+   * @param startEntity - Entity name to start traversal from
+   * @param options - Traversal options
+   * @returns The resolved options and fresh result containers, or `null` when the start entity is unknown
+   */
+  private beginTraversal(
+    startEntity: string,
+    options: TraversalOptions,
+  ): {
+    opts: Required<TraversalOptions>;
+    visited: Set<string>;
+    nodes: string[];
+    depths: Map<string, number>;
+    parents: Map<string, string | null>;
+  } | null {
+    const opts = { ...DEFAULT_OPTIONS, ...options };
+    if (!this.storage.hasEntity(startEntity)) return null;
+    return {
+      opts,
+      visited: new Set<string>(),
+      nodes: [],
+      depths: new Map<string, number>(),
+      parents: new Map<string, string | null>(),
+    };
+  }
+
+  /**
    * Breadth-First Search traversal starting from a given entity.
    *
    * @param startEntity - Entity name to start traversal from
@@ -281,19 +321,11 @@ export class GraphTraversal {
    * @returns Traversal result with visited nodes, depths, and parent pointers
    */
   bfs(startEntity: string, options: TraversalOptions = {}): TraversalResult {
-    const opts = { ...DEFAULT_OPTIONS, ...options };
+    const begin = this.beginTraversal(startEntity, options);
+    if (begin === null) return this.emptyTraversal();
+    const { opts, visited, nodes, depths, parents } = begin;
 
-    // Validate start entity exists
-    if (!this.storage.hasEntity(startEntity)) {
-      return { nodes: [], depths: new Map(), parents: new Map() };
-    }
-
-    const visited = new Set<string>();
     const queue: Array<{ node: string; depth: number }> = [{ node: startEntity, depth: 0 }];
-    const nodes: string[] = [];
-    const depths = new Map<string, number>();
-    const parents = new Map<string, string | null>();
-
     visited.add(startEntity);
     parents.set(startEntity, null);
 
@@ -304,18 +336,13 @@ export class GraphTraversal {
       // Respect maxDepth limit
       if (depth > opts.maxDepth) continue;
 
-      nodes.push(node);
-      depths.set(node, depth);
+      this.visitNode(node, depth, nodes, depths);
 
-      // Get neighbors and add unvisited ones to queue
-      const neighbors = this.getNeighborsWithRelations(node, opts);
-      for (const { neighbor } of neighbors) {
-        if (!visited.has(neighbor)) {
-          visited.add(neighbor);
-          queue.push({ node: neighbor, depth: depth + 1 });
-          parents.set(neighbor, node);
-        }
-      }
+      // Neighbors are claimed on enqueue, so each node keeps the first parent that reached it.
+      this.forEachOpenNeighbor(node, opts, visited, (neighbor) => {
+        queue.push({ node: neighbor, depth: depth + 1 });
+        parents.set(neighbor, node);
+      }, true);
     }
 
     return { nodes, depths, parents };
@@ -329,19 +356,11 @@ export class GraphTraversal {
    * @returns Traversal result with visited nodes, depths, and parent pointers
    */
   dfs(startEntity: string, options: TraversalOptions = {}): TraversalResult {
-    const opts = { ...DEFAULT_OPTIONS, ...options };
+    const begin = this.beginTraversal(startEntity, options);
+    if (begin === null) return this.emptyTraversal();
+    const { opts, visited, nodes, depths, parents } = begin;
 
-    // Validate start entity exists
-    if (!this.storage.hasEntity(startEntity)) {
-      return { nodes: [], depths: new Map(), parents: new Map() };
-    }
-
-    const visited = new Set<string>();
     const stack: Array<{ node: string; depth: number }> = [{ node: startEntity, depth: 0 }];
-    const nodes: string[] = [];
-    const depths = new Map<string, number>();
-    const parents = new Map<string, string | null>();
-
     parents.set(startEntity, null);
 
     while (stack.length > 0) {
@@ -354,22 +373,59 @@ export class GraphTraversal {
       if (depth > opts.maxDepth) continue;
 
       visited.add(node);
-      nodes.push(node);
-      depths.set(node, depth);
+      this.visitNode(node, depth, nodes, depths);
 
-      // Get neighbors and add unvisited ones to stack
-      const neighbors = this.getNeighborsWithRelations(node, opts);
-      for (const { neighbor } of neighbors) {
-        if (!visited.has(neighbor)) {
-          stack.push({ node: neighbor, depth: depth + 1 });
-          if (!parents.has(neighbor)) {
-            parents.set(neighbor, node);
-          }
+      // Neighbors are pushed unclaimed; the first pop that reaches one keeps the parent.
+      this.forEachOpenNeighbor(node, opts, visited, (neighbor) => {
+        stack.push({ node: neighbor, depth: depth + 1 });
+        if (!parents.has(neighbor)) {
+          parents.set(neighbor, node);
         }
-      }
+      }, false);
     }
 
     return { nodes, depths, parents };
+  }
+
+  /**
+   * Record a node in the traversal output.
+   *
+   * @param node - Node name.
+   * @param depth - Depth from the start entity.
+   * @param nodes - Ordered visit list.
+   * @param depths - Depth per visited node.
+   */
+  private visitNode(node: string, depth: number, nodes: string[], depths: Map<string, number>): void {
+    nodes.push(node);
+    depths.set(node, depth);
+  }
+
+  /**
+   * Walk neighbors from `getNeighborsWithRelations` that are not in `visited` yet.
+   *
+   * When `claimOnVisit` is true (BFS enqueue), each neighbor is added to `visited` as it is
+   * yielded so parallel edges to the same target are expanded once. When false (DFS stack push),
+   * neighbors are left unclaimed until the caller pops them.
+   *
+   * @param node - Node being expanded.
+   * @param opts - Resolved traversal options.
+   * @param visited - Nodes already claimed or reserved.
+   * @param onNeighbor - Called for each open neighbor in relation order.
+   * @param claimOnVisit - Whether to add each yielded neighbor to `visited` immediately.
+   */
+  private forEachOpenNeighbor(
+    node: string,
+    opts: Required<TraversalOptions>,
+    visited: Set<string>,
+    onNeighbor: (neighbor: string) => void,
+    claimOnVisit: boolean,
+  ): void {
+    for (const { neighbor } of this.getNeighborsWithRelations(node, opts)) {
+      if (!visited.has(neighbor)) {
+        if (claimOnVisit) visited.add(neighbor);
+        onNeighbor(neighbor);
+      }
+    }
   }
 
   // ==================== Sprint 7: Path Finding Algorithms ====================

@@ -2608,8 +2608,8 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 
 | Claim | Value | Source |
 |---|---|---|
-| totalExports | 4163 | repo-tools map |
-| totalSourceFiles | 1058 | repo-tools map |
+| totalExports | 4184 | repo-tools map |
+| totalSourceFiles | 1070 | repo-tools map |
 
 The figures below come from `bun run tools:deps` and `bun run tools:deps:full`. These generators read `src/` only. The gate does not check these figures. Read them in `dependency-summary.compact.json` and `TEST_COVERAGE.md`.
 

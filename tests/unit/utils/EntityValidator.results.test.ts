@@ -92,6 +92,57 @@ describe('EntityValidator issue shape', () => {
     expect((await v.validate(entity)).errors).toHaveLength(1);
     expect(v.validateSync(entity).errors).toHaveLength(1);
   });
+
+  it('does not stop at a warning under failFast', async () => {
+    const rules = [
+      asWarning(failing('w', 'name', 'soft')),
+      failing('f', 'observations', 'hard'),
+    ];
+    const v = new EntityValidator({ rules, failFast: true });
+    const result = await v.validate(entity);
+    expect(result.errors.map((e) => e.rule)).toEqual(['f']);
+    expect(result.warnings.map((w) => w.rule)).toEqual(['w']);
+    expect(v.validateSync(entity)).toStrictEqual(result);
+  });
+
+  it('stops mid-list on the first failing rule, keeping earlier pass-through rules out', async () => {
+    const calls: string[] = [];
+    const trace = (name: string, fail: boolean): EntityValidationRule => ({
+      name,
+      field: 'name',
+      message: name,
+      validate: () => {
+        calls.push(name);
+        return { valid: !fail };
+      },
+    });
+    const v = new EntityValidator({ rules: [trace('one', false), trace('two', true), trace('three', false)], failFast: true });
+    const result = await v.validate(entity);
+    expect(calls).toEqual(['one', 'two']);
+    expect(result.errors.map((e) => e.rule)).toEqual(['two']);
+  });
+
+  it('honours failFast when a rule throws', async () => {
+    const calls: string[] = [];
+    const rules: EntityValidationRule[] = [
+      { name: 'boom', field: 'name', message: 'x', validate: () => { calls.push('boom'); throw new Error('kaput'); } },
+      { name: 'after', field: 'name', message: 'y', validate: () => { calls.push('after'); return { valid: false }; } },
+    ];
+    const v = new EntityValidator({ rules, failFast: true });
+    expect((await v.validate(entity)).errors).toHaveLength(1);
+    expect(calls).toEqual(['boom']);
+    calls.length = 0;
+    expect(v.validateSync(entity).errors).toHaveLength(1);
+    expect(calls).toEqual(['boom']);
+  });
+
+  it('accumulates warnings from several rules without failing', async () => {
+    const rules = [asWarning(failing('w1', 'name', 'a')), asWarning(failing('w2', 'name', 'b'))];
+    const v = new EntityValidator({ rules });
+    const result = await v.validate(entity);
+    expect(result.isValid).toBe(true);
+    expect(result.warnings.map((w) => w.rule)).toEqual(['w1', 'w2']);
+  });
 });
 
 describe('EntityValidator.validateSync parity', () => {

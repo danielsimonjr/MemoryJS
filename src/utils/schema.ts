@@ -229,6 +229,39 @@ function invalidTypeMessage(issue: SchemaIssue): string {
   return `Invalid input: expected ${expected}, received ${received}`;
 }
 
+/**
+ * Push an `invalid_type` issue onto a payload, with Zod's message.
+ *
+ * Field order matters: `makeIssue` first, then `message`, then `pushIssue`.
+ *
+ * @param payload - Payload being parsed
+ * @param expected - Expected type name
+ * @param received - Optional `received` override (number's NaN/Infinity case)
+ */
+function failInvalidType(payload: Payload, expected: 'string' | 'number' | 'boolean', received?: string): void {
+  const issue = makeIssue({
+    code: 'invalid_type',
+    expected,
+    ...(received === undefined ? {} : { received }),
+    input: payload.value,
+    message: '',
+  });
+  issue.message = invalidTypeMessage(issue);
+  pushIssue(payload, issue, undefined);
+}
+
+/**
+ * Push an `invalid_value` issue onto a payload, with Zod's default message.
+ *
+ * @param payload - Payload being parsed
+ * @param values - Allowed values
+ */
+function failInvalidValue(payload: Payload, values: readonly unknown[]): void {
+  const issue = makeIssue({ code: 'invalid_value', values, input: payload.value, message: '' });
+  issue.message = defaultMessage(issue);
+  pushIssue(payload, issue, undefined);
+}
+
 /** Default message for an issue whose check carried no message. */
 function defaultMessage(issue: SchemaIssue): string {
   switch (issue.code) {
@@ -650,9 +683,7 @@ export class StringSchema extends BaseSchema<string> {
 
   protected _parse(payload: Payload): void {
     if (typeof payload.value === 'string') return;
-    const issue = makeIssue({ code: 'invalid_type', expected: 'string', input: payload.value, message: '' });
-    issue.message = invalidTypeMessage(issue);
-    pushIssue(payload, issue, undefined);
+    failInvalidType(payload, 'string');
   }
 }
 
@@ -693,15 +724,7 @@ export class NumberSchema extends BaseSchema<number> {
     if (typeof value === 'number' && !Number.isNaN(value) && Number.isFinite(value)) return;
     const received =
       typeof value === 'number' ? (Number.isNaN(value) ? 'NaN' : Number.isFinite(value) ? undefined : String(value)) : undefined;
-    const issue = makeIssue({
-      code: 'invalid_type',
-      expected: 'number',
-      ...(received === undefined ? {} : { received }),
-      input: value,
-      message: '',
-    });
-    issue.message = invalidTypeMessage(issue);
-    pushIssue(payload, issue, undefined);
+    failInvalidType(payload, 'number', received);
   }
 }
 
@@ -714,9 +737,7 @@ export class BooleanSchema extends BaseSchema<boolean> {
 
   protected _parse(payload: Payload): void {
     if (typeof payload.value === 'boolean') return;
-    const issue = makeIssue({ code: 'invalid_type', expected: 'boolean', input: payload.value, message: '' });
-    issue.message = invalidTypeMessage(issue);
-    pushIssue(payload, issue, undefined);
+    failInvalidType(payload, 'boolean');
   }
 }
 
@@ -757,9 +778,7 @@ export class LiteralSchema<V extends string | number | boolean | null> extends B
   protected _parse(payload: Payload): void {
     const values = (this.def as { values: readonly unknown[] }).values;
     if (values.some((value) => value === payload.value)) return;
-    const issue = makeIssue({ code: 'invalid_value', values, input: payload.value, message: '' });
-    issue.message = defaultMessage(issue);
-    pushIssue(payload, issue, undefined);
+    failInvalidValue(payload, values);
   }
 }
 
@@ -773,9 +792,7 @@ export class EnumSchema<V extends readonly [string, ...string[]]> extends BaseSc
   protected _parse(payload: Payload): void {
     const values = (this.def as { values: readonly string[] }).values;
     if (values.includes(payload.value as string)) return;
-    const issue = makeIssue({ code: 'invalid_value', values, input: payload.value, message: '' });
-    issue.message = defaultMessage(issue);
-    pushIssue(payload, issue, undefined);
+    failInvalidValue(payload, values);
   }
 }
 

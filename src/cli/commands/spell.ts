@@ -8,12 +8,8 @@
  */
 
 import { Command } from '../parseArgs.js';
-import { runAction } from './helpers.js';
+import { runAction, emitJson } from './helpers.js';
 
-
-function emitJson(payload: unknown): void {
-  console.log(JSON.stringify(payload, null, 2));
-}
 
 /**
  * Register the `spell` command group: `suggest`, `rebuild` and `size`.

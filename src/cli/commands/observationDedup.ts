@@ -8,7 +8,7 @@
  */
 
 import { Command } from '../parseArgs.js';
-import { runAction } from './helpers.js';
+import { addJsonCommand } from './helpers.js';
 
 
 interface DedupFilter {
@@ -19,8 +19,16 @@ interface DedupFilter {
   maxGroups?: number;
 }
 
-function buildFilter(opts: Record<string, unknown>): DedupFilter {
-  const filter: DedupFilter = {};
+/** Filter options shared by both obs-dedup subcommands, in declaration order. */
+const DEDUP_FILTER_OPTIONS = [
+  { flags: '--entity-type <type>', description: 'Filter to one entityType (or comma-separated list)' },
+  { flags: '--project-id <id>', description: 'Filter to one projectId' },
+  { flags: '--session-id <id>', description: 'Filter to one sessionId' },
+  { flags: '--min-occurrences <n>', description: 'Minimum occurrences per group (≥2)', parse: (v: string) => parseInt(v, 10) },
+  { flags: '--max-groups <n>', description: 'Maximum groups to return', parse: (v: string) => parseInt(v, 10) },
+] as const;
+
+function buildFilter(opts: Record<string, unknown>): DedupFilter {  const filter: DedupFilter = {};
   const entityType = opts.entityType as string | undefined;
   if (entityType) {
     filter.entityType = entityType.includes(',')
@@ -38,10 +46,6 @@ function buildFilter(opts: Record<string, unknown>): DedupFilter {
   return filter;
 }
 
-function emitJson(payload: unknown): void {
-  console.log(JSON.stringify(payload, null, 2));
-}
-
 /**
  * Register the `obs-dedup` command group for cross-entity duplicate observations.
  *
@@ -54,29 +58,25 @@ export function registerObservationDedupCommands(program: Command): void {
     .command('obs-dedup')
     .description('Cross-entity observation duplicate detection (exact and Jaccard similarity)');
 
-  od.command('find')
-    .description('Find observations that appear verbatim across multiple entities')
-    .option('--entity-type <type>', 'Filter to one entityType (or comma-separated list)')
-    .option('--project-id <id>', 'Filter to one projectId')
-    .option('--session-id <id>', 'Filter to one sessionId')
-    .option('--min-occurrences <n>', 'Minimum occurrences per group (≥2)', (v) => parseInt(v, 10))
-    .option('--max-groups <n>', 'Maximum groups to return', (v) => parseInt(v, 10))
-    .action(runAction(program, async (ctx, _options, _logger, opts: Record<string, unknown>) => {
+  addJsonCommand<[Record<string, unknown>]>(od, program, {
+    name: 'find',
+    description: 'Find observations that appear verbatim across multiple entities',
+    options: DEDUP_FILTER_OPTIONS,
+    body: async (_options, ctx, opts) => {
       const filter = buildFilter(opts);
       const groups = await ctx.observationDedupManager.findDuplicateObservations(filter);
-      emitJson({ filter, groups, count: groups.length });
-    }));
+      return { filter, groups, count: groups.length };
+    },
+  });
 
-  od.command('find-jaccard')
-    .description('Find near-duplicate observations across entities by Jaccard similarity')
-    .option('--entity-type <type>', 'Filter to one entityType (or comma-separated list)')
-    .option('--project-id <id>', 'Filter to one projectId')
-    .option('--session-id <id>', 'Filter to one sessionId')
-    .option('--min-occurrences <n>', 'Minimum occurrences per group (≥2)', (v) => parseInt(v, 10))
-    .option('--max-groups <n>', 'Maximum groups to return', (v) => parseInt(v, 10))
-    .action(runAction(program, async (ctx, _options, _logger, opts: Record<string, unknown>) => {
+  addJsonCommand<[Record<string, unknown>]>(od, program, {
+    name: 'find-jaccard',
+    description: 'Find near-duplicate observations across entities by Jaccard similarity',
+    options: DEDUP_FILTER_OPTIONS,
+    body: async (_options, ctx, opts) => {
       const filter = buildFilter(opts);
       const groups = await ctx.observationDedupManager.findJaccardDuplicates(filter);
-      emitJson({ filter, groups, count: groups.length });
-    }));
+      return { filter, groups, count: groups.length };
+    },
+  });
 }

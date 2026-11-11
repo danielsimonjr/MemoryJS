@@ -888,11 +888,11 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 
 | Claim | Value | Source |
 |---|---|---|
-| totalSourceFiles | 1058 | repo-tools map |
+| totalSourceFiles | 1070 | repo-tools map |
 | totalModules | 7 | repo-tools map |
 | entryRoots | 12 | repo-tools map |
 | runtimeCircularDeps | 0 | repo-tools map |
-| typeOnlyCircularDeps | 39 | repo-tools map |
+| typeOnlyCircularDeps | 41 | repo-tools map |
 
 The figures below come from `bun run tools:deps` and `bun run tools:deps:full`. These generators read `src/` only. The gate does not check these figures. Read them in `dependency-summary.compact.json` and `TEST_COVERAGE.md`.
 

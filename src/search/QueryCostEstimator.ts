@@ -674,20 +674,14 @@ export class QueryCostEstimator {
    * @internal
    */
   private scoreLexicalLayer(query: string, analysis?: QueryAnalysis): number {
-    let score = 50;
-
-    const words = query.trim().split(/\s+/).length;
-    const hasOperators = /\b(AND|OR|NOT)\b/.test(query);
-
-    // Good for keyword queries
-    if (words >= 2 && words <= 5) score += 20;
-    if (!hasOperators) score += 10;
-
-    // Check analysis for factual questions
-    if (analysis?.questionType === 'factual') score += 15;
-    if (analysis?.questionType === 'aggregation') score += 10;
-
-    return score;
+    return this.scoreLayerBySignals(query, analysis, {
+      base: 50,
+      wordMin: 2,
+      wordMax: 5,
+      wordBonus: 20,
+      noOperatorBonus: 10,
+      questionBonuses: { factual: 15, aggregation: 10 },
+    });
   }
 
   /**
@@ -716,21 +710,58 @@ export class QueryCostEstimator {
    * @internal
    */
   private scoreSemanticLayer(query: string, analysis?: QueryAnalysis): number {
-    let score = 45;
+    return this.scoreLayerBySignals(query, analysis, {
+      base: 45,
+      wordMin: 5,
+      wordBonus: 25,
+      noOperatorBonus: 10,
+      questionBonuses: { conceptual: 30, comparative: 20 },
+      complexityHighBonus: 15,
+    });
+  }
+
+  /**
+   * Shared skeleton for the lexical and semantic layer scores: a base score, a word-count bump,
+   * a bonus when the query has no boolean operators, per-question-type bumps and an optional
+   * high-complexity bump. Operator detection is case-sensitive, matching the previous bodies.
+   *
+   * @param query - Query text
+   * @param analysis - Optional query analysis
+   * @param spec - Layer-specific weights
+   * @returns Layer score
+   */
+  private scoreLayerBySignals(
+    query: string,
+    analysis: QueryAnalysis | undefined,
+    spec: {
+      base: number;
+      wordMin?: number;
+      wordMax?: number;
+      wordBonus: number;
+      noOperatorBonus: number;
+      questionBonuses: Partial<Record<string, number>>;
+      complexityHighBonus?: number;
+    },
+  ): number {
+    let score = spec.base;
 
     const words = query.trim().split(/\s+/).length;
     const hasOperators = /\b(AND|OR|NOT)\b/.test(query);
 
-    // Good for longer, natural language queries
-    if (words >= 5) score += 25;
-    if (!hasOperators) score += 10;
+    if (spec.wordMin !== undefined || spec.wordMax !== undefined) {
+      const aboveMin = spec.wordMin === undefined || words >= spec.wordMin;
+      const belowMax = spec.wordMax === undefined || words <= spec.wordMax;
+      if (aboveMin && belowMax) score += spec.wordBonus;
+    }
+    if (!hasOperators) score += spec.noOperatorBonus;
 
-    // Good for conceptual questions
-    if (analysis?.questionType === 'conceptual') score += 30;
-    if (analysis?.questionType === 'comparative') score += 20;
-
-    // High complexity benefits from semantic understanding
-    if (analysis?.complexity === 'high') score += 15;
+    if (analysis !== undefined) {
+      const questionType = analysis.questionType;
+      if (questionType !== undefined) score += spec.questionBonuses[questionType] ?? 0;
+      if (spec.complexityHighBonus !== undefined && analysis.complexity === 'high') {
+        score += spec.complexityHighBonus;
+      }
+    }
 
     return score;
   }

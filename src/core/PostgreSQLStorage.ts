@@ -277,29 +277,8 @@ export class PostgreSQLStorage implements IGraphStorage {
       entityType: columnText(row.entity_type),
       observations: Array.isArray(row.observations) ? row.observations as string[] : [],
     };
-    if (row.parent_id != null) entity.parentId = columnText(row.parent_id);
+    applyOptionalColumns(entity, row, ENTITY_OPTIONAL_COLUMNS, FIRST_CLASS_ENTITY_KEYS);
     if (Array.isArray(row.tags)) entity.tags = row.tags as string[];
-    if (row.importance != null) entity.importance = Number(row.importance);
-    if (row.created_at != null) entity.createdAt = columnIso(row.created_at);
-    if (row.last_modified != null) entity.lastModified = columnIso(row.last_modified);
-    if (row.ttl != null) entity.ttl = Number(row.ttl);
-    if (row.confidence != null) entity.confidence = Number(row.confidence);
-    if (row.project_id != null) entity.projectId = columnText(row.project_id);
-    if (row.version != null) entity.version = Number(row.version);
-    if (row.parent_entity_name != null) entity.parentEntityName = columnText(row.parent_entity_name);
-    if (row.root_entity_name != null) entity.rootEntityName = columnText(row.root_entity_name);
-    if (row.is_latest != null) entity.isLatest = Boolean(row.is_latest);
-    if (row.superseded_by != null) entity.supersededBy = columnText(row.superseded_by);
-    if (row.content_hash != null) entity.contentHash = columnText(row.content_hash);
-    if (row.valid_from != null) entity.validFrom = columnIso(row.valid_from);
-    if (row.valid_until != null) entity.validUntil = columnIso(row.valid_until);
-    if (row.observation_meta != null) {
-      entity.observationMeta = row.observation_meta as Entity['observationMeta'];
-    }
-    if (row.lifecycle_status != null) {
-      entity.lifecycleStatus = columnText(row.lifecycle_status) as Entity['lifecycleStatus'];
-    }
-    mergeExtensionFields(entity, row.extra, FIRST_CLASS_ENTITY_KEYS);
     return entity;
   }
 
@@ -309,13 +288,7 @@ export class PostgreSQLStorage implements IGraphStorage {
       to: String(row.to_name),
       relationType: String(row.relation_type),
     };
-    if (row.metadata != null) relation.metadata = row.metadata as Relation['metadata'];
-    if (row.properties != null) relation.properties = row.properties as Relation['properties'];
-    if (row.weight != null) relation.weight = Number(row.weight);
-    if (row.confidence != null) relation.confidence = Number(row.confidence);
-    if (row.created_at != null) relation.createdAt = columnIso(row.created_at);
-    if (row.last_modified != null) relation.lastModified = columnIso(row.last_modified);
-    mergeExtensionFields(relation, row.extra, FIRST_CLASS_RELATION_KEYS);
+    applyOptionalColumns(relation, row, RELATION_OPTIONAL_COLUMNS, FIRST_CLASS_RELATION_KEYS);
     return relation;
   }
 
@@ -725,6 +698,91 @@ function columnText(value: unknown): string {
 /** ISO-8601 form of a `pg` timestamp column (Date or parseable string). */
 function columnIso(value: unknown): string {
   return new Date(value instanceof Date ? value : columnText(value)).toISOString();
+}
+
+/**
+ * Read an optional column, converting it only when it is neither `null` nor `undefined`.
+ *
+ * @param row - Result row.
+ * @param column - Column name.
+ * @param map - Converter applied to the raw column value.
+ * @returns The converted value, or `undefined` when the column is absent or NULL.
+ */
+function readOptional<T>(row: Record<string, unknown>, column: string, map: (value: unknown) => T): T | undefined {
+  const raw = row[column];
+  return raw == null ? undefined : map(raw);
+}
+
+/**
+ * Set `target[key]` only when the read found a value, so a NULL or missing column leaves no key
+ * at all (matching the inline `if (...) assign` shape this replaced).
+ *
+ * @param target - Object to populate.
+ * @param key - Property to set.
+ * @param value - Converted column value, or `undefined`.
+ */
+function assignOptional<T extends object, K extends keyof T>(target: T, key: K, value: T[K] | undefined): void {
+  if (value !== undefined) target[key] = value;
+}
+
+/** One optional column: its SQL name, the target field, and the converter for its raw value. */
+interface OptionalColumn<T> {
+  column: string;
+  field: keyof T;
+  map: (value: unknown) => unknown;
+}
+
+/** Optional entity columns in declaration order. `tags` is handled separately (array-only). */
+const ENTITY_OPTIONAL_COLUMNS: readonly OptionalColumn<Entity>[] = [
+  { column: 'parent_id', field: 'parentId', map: columnText },
+  { column: 'importance', field: 'importance', map: Number },
+  { column: 'created_at', field: 'createdAt', map: columnIso },
+  { column: 'last_modified', field: 'lastModified', map: columnIso },
+  { column: 'ttl', field: 'ttl', map: Number },
+  { column: 'confidence', field: 'confidence', map: Number },
+  { column: 'project_id', field: 'projectId', map: columnText },
+  { column: 'version', field: 'version', map: Number },
+  { column: 'parent_entity_name', field: 'parentEntityName', map: columnText },
+  { column: 'root_entity_name', field: 'rootEntityName', map: columnText },
+  { column: 'is_latest', field: 'isLatest', map: Boolean },
+  { column: 'superseded_by', field: 'supersededBy', map: columnText },
+  { column: 'content_hash', field: 'contentHash', map: columnText },
+  { column: 'valid_from', field: 'validFrom', map: columnIso },
+  { column: 'valid_until', field: 'validUntil', map: columnIso },
+  { column: 'observation_meta', field: 'observationMeta', map: (v) => v as Entity['observationMeta'] },
+  { column: 'lifecycle_status', field: 'lifecycleStatus', map: (v) => columnText(v) as Entity['lifecycleStatus'] },
+];
+
+/** Optional relation columns in declaration order. */
+const RELATION_OPTIONAL_COLUMNS: readonly OptionalColumn<Relation>[] = [
+  { column: 'metadata', field: 'metadata', map: (v) => v as Relation['metadata'] },
+  { column: 'properties', field: 'properties', map: (v) => v as Relation['properties'] },
+  { column: 'weight', field: 'weight', map: Number },
+  { column: 'confidence', field: 'confidence', map: Number },
+  { column: 'created_at', field: 'createdAt', map: columnIso },
+  { column: 'last_modified', field: 'lastModified', map: columnIso },
+];
+
+/**
+ * Copy every optional column in `columns` onto `target`, then merge the JSONB `extra` payload.
+ *
+ * A NULL or missing column contributes no key, matching the inline `if (...) assign` shape.
+ *
+ * @param target - Entity or relation being built.
+ * @param row - Result row.
+ * @param columns - Columns to read, in declaration order.
+ * @param reserved - First-class keys that `extra` may not override.
+ */
+function applyOptionalColumns<T extends object>(
+  target: T,
+  row: Record<string, unknown>,
+  columns: readonly OptionalColumn<T>[],
+  reserved: ReadonlySet<string>,
+): void {
+  for (const { column, field, map } of columns) {
+    assignOptional(target, field, readOptional(row, column, map) as T[typeof field]);
+  }
+  mergeExtensionFields(target, row.extra, reserved);
 }
 
 /** Collision-free composite key, including names containing delimiters. */

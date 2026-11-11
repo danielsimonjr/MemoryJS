@@ -10,9 +10,9 @@
 - **Dormant files** (runtime code on disk, unreachable from any entry/build root): 0
   - **Orphaned (reachable from nothing — delete/wire candidates)**: 0
   - **Test-only (exercised by a test, ships nothing)**: 0
-- **Potentially unused exports**: 174
+- **Potentially unused exports**: 183
   - **Unreferenced anywhere (deletion candidates)**: 5
-  - **Referenced in-module (type contracts / helpers backing live exports)**: 169
+  - **Referenced in-module (type contracts / helpers backing live exports)**: 178
 
 Seeded reachability roots (4):
 
@@ -149,8 +149,16 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 ### `src/agent/knowledge/knowledgeLoad.ts`
 
+- `resolveMaxSkills` (function) — 1 in-file ref
+- `LoadSetup` (interface) — 1 in-file ref
 - `DEFAULT_MAX_SKILLS` (constant) — 1 in-file ref
 - `MAX_TASK_SKILLS` (constant) — 2 in-file refs
+- `DEFAULT_BUDGET_TOKENS` (constant) — 1 in-file ref
+- `DEFAULT_LOAD_SECTIONS` (constant) — 1 in-file ref
+
+### `src/agent/knowledge/privateRecordEntity.ts`
+
+- `PrivateRecordEntityFields` (interface) — 1 in-file ref
 
 ### `src/agent/learning/ChildKnowledgeOverlay.ts`
 
@@ -188,7 +196,6 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 ### `src/agent/learning/LearningTrace.ts`
 
-- `buildTraceEntity` (function) — 1 in-file ref
 - `DEFAULT_TRACE_MAX_ACTIONS` (constant) — 2 in-file refs
 
 ### `src/agent/learning/RecursiveChildren.ts`
@@ -257,6 +264,12 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 - `TreeDirRefusal` (type) — 2 in-file refs
 
+### `src/agent/versionedWriteFailure.ts`
+
+- `versionedWriteFailure` (function) — 2 in-file refs
+- `PatchVersionedRecordOptions` (interface) — 1 in-file ref
+- `VersionedPatchFailure` (type) — 1 in-file ref
+
 ### `src/cli/commands/audit.ts`
 
 - `AUDIT_OPERATIONS` (constant) — 2 in-file refs
@@ -267,6 +280,11 @@ support exports that ARE used, so they cannot be deleted in isolation.
 - `DoctorCheckResult` (interface) — 8 in-file refs
 - `DoctorStatus` (type) — 1 in-file ref
 - `EXTRA_NUMERIC_VARS` (constant) — 2 in-file refs
+
+### `src/cli/commands/helpers.ts`
+
+- `JsonCommandOption` (interface) — 1 in-file ref
+- `JsonCommandSpec` (interface) — 1 in-file ref
 
 ### `src/cli/formatters.ts`
 
@@ -437,7 +455,7 @@ support exports that ARE used, so they cannot be deleted in isolation.
 - `ObjectOutput` (type) — 1 in-file ref
 - `infer` (type) — 6 in-file refs
 - `output` (type) — 11 in-file refs
-- `input` (type) — 83 in-file refs
+- `input` (type) — 80 in-file refs
 - `ZodType` (type) — 1 in-file ref
 
 ### `src/utils/searchCache.ts`

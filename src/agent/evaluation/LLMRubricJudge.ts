@@ -12,6 +12,7 @@
 
 import { z } from '../../utils/schema.js';
 import type { CriterionResult, TaskRecord } from '../../types/learning.js';
+import { ABORTED, describeError, raceAbort } from '../learning/llmJson.js';
 import type { PGCompletionProvider } from '../procedural/graph/CompletionProvider.js';
 import { DeterministicJudge, type RubricJudge } from './DeterministicJudge.js';
 
@@ -111,35 +112,6 @@ function extractJsonArray(text: string): unknown {
   throw new Error('no JSON array in output');
 }
 
-/** Sentinel resolved when the abort signal fires before the provider settles. */
-const ABORTED = Symbol('aborted');
-
-/**
- * Race a promise against an abort signal so an ignoring provider cannot hang the judge.
- * A late result or rejection after abort is ignored.
- *
- * @param work - Provider call
- * @param signal - Optional abort signal
- * @returns The provider result, or {@link ABORTED}
- */
-function raceAbort<T>(work: Promise<T>, signal?: AbortSignal): Promise<T | typeof ABORTED> {
-  if (!signal) return work;
-  return new Promise<T | typeof ABORTED>((resolve, reject) => {
-    const onAbort = (): void => resolve(ABORTED);
-    signal.addEventListener('abort', onAbort, { once: true });
-    work.then(
-      (value) => {
-        signal.removeEventListener('abort', onAbort);
-        resolve(value);
-      },
-      (err: unknown) => {
-        signal.removeEventListener('abort', onAbort);
-        reject(err);
-      },
-    );
-  });
-}
-
 /** Error raised internally when the model output cannot be used as a whole. */
 class InvalidVerdictError extends Error {}
 
@@ -174,7 +146,7 @@ function parseVerdicts(text: string, ids: Set<string>): Map<string, CriterionRes
 
 /** Message text of an unknown thrown value. */
 function describe(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
+  return describeError(err);
 }
 
 /**

@@ -417,6 +417,97 @@ describe('QueryCostEstimator', () => {
       const layers = estimator.recommendLayers('test', { maxLayers: 2 });
       expect(layers.length).toBeLessThanOrEqual(2);
     });
+
+    it('scores lexical above semantic for a short keyword query', () => {
+      // lexical: 50 + 20 (2-5 words) + 10 (no operators) = 80; semantic: 45 + 10 = 55
+      expect(estimator.recommendLayers('foo bar')).toEqual(['lexical', 'semantic', 'symbolic']);
+    });
+
+    it('drops the operator bonus when the query uses AND/OR/NOT', () => {
+      // lexical: 50 + 20 = 70 (operators present); semantic: 45; symbolic: 40
+      expect(estimator.recommendLayers('what is X AND Y')).toEqual(['lexical', 'semantic', 'symbolic']);
+    });
+
+    it('keeps operators case-sensitive', () => {
+      // lowercase "and" is not an operator, so the +10 bonus still applies to lexical
+      expect(estimator.recommendLayers('a and b')).toEqual(['lexical', 'semantic', 'symbolic']);
+    });
+
+    it('pins the exact lexical and semantic layer scores', () => {
+      const scores = estimator as unknown as {
+        scoreLexicalLayer(query: string, analysis?: QueryAnalysis): number;
+        scoreSemanticLayer(query: string, analysis?: QueryAnalysis): number;
+      };
+      const analysisOf = (questionType: QueryAnalysis['questionType'], complexity: QueryAnalysis['complexity'] = 'low') =>
+        ({
+          query: 'q',
+          entities: [],
+          persons: [],
+          locations: [],
+          organizations: [],
+          temporalRange: null,
+          questionType,
+          complexity,
+          confidence: 0.5,
+          requiredInfoTypes: [],
+        }) as unknown as QueryAnalysis;
+
+      // lexical: base 50, +20 for 2-5 words, +10 without operators
+      expect(scores.scoreLexicalLayer('foo bar')).toBe(80);
+      expect(scores.scoreLexicalLayer('what is X AND Y')).toBe(70);
+      expect(scores.scoreLexicalLayer('a and b')).toBe(80);
+      expect(scores.scoreLexicalLayer('one two three four five six')).toBe(60);
+      // question-type bumps
+      expect(scores.scoreLexicalLayer('foo bar', analysisOf('factual'))).toBe(95);
+      expect(scores.scoreLexicalLayer('foo bar', analysisOf('aggregation'))).toBe(90);
+      expect(scores.scoreLexicalLayer('foo bar', analysisOf('conceptual'))).toBe(80);
+
+      // semantic: base 45, +25 for >=5 words, +10 without operators
+      expect(scores.scoreSemanticLayer('foo bar')).toBe(55);
+      expect(scores.scoreSemanticLayer('one two three four five six')).toBe(80);
+      expect(scores.scoreSemanticLayer('what is X AND Y')).toBe(70);
+      // question-type and complexity bumps
+      expect(scores.scoreSemanticLayer('foo bar', analysisOf('conceptual'))).toBe(85);
+      expect(scores.scoreSemanticLayer('foo bar', analysisOf('comparative'))).toBe(75);
+      expect(scores.scoreSemanticLayer('foo bar', analysisOf('factual', 'high'))).toBe(70);
+      expect(scores.scoreSemanticLayer('foo bar', analysisOf('factual'))).toBe(55);
+    });
+
+    it('ranks a high-complexity conceptual query semantic-first', () => {
+      const analysis = {
+        query: 'why did the migration fail',
+        entities: [],
+        persons: [],
+        locations: [],
+        organizations: [],
+        temporalRange: null,
+        questionType: 'conceptual',
+        complexity: 'high',
+        confidence: 0.9,
+        requiredInfoTypes: [],
+      } as unknown as QueryAnalysis;
+      // semantic: 45 + 25 (>=5 words) + 10 + 30 (conceptual) + 15 (high) = 125
+      expect(estimator.recommendLayers('why did the migration fail', { analysis })[0]).toBe('semantic');
+    });
+
+    it('ranks factual and aggregation questions lexical-first', () => {
+      const base = {
+        query: 'q',
+        entities: [],
+        persons: [],
+        locations: [],
+        organizations: [],
+        temporalRange: null,
+        complexity: 'low' as const,
+        confidence: 0.5,
+        requiredInfoTypes: [],
+      };
+      const factual = { ...base, questionType: 'factual' } as unknown as QueryAnalysis;
+      const aggregation = { ...base, questionType: 'aggregation' } as unknown as QueryAnalysis;
+      // lexical: 50 + 10 (single word, no operators) + 15 = 75 / + 10 = 70
+      expect(estimator.recommendLayers('q', { analysis: factual })[0]).toBe('lexical');
+      expect(estimator.recommendLayers('q', { analysis: aggregation })[0]).toBe('lexical');
+    });
   });
 
   describe('Phase 12 Sprint 4: extended cost estimation', () => {

@@ -14,12 +14,8 @@
 
 import { Command } from '../parseArgs.js';
 import { clearAllSearchCaches, cleanupAllCaches, getAllCacheStats } from '../../utils/searchCache.js';
-import { getOptions, createLogger } from './helpers.js';
+import { getOptions, createLogger, emitJson } from './helpers.js';
 import { formatError } from '../formatters.js';
-
-function emitJson(payload: unknown): void {
-  console.log(JSON.stringify(payload, null, 2));
-}
 
 /**
  * Register the `cache` command group: `stats`, `clear` and `cleanup`.

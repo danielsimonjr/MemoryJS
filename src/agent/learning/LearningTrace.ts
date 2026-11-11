@@ -25,6 +25,7 @@ import { RelationManager } from '../../core/RelationManager.js';
 import type { GraphStorage } from '../../core/GraphStorage.js';
 import { VersionConflictError } from '../../utils/errors.js';
 import { shortId } from '../knowledge/knowledgeDigest.js';
+import { privateRecordEntity } from '../knowledge/privateRecordEntity.js';
 import { CHILD_OF_RELATION } from '../WorkThreadManager.js';
 import { decodeChunks, encodeChunks, isTagged } from './observationChunks.js';
 
@@ -628,21 +629,16 @@ export class LearningTrace {
  * @returns The entity.
  */
 export function buildTraceEntity(record: LearningTraceRecord, now: string): LearningTraceEntity {
-  return {
+  return privateRecordEntity({
     name: record.id,
     entityType: 'learning_trace',
     observations: [`[learning_trace] learner: ${record.learnerKind}; round: ${record.round}; subset: ${record.subsetLabel}`],
-    createdAt: now,
-    lastModified: now,
-    importance: 5,
+    now,
     memoryType: 'learning_trace',
-    visibility: 'private',
-    accessCount: 0,
     confidence: 1,
-    confirmationCount: 0,
-    version: 1,
-    learningTraceRecord: record,
-  } as LearningTraceEntity;
+    recordKey: 'learningTraceRecord',
+    record,
+  }) as LearningTraceEntity;
 }
 
 /**

@@ -72,3 +72,63 @@ export function runAction<A extends unknown[]>(
 }
 
 export { createLogger, type GlobalOptions };
+
+/**
+ * Print a JSON payload as the sole output of a command: `JSON.stringify(payload, null, 2)` on one
+ * `console.log` call.
+ *
+ * @param payload - Serializable result object.
+ */
+export function emitJson(payload: unknown): void {
+  console.log(JSON.stringify(payload, null, 2));
+}
+
+/** One option of an {@link addJsonCommand} spec. */
+export interface JsonCommandOption {
+  /** Option flags, e.g. `'--limit <n>'`. */
+  flags: string;
+  /** Help description. */
+  description: string;
+  /** Value parser, passed to `option()` as its third argument. */
+  parse?: (value: string) => unknown;
+}
+
+/** Specification of one JSON-emitting subcommand. */
+export interface JsonCommandSpec<A extends unknown[] = []> {
+  /** Subcommand name and positional args, e.g. `'get <id>'`. */
+  name: string;
+  /** Help description. */
+  description: string;
+  /** Options in declaration order. */
+  options: readonly JsonCommandOption[];
+  /**
+   * Handler body receiving the global options, the parsed context, the positional arguments and
+   * the Commander options object; returns the payload to print.
+   */
+  body: (options: GlobalOptions, ctx: ManagerContext, ...args: [...A, Record<string, unknown>]) => Promise<unknown>;
+}
+
+/**
+ * Register a subcommand that runs through {@link runAction} and prints its result with
+ * {@link emitJson}. This is the repeated `.command().description().option()...action()` skeleton
+ * the heuristic and obs-dedup groups used to spell out per command.
+ *
+ * @param parent - The command group that receives the subcommand.
+ * @param program - The root program, forwarded to `runAction` for global options.
+ * @param spec - Command name, description, options and handler body.
+ */
+export function addJsonCommand<A extends unknown[] = []>(
+  parent: Command,
+  program: Command,
+  spec: JsonCommandSpec<A>,
+): void {
+  let sub = parent.command(spec.name).description(spec.description);
+  for (const option of spec.options) {
+    sub = option.parse ? sub.option(option.flags, option.description, option.parse) : sub.option(option.flags, option.description);
+  }
+  sub.action(
+    runAction(program, async (ctx, options, _logger, ...args: [...A, Record<string, unknown>]) => {
+      emitJson(await spec.body(options, ctx, ...args));
+    }),
+  );
+}

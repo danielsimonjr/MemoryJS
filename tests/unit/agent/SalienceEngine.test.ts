@@ -528,8 +528,7 @@ describe('SalienceEngine', () => {
       expect(relevance).toBe(1.0);
     });
 
-    it('keeps keyword tiers apart when semantic similarity is off', () => {
-      const keywordEngine = new SalienceEngine(storage, accessTracker, decayEngine, {
+    it('keeps keyword tiers apart when semantic similarity is off', () => {      const keywordEngine = new SalienceEngine(storage, accessTracker, decayEngine, {
         useSemanticSimilarity: false,
       });
       const named = createTestEntity({ name: 'hotel_preferences', observations: ['x'] });
@@ -543,6 +542,33 @@ describe('SalienceEngine', () => {
       expect(keywordEngine.calculateIntentRelevance(intentName, 'purchase')).toBe(0);
       const intentObs = createTestEntity({ name: 'other', observations: ['purchase tickets'] });
       expect(keywordEngine.calculateIntentRelevance(intentObs, 'purchase')).toBe(0.8);
+    });
+
+    it('scores observation matches at 0.5 for task and query relevance', () => {
+      const keywordEngine = new SalienceEngine(storage, accessTracker, decayEngine, {
+        useSemanticSimilarity: false,
+      });
+      const observed = createTestEntity({ name: 'other', entityType: 'misc', observations: ['hotel stay'] });
+      expect(keywordEngine.calculateTaskRelevance(observed, 'hotel')).toBe(0.5);
+      expect(keywordEngine.calculateQueryRelevance(observed, 'hotel')).toBe(0.5);
+    });
+
+    it('returns 0 when no field of the entity matches', () => {
+      const keywordEngine = new SalienceEngine(storage, accessTracker, decayEngine, {
+        useSemanticSimilarity: false,
+      });
+      const miss = createTestEntity({ name: 'other', entityType: 'misc', observations: ['unrelated'] });
+      expect(keywordEngine.calculateTaskRelevance(miss, 'hotel')).toBe(0);
+      expect(keywordEngine.calculateQueryRelevance(miss, 'hotel')).toBe(0);
+    });
+
+    it('matches case-insensitively on every tier', () => {
+      const keywordEngine = new SalienceEngine(storage, accessTracker, decayEngine, {
+        useSemanticSimilarity: false,
+      });
+      const named = createTestEntity({ name: 'Hotel_Preferences', observations: [] });
+      expect(keywordEngine.calculateQueryRelevance(named, 'HOTEL')).toBe(1.0);
+      expect(keywordEngine.calculateTaskRelevance(named, 'HOTEL')).toBe(0.8);
     });
 
     it('returns a stub similarity for all three methods when semantic is on', () => {
