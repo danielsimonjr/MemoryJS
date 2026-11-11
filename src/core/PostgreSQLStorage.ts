@@ -277,25 +277,8 @@ export class PostgreSQLStorage implements IGraphStorage {
       entityType: columnText(row.entity_type),
       observations: Array.isArray(row.observations) ? row.observations as string[] : [],
     };
-    assignOptional(entity, 'parentId', readOptional(row, 'parent_id', columnText));
+    applyOptionalColumns(entity, row, ENTITY_OPTIONAL_COLUMNS, FIRST_CLASS_ENTITY_KEYS);
     if (Array.isArray(row.tags)) entity.tags = row.tags as string[];
-    assignOptional(entity, 'importance', readOptional(row, 'importance', Number));
-    assignOptional(entity, 'createdAt', readOptional(row, 'created_at', columnIso));
-    assignOptional(entity, 'lastModified', readOptional(row, 'last_modified', columnIso));
-    assignOptional(entity, 'ttl', readOptional(row, 'ttl', Number));
-    assignOptional(entity, 'confidence', readOptional(row, 'confidence', Number));
-    assignOptional(entity, 'projectId', readOptional(row, 'project_id', columnText));
-    assignOptional(entity, 'version', readOptional(row, 'version', Number));
-    assignOptional(entity, 'parentEntityName', readOptional(row, 'parent_entity_name', columnText));
-    assignOptional(entity, 'rootEntityName', readOptional(row, 'root_entity_name', columnText));
-    assignOptional(entity, 'isLatest', readOptional(row, 'is_latest', Boolean));
-    assignOptional(entity, 'supersededBy', readOptional(row, 'superseded_by', columnText));
-    assignOptional(entity, 'contentHash', readOptional(row, 'content_hash', columnText));
-    assignOptional(entity, 'validFrom', readOptional(row, 'valid_from', columnIso));
-    assignOptional(entity, 'validUntil', readOptional(row, 'valid_until', columnIso));
-    assignOptional(entity, 'observationMeta', readOptional(row, 'observation_meta', (v) => v as Entity['observationMeta']));
-    assignOptional(entity, 'lifecycleStatus', readOptional(row, 'lifecycle_status', (v) => columnText(v) as Entity['lifecycleStatus']));
-    mergeExtensionFields(entity, row.extra, FIRST_CLASS_ENTITY_KEYS);
     return entity;
   }
 
@@ -305,13 +288,7 @@ export class PostgreSQLStorage implements IGraphStorage {
       to: String(row.to_name),
       relationType: String(row.relation_type),
     };
-    assignOptional(relation, 'metadata', readOptional(row, 'metadata', (v) => v as Relation['metadata']));
-    assignOptional(relation, 'properties', readOptional(row, 'properties', (v) => v as Relation['properties']));
-    assignOptional(relation, 'weight', readOptional(row, 'weight', Number));
-    assignOptional(relation, 'confidence', readOptional(row, 'confidence', Number));
-    assignOptional(relation, 'createdAt', readOptional(row, 'created_at', columnIso));
-    assignOptional(relation, 'lastModified', readOptional(row, 'last_modified', columnIso));
-    mergeExtensionFields(relation, row.extra, FIRST_CLASS_RELATION_KEYS);
+    applyOptionalColumns(relation, row, RELATION_OPTIONAL_COLUMNS, FIRST_CLASS_RELATION_KEYS);
     return relation;
   }
 
@@ -746,6 +723,66 @@ function readOptional<T>(row: Record<string, unknown>, column: string, map: (val
  */
 function assignOptional<T extends object, K extends keyof T>(target: T, key: K, value: T[K] | undefined): void {
   if (value !== undefined) target[key] = value;
+}
+
+/** One optional column: its SQL name, the target field, and the converter for its raw value. */
+interface OptionalColumn<T> {
+  column: string;
+  field: keyof T;
+  map: (value: unknown) => unknown;
+}
+
+/** Optional entity columns in declaration order. `tags` is handled separately (array-only). */
+const ENTITY_OPTIONAL_COLUMNS: readonly OptionalColumn<Entity>[] = [
+  { column: 'parent_id', field: 'parentId', map: columnText },
+  { column: 'importance', field: 'importance', map: Number },
+  { column: 'created_at', field: 'createdAt', map: columnIso },
+  { column: 'last_modified', field: 'lastModified', map: columnIso },
+  { column: 'ttl', field: 'ttl', map: Number },
+  { column: 'confidence', field: 'confidence', map: Number },
+  { column: 'project_id', field: 'projectId', map: columnText },
+  { column: 'version', field: 'version', map: Number },
+  { column: 'parent_entity_name', field: 'parentEntityName', map: columnText },
+  { column: 'root_entity_name', field: 'rootEntityName', map: columnText },
+  { column: 'is_latest', field: 'isLatest', map: Boolean },
+  { column: 'superseded_by', field: 'supersededBy', map: columnText },
+  { column: 'content_hash', field: 'contentHash', map: columnText },
+  { column: 'valid_from', field: 'validFrom', map: columnIso },
+  { column: 'valid_until', field: 'validUntil', map: columnIso },
+  { column: 'observation_meta', field: 'observationMeta', map: (v) => v as Entity['observationMeta'] },
+  { column: 'lifecycle_status', field: 'lifecycleStatus', map: (v) => columnText(v) as Entity['lifecycleStatus'] },
+];
+
+/** Optional relation columns in declaration order. */
+const RELATION_OPTIONAL_COLUMNS: readonly OptionalColumn<Relation>[] = [
+  { column: 'metadata', field: 'metadata', map: (v) => v as Relation['metadata'] },
+  { column: 'properties', field: 'properties', map: (v) => v as Relation['properties'] },
+  { column: 'weight', field: 'weight', map: Number },
+  { column: 'confidence', field: 'confidence', map: Number },
+  { column: 'created_at', field: 'createdAt', map: columnIso },
+  { column: 'last_modified', field: 'lastModified', map: columnIso },
+];
+
+/**
+ * Copy every optional column in `columns` onto `target`, then merge the JSONB `extra` payload.
+ *
+ * A NULL or missing column contributes no key, matching the inline `if (...) assign` shape.
+ *
+ * @param target - Entity or relation being built.
+ * @param row - Result row.
+ * @param columns - Columns to read, in declaration order.
+ * @param reserved - First-class keys that `extra` may not override.
+ */
+function applyOptionalColumns<T extends object>(
+  target: T,
+  row: Record<string, unknown>,
+  columns: readonly OptionalColumn<T>[],
+  reserved: ReadonlySet<string>,
+): void {
+  for (const { column, field, map } of columns) {
+    assignOptional(target, field, readOptional(row, column, map) as T[typeof field]);
+  }
+  mergeExtensionFields(target, row.extra, reserved);
 }
 
 /** Collision-free composite key, including names containing delimiters. */

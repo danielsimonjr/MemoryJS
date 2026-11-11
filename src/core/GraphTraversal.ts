@@ -336,17 +336,13 @@ export class GraphTraversal {
       // Respect maxDepth limit
       if (depth > opts.maxDepth) continue;
 
-      nodes.push(node);
-      depths.set(node, depth);
+      this.visitNode(node, depth, nodes, depths);
 
-      // Get neighbors and add unvisited ones to queue
-      const neighbors = this.getNeighborsWithRelations(node, opts);
-      for (const { neighbor } of neighbors) {
-        if (!visited.has(neighbor)) {
-          visited.add(neighbor);
-          queue.push({ node: neighbor, depth: depth + 1 });
-          parents.set(neighbor, node);
-        }
+      // Neighbors are claimed on enqueue, so each node keeps the first parent that reached it.
+      for (const neighbor of this.unvisitedNeighbors(node, opts, visited)) {
+        visited.add(neighbor);
+        queue.push({ node: neighbor, depth: depth + 1 });
+        parents.set(neighbor, node);
       }
     }
 
@@ -378,22 +374,48 @@ export class GraphTraversal {
       if (depth > opts.maxDepth) continue;
 
       visited.add(node);
-      nodes.push(node);
-      depths.set(node, depth);
+      this.visitNode(node, depth, nodes, depths);
 
-      // Get neighbors and add unvisited ones to stack
-      const neighbors = this.getNeighborsWithRelations(node, opts);
-      for (const { neighbor } of neighbors) {
-        if (!visited.has(neighbor)) {
-          stack.push({ node: neighbor, depth: depth + 1 });
-          if (!parents.has(neighbor)) {
-            parents.set(neighbor, node);
-          }
+      // Neighbors are pushed unclaimed; the first pop that reaches one keeps the parent.
+      for (const neighbor of this.unvisitedNeighbors(node, opts, visited)) {
+        stack.push({ node: neighbor, depth: depth + 1 });
+        if (!parents.has(neighbor)) {
+          parents.set(neighbor, node);
         }
       }
     }
 
     return { nodes, depths, parents };
+  }
+
+  /**
+   * Record a node in the traversal output.
+   *
+   * @param node - Node name.
+   * @param depth - Depth from the start entity.
+   * @param nodes - Ordered visit list.
+   * @param depths - Depth per visited node.
+   */
+  private visitNode(node: string, depth: number, nodes: string[], depths: Map<string, number>): void {
+    nodes.push(node);
+    depths.set(node, depth);
+  }
+
+  /**
+   * Neighbors of `node` that are not visited yet, in the order `getNeighborsWithRelations` returns
+   * them. The traversal direction and relation-type filters come from `opts`.
+   *
+   * @param node - Node being expanded.
+   * @param opts - Resolved traversal options.
+   * @param visited - Nodes already claimed.
+   * @returns Neighbor names still open for expansion.
+   */
+  private unvisitedNeighbors(node: string, opts: Required<TraversalOptions>, visited: Set<string>): string[] {
+    const open: string[] = [];
+    for (const { neighbor } of this.getNeighborsWithRelations(node, opts)) {
+      if (!visited.has(neighbor)) open.push(neighbor);
+    }
+    return open;
   }
 
   // ==================== Sprint 7: Path Finding Algorithms ====================

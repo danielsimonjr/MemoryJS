@@ -17,22 +17,18 @@
  */
 
 import type { InstructionSetRecord, RevisionOp, SkillId, SkillRecord } from '../../types/skills.js';
-import { readEnvNumber } from '../../utils/envConfig.js';
-import { instructionItemsFor } from './InstructionSetManager.js';
-import { assertBudgetTokens, clone } from './knowledgeDigest.js';
+import { clone } from './knowledgeDigest.js';
 import { safeApplyOp, workFrom } from './knowledgeRevision.js';
 import { rankSkillsLexically } from '../skills/skillRecordUtils.js';
 import {
-  resolveMaxSkills,
-  selectSkills,
   skillIdsForTaskIds,
   toLoadItems,
   packLoadedKnowledge,
+  prepareLoad,
+  loadSkillMatches,
 } from './knowledgeLoad.js';
 import type { FailureLookupLike, LoadedKnowledge, LoadForContextOptions, SkillMatchLike } from './KnowledgeRepository.js';
 
-/** Default token budget, matching `KnowledgeRepository.loadForContext`. */
-const DEFAULT_BUDGET_TOKENS = 4000;
 /** Maximum failures returned by one load, matching the live path. */
 const LOOKUP_LIMIT = 5;
 
@@ -140,18 +136,14 @@ export class ScratchKnowledge {
    * @throws RangeError when `budgetTokens` is negative or not finite.
    */
   async loadForContext(options: LoadForContextOptions): Promise<LoadedKnowledge> {
-    const budget = assertBudgetTokens(options.budgetTokens ?? DEFAULT_BUDGET_TOKENS, 'ScratchKnowledge.loadForContext');
-    const multiplier = options.multiplier ?? readEnvNumber('MEMORY_CONTEXT_TOKEN_MULTIPLIER', 1.3);
-    const want = new Set(options.sections ?? ['instructions', 'skills', 'failures']);
-    const instructions = want.has('instructions') ? instructionItemsFor(this.sets, options.role) : [];
+    const setup = prepareLoad(options, 'ScratchKnowledge.loadForContext', this.sets);
     const live = this.skills.filter((skill) => skill.retired === undefined);
-    const maxSkills = resolveMaxSkills(options.maxSkills);
     const byId = new Map(live.map((skill) => [skill.id as string, skill] as const));
     const included = (options.includeSkillIds ?? []).flatMap((id) => byId.get(id) ?? []);
-    const matches: SkillMatchLike[] = want.has('skills')
-      ? selectSkills(included, this.matcher(options.taskHint, live, maxSkills), maxSkills).map((skill) => ({ skill, score: 0, matched: [] }))
+    const matches: SkillMatchLike[] = setup.want.has('skills')
+      ? loadSkillMatches(included, this.matcher(options.taskHint, live, setup.maxSkills), setup.maxSkills)
       : [];
-    const failures = want.has('failures') ? await this.failures.lookupForTask(options.taskHint, { limit: LOOKUP_LIMIT }) : [];
-    return packLoadedKnowledge(options.role, toLoadItems(instructions, matches, failures), budget, multiplier);
+    const failures = setup.want.has('failures') ? await this.failures.lookupForTask(options.taskHint, { limit: LOOKUP_LIMIT }) : [];
+    return packLoadedKnowledge(options.role, toLoadItems(setup.instructions, matches, failures), setup.budget, setup.multiplier);
   }
 }
