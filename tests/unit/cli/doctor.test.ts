@@ -14,7 +14,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
   checkNodeVersion,
-  checkBetterSqlite3,
+  checkSqliteDriver,
   checkWorkersBuilt,
   checkStorageFile,
   checkEnvVarLint,
@@ -22,24 +22,24 @@ import {
   numericEnvVarNames,
   runDoctorChecks,
   registerDoctorCommand,
-  MIN_NODE_MAJOR,
+  MIN_NODE_VERSION,
   STRICT_TRUE_VARS,
   type DoctorReport,
 } from '../../../src/cli/commands/doctor.js';
 
 describe('doctor checks', () => {
   describe('checkNodeVersion', () => {
-    it('passes for Node >= 18', () => {
-      expect(checkNodeVersion('v18.0.0').status).toBe('pass');
-      expect(checkNodeVersion('v20.11.1').status).toBe('pass');
-      expect(checkNodeVersion('v22.0.0').status).toBe('pass');
+    it('passes for Node >= 22.16.0', () => {
+      expect(checkNodeVersion('v22.16.0').status).toBe('pass');
+      expect(checkNodeVersion('v22.23.4').status).toBe('pass');
+      expect(checkNodeVersion('v24.1.0').status).toBe('pass');
     });
 
-    it('fails below 18 with an install hint', () => {
-      const result = checkNodeVersion('v16.20.2');
+    it('fails below 22.16.0 with an install hint', () => {
+      const result = checkNodeVersion('v22.15.1');
       expect(result.status).toBe('fail');
-      expect(result.message).toContain(`>=${MIN_NODE_MAJOR}.0.0`);
-      expect(result.hint).toContain(String(MIN_NODE_MAJOR));
+      expect(result.message).toContain(`>=${MIN_NODE_VERSION}`);
+      expect(result.hint).toContain(MIN_NODE_VERSION);
     });
 
     it('warns on an unrecognized version string', () => {
@@ -51,39 +51,74 @@ describe('doctor checks', () => {
     });
   });
 
-  describe('checkBetterSqlite3', () => {
-    it('passes when the module loads', () => {
-      const result = checkBetterSqlite3(() => ({}));
-      expect(result.status).toBe('pass');
-    });
-
-    it('fails with the documented rebuild hint on NODE_MODULE_VERSION mismatch', () => {
-      const result = checkBetterSqlite3(() => {
-        throw new Error(
-          'The module was compiled against a different Node.js version using NODE_MODULE_VERSION 108. ' +
-          'This version of Node.js requires NODE_MODULE_VERSION 115.'
-        );
+  describe('checkSqliteDriver', () => {
+    /** A stub module whose DatabaseSync succeeds at the FTS5 probe. */
+    function stubModule(probe?: (sql: string) => void): (id: string) => unknown {
+      return () => ({
+        DatabaseSync: class {
+          exec(sql: string): void {
+            probe?.(sql);
+          }
+          close(): void {
+            // no-op
+          }
+        },
       });
-      expect(result.status).toBe('fail');
-      expect(result.hint).toContain('npm rebuild better-sqlite3');
+    }
+
+    it('passes when node:sqlite loads and the FTS5 probe succeeds', () => {
+      const probed: string[] = [];
+      const result = checkSqliteDriver(stubModule((sql) => probed.push(sql)));
+      expect(result.status).toBe('pass');
+      expect(probed.some((sql) => /fts5/i.test(sql))).toBe(true);
     });
 
-    it('warns (not fails) when the dependency is not installed', () => {
-      const result = checkBetterSqlite3(() => {
-        const err = new Error("Cannot find module 'better-sqlite3'") as NodeJS.ErrnoException;
-        err.code = 'MODULE_NOT_FOUND';
+    it('fails with the version hint when node:sqlite is unavailable', () => {
+      const result = checkSqliteDriver(() => {
+        const err = new Error("No such built-in module: node:sqlite") as NodeJS.ErrnoException;
+        err.code = 'ERR_UNKNOWN_BUILTIN_MODULE';
         throw err;
       });
-      expect(result.status).toBe('warn');
-      expect(result.message).toContain('not installed');
+      expect(result.status).toBe('fail');
+      expect(result.message).toContain('node:sqlite');
+      expect(result.hint).toContain(MIN_NODE_VERSION);
     });
 
-    it('fails on any other load error', () => {
-      const result = checkBetterSqlite3(() => {
-        throw new Error('dlopen failed: missing symbol');
-      });
+    it('fails with the 22.16.0 hint when the SQLite build has no FTS5', () => {
+      const result = checkSqliteDriver(() => ({
+        DatabaseSync: class {
+          exec(): void {
+            throw new Error('no such module: fts5');
+          }
+          close(): void {
+            // no-op
+          }
+        },
+      }));
       expect(result.status).toBe('fail');
-      expect(result.message).toContain('dlopen failed');
+      expect(result.hint).toContain('22.16.0');
+      expect(result.message).toContain('FTS5');
+    });
+
+    it('fails when the module exports no DatabaseSync', () => {
+      const result = checkSqliteDriver(() => ({}));
+      expect(result.status).toBe('fail');
+      expect(result.message).toContain('DatabaseSync');
+    });
+
+    it('fails on any other probe error', () => {
+      const result = checkSqliteDriver(() => ({
+        DatabaseSync: class {
+          exec(): void {
+            throw new Error('disk I/O error');
+          }
+          close(): void {
+            // no-op
+          }
+        },
+      }));
+      expect(result.status).toBe('fail');
+      expect(result.message).toContain('disk I/O error');
     });
   });
 
@@ -347,7 +382,7 @@ describe('doctor command', () => {
     expect(report.checks).toHaveLength(6);
     expect(report.checks.map((c) => c.name)).toEqual([
       'node-version',
-      'better-sqlite3',
+      'sqlite-driver',
       'workers-built',
       'storage-file',
       'env-var-lint',

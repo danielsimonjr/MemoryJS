@@ -988,9 +988,9 @@ unchanged (asserted by regression tests comparing before/after output).
   there.
 - **Prefer subpath imports in bundled consumers.** If you only use core
   CRUD + graph algorithms, `import { EntityManager } from
-  '@danielsimonjr/memoryjs/core'` avoids pulling in chrono-node, the
-  embedding stack, and (via `/core` vs `/sqlite`) the `better-sqlite3`
-  native addon. The root `@danielsimonjr/memoryjs` import still works
+  '@danielsimonjr/memoryjs/core'` avoids pulling in the embedding stack
+  and (via `/core` vs `/sqlite`) the SQLite backend. The root
+  `@danielsimonjr/memoryjs` import still works
   unchanged — subpaths are opt-in tree-shaking, not a breaking split.
 - **If you tuned around `MEMORY_HYBRID_GRAPH_WEIGHT`/`MEMORY_RANKED_GRAPH_BOOST`
   write-amplification concerns** (frequent full PageRank recompute on every

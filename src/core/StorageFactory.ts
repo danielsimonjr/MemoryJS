@@ -6,14 +6,14 @@
  *
  * Supported storage types:
  * - 'jsonl': JSONL file-based storage (default) - simple, human-readable
- * - 'sqlite': SQLite database storage (better-sqlite3 native) - indexed, ACID transactions, FTS5
+ * - 'sqlite': SQLite database storage (Node's built-in `node:sqlite`) - indexed, ACID transactions, FTS5
  * - 'postgres' / 'postgresql': PostgreSQL backend - JSONB, GIN indexes,
  *     optional peer dep on `pg`
  *
  * S9 (load-graph optimization): this module deliberately has NO static import
  * of `SQLiteStorage`, so importing the factory alone never evaluates the
- * SQLiteStorage module (whose static `better-sqlite3` import loads the native
- * addon). The SQLiteStorage constructor is delivered through a small registry:
+ * SQLiteStorage module (which pulls in the SQLite driver). The SQLiteStorage
+ * constructor is delivered through a small registry:
  *
  * - `src/core/sqlite-register.ts` performs the registration as a module side
  *   effect. It is imported by the core barrel, by `ManagerContext`, and by the

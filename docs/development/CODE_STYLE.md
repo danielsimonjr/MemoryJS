@@ -327,9 +327,8 @@ export { createStorage } from './StorageFactory.js';
 4. Internal modules
 
 ```typescript
-// 1. External packages
-import { z } from 'zod';
-import Database from 'better-sqlite3';
+// 1. External packages (none at the root today; optional peers only)
+import type { Pool } from 'pg';
 
 // 2. Node.js built-ins
 import { promises as fs } from 'fs';

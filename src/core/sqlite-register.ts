@@ -4,8 +4,7 @@
  * Evaluating this module registers the `SQLiteStorage` constructor with
  * `StorageFactory`, wiring the `type: 'sqlite'` / `MEMORY_STORAGE_TYPE=sqlite`
  * path without `StorageFactory` itself holding a static import of the
- * SQLiteStorage module (whose top-level `better-sqlite3` import loads the
- * native addon).
+ * SQLiteStorage module (which pulls in the SQLite driver).
  *
  * Imported (for its side effect) by:
  * - `src/core/index.ts` — the core barrel's `SQLiteStorage` re-export

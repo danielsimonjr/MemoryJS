@@ -9,7 +9,7 @@ Entities, relations and observations are stored on JSONL, SQLite or (optionally)
 (BM25, TF-IDF, fuzzy, semantic, hybrid, temporal, LLM-planned), graph algorithms, bitemporal versioning, RBAC, an
 Agent Memory System, and the experimental Recursa skill and learning harness.
 
-Runtime: Node.js 22.12.0 or later. Development: Bun 1.4.2 or later.
+Runtime: Node.js 22.16.0 or later. Development: Bun 1.4.2 or later.
 The CLI is `memory` (or `memoryjs`): `bunx --package @danielsimonjr/memoryjs memory --help`.
 
 > Powers [@danielsimonjr/memory-mcp](https://www.npmjs.com/package/@danielsimonjr/memory-mcp), a Model Context
@@ -52,7 +52,7 @@ npm and pnpm consumers can install the same package from the npm registry. Subpa
 small; SQLite registration and generated shared chunks are retained as side effects: `/sqlite`, `/core`, `/search`, `/agent`, `/features`, `/utils`, `/types`,
 `/adapters` and `/security` are available next to the root entry point.
 
-Requirements: Node.js 22.12.0 or later at runtime; Bun 1.4.2 or later for development (`bun.lock` is authoritative).
+Requirements: Node.js 22.16.0 or later at runtime; Bun 1.4.2 or later for development (`bun.lock` is authoritative).
 
 Optional peer dependencies:
 
@@ -130,14 +130,16 @@ Full example: [`examples/01-quick-start.ts`](examples/01-quick-start.ts)
 | Backend | Select with | Path argument | Notes |
 |---|---|---|---|
 | JSONL (default) | nothing, or `MEMORY_STORAGE_TYPE=jsonl` | File path | Human-readable. Single process only. |
-| SQLite | `storageType: 'sqlite'`, or `MEMORY_STORAGE_TYPE=sqlite` | Database file | FTS5 with BM25, WAL mode. Needs `better-sqlite3`, or `node:sqlite` on Node 22.16+. |
+| SQLite | `storageType: 'sqlite'`, or `MEMORY_STORAGE_TYPE=sqlite` | Database file | FTS5 with BM25, WAL mode. Runs on Node's built-in `node:sqlite`; needs Node >= 22.16.0. No native addon to install or rebuild. |
 | PostgreSQL | `MEMORY_STORAGE_TYPE=postgres` (or `postgresql`) | Connection string, such as `postgres://user:pass@host:5432/db` | Needs `pg`. The pool opens on first use and the schema is created then. Search is LIKE-based in this version. |
 
 The `storageType` option takes `jsonl` or `sqlite`. A set `MEMORY_STORAGE_TYPE` overrides it, so deployments can switch
 backends without code changes. PostgreSQL is selected only through the environment. Its tests mock the `pg` client; the
 repository's suite does not run it against a live server.
 
-SQLite notes: `better-sqlite3` loads first, else `node:sqlite`; `MEMORY_SQLITE_DRIVER=node` forces the latter.
+SQLite notes: the driver is Node's built-in `node:sqlite`, so there is nothing to install and no ABI to match. The
+floor is Node 22.16.0, the first release whose `node:sqlite` includes FTS5. `MEMORY_SQLITE_DRIVER=node` is accepted and
+selects the same driver.
 
 ```ts
 import { ManagerContext } from '@danielsimonjr/memoryjs';
@@ -846,9 +848,9 @@ context window, freshness, mmap, segments, SQLite pool, prospective memory, memo
 
 ## Troubleshooting
 
-- `memory doctor [--json]` checks the Node version, the `better-sqlite3` native build, the worker bundle, the storage
+- `memory doctor [--json]` checks the Node version, that `node:sqlite` loads with FTS5, the worker bundle, the storage
   file, env-var typos and embedding-provider reachability.
-- `NODE_MODULE_VERSION mismatch` (SQLite tests): run `bun run rebuild:native`.
+- SQLite errors naming FTS5 (`no such module: fts5`): the Node runtime is older than 22.16.0. Upgrade Node.
 - JSONL is single-process. For several processes, use SQLite or PostgreSQL.
 - `ctx.semanticSearch` is `null`: no embedding provider is available. See the optional peer dependencies above.
 

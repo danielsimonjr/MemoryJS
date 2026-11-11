@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-MemoryJS is a TypeScript knowledge graph library for managing entities, relations, and observations with advanced search capabilities. It supports multiple storage backends (JSONL, SQLite) and provides features like hierarchical organization, graph algorithms, and hybrid search. Requires Node.js >= 22.12.0 as the production runtime. Development uses Bun 1.4+ as the package manager (`bun.lock`).
+MemoryJS is a TypeScript knowledge graph library for managing entities, relations, and observations with advanced search capabilities. It supports multiple storage backends (JSONL, SQLite) and provides features like hierarchical organization, graph algorithms, and hybrid search. Requires Node.js >= 22.16.0 as the production runtime. Development uses Bun 1.4+ as the package manager (`bun.lock`).
 
 ## Common Commands
 
@@ -136,7 +136,7 @@ ctx.bootstrapper(deps)  // Recursa RS-10..RS-13 bootstrapper factory: map corpus
 
 **Storage Layer** (`src/core/StorageFactory.ts`): Two backends selected via `MEMORY_STORAGE_TYPE` env var:
 - `GraphStorage` (JSONL, default): Human-readable, in-memory caching, atomic writes via temp file + rename
-- `SQLiteStorage`: FTS5 full-text search with BM25, WAL mode, ACID transactions, better-sqlite3
+- `SQLiteStorage`: FTS5 full-text search with BM25, WAL mode, ACID transactions, on Node's built-in `node:sqlite` (behind the better-sqlite3-shaped facade in `src/core/nodeSqliteAdapter.ts`)
 
 **Search System** (`src/search/`): Layered search architecture:
 - **Text search**: `BasicSearch` (substring), `BooleanSearch` (AND/OR/NOT with AST), `FuzzySearch` (Levenshtein via worker pool, N-gram pre-filtered)
@@ -249,7 +249,7 @@ ctx.bootstrapper(deps)  // Recursa RS-10..RS-13 bootstrapper factory: map corpus
 - Uses `tsup` for bundling (ESM + CJS dual output) with 3 separate entry points: library, CLI, workers
 - Worker files (`levenshteinWorker.ts`) built separately to `dist/workers/` for dynamic loading
 - CLI built separately to `dist/cli/` with `#!/usr/bin/env node` banner
-- `better-sqlite3` is externalized (native addon, not bundled)
+- The SQLite backend uses `node:sqlite`, a Node builtin, so it is never bundled and there is no external entry for it
 - `bun run lint` (`oxlint --type-aware src` plus the two project rules in `scripts/check-lint-rules.mjs` / `scripts/lint-rules.mjs`: `src/types` stays a leaf layer, and `storage.updateEntity()` results are never discarded) is the primary lint surface; `bun run typecheck` (bare `tsc --noEmit`) catches type-only issues lint doesn't see. Both should exit 0 before commit.
 - Publishable package: `bun run prepublishOnly` runs clean + build + test
 
@@ -464,7 +464,8 @@ Only the four tools with a `package.json` (`chunking-for-files`, `compress-for-c
 - **Path confinement**: When validating derived paths (e.g., appending `.meta.json`), re-validate independently — the derived path may escape the confined directory. `SkillPublisher` (`publish` / `importSkills`) confines every `dir` to its `root` (default `process.cwd()`; `ctx.skillPublisher` takes `ManagerContextOptions.skillPublishRoot`, IOManager uses the storage dir) after `path.resolve` and after `realpath` of the deepest existing ancestor, and refuses `..`, the root itself, symlink escapes and `/proc` / `/sys` / `/dev` with a `ValidationError` (`errors[0]` = `dir:<reason>`). A learning-loop `publishDir` outside that root makes the post-merge publish fail (recorded as a `publish-failed` note). The Recursa skills tools require `deps.publishDir` and accept only a relative `dir` below it.
 - **Windows atomic writes**: `fs.rename()` can fail with EPERM in temp directories due to Dropbox/antivirus file locking. `durableWriteFile` retries EPERM/EBUSY/EACCES renames with a short backoff, then throws `DurableReplaceError`. It never rewrites the live target in place; the synced tmp stays next to the target. JSONL storage is single-process: `graphMutex` cannot coordinate a second process.
 - **Windows + Dropbox + git**: This repo is synced via Dropbox which can corrupt git objects (e.g., `fatal: bad object HEAD`). If git commands fail, try `git fsck` and `git reflog` to recover.
-- **`better-sqlite3` native addon**: Requires a compatible prebuild or build tools (Python, C++ compiler) for the platform. If `bun install` fails on this, check node-gyp prerequisites. **Node version mismatch**: if SQLite tests fail with `NODE_MODULE_VERSION mismatch`, run `npm rebuild better-sqlite3` (or `bun run rebuild:native`) — Node was upgraded since install and the prebuilt binary's ABI no longer matches.
+- **SQLite needs Node >= 22.16.0**: the backend uses the built-in `node:sqlite`, and FTS5 arrived there in 22.16.0. On 22.13–22.15 the module loads and `CREATE VIRTUAL TABLE … USING fts5` then fails with `no such module: fts5`; `SQLiteStorage` replaces that message with the version floor. There is no native addon to rebuild, so `NODE_MODULE_VERSION` mismatches cannot happen.
+- **Worker-thread tests need a TypeScript loader**: `tests/unit/utils/helpers/tsWorkerLoader.mjs` (Node's `--experimental-strip-types` plus a `.js`→`.ts` resolve hook). `--import tsx` alone cannot register hooks in a worker thread below Node 22.22.3, which the `22.16` CI leg runs.
 - **Worker pool path resolution**: Workers are loaded dynamically from `dist/workers/`. If you only run `bun run build` (tsup), workers are built. But `bun run build:tsc` (bare tsc) does NOT build workers - use tsup.
 - **`bun.lock` is authoritative** (committed to git): development and CI use `bun install` / `bun install --frozen-lockfile`. There is no root `package-lock.json`. Dependabot still watches the npm ecosystem (it cannot parse Bun lockfileVersion 2) and only edits `package.json` ranges — regenerate `bun.lock` with `bun install` after Dependabot bumps. Tool packages under `tools/*/` keep their own `package-lock.json` files.
 - **Cache TTL boundary**: `SearchCache` uses `>=` for expiration checks. Using `>` causes TTL=0 entries to persist when accessed within the same millisecond (flaky on Windows due to timer resolution).

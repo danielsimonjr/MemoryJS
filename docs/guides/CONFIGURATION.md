@@ -1084,7 +1084,7 @@ Note: `MEMORY_AUDIT_ATTRIBUTION_REQUIRED` is not read by the library. `Collabora
 | Variable | Values | Default |
 |----------|--------|---------|
 | `MEMORY_SQLITE_READ_POOL_SIZE` | Integer ≥ 1 | `4`. Set `0` or `1` to route reads through the writer connection |
-| `MEMORY_SQLITE_DRIVER` | `node` | unset (uses `better-sqlite3`). `node` forces the built-in `node:sqlite` fallback |
+| `MEMORY_SQLITE_DRIVER` | `node` | unset. Accepted for compatibility; `node:sqlite` is the only driver, so any value selects it |
 | `MEMORY_INDEX_COALESCE_MS` | Integer ≥ 0 | `50`. TF-IDF event-sync coalescing window; `0` applies each change immediately |
 | `MEMORY_STORAGE_SEGMENT_COUNT` | Strict decimal integer in `[2, 1024]` | unset (single-file JSONL). Read at `GraphStorage` construction; restart to change |
 | `MEMORY_USE_MMAP` | `true` (strict) | unset (off). Range-read large JSONL files; ignored in segment mode |

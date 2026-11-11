@@ -947,7 +947,7 @@ this.db.pragma('temp_store = MEMORY');    // keep temp tables/indices in memory
 
 ### StorageFactory + sqlite-register (`core/StorageFactory.ts`, `core/sqlite-register.ts`) — lazy SQLite loading
 
-**Purpose**: Keep JSONL-only consumers from paying for (or being broken by) the `better-sqlite3` native addon
+**Purpose**: Keep JSONL-only consumers from paying for (or being broken by) loading `node:sqlite`
 
 `StorageFactory` no longer statically imports `SQLiteStorage`. Instead it holds a small module-level registry:
 
@@ -960,7 +960,7 @@ export async function preloadSQLiteStorage(): Promise<void>  // explicit dynamic
 import './sqlite-register.js';
 ```
 
-The core barrel (`core/index.ts`) imports `sqlite-register.ts` for its side effect, so ordinary consumers of `createStorage({ type: 'sqlite', ... })` still work with no extra step. Requesting `type: 'sqlite'` before the registration has run throws a descriptive error pointing at `preloadSQLiteStorage()` or an explicit `SQLiteStorage` import. JSONL-only consumers who import from the `./core` or `./sqlite`-excluding subpaths never evaluate the `SQLiteStorage` module, so the native addon is never loaded and an ABI/prebuild mismatch on that platform can't break them. **Known gap**: the root package barrel (`src/index.ts`) still re-exports `SQLiteStorage` via `core/index.ts`, so it is eagerly loaded for anyone importing from the package root — full removal from the default import graph is a documented v3 follow-up (`docs/development/OPTIMIZATION_OPPORTUNITIES.md`). `SQLiteStorage` also gained a `graphMutex` field mirroring `GraphStorage`'s `AsyncMutex`, fixing a crash in batch manager mutations run against a raw SQLite backend.
+The core barrel (`core/index.ts`) imports `sqlite-register.ts` for its side effect, so ordinary consumers of `createStorage({ type: 'sqlite', ... })` still work with no extra step. Requesting `type: 'sqlite'` before the registration has run throws a descriptive error pointing at `preloadSQLiteStorage()` or an explicit `SQLiteStorage` import. JSONL-only consumers who import from the `./core` or `./sqlite`-excluding subpaths never evaluate the `SQLiteStorage` module, so `node:sqlite` is never loaded. **Known gap**: the root package barrel (`src/index.ts`) still re-exports `SQLiteStorage` via `core/index.ts`, so it is eagerly loaded for anyone importing from the package root — full removal from the default import graph is a documented v3 follow-up (`docs/development/OPTIMIZATION_OPPORTUNITIES.md`). `SQLiteStorage` also gained a `graphMutex` field mirroring `GraphStorage`'s `AsyncMutex`, fixing a crash in batch manager mutations run against a raw SQLite backend.
 
 ---
 
@@ -2102,9 +2102,9 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 
 | Claim | Value | Source |
 |---|---|---|
-| totalSourceFiles | 1049 | repo-tools map |
-| totalLinesOfCode | 314557 | repo-tools map |
-| totalExports | 4151 | repo-tools map |
+| totalSourceFiles | 1058 | repo-tools map |
+| totalLinesOfCode | 317089 | repo-tools map |
+| totalExports | 4163 | repo-tools map |
 | reachableFiles | 415 | repo-tools map |
 | runtimeCircularDeps | 0 | repo-tools map |
 | typeOnlyCircularDeps | 39 | repo-tools map |

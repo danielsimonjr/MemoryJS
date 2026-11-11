@@ -26,16 +26,23 @@ jobs:
     # The matrix values appear in the job name, so these strings ARE the branch
     # protection contexts. Changing the matrix renames the required checks and
     # silently blocks every PR until protection is updated to match.
+    #
+    # The Node 22 leg is pinned to 22.16, not the `22` alias: that is the lowest
+    # release whose node:sqlite includes FTS5 (nodejs/node#57621), and the SQLite
+    # backend needs FTS5 to create its index. `22` would pass today and stop
+    # guarding the floor. This renamed the three `ci (*, 22)` contexts to
+    # `ci (*, 22.16)`.
     name: ci (${{ matrix.os }}, ${{ matrix.node }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        # Windows and macOS are not decoration here: this package builds a NATIVE
-        # module (better-sqlite3 via scripts/rebuild-native.mjs), and native
-        # bindings are the failure that a single-OS run cannot see.
+        # Windows and macOS are not decoration: filesystem atomicity, path
+        # separators, worker spawn and SQLite file locking all differ there, and
+        # a single-OS run cannot see those failures. The package itself ships no
+        # native code since Sprint 9 (the SQLite backend is node:sqlite).
         os: [ubuntu-latest, windows-latest, macos-latest]
-        node: [22, 24]
+        node: [22.16, 24]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -51,7 +58,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Audit dependencies
-        if: matrix.os == 'ubuntu-latest' && matrix.node == 22
+        if: matrix.os == 'ubuntu-latest' && matrix.node == 22.16
         run: bun audit --audit-level=high
 
       # Tool packages have independent lockfiles and are not covered by the
@@ -59,7 +66,7 @@ jobs:
       # Audit once, on one leg. Running it on all six duplicates the same network
       # work and turns a registry hiccup into six red jobs instead of one.
       - name: Audit tool dependencies
-        if: matrix.os == 'ubuntu-latest' && matrix.node == 22
+        if: matrix.os == 'ubuntu-latest' && matrix.node == 22.16
         shell: bash
         run: |
           set -euo pipefail
@@ -105,11 +112,10 @@ jobs:
         env:
           SKIP_BENCHMARKS: "true"
 
-      # SQLiteStorage falls back to node:sqlite (src/core/nodeSqliteAdapter.ts) when the
-      # better-sqlite3 addon is absent, for example after an install that skips install scripts.
-      # MEMORY_SQLITE_DRIVER=node selects that driver. Run the suite on it once, on one leg, so
-      # that a test or a code path that works only on better-sqlite3 fails here. Node 24 loads
-      # node:sqlite without a flag.
+      # SQLiteStorage runs on node:sqlite (src/core/nodeSqliteAdapter.ts) and that is the only
+      # driver since Sprint 9. The step stays because it is the explicit proof that the suite
+      # passes with MEMORY_SQLITE_DRIVER=node set, which is the setting deployments and plugins
+      # that used the old driver selector still carry. Node 24 loads node:sqlite unflagged.
       - name: Test (node:sqlite driver)
         if: matrix.os == 'ubuntu-latest' && matrix.node == 24
         run: bun run test:ci
@@ -127,8 +133,8 @@ jobs:
       # main + exports.require -> ./dist/index.cjs, and the rest of CI runs under Bun, so without
       # this nothing ever loads the shipped CJS artifact under Node.
       - name: Node runtime smoke (the shipped artifact must load under Node)
-      # A deadline that expires FAILS the step. The script also opens an in-memory SQLite
-      # database and executes statements, so a missing or ABI-mismatched native binding fails here.
+      # A deadline that expires FAILS the step. The script also drives the shipped SQLite backend
+      # (write, read, FTS5 search), so a runtime whose SQLite lacks FTS5 fails here.
         run: node scripts/node-runtime-smoke.mjs
 
   # The two documentation gates of repo-tools. Both read the source, so a table that no longer

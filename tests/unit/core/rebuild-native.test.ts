@@ -1,41 +1,52 @@
 import { describe, expect, it } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { mkdtemp, writeFile, rm } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
-describe('native installation probe', () => {
-  it('detects lazy constructor failure and verifies after rebuilding', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'native-probe-'));
-    const preload = join(dir, 'preload.cjs');
-    try {
-      // Exercise the real postinstall script, isolating the addon and npm command.
-      await writeFile(preload, `
-        const Module = require('node:module');
-        const cp = require('node:child_process');
-        const load = Module._load;
-        let rebuilt = false;
-        Module._load = function(name, ...args) {
-          if (name !== 'better-sqlite3') return load.call(this, name, ...args);
-          return class Database {
-            constructor() { if (!rebuilt) throw new Error('Missing native binding'); }
-            prepare() { return { get() { console.log('probe-query'); } }; }
-            close() { console.log('probe-close'); }
-          };
-        };
-        cp.spawnSync = () => { rebuilt = true; console.log('probe-rebuild'); return { status: 0 }; };
-        Module.syncBuiltinESMExports();
-      `);
-      const out = execFileSync(process.execPath,
-        ['--require', preload, resolve('scripts/rebuild-native.mjs')],
-        { encoding: 'utf8', timeout: 10000 });
-      expect(out).toContain('Missing native binding');
-      expect(out).toContain('probe-rebuild');
-      expect(out).toContain('probe-query');
-      expect(out).toContain('probe-close');
-      expect(out).toContain('OK - loads after rebuild');
-    } finally {
-      await rm(dir, { recursive: true, force: true });
+/**
+ * The install-time native guard.
+ *
+ * `scripts/rebuild-native.mjs` ships in the published tarball and runs from
+ * `postinstall`. Since Sprint 9 it has nothing to rebuild: the SQLite backend is
+ * Node's built-in `node:sqlite`, so the package declares no native addon. These
+ * tests pin the two properties that keep a consumer's install safe — it always
+ * exits 0, and it still ships with the dependency list it guards — plus the
+ * absence of the native dependency itself.
+ */
+describe('native installation guard (scripts/rebuild-native.mjs)', () => {
+  it('exits 0 and reports that there are no native addons', () => {
+    const out = execFileSync(process.execPath, [resolve('scripts/rebuild-native.mjs')], {
+      encoding: 'utf8',
+      timeout: 10000,
+    });
+    expect(out).toContain('no native addons');
+    expect(out).toContain('node:sqlite');
+  });
+
+  it('is still listed in package.json files and run from postinstall', () => {
+    const manifest = JSON.parse(readFileSync(resolve('package.json'), 'utf8')) as {
+      files: string[];
+      scripts: Record<string, string>;
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+    };
+    expect(manifest.files).toContain('scripts/rebuild-native.mjs');
+    expect(manifest.scripts.postinstall).toBe('node scripts/rebuild-native.mjs');
+    // No native runtime dependency is declared, which is why the guard is a check.
+    expect(manifest.dependencies?.['better-sqlite3']).toBeUndefined();
+    expect(manifest.devDependencies?.['@types/better-sqlite3']).toBeUndefined();
+  });
+
+  it('declares no NATIVE entries, matching the dependency list', () => {
+    const script = readFileSync(resolve('scripts/rebuild-native.mjs'), 'utf8');
+    expect(script).toMatch(/const NATIVE = \[\];/);
+    const manifest = JSON.parse(readFileSync(resolve('package.json'), 'utf8')) as {
+      dependencies?: Record<string, string>;
+      optionalDependencies?: Record<string, string>;
+    };
+    const declared = Object.keys({ ...manifest.dependencies, ...manifest.optionalDependencies });
+    for (const native of ['better-sqlite3', 'sharp', 'canvas']) {
+      expect(declared).not.toContain(native);
     }
   });
 });

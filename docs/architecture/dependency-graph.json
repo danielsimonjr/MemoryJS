@@ -3,7 +3,7 @@
     "name": "@danielsimonjr/memoryjs",
     "totalFiles": 415,
     "totalModules": 12,
-    "totalExports": 2905
+    "totalExports": 2907
   },
   "entryPoints": [
     {
@@ -12738,6 +12738,14 @@
             ]
           },
           {
+            "file": "../../../../core/nodeSqliteAdapter.js",
+            "imports": [
+              "SqliteDatabase",
+              "SqliteStatement"
+            ],
+            "typeOnly": true
+          },
+          {
             "file": "../../../../types/proceduralGraph.js",
             "imports": [
               "PGEvaluationReport",
@@ -15259,10 +15267,11 @@
         ],
         "exports": [
           "MIN_NODE_MAJOR",
+          "MIN_NODE_VERSION",
           "STRICT_TRUE_VARS",
           "EXTRA_NUMERIC_VARS",
           "checkNodeVersion",
-          "checkBetterSqlite3",
+          "checkSqliteDriver",
           "defaultWorkerDirs",
           "checkWorkersBuilt",
           "checkStorageFile",
@@ -15278,7 +15287,7 @@
         ],
         "functions": [
           "checkNodeVersion",
-          "checkBetterSqlite3",
+          "checkSqliteDriver",
           "defaultWorkerDirs",
           "checkWorkersBuilt",
           "checkStorageFile",
@@ -15290,6 +15299,7 @@
         ],
         "constants": [
           "MIN_NODE_MAJOR",
+          "MIN_NODE_VERSION",
           "STRICT_TRUE_VARS",
           "EXTRA_NUMERIC_VARS"
         ]
@@ -17963,28 +17973,8 @@
       },
       "src/core/SQLiteStorage.ts": {
         "description": "SQLite Storage",
-        "externalDependencies": [
-          {
-            "package": "better-sqlite3",
-            "imports": [
-              "Database"
-            ]
-          },
-          {
-            "package": "better-sqlite3",
-            "imports": [
-              "Database",
-              "Statement"
-            ]
-          }
-        ],
+        "externalDependencies": [],
         "nodeDependencies": [
-          {
-            "module": "module",
-            "imports": [
-              "createRequire"
-            ]
-          },
           {
             "module": "fs",
             "imports": [
@@ -18011,7 +18001,9 @@
             "file": "./nodeSqliteAdapter.js",
             "imports": [
               "createNodeSqliteDatabaseCtor",
-              "isNodeSqliteAvailable"
+              "isNodeSqliteAvailable",
+              "SqliteDatabase",
+              "SqliteStatement"
             ]
           },
           {
@@ -19890,20 +19882,42 @@
         ]
       },
       "src/core/nodeSqliteAdapter.ts": {
-        "description": "A `better-sqlite3`-shaped facade over Node's built-in `node:sqlite`.",
+        "description": "The SQLite driver: a `better-sqlite3`-shaped facade over Node's built-in `node:sqlite`.",
         "externalDependencies": [],
         "nodeDependencies": [
+          {
+            "module": "fs",
+            "imports": [
+              "existsSync"
+            ]
+          },
           {
             "module": "module",
             "imports": [
               "createRequire"
+            ]
+          },
+          {
+            "module": "path",
+            "imports": [
+              "dirname"
             ]
           }
         ],
         "internalDependencies": [],
         "exports": [
           "isNodeSqliteAvailable",
-          "createNodeSqliteDatabaseCtor"
+          "createNodeSqliteDatabaseCtor",
+          "SqliteError"
+        ],
+        "classes": [
+          "SqliteError"
+        ],
+        "interfaces": [
+          "SqliteOpenOptions",
+          "SqliteRunResult",
+          "SqliteStatement",
+          "SqliteDatabase"
         ],
         "functions": [
           "isNodeSqliteAvailable",
@@ -22594,16 +22608,17 @@
       },
       "src/search/PartialIndexAdvisor.ts": {
         "description": "Partial Index Advisor",
-        "externalDependencies": [
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
           {
-            "package": "better-sqlite3",
+            "file": "../core/nodeSqliteAdapter.js",
             "imports": [
-              "Database"
-            ]
+              "SqliteDatabase"
+            ],
+            "typeOnly": true
           }
         ],
-        "nodeDependencies": [],
-        "internalDependencies": [],
         "exports": [
           "PartialIndexAdvisor"
         ],
@@ -30499,16 +30514,16 @@
   "statistics": {
     "totalTypeScriptFiles": 415,
     "totalModules": 12,
-    "totalLinesOfCode": 134372,
-    "totalExports": 2905,
-    "totalClasses": 307,
-    "totalInterfaces": 843,
+    "totalLinesOfCode": 134844,
+    "totalExports": 2907,
+    "totalClasses": 308,
+    "totalInterfaces": 847,
     "totalFunctions": 685,
     "totalTypeGuards": 49,
     "totalEnums": 4,
-    "totalConstants": 194,
+    "totalConstants": 195,
     "totalReExports": 1716,
-    "totalTypeOnlyImports": 874,
+    "totalTypeOnlyImports": 876,
     "runtimeCircularDeps": 0,
     "typeOnlyCircularDeps": 15,
     "entryRoots": 4,
@@ -30517,6 +30532,6 @@
     "orphanedFiles": 0,
     "testOnlyFiles": 0,
     "unusedFilesCount": 0,
-    "unusedExportsCount": 170
+    "unusedExportsCount": 174
   }
 }

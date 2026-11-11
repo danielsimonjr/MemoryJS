@@ -22,7 +22,7 @@ Complete API documentation for all public classes, methods, and types.
 > tree-shake unused managers. A `sideEffects` allowlist of the `sqlite-register` modules is **Unreleased** (see CHANGELOG `[Unreleased]`):
 > `@danielsimonjr/memoryjs` (root), `/core`, `/search`, `/agent`, `/features`,
 > `/utils`, `/types`, `/adapters`, `/security`, and `/sqlite` (isolates the
-> `better-sqlite3` native addon so JSONL-only consumers never load it). Each
+> SQLite backend so JSONL-only consumers never load the driver). Each
 > subpath re-exports the same module barrel as before — only the import path
 > changes:
 > ```typescript

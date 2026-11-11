@@ -6,7 +6,6 @@
  */
 
 import { describe, it, expect, afterEach } from 'vitest';
-import { createRequire } from 'node:module';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -14,21 +13,10 @@ import { RelationManager } from '../../../src/core/RelationManager.js';
 import { EntityManager } from '../../../src/core/EntityManager.js';
 import { GraphStorage } from '../../../src/core/GraphStorage.js';
 import { SQLiteStorage } from '../../../src/core/SQLiteStorage.js';
-import { isNodeSqliteAvailable } from '../../../src/core/nodeSqliteAdapter.js';
 import type { GraphStorage as GraphStorageType } from '../../../src/core/GraphStorage.js';
 
-const require = createRequire(import.meta.url);
-
-function isBetterSqlite3Available(): boolean {
-  try {
-    require('better-sqlite3');
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-const sqliteDriverAvailable = isBetterSqlite3Available() || isNodeSqliteAvailable();
+/** Node lane always runs this; Bun has no `node:sqlite`. */
+const skipSqlite = typeof Bun !== 'undefined';
 
 const proceduralGraphMetadata = {
   proceduralGraph: {
@@ -96,7 +84,7 @@ describe('RelationManager metadata (procedural graph)', () => {
     expect(relation?.metadata).toEqual(proceduralGraphMetadata);
   });
 
-  it.skipIf(!sqliteDriverAvailable)(
+  it.skipIf(skipSqlite)(
     'round-trips metadata.proceduralGraph through SQLiteStorage',
     async () => {
       const dir = makeTempDir();

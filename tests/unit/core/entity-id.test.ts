@@ -9,7 +9,10 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import Database from 'better-sqlite3';
+import { createNodeSqliteDatabaseCtor } from '../../../src/core/nodeSqliteAdapter.js';
+
+/** Raw connection on the driver under test, for tests that inspect stored rows. */
+const Database = createNodeSqliteDatabaseCtor();
 import { EntityManager } from '../../../src/core/EntityManager.js';
 import { GraphStorage } from '../../../src/core/GraphStorage.js';
 import { SQLiteStorage } from '../../../src/core/SQLiteStorage.js';

@@ -155,15 +155,13 @@ describe.each(BACKENDS)('Recursa 6C: bootstrap, split, recursive learn on $name'
     expect(heldOutAfter.allPass).toBeGreaterThanOrEqual(heldOutBefore.allPass);
 
     // 8. Close releases every handle: the SQLite connection is closed; the temp dir can be removed.
-    const db = (ctx.storage as unknown as { db?: { open?: boolean; prepare?: (sql: string) => unknown } | null }).db ?? undefined;
+    const db = (ctx.storage as unknown as { db?: { prepare?: (sql: string) => unknown } | null }).db ?? undefined;
     await ctx.close();
     context = undefined;
     if (backend.name === 'sqlite') {
       expect(db).toBeDefined();
-      // better-sqlite3 exposes `open`; node:sqlite does not, but both throw on
-      // a statement against a closed connection.
-      if (typeof db!.open === 'boolean') expect(db!.open).toBe(false);
-      else expect(() => db!.prepare!('SELECT 1')).toThrow();
+      // The driver throws a statement against a closed connection.
+      expect(() => db!.prepare!('SELECT 1')).toThrow();
     }
     rmSync(root, { recursive: true, force: true });
     expect(existsSync(root)).toBe(false);

@@ -30,7 +30,7 @@ Complete guide to setting up a MemoryJS development environment.
 | Tool | Version | Purpose |
 |------|---------|---------|
 | Bun | 1.4.2+ | Dev toolchain: package manager and script driver (`bun.lock`) |
-| Node.js | 22.12.0+ | Production runtime for the published package / native addons |
+| Node.js | 22.16.0+ | Production runtime for the published package (`node:sqlite` / FTS5) |
 | Git | 2.x+ | Version control |
 
 ### Optional
@@ -45,7 +45,7 @@ Complete guide to setting up a MemoryJS development environment.
 
 ```bash
 bun --version    # Should be 1.4.2 or higher
-node --version   # Should be 22.12.0 or higher
+node --version   # Should be 22.16.0 or higher
 git --version    # Should be 2.x or higher
 ```
 
@@ -71,7 +71,7 @@ bun install
 ```
 
 This installs:
-- **Production dependencies**: `better-sqlite3` (English date parsing is in-repo at `src/search/enDate/`, CLI argument parsing at `src/cli/parseArgs.ts`, schema validation at `src/utils/schema.ts`, and the worker pool at `src/utils/threadPool.ts`; `chrono-node` was removed in Sprint 5, `commander` in Sprint 6, `zod` in Sprint 7, and `@danielsimonjr/workerpool` in Sprint 8)
+- **Production dependencies**: none at the root. The SQLite backend is Node's built-in `node:sqlite` (Sprint 9), English date parsing is in-repo at `src/search/enDate/`, CLI argument parsing at `src/cli/parseArgs.ts`, schema validation at `src/utils/schema.ts`, and the worker pool at `src/utils/threadPool.ts` (`chrono-node` was removed in Sprint 5, `commander` in Sprint 6, `zod` in Sprint 7, `@danielsimonjr/workerpool` in Sprint 8, and `better-sqlite3` in Sprint 9). Production installs need **Node >= 22.16.0**, the first release whose `node:sqlite` includes FTS5.
 - **Dev dependencies**: `vitest`, `typescript`, `tsx`, `@types/*`
 
 ### 3. Build Project
@@ -325,7 +325,8 @@ MEMORY_STORAGE_TYPE=jsonl bun run test
 
 ### SQLite Storage
 
-Requires `better-sqlite3` (installed automatically).
+Runs on Node's built-in `node:sqlite`, so there is nothing to install. Requires Node >= 22.16.0 (FTS5 arrived in
+`node:sqlite` in that release).
 
 ```bash
 # Test with SQLite
@@ -530,8 +531,8 @@ bunx vitest run --testTimeout=60000
 #### SQLite errors
 
 ```bash
-# Rebuild native modules
-bun run rebuild:native  # or: npm rebuild better-sqlite3
+# "no such module: fts5" means the Node runtime is older than 22.16.0
+node --version   # must be >= 22.16.0
 ```
 
 #### Permission errors

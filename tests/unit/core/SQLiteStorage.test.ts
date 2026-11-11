@@ -1,7 +1,8 @@
 /**
  * SQLiteStorage Unit Tests
  *
- * Tests for the better-sqlite3-based SQLite storage implementation.
+ * Tests for the SQLite storage implementation (driven by `node:sqlite` through
+ * `src/core/nodeSqliteAdapter.ts` since Sprint 9).
  * Validates native SQLite functionality including:
  * - Basic CRUD operations
  * - Referential integrity (ON DELETE CASCADE)
@@ -15,7 +16,10 @@ import { SQLiteStorage, resolveSQLiteDatabaseCtor } from '../../../src/core/SQLi
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import Database from 'better-sqlite3';
+import { createNodeSqliteDatabaseCtor } from '../../../src/core/nodeSqliteAdapter.js';
+
+/** The driver under test, used where a test needs a second raw connection. */
+const Database = createNodeSqliteDatabaseCtor();
 
 describe('SQLiteStorage', () => {
   let storage: SQLiteStorage;
@@ -1490,8 +1494,8 @@ describe('SQLiteStorage statement pins', () => {
   it('reads each table once and adds the missing columns in a fixed order', async () => {
     createOldestSchema();
     // Record the table reads and the ALTER statements, in call order. Spy on
-    // the driver that SQLiteStorage uses: better-sqlite3, or the node:sqlite
-    // adapter under MEMORY_SQLITE_DRIVER=node.
+    // the driver that SQLiteStorage resolves, so the pin holds for whatever
+    // constructor `resolveSQLiteDatabaseCtor` returns.
     const seen: string[] = [];
     const driver = resolveSQLiteDatabaseCtor().prototype as {
       pragma(source: string, options?: unknown): unknown;

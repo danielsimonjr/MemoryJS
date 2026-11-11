@@ -34,6 +34,9 @@ npm-debug.log*
 *.db-shm
 *.db-wal
 *.jsonl
+# Committed fixture: a database written by better-sqlite3 13.0.3, opened by
+# node:sqlite in tests/unit/core/sqlite-on-disk-compat.test.ts.
+!tests/unit/core/fixtures/*.db
 
 # Test artifacts
 tests/test-results/json/

@@ -2,8 +2,10 @@
 // check-duplicates — prevention gate for the duplicate-symbols campaign.
 //
 // By default, regenerates the duplicate-symbol analysis (via
-// create-dependency-graph.ts, run with plain `node` — Node >= 22.18 type
-// stripping, no tsx required) and fails if any TRUE_DUPLICATE name exists
+// create-dependency-graph.ts, run with plain `node` plus the type-stripping
+// flag — unflagged from Node 22.18, and the flag is accepted and harmless on
+// every version this package supports, including the 22.16 engines floor) and
+// fails if any TRUE_DUPLICATE name exists
 // beyond docs/architecture/duplicate-baseline.json — the campaign's accepted,
 // shrinking backlog. New unauthorized duplicates can't accumulate;
 // consolidating an existing one and re-running
@@ -21,10 +23,17 @@ const ROOT_DIR = process.cwd();
 const SKIP_REGEN = process.argv.includes('--no-regen');
 
 function regenerateDuplicateSymbols() {
-  // Plain `node` + argv array (no shell): Node >= 22.18 strips types natively.
+  // Plain `node` + argv array (no shell). `--experimental-strip-types` is a
+  // no-op on Node >= 22.18 (types are stripped unflagged there) and required on
+  // the 22.16 floor, which `engines.node` allows.
   execFileSync(
     process.execPath,
-    ['tools/create-dependency-graph/create-dependency-graph.ts', '--root=.'],
+    [
+      '--experimental-strip-types',
+      '--disable-warning=ExperimentalWarning',
+      'tools/create-dependency-graph/create-dependency-graph.ts',
+      '--root=.',
+    ],
     { cwd: ROOT_DIR, stdio: 'pipe' }
   );
 }
