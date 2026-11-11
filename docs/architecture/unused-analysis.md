@@ -10,9 +10,9 @@
 - **Dormant files** (runtime code on disk, unreachable from any entry/build root): 0
   - **Orphaned (reachable from nothing — delete/wire candidates)**: 0
   - **Test-only (exercised by a test, ships nothing)**: 0
-- **Potentially unused exports**: 170
-  - **Unreferenced anywhere (deletion candidates)**: 4
-  - **Referenced in-module (type contracts / helpers backing live exports)**: 166
+- **Potentially unused exports**: 175
+  - **Unreferenced anywhere (deletion candidates)**: 5
+  - **Referenced in-module (type contracts / helpers backing live exports)**: 170
 
 Seeded reachability roots (4):
 
@@ -48,6 +48,10 @@ _None._
 
 Not imported by any other file AND not referenced within their own module — the true dead-code candidates. Verify each isn't consumed by a mechanism the
 parser can't see (dynamic access, docs examples, published-API contract) before deleting.
+
+### `src/cli/commands/doctor.ts`
+
+- `MIN_NODE_MAJOR` (constant)
 
 ### `src/search/enDate/calendar.ts`
 
@@ -298,7 +302,7 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 ### `src/core/SQLiteStorage.ts`
 
-- `DatabaseCtor` (type) — 6 in-file refs
+- `DatabaseCtor` (type) — 4 in-file refs
 
 ### `src/core/context/BootstrapFacade.ts`
 
@@ -316,6 +320,13 @@ support exports that ARE used, so they cannot be deleted in isolation.
 ### `src/core/mmap/FsReadMmapBackend.ts`
 
 - `FsReadMmapBackendOptions` (interface) — 1 in-file ref
+
+### `src/core/nodeSqliteAdapter.ts`
+
+- `SqliteError` (class) — 5 in-file refs
+- `SqliteOpenOptions` (interface) — 3 in-file refs
+- `SqliteRunResult` (interface) — 1 in-file ref
+- `SqliteTransactionFunction` (type) — 3 in-file refs
 
 ### `src/core/segments/FileSegmentStorage.ts`
 

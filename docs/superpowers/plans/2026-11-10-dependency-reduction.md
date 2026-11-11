@@ -1044,15 +1044,15 @@ Same verification block as Sprint 6. `package.json` has no `@danielsimonjr/worke
 
 ### Task 19: Stability probe
 
-- [ ] **Step 1: Add `tests/unit/core/node-sqlite-probe.test.ts`.** It skips only when `typeof Bun !== 'undefined'` (Vitest hosted by Bun, where `node:sqlite` does not exist). On Node it does not skip. A failure to load `node:sqlite` on Node, or a failed FTS5, WAL, transaction, pragma, or prepared statement, fails the test. On a pass it creates a temp database, sets `journal_mode = WAL`, creates an FTS5 table, inserts through a prepared statement, queries, checks a pragma, and rolls back a transaction. Run it with `bun run test:ci` so the process is Node.
-- [ ] **Step 2: Set `engines.node` to `>=22.16.0` and pin the CI Node 22 leg to `22.16` in the same sprint, before deleting the native module.** Record the probe's Node version. A probe that fails on 22.16 or 24 stops the sprint.
+- [x] **Step 1: Add `tests/unit/core/node-sqlite-probe.test.ts`.** It skips only when `typeof Bun !== 'undefined'` (Vitest hosted by Bun, where `node:sqlite` does not exist). On Node it does not skip. A failure to load `node:sqlite` on Node, or a failed FTS5, WAL, transaction, pragma, or prepared statement, fails the test. On a pass it creates a temp database, sets `journal_mode = WAL`, creates an FTS5 table, inserts through a prepared statement, queries, checks a pragma, and rolls back a transaction. Run it with `bun run test:ci` so the process is Node.
+- [x] **Step 2: Set `engines.node` to `>=22.16.0` and pin the CI Node 22 leg to `22.16` in the same sprint, before deleting the native module.** Record the probe's Node version. A probe that fails on 22.16 or 24 stops the sprint.
 
 ### Task 20: Parity and removal, after Task 19 passes on Node 22.16 and Node 24
 
-- [ ] **Step 1: Extend the existing SQLite tests so the same cases run on `node:sqlite` and on `better-sqlite3` while the native module is still installed.** Compare row sets, `changes`, pragma results, and a rolled-back write.
-- [ ] **Step 2: Make `resolveSQLiteDatabaseCtor` return the `node:sqlite` constructor first. Keep the native module load only until Step 1 is green, then delete it.**
-- [ ] **Step 3: Run one timed insert/select of 1,000 rows on both constructors and paste the numbers in the PR. Do not fail CI on the ratio.**
-- [ ] **Step 4: Remove `better-sqlite3` and `@types/better-sqlite3`. Run `bun install`, `bun run typecheck`, and `bunx vitest run tests/unit/core/SQLiteStorage.test.ts`. Expected: PASS.**
+- [x] **Step 1: Extend the existing SQLite tests so the same cases run on `node:sqlite` and on `better-sqlite3` while the native module is still installed.** Compare row sets, `changes`, pragma results, and a rolled-back write.
+- [x] **Step 2: Make `resolveSQLiteDatabaseCtor` return the `node:sqlite` constructor first. Keep the native module load only until Step 1 is green, then delete it.**
+- [x] **Step 3: Run one timed insert/select of 1,000 rows on both constructors and paste the numbers in the PR. Do not fail CI on the ratio.**
+- [x] **Step 4: Remove `better-sqlite3` and `@types/better-sqlite3`. Run `bun install`, `bun run typecheck`, and `bunx vitest run tests/unit/core/SQLiteStorage.test.ts`. Expected: PASS.**
 
 ### Task 21: Sprint 9 verification
 

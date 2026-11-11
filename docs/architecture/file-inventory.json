@@ -1,11 +1,11 @@
 {
-  "totalFiles": 1037,
+  "totalFiles": 1044,
   "byDisposition": {
     "reachable": 411,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 590,
+    "test": 597,
     "tool": 10,
     "config": 2,
     "bench": 5,
@@ -15,7 +15,7 @@
     "benchmarks": 5,
     "examples": 15,
     "src": 415,
-    "tests": 590,
+    "tests": 597,
     "tools": 10,
     "config": 2
   },
@@ -1019,7 +1019,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 516
+      "loc": 510
     },
     {
       "file": "src/agent/procedural/graph/canonical.ts",
@@ -1523,7 +1523,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 486
+      "loc": 526
     },
     {
       "file": "src/cli/commands/entity.ts",
@@ -1866,7 +1866,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 181
+      "loc": 561
     },
     {
       "file": "src/core/ObservationManager.ts",
@@ -1922,14 +1922,14 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 31
+      "loc": 30
     },
     {
       "file": "src/core/SQLiteStorage.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 2642
+      "loc": 2629
     },
     {
       "file": "src/core/storageCache.ts",
@@ -2580,7 +2580,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "build-entry",
-      "loc": 20
+      "loc": 19
     },
     {
       "file": "src/types/agent-memory.ts",
@@ -3140,7 +3140,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 173
+      "loc": 171
     },
     {
       "file": "tests/integration/backup-compression.test.ts",
@@ -4722,7 +4722,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 216
+      "loc": 205
     },
     {
       "file": "tests/unit/agent/SummarizationService.test.ts",
@@ -4862,7 +4862,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 419
+      "loc": 454
     },
     {
       "file": "tests/unit/cli/exclusion.test.ts",
@@ -5170,7 +5170,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 197
+      "loc": 200
     },
     {
       "file": "tests/unit/core/entity-manager-list-projects.test.ts",
@@ -5262,6 +5262,27 @@
       "area": "tests",
       "disposition": "test",
       "loc": 191
+    },
+    {
+      "file": "tests/unit/core/helpers/captureSqliteDriverParity.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 60
+    },
+    {
+      "file": "tests/unit/core/helpers/captureSqliteOnDiskCompatibility.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 226
+    },
+    {
+      "file": "tests/unit/core/helpers/sqliteDriverCases.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 646
     },
     {
       "file": "tests/unit/core/HierarchyManager.test.ts",
@@ -5411,11 +5432,18 @@
       "loc": 108
     },
     {
+      "file": "tests/unit/core/node-sqlite-probe.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 189
+    },
+    {
       "file": "tests/unit/core/nodeSqliteAdapter.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 128
+      "loc": 297
     },
     {
       "file": "tests/unit/core/observation-validate-hook.test.ts",
@@ -5471,7 +5499,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 42
+      "loc": 53
     },
     {
       "file": "tests/unit/core/recursa-record-persistence.test.ts",
@@ -5499,7 +5527,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 127
+      "loc": 116
     },
     {
       "file": "tests/unit/core/RelationManager.test.ts",
@@ -5555,7 +5583,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 339
+      "loc": 342
     },
     {
       "file": "tests/unit/core/sqlite-content-hash-migration.test.ts",
@@ -5565,11 +5593,25 @@
       "loc": 57
     },
     {
+      "file": "tests/unit/core/sqlite-driver-inventory.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 129
+    },
+    {
+      "file": "tests/unit/core/sqlite-driver-parity.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 120
+    },
+    {
       "file": "tests/unit/core/sqlite-driver-resolver.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 72
+      "loc": 86
     },
     {
       "file": "tests/unit/core/sqlite-embeddings-content-hash.test.ts",
@@ -5590,28 +5632,35 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 147
+      "loc": 142
     },
     {
       "file": "tests/unit/core/sqlite-lazy-load.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 82
+      "loc": 70
+    },
+    {
+      "file": "tests/unit/core/sqlite-on-disk-compat.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 227
     },
     {
       "file": "tests/unit/core/SQLiteStorage.autoIndexDeprecation.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 109
+      "loc": 112
     },
     {
       "file": "tests/unit/core/SQLiteStorage.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 1720
+      "loc": 1724
     },
     {
       "file": "tests/unit/core/storage-write-ownership.test.ts",
@@ -6367,7 +6416,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 364
+      "loc": 367
     },
     {
       "file": "tests/unit/search/searchTwinsLayers.test.ts",
@@ -6899,7 +6948,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 490
+      "loc": 509
     },
     {
       "file": "tests/unit/utils/ids.test.ts",
@@ -7130,7 +7179,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 512
+      "loc": 513
     },
     {
       "file": "tests/unit/utils/timing.test.ts",
@@ -7270,7 +7319,7 @@
       "package": "(root)",
       "area": "config",
       "disposition": "config",
-      "loc": 88
+      "loc": 85
     },
     {
       "file": "vitest.config.ts",

@@ -90,7 +90,7 @@ and can be embedded directly into TypeScript / Node.js apps.
 │    • JsonlColumnStore (columnar observation data)      │
 │    • TieredIndex (LRU hot / disk warm / Brotli cold)   │
 │    • CompressedMap (Zlib in-memory entry cache)        │
-│  OR SQLiteStorage (better-sqlite3, FTS5, BM25,         │
+│  OR SQLiteStorage (node:sqlite, FTS5, BM25,           │
 │    read pool, PartialIndexAdvisor, GraphEventEmitter   │
 │    parity with GraphStorage)                           │
 └────────────────────────────────────────────────────────┘
@@ -282,9 +282,9 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 | Claim | Value | Source |
 |---|---|---|
 | totalSourceFiles | 1049 | repo-tools map |
-| totalLinesOfCode | 314557 | repo-tools map |
-| totalExports | 4151 | repo-tools map |
-| totalTypeOnlyImports | 1369 | repo-tools map |
+| totalLinesOfCode | 315160 | repo-tools map |
+| totalExports | 4159 | repo-tools map |
+| totalTypeOnlyImports | 1371 | repo-tools map |
 | totalModules | 7 | repo-tools map |
 | entryRoots | 12 | repo-tools map |
 | reachableFiles | 415 | repo-tools map |

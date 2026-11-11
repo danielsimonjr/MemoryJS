@@ -3159,6 +3159,7 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `../../../../core/SQLiteStorage.js` | `resolveSQLiteDatabaseCtor, resolveSQLiteSynchronousMode` | Import |
+| `../../../../core/nodeSqliteAdapter.js` | `SqliteDatabase, SqliteStatement` | Import (type-only) |
 | `../../../../types/proceduralGraph.js` | `PGEvaluationReport, PGHead, PGRejectionRecord, PGRoundRecord, PGSnapshot` | Import (type-only) |
 | `../canonical.js` | `graphDigest, storageKey` | Import |
 | `./IProceduralGraphBacking.js` | `IProceduralGraphBacking, PGCommitInput, PGCommitResult` | Import (type-only) |
@@ -3855,8 +3856,8 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 **Exports:**
 - Interfaces: `DoctorCheckResult`, `DoctorReport`
 - Types: `DoctorStatus`
-- Functions: `checkNodeVersion`, `checkBetterSqlite3`, `defaultWorkerDirs`, `checkWorkersBuilt`, `checkStorageFile`, `numericEnvVarNames`, `checkEnvVarLint`, `checkEmbeddingProvider`, `runDoctorChecks`, `registerDoctorCommand`
-- Constants: `MIN_NODE_MAJOR`, `STRICT_TRUE_VARS`, `EXTRA_NUMERIC_VARS`
+- Functions: `checkNodeVersion`, `checkSqliteDriver`, `defaultWorkerDirs`, `checkWorkersBuilt`, `checkStorageFile`, `numericEnvVarNames`, `checkEnvVarLint`, `checkEmbeddingProvider`, `runDoctorChecks`, `registerDoctorCommand`
+- Constants: `MIN_NODE_MAJOR`, `MIN_NODE_VERSION`, `STRICT_TRUE_VARS`, `EXTRA_NUMERIC_VARS`
 
 ---
 
@@ -4635,16 +4636,9 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/core/SQLiteStorage.ts` - SQLite Storage
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `better-sqlite3` | `Database` |
-| `better-sqlite3` | `Database, Statement` |
-
 **Node.js Built-in Dependencies:**
 | Module | Import |
 |--------|--------|
-| `module` | `createRequire` |
 | `fs` | `chmodSync, statSync` |
 | `crypto` | `randomUUID` |
 
@@ -4652,7 +4646,7 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `../utils/graphCopy.js` | `borrowGraphView, deepCopyPlain` | Import |
-| `./nodeSqliteAdapter.js` | `createNodeSqliteDatabaseCtor, isNodeSqliteAvailable` | Import |
+| `./nodeSqliteAdapter.js` | `createNodeSqliteDatabaseCtor, isNodeSqliteAvailable, SqliteDatabase, SqliteStatement` | Import |
 | `../utils/RunExclusiveMutex.js` | `RunExclusiveMutex` | Import |
 | `../types/index.js` | `KnowledgeGraph, Entity, Relation, ReadonlyKnowledgeGraph, IGraphStorage, LowercaseData` | Import (type-only) |
 | `../utils/searchCache.js` | `clearAllSearchCaches, bumpEntityGeneration, bumpRelationGeneration` | Import |
@@ -5088,7 +5082,7 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 
 ---
 
-### `src/core/nodeSqliteAdapter.ts` - A `better-sqlite3`-shaped facade over Node's built-in `node:sqlite`.
+### `src/core/nodeSqliteAdapter.ts` - The SQLite driver: a `better-sqlite3`-shaped facade over Node's built-in `node:sqlite`.
 
 **Node.js Built-in Dependencies:**
 | Module | Import |
@@ -5096,6 +5090,9 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 | `module` | `createRequire` |
 
 **Exports:**
+- Classes: `SqliteError`
+- Interfaces: `SqliteOpenOptions`, `SqliteRunResult`, `SqliteStatement`, `SqliteDatabase`
+- Types: `SqliteTransactionFunction`
 - Functions: `isNodeSqliteAvailable`, `createNodeSqliteDatabaseCtor`
 
 ---
@@ -5916,10 +5913,10 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/search/PartialIndexAdvisor.ts` - Partial Index Advisor
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `better-sqlite3` | `Database` |
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../core/nodeSqliteAdapter.js` | `SqliteDatabase` | Import (type-only) |
 
 **Exports:**
 - Classes: `PartialIndexAdvisor`
@@ -7862,15 +7859,15 @@ graph TD
 |----------|-------|
 | Total TypeScript Files | 415 |
 | Total Modules | 12 |
-| Total Lines of Code | 134372 |
-| Total Exports | 2905 |
+| Total Lines of Code | 134771 |
+| Total Exports | 2907 |
 | Total Re-exports | 1716 |
-| Total Classes | 307 |
-| Total Interfaces | 843 |
+| Total Classes | 308 |
+| Total Interfaces | 847 |
 | Total Functions | 685 |
 | Total Type Guards | 49 |
 | Total Enums | 4 |
-| Type-only Imports | 874 |
+| Type-only Imports | 876 |
 | Runtime Circular Deps | 0 |
 | Type-only Circular Deps | 15 |
 | Entry/Build Roots | 4 |
