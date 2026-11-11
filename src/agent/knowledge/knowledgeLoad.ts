@@ -12,7 +12,15 @@
  */
 
 import type { Entity } from '../../types/types.js';
-import type { InstructionSetRecord, KnowledgeSnapshotEntity, KnowledgeSnapshotRecord, SkillId, SkillRecord } from '../../types/skills.js';
+import type { FailureRecord } from '../../types/agent-memory.js';
+import type {
+  InstructionSetRecord,
+  InstructionSetRole,
+  KnowledgeSnapshotEntity,
+  KnowledgeSnapshotRecord,
+  SkillId,
+  SkillRecord,
+} from '../../types/skills.js';
 import {
   isFailureMemory,
   isHeuristicMemory,
@@ -21,7 +29,18 @@ import {
   isReflectionMemory,
   isSkillEntity,
 } from '../../types/agent-memory.js';
+import { estimateTokensFromText } from '../../utils/tokenEstimate.js';
+import type { InstructionItem } from './InstructionSetManager.js';
+import { renderInstructionItems } from './InstructionSetManager.js';
+import { fitInOrder } from './knowledgeDigest.js';
 import { compareIds } from './knowledgeDigest.js';
+import type { LoadedKnowledge, SkillMatchLike } from './KnowledgeRepository.js';
+
+/** One candidate item in load priority order (instructions, then skills, then failures). */
+export type LoadItem =
+  | { kind: 'instruction'; item: InstructionItem }
+  | { kind: 'skill'; match: SkillMatchLike }
+  | { kind: 'failure'; failure: FailureRecord };
 
 /** Default maximum skills one load considers. */
 export const DEFAULT_MAX_SKILLS = 20;
@@ -55,6 +74,82 @@ export function resolveMaxSkills(maxSkills: number | undefined): number {
   const max = maxSkills ?? DEFAULT_MAX_SKILLS;
   if (!Number.isInteger(max) || max < 0) throw new RangeError('loadForContext: maxSkills must be an integer >= 0');
   return max;
+}
+
+/**
+ * Markdown rendering of a load candidate list: one `##` group per section, in order.
+ *
+ * @param role - Role the instructions were selected for.
+ * @param items - Items to render, in priority order.
+ * @returns Markdown text (empty string for no items).
+ */
+export function renderLoadedKnowledge(role: InstructionSetRole, items: readonly LoadItem[]): string {
+  const groups: string[] = [];
+  const instructions = items.flatMap((x) => (x.kind === 'instruction' ? [x.item] : []));
+  if (instructions.length > 0) groups.push(`## Instructions (${role})\n\n${renderInstructionItems(instructions)}`);
+  const skills = items.flatMap((x) => (x.kind === 'skill' ? [x.match.skill] : []));
+  if (skills.length > 0) {
+    const blocks = skills.map((skill) => {
+      const refs = skill.sources.map((source) => source.ref).join(', ') || 'none';
+      return `### ${skill.name} (uncertainty ${skill.uncertainty}, sources: ${refs})\n\n${skill.body}`;
+    });
+    groups.push(`## Skills\n\n${blocks.join('\n\n')}`);
+  }
+  const failures = items.flatMap((x) => (x.kind === 'failure' ? [x.failure] : []));
+  if (failures.length > 0) {
+    const lines = failures.map(
+      (f) => `- ${f.failure_mode} → ${f.alternative_taken ?? f.root_cause} (applies when: ${f.applicability_hint})`,
+    );
+    groups.push(`## Failure lessons\n\n${lines.join('\n')}`);
+  }
+  return groups.join('\n\n');
+}
+
+/**
+ * Lay out instructions, matched skills and failure lessons as one candidate list, in that order.
+ *
+ * @param instructions - Instruction items for the role.
+ * @param matches - Skill matches, best first.
+ * @param failures - Failure lessons.
+ * @returns Candidates in load priority order.
+ */
+export function toLoadItems(
+  instructions: readonly InstructionItem[],
+  matches: readonly SkillMatchLike[],
+  failures: readonly FailureRecord[],
+): LoadItem[] {
+  return [
+    ...instructions.map((item): LoadItem => ({ kind: 'instruction', item })),
+    ...matches.map((match): LoadItem => ({ kind: 'skill', match })),
+    ...failures.map((failure): LoadItem => ({ kind: 'failure', failure })),
+  ];
+}
+
+/**
+ * Trim a candidate list to the token budget and render it, collecting the ids that made it in.
+ *
+ * @param role - Role the instructions were selected for.
+ * @param candidates - Candidates in load priority order.
+ * @param budget - Token budget.
+ * @param multiplier - Tokens per word, passed to the token estimate.
+ * @returns Markdown plus the ids of the kept items.
+ */
+export function packLoadedKnowledge(
+  role: InstructionSetRole,
+  candidates: readonly LoadItem[],
+  budget: number,
+  multiplier: number,
+): LoadedKnowledge {
+  const render = (items: readonly LoadItem[]): string => renderLoadedKnowledge(role, items);
+  const kept = fitInOrder(candidates, render, budget, multiplier);
+  const markdown = render(kept);
+  return {
+    markdown,
+    skillIds: kept.flatMap((x) => (x.kind === 'skill' ? [x.match.skill.id] : [])),
+    instructionSetIds: [...new Set(kept.flatMap((x) => (x.kind === 'instruction' ? [x.item.setId] : [])))],
+    failureIds: kept.flatMap((x) => (x.kind === 'failure' ? [x.failure.id] : [])),
+    tokens: estimateTokensFromText(markdown, multiplier),
+  };
 }
 
 /**

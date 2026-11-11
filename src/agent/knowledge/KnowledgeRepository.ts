@@ -36,7 +36,6 @@ import { BatchTransaction } from '../../core/TransactionManager.js';
 import { EntityManager } from '../../core/EntityManager.js';
 import type { GraphStorage } from '../../core/GraphStorage.js';
 import { readEnvNumber } from '../../utils/envConfig.js';
-import { estimateTokensFromText } from '../../utils/tokenEstimate.js';
 import {
   instructionItemsFor,
   type InstructionSetManager,
@@ -46,11 +45,10 @@ import {
   diffSnapshots,
   digestOf,
   assertBudgetTokens,
-  fitInOrder,
   type KnowledgeDiff,
 } from './knowledgeDigest.js';
 import { safeApplyOp, planWrites, workFrom, type PlannedWrite } from './knowledgeRevision.js';
-import { ScratchKnowledge, renderLoadedKnowledge, type LoadItem } from './ScratchKnowledge.js';
+import { ScratchKnowledge } from './ScratchKnowledge.js';
 import { rankSkillsLexically } from '../skills/skillRecordUtils.js';
 import {
   findSnapshot,
@@ -60,6 +58,8 @@ import {
   resolveMaxSkills,
   selectSkills,
   skillIdsForTaskIds,
+  toLoadItems,
+  packLoadedKnowledge,
 } from './knowledgeLoad.js';
 
 export type { KnowledgeDiff, IdDelta } from './knowledgeDigest.js';
@@ -386,21 +386,7 @@ export class KnowledgeRepository {
       ? selectSkills(included, matched.map((m) => m.skill), maxSkills).map((skill) => ({ skill, score: 0, matched: [] }))
       : [];
     const failures = want.has('failures') ? await this.failures.lookupForTask(options.taskHint, { limit: LOOKUP_LIMIT }) : [];
-    const candidates: LoadItem[] = [
-      ...instructions.map((item): LoadItem => ({ kind: 'instruction', item })),
-      ...matches.map((match): LoadItem => ({ kind: 'skill', match })),
-      ...failures.map((failure): LoadItem => ({ kind: 'failure', failure })),
-    ];
-    const render = (items: readonly LoadItem[]): string => renderLoadedKnowledge(options.role, items);
-    const kept = fitInOrder(candidates, render, budget, multiplier);
-    const markdown = render(kept);
-    return {
-      markdown,
-      skillIds: kept.flatMap((x) => (x.kind === 'skill' ? [x.match.skill.id] : [])),
-      instructionSetIds: [...new Set(kept.flatMap((x) => (x.kind === 'instruction' ? [x.item.setId] : [])))],
-      failureIds: kept.flatMap((x) => (x.kind === 'failure' ? [x.failure.id] : [])),
-      tokens: estimateTokensFromText(markdown, multiplier),
-    };
+    return packLoadedKnowledge(options.role, toLoadItems(instructions, matches, failures), budget, multiplier);
   }
 
   // ==================== Internal ====================
