@@ -392,11 +392,10 @@ Suggested order: **M1 → M2 → M3**. No new store, no new status enum, no work
 ## Dependency Strategy
 
 ### Current dependencies (minimal)
-- `@danielsimonjr/workerpool` — worker pool management
-- `async-mutex` — concurrency control
-- `better-sqlite3` — SQLite backend
-- `chrono-node` — natural-language temporal parsing
+- `better-sqlite3` — SQLite backend (optional peer at runtime; scheduled for a `node:sqlite` major)
 - `zod` — runtime validation
+
+Worker pooling (`src/utils/threadPool.ts`), concurrency control (`src/utils/RunExclusiveMutex.ts`), natural-language temporal parsing (`src/search/enDate/`), CLI argument parsing (`src/cli/parseArgs.ts`), table rendering (`src/cli/plainTable.ts`), and color output (`src/cli/ansi.ts`) are in-repo.
 
 ### Adding new dependencies
 

@@ -46,7 +46,7 @@ The codebase is organized into the following modules:
 - **security**: 5 files
 - **root**: 1 file
 - **types**: 14 files
-- **utils**: 53 files
+- **utils**: 54 files
 - **workers**: 1 file
 
 ---
@@ -61,7 +61,7 @@ Seeded build/entry roots (package `exports`, `bin` targets, tsup entries, script
 - `src/sqlite.ts`
 - `src/workers/levenshteinWorker.ts`
 
-Reachable from a root: **414** of 414 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
+Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
 
 ---
 
@@ -5705,11 +5705,6 @@ Reachable from a root: **414** of 414 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/search/FuzzySearch.ts` - Fuzzy Search
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `@danielsimonjr/workerpool` | `Pool, workerpool` |
-
 **Node.js Built-in Dependencies:**
 | Module | Import |
 |--------|--------|
@@ -5732,6 +5727,7 @@ Reachable from a root: **414** of 414 files. Dormant: **0** (0 orphaned, 0 test-
 | `./BloomPreScreener.js` | `BloomPreScreener` | Import (type-only) |
 | `./inducedSubgraph.js` | `collectInducedRelations` | Import |
 | `../workers/levenshteinWorker.js` | `WorkerInput` | Import (type-only) |
+| `../utils/threadPool.js` | `cpus, pool, Pool` | Import |
 
 **Exports:**
 - Classes: `FuzzySearch`
@@ -6986,15 +6982,10 @@ Reachable from a root: **414** of 414 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/utils/WorkerPoolManager.ts` - Runtime statistics of a pool, with the execution totals that the manager records.
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `@danielsimonjr/workerpool` | `workerpool` |
-| `@danielsimonjr/workerpool` | `Pool` |
-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `./threadPool.js` | `cpus, pool, Pool` | Import |
 | `./logger.js` | `logger` | Import |
 
 **Exports:**
@@ -7490,6 +7481,23 @@ Reachable from a root: **414** of 414 files. Dormant: **0** (0 orphaned, 0 test-
 
 ---
 
+### `src/utils/threadPool.ts` - A thin worker pool on `node:worker_threads` (and `node:child_process`).
+
+**Node.js Built-in Dependencies:**
+| Module | Import |
+|--------|--------|
+| `worker_threads` | `Worker` |
+| `child_process` | `spawn, fork, ChildProcess` |
+| `os` | `cpus` |
+
+**Exports:**
+- Classes: `CancellationError`, `TimeoutError`, `TerminateError`, `PoolPromise`, `Pool`
+- Interfaces: `WorkerPoolOptions`, `PoolStats`, `ExecOptions`, `WorkerRegisterOptions`
+- Types: `WorkerType`
+- Functions: `cpus`, `worker`, `pool`
+
+---
+
 ### `src/utils/timing.ts` - Timing Helpers
 
 **Exports:**
@@ -7540,14 +7548,10 @@ Reachable from a root: **414** of 414 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/workers/levenshteinWorker.ts` - Levenshtein Worker
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `@danielsimonjr/workerpool` | `workerpool` |
-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../utils/threadPool.js` | `worker` | Import |
 | `../utils/constants.js` | `FUZZY_SEARCH_LIMITS` | Import |
 | `../utils/searchAlgorithms.js` | `levenshteinDistance` | Import |
 | `../utils/searchAlgorithms.js` | `levenshteinDistance` | Re-export |
@@ -7765,7 +7769,7 @@ graph TD
         N91[MemoryMonitor]
         N92[RunExclusiveMutex]
         N93[SchemaValidator]
-        N94[...43 more]
+        N94[...44 more]
     end
 
     subgraph Workers
@@ -7856,21 +7860,21 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 414 |
+| Total TypeScript Files | 415 |
 | Total Modules | 12 |
-| Total Lines of Code | 133310 |
-| Total Exports | 2897 |
+| Total Lines of Code | 134372 |
+| Total Exports | 2905 |
 | Total Re-exports | 1716 |
-| Total Classes | 302 |
-| Total Interfaces | 839 |
-| Total Functions | 682 |
+| Total Classes | 307 |
+| Total Interfaces | 843 |
+| Total Functions | 685 |
 | Total Type Guards | 49 |
 | Total Enums | 4 |
 | Type-only Imports | 874 |
 | Runtime Circular Deps | 0 |
 | Type-only Circular Deps | 15 |
 | Entry/Build Roots | 4 |
-| Reachable Files | 414 |
+| Reachable Files | 415 |
 | Dormant Files (orphaned / test-only) | 0 (0 / 0) |
 
 ---

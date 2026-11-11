@@ -71,7 +71,7 @@ bun install
 ```
 
 This installs:
-- **Production dependencies**: `better-sqlite3`, `zod`, `@danielsimonjr/workerpool` (English date parsing is in-repo at `src/search/enDate/` and CLI argument parsing is in-repo at `src/cli/parseArgs.ts`; `chrono-node` was removed in Sprint 5 and `commander` in Sprint 6)
+- **Production dependencies**: `better-sqlite3` (English date parsing is in-repo at `src/search/enDate/`, CLI argument parsing at `src/cli/parseArgs.ts`, schema validation at `src/utils/schema.ts`, and the worker pool at `src/utils/threadPool.ts`; `chrono-node` was removed in Sprint 5, `commander` in Sprint 6, `zod` in Sprint 7, and `@danielsimonjr/workerpool` in Sprint 8)
 - **Dev dependencies**: `vitest`, `typescript`, `tsx`, `@types/*`
 
 ### 3. Build Project

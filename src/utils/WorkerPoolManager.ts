@@ -1,7 +1,6 @@
 /** Unified worker pool management for parallelizable operations. */
 
-import workerpool from '@danielsimonjr/workerpool';
-import type { Pool } from '@danielsimonjr/workerpool';
+import { cpus as poolCpus, pool as createThreadPool, type Pool } from './threadPool.js';
 import { logger } from './logger.js';
 
 /** Shape returned by workerpool `Pool.stats()` (not exported from the package types). */
@@ -12,8 +11,8 @@ export interface WorkerPoolRuntimeStats {
   pendingTasks: number;
   activeTasks: number;
   // NOTE: this interface mirrors what `Pool.stats()` actually returns. Do not add fields the
-  // library does not provide -- `circuitState` and `estimatedQueueMemory` were declared here and
-  // removed 2026-08-30 because neither exists anywhere in @danielsimonjr/workerpool and nothing
+  // pool does not provide -- `circuitState` and `estimatedQueueMemory` were declared here and
+  // removed 2026-08-30 because neither existed in @danielsimonjr/workerpool and nothing
   // computes them, so the `...baseStats` spread in getPoolStats could never satisfy the type
   // (TS2739 on all six CI legs). If a circuit breaker is added later, compute the field in
   // getPoolStats and declare it on ExtendedPoolStats, not on this mirror.
@@ -57,7 +56,7 @@ interface PoolEntry {
 }
 
 const DEFAULT_CONFIG: Required<WorkerPoolConfig> = {
-  maxWorkers: Math.max(1, workerpool.cpus - 1),
+  maxWorkers: Math.max(1, poolCpus() - 1),
   workerType: 'thread',
   workerPath: '',
   minParallelSize: 200,
@@ -186,9 +185,9 @@ export class WorkerPoolManager {
     // Create pool with or without worker script
     let pool: Pool;
     if (mergedConfig.workerPath) {
-      pool = workerpool.pool(mergedConfig.workerPath, poolOptions);
+      pool = createThreadPool(mergedConfig.workerPath, poolOptions);
     } else {
-      pool = workerpool.pool(poolOptions);
+      pool = createThreadPool(poolOptions);
     }
 
     const entry: PoolEntry = {
@@ -334,7 +333,10 @@ export class WorkerPoolManager {
 
     for (const [poolId, entry] of this.pools) {
       try {
-        entry.pool.terminate(true);
+        // The kill is issued synchronously inside `terminate`; the promise it
+        // returns only reports when the handles closed, and nothing can await
+        // during an `exit` handler.
+        void entry.pool.terminate(true);
         this.emitEvent(poolId, 'shutdown');
       } catch {
         // Ignore errors during sync shutdown
@@ -391,7 +393,7 @@ export class WorkerPoolManager {
 
   /** Get the CPU count available for workers. */
   static getCpuCount(): number {
-    return workerpool.cpus;
+    return poolCpus();
   }
 }
 

@@ -5,7 +5,6 @@
     "": {
       "name": "@danielsimonjr/memoryjs",
       "dependencies": {
-        "@danielsimonjr/workerpool": "^10.2.0",
         "better-sqlite3": "^13.0.3",
       },
       "devDependencies": {
@@ -45,8 +44,6 @@
     "@babel/types": ["@babel/types@7.29.8", "", { "dependencies": { "@babel/helper-string-parser": "^7.29.7", "@babel/helper-validator-identifier": "^7.29.7" } }, "sha512-Vj1jF3cPfxg7OAfoI7QnVKLoILlm2JF9pnVHrX8qx7AHMiYWT+NDAA7jChlNgRS4WTLc/fD1lXLmPixluj+3Gg=="],
 
     "@bcoe/v8-coverage": ["@bcoe/v8-coverage@1.0.2", "", {}, "sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA=="],
-
-    "@danielsimonjr/workerpool": ["@danielsimonjr/workerpool@10.2.0", "", {}, "sha512-0nHhmgJCeij2fptxNvmYAgbs6GGX6qT8ndNBNXTQMYZyWxNLNkktoVN3y0t+MXJ9+uJZ49Y+HfSQuGV6zLpOtg=="],
 
     "@emnapi/core": ["@emnapi/core@1.11.1", "", { "dependencies": { "@emnapi/wasi-threads": "1.2.2", "tslib": "^2.4.0" } }, "sha512-RSvbQmHzdKzNsLYa/wHrbc3KN4sYLKAdPZxqiM2HATqv/SBk2/ENSHpvXGaLOMcsAyz0poEGqkmmKYG3OWiJEQ=="],
 

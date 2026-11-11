@@ -256,7 +256,6 @@ src/module/
 
 // 1. External imports (alphabetical)
 import { z } from 'zod';
-import type { Pool } from 'workerpool';
 
 // 2. Internal imports - types first
 import type { Entity, SearchOptions } from '../types/index.js';

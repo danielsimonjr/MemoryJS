@@ -2,7 +2,7 @@
  * Fuzzy Search
  *
  * Search with typo tolerance using Levenshtein distance similarity.
- * Uses workerpool for parallel processing on large datasets.
+ * Uses the in-repo worker pool for parallel processing on large datasets.
  *
  * @module search/FuzzySearch
  */
@@ -19,7 +19,7 @@ import { NGramIndex } from './NGramIndex.js';
 import type { BloomPreScreener } from './BloomPreScreener.js';
 import { collectInducedRelations } from './inducedSubgraph.js';
 import type { WorkerInput } from '../workers/levenshteinWorker.js';
-import workerpool, { type Pool } from '@danielsimonjr/workerpool';
+import { cpus as poolCpus, pool as createThreadPool, type Pool } from '../utils/threadPool.js';
 import { fileURLToPath } from 'url';
 import { dirname, join, normalize } from 'path';
 import { existsSync } from 'fs';
@@ -123,7 +123,7 @@ export class FuzzySearch {
   private fuzzyResultCache: Map<string, FuzzyCacheEntry> = new Map();
 
   /**
-   * Phase 8: Worker pool using workerpool library.
+   * Phase 8: Worker pool from `utils/threadPool.ts`.
    * Initialized lazily when needed.
    */
   private workerPool: Pool | null = null;
@@ -546,7 +546,7 @@ export class FuzzySearch {
   }
 
   /**
-   * Phase 8: Perform fuzzy search using workerpool for parallel processing.
+   * Phase 8: Perform fuzzy search using the worker pool for parallel processing.
    *
    * Splits entities into chunks and processes them in parallel using worker threads.
    * Returns completed worker results when a worker fails or times out. It does
@@ -567,7 +567,7 @@ export class FuzzySearch {
       const textCharacters = prepared.reduce((sum, entity) => sum + entity.nameLower.length +
         (entity.entityTypeLower?.length ?? 0) + entity.observations.reduce((n, obs) => n + obs.length, 0), 0);
       const numWorkers = Math.max(1, Math.min(
-        Math.max(1, workerpool.cpus - 1),
+        Math.max(1, poolCpus() - 1),
         Math.ceil(entities.length / WORKER_MIN_CHUNK_ENTITIES),
         Math.ceil(textCharacters / WORKER_TARGET_CHARACTERS),
       ));
@@ -575,7 +575,7 @@ export class FuzzySearch {
       // searches can queue chunks on this pool without oversubscribing the host.
       if (!this.workerPool) {
         const workerThreadOpts = { type: 'module' } as Record<string, unknown>;
-        this.workerPool = workerpool.pool(this.workerPath, {
+        this.workerPool = createThreadPool(this.workerPath, {
           maxWorkers: numWorkers,
           workerType: 'thread',
           workerThreadOpts,
@@ -587,7 +587,7 @@ export class FuzzySearch {
         workerInputs.push({ query, threshold, normalized: true, entities: prepared.slice(i, i + chunkSize) });
       }
 
-      // Execute all chunks in parallel using workerpool with timeout
+      // Execute all chunks in parallel through the pool, with a timeout.
       const WORKER_TIMEOUT_MS = 30000; // 30 seconds
       const settledResults = await Promise.allSettled(
         workerInputs.map(input =>

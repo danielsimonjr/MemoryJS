@@ -1,8 +1,8 @@
 metadata:
   name: "@danielsimonjr/memoryjs"
-  totalFiles: 414
+  totalFiles: 415
   totalModules: 12
-  totalExports: 2897
+  totalExports: 2905
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -14732,11 +14732,7 @@ modules:
         - DEFAULT_EVIDENCE_MAX_PATHS_PER_RESULT
     src/search/FuzzySearch.ts:
       description: Fuzzy Search
-      externalDependencies:
-        - package: "@danielsimonjr/workerpool"
-          imports:
-            - Pool
-            - workerpool
+      externalDependencies: []
       nodeDependencies:
         - module: url
           imports:
@@ -14797,6 +14793,11 @@ modules:
           imports:
             - WorkerInput
           typeOnly: true
+        - file: ../utils/threadPool.js
+          imports:
+            - cpus
+            - pool
+            - Pool
       exports:
         - DEFAULT_FUZZY_THRESHOLD
         - FuzzySearch
@@ -18702,15 +18703,14 @@ modules:
         - JsonSchema
     src/utils/WorkerPoolManager.ts:
       description: Runtime statistics of a pool, with the execution totals that the manager records.
-      externalDependencies:
-        - package: "@danielsimonjr/workerpool"
-          imports:
-            - workerpool
-        - package: "@danielsimonjr/workerpool"
-          imports:
-            - Pool
+      externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ./threadPool.js
+          imports:
+            - cpus
+            - pool
+            - Pool
         - file: ./logger.js
           imports:
             - logger
@@ -20779,6 +20779,46 @@ modules:
         - jaccard
       constants:
         - ENGLISH_STOPWORDS_SMALL
+    src/utils/threadPool.ts:
+      description: A thin worker pool on `node:worker_threads` (and `node:child_process`).
+      externalDependencies: []
+      nodeDependencies:
+        - module: worker_threads
+          imports:
+            - Worker
+        - module: child_process
+          imports:
+            - spawn
+            - fork
+            - ChildProcess
+        - module: os
+          imports:
+            - cpus
+      internalDependencies: []
+      exports:
+        - cpus
+        - worker
+        - pool
+        - CancellationError
+        - TimeoutError
+        - TerminateError
+        - PoolPromise
+        - Pool
+      classes:
+        - CancellationError
+        - TimeoutError
+        - TerminateError
+        - PoolPromise
+        - Pool
+      interfaces:
+        - WorkerPoolOptions
+        - PoolStats
+        - ExecOptions
+        - WorkerRegisterOptions
+      functions:
+        - cpus
+        - worker
+        - pool
     src/utils/timing.ts:
       description: Timing Helpers
       externalDependencies: []
@@ -20886,12 +20926,12 @@ modules:
   workers:
     src/workers/levenshteinWorker.ts:
       description: Levenshtein Worker
-      externalDependencies:
-        - package: "@danielsimonjr/workerpool"
-          imports:
-            - workerpool
+      externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../utils/threadPool.js
+          imports:
+            - worker
         - file: ../utils/constants.js
           imports:
             - FUZZY_SEARCH_LIMITS
@@ -21402,6 +21442,7 @@ dependencyGraph:
         - src/utils/sidecarPath.ts
         - src/utils/taskScheduler.ts
         - src/utils/textSimilarity.ts
+        - src/utils/threadPool.ts
         - src/utils/timing.ts
         - src/utils/tokenEstimate.ts
         - src/utils/unrefInterval.ts
@@ -21416,18 +21457,18 @@ reachability:
     - src/index.ts
     - src/sqlite.ts
     - src/workers/levenshteinWorker.ts
-  reachableCount: 414
+  reachableCount: 415
   dormantCount: 0
   orphaned: []
   testOnly: []
 statistics:
-  totalTypeScriptFiles: 414
+  totalTypeScriptFiles: 415
   totalModules: 12
-  totalLinesOfCode: 133310
-  totalExports: 2897
-  totalClasses: 302
-  totalInterfaces: 839
-  totalFunctions: 682
+  totalLinesOfCode: 134372
+  totalExports: 2905
+  totalClasses: 307
+  totalInterfaces: 843
+  totalFunctions: 685
   totalTypeGuards: 49
   totalEnums: 4
   totalConstants: 194
@@ -21436,9 +21477,9 @@ statistics:
   runtimeCircularDeps: 0
   typeOnlyCircularDeps: 15
   entryRoots: 4
-  reachableFiles: 414
+  reachableFiles: 415
   dormantFiles: 0
   orphanedFiles: 0
   testOnlyFiles: 0
   unusedFilesCount: 0
-  unusedExportsCount: 165
+  unusedExportsCount: 170
