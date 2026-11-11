@@ -7,11 +7,14 @@
  * guard refuses a tag that does not name that commit's package.json version
  * (including a workflow_dispatch whose input does not match package.json).
  *
- * Usage: node scripts/publish-version-guard.mjs <tag>
+ * Usage: node scripts/publish-version-guard.mjs <tag> [package.json]
  *   <tag> is `vX.Y.Z` or `refs/tags/vX.Y.Z`.
+ *   [package.json] defaults to ../package.json beside this script (the guard
+ *   checkout). workflow_dispatch passes the release tree's package.json path.
  * Exit 0 on a match, 1 otherwise.
  */
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 /** @param {string} tag @returns {string | null} */
@@ -20,6 +23,14 @@ export function versionFromTag(tag) {
   const name = tag.startsWith('refs/tags/') ? tag.slice('refs/tags/'.length) : tag;
   if (!name.startsWith('v') || name.length < 2) return null;
   return name.slice(1);
+}
+
+/**
+ * @param {string} packageJsonPath
+ * @returns {string}
+ */
+export function readPackageVersion(packageJsonPath) {
+  return JSON.parse(readFileSync(resolve(packageJsonPath), 'utf8')).version;
 }
 
 /**
@@ -49,9 +60,13 @@ export function assertTagMatchesPackageVersion(tag, packageVersion) {
 
 function main() {
   const tag = process.argv[2] ?? '';
-  const packageVersion = JSON.parse(
-    readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
-  ).version;
+  const packageJsonPath = process.argv[3]
+    ? resolve(process.argv[3])
+    : new URL('../package.json', import.meta.url);
+  const packageVersion =
+    typeof packageJsonPath === 'string'
+      ? readPackageVersion(packageJsonPath)
+      : JSON.parse(readFileSync(packageJsonPath, 'utf8')).version;
   const result = assertTagMatchesPackageVersion(tag, packageVersion);
   if (!result.ok) {
     console.error(result.message);

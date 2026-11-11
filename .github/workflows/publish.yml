@@ -28,9 +28,30 @@ jobs:
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: '1.4.2'
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Validate publish tag
+        id: publish_tag
+        shell: bash
+        env:
+          RAW_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: |
+          TAG="${RAW_TAG}"
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Release tag must match ^v[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?$ (e.g. v5.0.0); got ${TAG}"
+            exit 1
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+      - name: Checkout release commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+          ref: ${{ steps.publish_tag.outputs.tag }}
+      # workflow_dispatch checks out an existing tag that may predate this
+      # script (v5.0.0). The workflow ref (github.sha on master) holds the guard.
+      - name: Checkout publish tooling
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          path: .publish-ci
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22.16
@@ -42,19 +63,14 @@ jobs:
           key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
           restore-keys: bun-${{ runner.os }}-
       - run: bun install --frozen-lockfile
-      - name: Resolve publish tag name
-        id: publish_tag
-        shell: bash
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "name=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "name=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
-          fi
-      # Refuses when the tag (leading v removed) is not package.json's version.
-      # workflow_dispatch must pass the real release tag (e.g. v5.0.0 on master).
       - name: Refuse a tag whose version is not package.json's version
-        run: node scripts/publish-version-guard.mjs "${{ steps.publish_tag.outputs.name }}"
+        shell: bash
+        env:
+          PUBLISH_TAG: ${{ steps.publish_tag.outputs.tag }}
+          GUARD_SCRIPT: ${{ github.event_name == 'workflow_dispatch' && '.publish-ci/scripts/publish-version-guard.mjs' || 'scripts/publish-version-guard.mjs' }}
+          RELEASE_PACKAGE_JSON: package.json
+        run: |
+          node "$GUARD_SCRIPT" "$PUBLISH_TAG" "$RELEASE_PACKAGE_JSON"
       # The one build + test gate is prepublishOnly (clean, build, test:ci).
       # npm publish runs it automatically; do not duplicate the suite here.
       - name: Publish to npm

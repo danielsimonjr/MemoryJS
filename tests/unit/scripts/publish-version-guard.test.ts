@@ -7,18 +7,25 @@
  */
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
+import { mkdtemp, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it, expect } from 'vitest';
-import { versionFromTag, assertTagMatchesPackageVersion } from '../../../scripts/publish-version-guard.mjs';
+import {
+  versionFromTag,
+  assertTagMatchesPackageVersion,
+  readPackageVersion,
+} from '../../../scripts/publish-version-guard.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const script = resolve(root, 'scripts/publish-version-guard.mjs');
 const packageVersion = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8')).version as string;
 
-function run(tag: string): { status: number; stdout: string; stderr: string } {
+function run(tag: string, packageJson?: string): { status: number; stdout: string; stderr: string } {
+  const args = packageJson ? [script, tag, packageJson] : [script, tag];
   try {
-    const stdout = execFileSync(process.execPath, [script, tag], { encoding: 'utf8' });
+    const stdout = execFileSync(process.execPath, args, { encoding: 'utf8' });
     return { status: 0, stdout, stderr: '' };
   } catch (error) {
     const err = error as { status?: number; stdout?: string; stderr?: string };
@@ -55,6 +62,23 @@ describe('publish version guard', () => {
     const match = assertTagMatchesPackageVersion(`v${packageVersion}`, packageVersion);
     expect(match.ok).toBe(true);
     expect(match.message).toContain(packageVersion);
+  });
+
+  it('readPackageVersion reads an explicit package.json path', () => {
+    expect(readPackageVersion(resolve(root, 'package.json'))).toBe(packageVersion);
+  });
+
+  it('the CLI uses an explicit package.json path (release checkout vs guard checkout)', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'memoryjs-pub-guard-'));
+    const pkgPath = join(dir, 'package.json');
+    await writeFile(pkgPath, JSON.stringify({ version: '5.0.0' }));
+    const accepted = run('v5.0.0', pkgPath);
+    expect(accepted.status).toBe(0);
+    expect(accepted.stdout).toContain('5.0.0');
+    const refused = run('v4.6.0', pkgPath);
+    expect(refused.status).toBe(1);
+    expect(refused.stderr).toContain('4.6.0');
+    expect(refused.stderr).toContain('5.0.0');
   });
 
   it('the CLI exits 1 on a mismatch and 0 on the live package.json version', () => {
