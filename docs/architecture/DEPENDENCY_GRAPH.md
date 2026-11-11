@@ -40,13 +40,13 @@ The codebase is organized into the following modules:
 - **agent**: 178 files
 - **cli**: 34 files
 - **core**: 36 files
-- **features**: 20 files
+- **features**: 21 files
 - **entry**: 1 file
 - **search**: 63 files
 - **security**: 5 files
 - **root**: 1 file
 - **types**: 14 files
-- **utils**: 54 files
+- **utils**: 55 files
 - **workers**: 1 file
 
 ---
@@ -61,7 +61,7 @@ Seeded build/entry roots (package `exports`, `bin` targets, tsup entries, script
 - `src/sqlite.ts`
 - `src/workers/levenshteinWorker.ts`
 
-Reachable from a root: **418** of 418 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
+Reachable from a root: **420** of 420 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
 
 ---
 
@@ -3666,7 +3666,7 @@ Reachable from a root: **418** of 418 files. Dormant: **0** (0 orphaned, 0 test-
 | Module | Import |
 |--------|--------|
 | `fs` | `promises` |
-| `path` | `basename, dirname, isAbsolute, join, relative, resolve, sep` |
+| `path` | `basename, dirname, join, relative, resolve, sep` |
 
 **Internal Dependencies:**
 | File | Imports | Type |
@@ -3674,10 +3674,11 @@ Reachable from a root: **418** of 418 files. Dormant: **0** (0 orphaned, 0 test-
 | `../../utils/durableWriteFile.js` | `renameOver` | Import |
 | `../../utils/errors.js` | `ValidationError` | Import |
 | `../../utils/entityUtils.js` | `validateFilePath` | Import |
+| `../../utils/confinedPath.js` | `isSpecial, pathExists, strictlyInside` | Import |
 
 **Exports:**
 - Types: `TreeDirRefusal`, `ConfinedRead`
-- Functions: `resolveConfinedTreeDir`, `recoverPublishedTree`, `removeBestEffort`, `pathExists`, `readConfinedSkillFile`
+- Functions: `resolveConfinedTreeDir`, `recoverPublishedTree`, `removeBestEffort`, `readConfinedSkillFile`
 
 ---
 
@@ -5539,15 +5540,40 @@ Reachable from a root: **418** of 418 files. Dormant: **0** (0 orphaned, 0 test-
 
 ---
 
+### `src/features/amr/AmrReader.ts` - Read-only reader for an Agent Memory Repo (AMR): link checks, confined file reads, the context
+
+**Node.js Built-in Dependencies:**
+| Module | Import |
+|--------|--------|
+| `crypto` | `randomBytes` |
+| `fs` | `constants, promises` |
+| `path` | `join, relative, sep` |
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../utils/errors.js` | `ValidationError` | Import |
+| `../../utils/confinedPath.js` | `strictlyInside` | Import |
+| `./AmrCodec.js` | `parseAmrDocument` | Import |
+
+**Exports:**
+- Interfaces: `AmrReaderOptions`, `AmrContext`, `AmrIssue`, `AmrCheckReport`
+- Types: `AmrLinkReason`, `AmrLinkCheck`, `AmrReadResult`, `AmrIssueCode`
+- Functions: `checkAmrLink`, `readAmrFile`, `loadAmrContext`, `findCaseDuplicates`, `checkAmr`
+- Constants: `AMR_READER_DEFAULTS`
+
+---
+
 ### `src/features/amr/index.ts` - Barrel for the Agent Memory Repo codec.
 
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
 | `./AmrCodec.js` | `*` | Re-export |
+| `./AmrReader.js` | `AMR_READER_DEFAULTS, checkAmrLink, readAmrFile, loadAmrContext, findCaseDuplicates, checkAmr, AmrReaderOptions, AmrLinkCheck, AmrLinkReason, AmrReadResult, AmrContext, AmrIssue, AmrIssueCode, AmrCheckReport` | Re-export |
 
 **Exports:**
-- Re-exports: `* from ./AmrCodec.js`
+- Re-exports: `* from ./AmrCodec.js`, `AMR_READER_DEFAULTS`, `checkAmrLink`, `readAmrFile`, `loadAmrContext`, `findCaseDuplicates`, `checkAmr`, `AmrReaderOptions`, `AmrLinkCheck`, `AmrLinkReason`, `AmrReadResult`, `AmrContext`, `AmrIssue`, `AmrIssueCode`, `AmrCheckReport`
 
 ---
 
@@ -5572,12 +5598,12 @@ Reachable from a root: **418** of 418 files. Dormant: **0** (0 orphaned, 0 test-
 | `./ContradictionDetector.js` | `ContradictionDetector` | Re-export |
 | `./SemanticForget.js` | `SemanticForget` | Re-export |
 | `./ObservableDataModelAdapter.js` | `createObservableDataModelFromGraph, ReadOnlyMemoryGraphDataError, ObservableDataModelShape, ObservableDataModelAdapterOptions, GraphProjection, JSONValue` | Re-export |
-| `./amr/index.js` | `parseEntryText, formatEntryText, extractLinks, parseAmrDocument, renderAmrDocument, setEntry, AmrEol, AmrLineKind, AmrEntry, AmrLine, AmrDocument, ParsedEntryText` | Re-export |
+| `./amr/index.js` | `parseEntryText, formatEntryText, extractLinks, parseAmrDocument, renderAmrDocument, setEntry, AmrEol, AmrLineKind, AmrEntry, AmrLine, AmrDocument, ParsedEntryText, AMR_READER_DEFAULTS, checkAmrLink, readAmrFile, loadAmrContext, findCaseDuplicates, checkAmr, AmrReaderOptions, AmrLinkCheck, AmrLinkReason, AmrReadResult, AmrContext, AmrIssue, AmrIssueCode, AmrCheckReport` | Re-export |
 | `./ContradictionDetector.js` | `Contradiction` | Re-export (type-only) |
 | `./SemanticForget.js` | `SemanticForgetResult, SemanticForgetOptions` | Re-export (type-only) |
 
 **Exports:**
-- Re-exports: `TagManager`, `IOManager`, `ExportFormat`, `ImportFormat`, `MergeStrategy`, `BackupMetadata`, `BackupInfo`, `IngestInput`, `IngestOptions`, `IngestResult`, `IngestProduced`, `SplitOptions`, `SplitResult`, `VisualizeOptions`, `PiiRedactionOption`, `AnalyticsManager`, `CompressionManager`, `ArchiveManager`, `ArchiveCriteria`, `ArchiveOptions`, `ArchiveResult`, `StreamingExporter`, `StreamResult`, `StreamingExportOptions`, `AutoLinker`, `AutoLinkOptions`, `AutoLinkResult`, `FactExtractor`, `ExtractedFact`, `FactExtractionOptions`, `FactExtractionResult`, `ObservationNormalizer`, `NormalizationOptions`, `NormalizationResult`, `KeywordExtractor`, `ScoredKeyword`, `AuditLog`, `AuditEntry`, `AuditOperation`, `AuditFilter`, `AuditStats`, `GovernanceManager`, `GovernanceTransaction`, `GovernanceError`, `GovernanceManagerOptions`, `GovernancePolicy`, `GovernanceOperationOptions`, `FreshnessManager`, `FreshnessManagerConfig`, `FreshnessReport`, `ContradictionDetector`, `SemanticForget`, `createObservableDataModelFromGraph`, `ReadOnlyMemoryGraphDataError`, `ObservableDataModelShape`, `ObservableDataModelAdapterOptions`, `GraphProjection`, `JSONValue`, `parseEntryText`, `formatEntryText`, `extractLinks`, `parseAmrDocument`, `renderAmrDocument`, `setEntry`, `AmrEol`, `AmrLineKind`, `AmrEntry`, `AmrLine`, `AmrDocument`, `ParsedEntryText`, `Contradiction`, `SemanticForgetResult`, `SemanticForgetOptions`
+- Re-exports: `TagManager`, `IOManager`, `ExportFormat`, `ImportFormat`, `MergeStrategy`, `BackupMetadata`, `BackupInfo`, `IngestInput`, `IngestOptions`, `IngestResult`, `IngestProduced`, `SplitOptions`, `SplitResult`, `VisualizeOptions`, `PiiRedactionOption`, `AnalyticsManager`, `CompressionManager`, `ArchiveManager`, `ArchiveCriteria`, `ArchiveOptions`, `ArchiveResult`, `StreamingExporter`, `StreamResult`, `StreamingExportOptions`, `AutoLinker`, `AutoLinkOptions`, `AutoLinkResult`, `FactExtractor`, `ExtractedFact`, `FactExtractionOptions`, `FactExtractionResult`, `ObservationNormalizer`, `NormalizationOptions`, `NormalizationResult`, `KeywordExtractor`, `ScoredKeyword`, `AuditLog`, `AuditEntry`, `AuditOperation`, `AuditFilter`, `AuditStats`, `GovernanceManager`, `GovernanceTransaction`, `GovernanceError`, `GovernanceManagerOptions`, `GovernancePolicy`, `GovernanceOperationOptions`, `FreshnessManager`, `FreshnessManagerConfig`, `FreshnessReport`, `ContradictionDetector`, `SemanticForget`, `createObservableDataModelFromGraph`, `ReadOnlyMemoryGraphDataError`, `ObservableDataModelShape`, `ObservableDataModelAdapterOptions`, `GraphProjection`, `JSONValue`, `parseEntryText`, `formatEntryText`, `extractLinks`, `parseAmrDocument`, `renderAmrDocument`, `setEntry`, `AmrEol`, `AmrLineKind`, `AmrEntry`, `AmrLine`, `AmrDocument`, `ParsedEntryText`, `AMR_READER_DEFAULTS`, `checkAmrLink`, `readAmrFile`, `loadAmrContext`, `findCaseDuplicates`, `checkAmr`, `AmrReaderOptions`, `AmrLinkCheck`, `AmrLinkReason`, `AmrReadResult`, `AmrContext`, `AmrIssue`, `AmrIssueCode`, `AmrCheckReport`, `Contradiction`, `SemanticForgetResult`, `SemanticForgetOptions`
 
 ---
 
@@ -7139,6 +7165,19 @@ Reachable from a root: **418** of 418 files. Dormant: **0** (0 orphaned, 0 test-
 
 ---
 
+### `src/utils/confinedPath.ts` - Shared path confinement helpers: pseudo-filesystem detection, strict containment and existence checks.
+
+**Node.js Built-in Dependencies:**
+| Module | Import |
+|--------|--------|
+| `fs` | `promises` |
+| `path` | `isAbsolute, relative, sep` |
+
+**Exports:**
+- Functions: `isSpecial`, `strictlyInside`, `pathExists`
+
+---
+
 ### `src/utils/constants.ts` - Application Constants
 
 **Exports:**
@@ -7633,7 +7672,7 @@ Reachable from a root: **418** of 418 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/utils/index` | 37 files | 27 files |
 | `src/core/EntityManager` | 12 files | 49 files |
 | `src/search/index` | 51 files | 1 file |
-| `src/utils/errors` | 0 files | 43 files |
+| `src/utils/errors` | 0 files | 44 files |
 | `src/utils/logger` | 0 files | 39 files |
 | `src/agent/AgentMemoryManager` | 33 files | 3 files |
 | `src/types/learning` | 2 files | 34 files |
@@ -7765,7 +7804,7 @@ graph TD
         N51[FactExtractor]
         N52[FreshnessManager]
         N53[GovernanceManager]
-        N54[...10 more]
+        N54[...11 more]
     end
 
     subgraph Entry
@@ -7823,7 +7862,7 @@ graph TD
         N91[MemoryMonitor]
         N92[RunExclusiveMutex]
         N93[SchemaValidator]
-        N94[...44 more]
+        N94[...45 more]
     end
 
     subgraph Workers
@@ -7914,21 +7953,21 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 418 |
+| Total TypeScript Files | 420 |
 | Total Modules | 12 |
-| Total Lines of Code | 135919 |
-| Total Exports | 2940 |
-| Total Re-exports | 1731 |
+| Total Lines of Code | 136640 |
+| Total Exports | 2977 |
+| Total Re-exports | 1759 |
 | Total Classes | 308 |
-| Total Interfaces | 856 |
-| Total Functions | 702 |
-| Total Type Guards | 49 |
+| Total Interfaces | 860 |
+| Total Functions | 709 |
+| Total Type Guards | 50 |
 | Total Enums | 4 |
 | Type-only Imports | 882 |
 | Runtime Circular Deps | 0 |
 | Type-only Circular Deps | 16 |
 | Entry/Build Roots | 4 |
-| Reachable Files | 418 |
+| Reachable Files | 420 |
 | Dormant Files (orphaned / test-only) | 0 (0 / 0) |
 
 ---

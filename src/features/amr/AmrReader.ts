@@ -547,7 +547,7 @@ export function findCaseDuplicates(paths: string[]): string[][] {
 
 /**
  * Walk the memory root for `.md` files. The walk skips `ignore` names in any case.
- * It skips each symlink or junction and reports it.
+ * The walk skips each symlink or junction and reports each one.
  * @param root - Memory root (absolute).
  * @param o - Full reader options.
  * @returns Repo-relative paths with `/`, and the issues of the walk.
@@ -589,7 +589,7 @@ async function walkMarkdown(root: string, o: AmrReaderOptions): Promise<{ files:
 
 /**
  * Check a whole memory repo and report every problem with its file and line.
- * It reads each walked file once and resolves link targets without a read.
+ * `checkAmr` reads each walked file once. `checkAmr` resolves link targets without a read.
  * @param root - Memory root (absolute).
  * @param opts - Partial reader options.
  * @returns The walked file count and the sorted issues.

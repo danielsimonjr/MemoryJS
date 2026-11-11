@@ -1,8 +1,8 @@
 metadata:
   name: "@danielsimonjr/memoryjs"
-  totalFiles: 418
+  totalFiles: 420
   totalModules: 12
-  totalExports: 2940
+  totalExports: 2977
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -10265,7 +10265,6 @@ modules:
           imports:
             - basename
             - dirname
-            - isAbsolute
             - join
             - relative
             - resolve
@@ -10280,17 +10279,21 @@ modules:
         - file: ../../utils/entityUtils.js
           imports:
             - validateFilePath
+        - file: ../../utils/confinedPath.js
+          imports:
+            - isSpecial
+            - pathExists
+            - strictlyInside
       exports:
+        - pathExists
         - resolveConfinedTreeDir
         - recoverPublishedTree
         - removeBestEffort
-        - pathExists
         - readConfinedSkillFile
       functions:
         - resolveConfinedTreeDir
         - recoverPublishedTree
         - removeBestEffort
-        - pathExists
         - readConfinedSkillFile
     src/agent/versionedWriteFailure.ts:
       description: Versioned Write Failure
@@ -14290,6 +14293,52 @@ modules:
         - parseAmrDocument
         - renderAmrDocument
         - setEntry
+    src/features/amr/AmrReader.ts:
+      description: "Read-only reader for an Agent Memory Repo (AMR): link checks, confined file reads, the context"
+      externalDependencies: []
+      nodeDependencies:
+        - module: crypto
+          imports:
+            - randomBytes
+        - module: fs
+          imports:
+            - constants
+            - promises
+        - module: path
+          imports:
+            - join
+            - relative
+            - sep
+      internalDependencies:
+        - file: ../../utils/errors.js
+          imports:
+            - ValidationError
+        - file: ../../utils/confinedPath.js
+          imports:
+            - strictlyInside
+        - file: ./AmrCodec.js
+          imports:
+            - parseAmrDocument
+      exports:
+        - AMR_READER_DEFAULTS
+        - checkAmrLink
+        - readAmrFile
+        - loadAmrContext
+        - findCaseDuplicates
+        - checkAmr
+      interfaces:
+        - AmrReaderOptions
+        - AmrContext
+        - AmrIssue
+        - AmrCheckReport
+      functions:
+        - checkAmrLink
+        - readAmrFile
+        - loadAmrContext
+        - findCaseDuplicates
+        - checkAmr
+      constants:
+        - AMR_READER_DEFAULTS
     src/features/amr/index.ts:
       description: Barrel for the Agent Memory Repo codec.
       externalDependencies: []
@@ -14299,9 +14348,54 @@ modules:
           imports:
             - "*"
           reExport: true
-      exports: []
+        - file: ./AmrReader.js
+          imports:
+            - AMR_READER_DEFAULTS
+            - checkAmrLink
+            - readAmrFile
+            - loadAmrContext
+            - findCaseDuplicates
+            - checkAmr
+            - AmrReaderOptions
+            - AmrLinkCheck
+            - AmrLinkReason
+            - AmrReadResult
+            - AmrContext
+            - AmrIssue
+            - AmrIssueCode
+            - AmrCheckReport
+          reExport: true
+      exports:
+        - AMR_READER_DEFAULTS
+        - checkAmrLink
+        - readAmrFile
+        - loadAmrContext
+        - findCaseDuplicates
+        - checkAmr
+        - AmrReaderOptions
+        - AmrLinkCheck
+        - AmrLinkReason
+        - AmrReadResult
+        - AmrContext
+        - AmrIssue
+        - AmrIssueCode
+        - AmrCheckReport
       reExported:
         - "* from ./AmrCodec.js"
+        - AMR_READER_DEFAULTS
+        - checkAmrLink
+        - readAmrFile
+        - loadAmrContext
+        - findCaseDuplicates
+        - checkAmr
+        - AmrReaderOptions
+        - AmrLinkCheck
+        - AmrLinkReason
+        - AmrReadResult
+        - AmrContext
+        - AmrIssue
+        - AmrIssueCode
+        - AmrCheckReport
     src/features/index.ts:
       description: Features Module Barrel Export
       externalDependencies: []
@@ -14427,6 +14521,20 @@ modules:
             - AmrLine
             - AmrDocument
             - ParsedEntryText
+            - AMR_READER_DEFAULTS
+            - checkAmrLink
+            - readAmrFile
+            - loadAmrContext
+            - findCaseDuplicates
+            - checkAmr
+            - AmrReaderOptions
+            - AmrLinkCheck
+            - AmrLinkReason
+            - AmrReadResult
+            - AmrContext
+            - AmrIssue
+            - AmrIssueCode
+            - AmrCheckReport
           reExport: true
         - file: ./ContradictionDetector.js
           imports:
@@ -14510,6 +14618,20 @@ modules:
         - AmrLine
         - AmrDocument
         - ParsedEntryText
+        - AMR_READER_DEFAULTS
+        - checkAmrLink
+        - readAmrFile
+        - loadAmrContext
+        - findCaseDuplicates
+        - checkAmr
+        - AmrReaderOptions
+        - AmrLinkCheck
+        - AmrLinkReason
+        - AmrReadResult
+        - AmrContext
+        - AmrIssue
+        - AmrIssueCode
+        - AmrCheckReport
         - Contradiction
         - SemanticForgetResult
         - SemanticForgetOptions
@@ -14584,6 +14706,20 @@ modules:
         - AmrLine
         - AmrDocument
         - ParsedEntryText
+        - AMR_READER_DEFAULTS
+        - checkAmrLink
+        - readAmrFile
+        - loadAmrContext
+        - findCaseDuplicates
+        - checkAmr
+        - AmrReaderOptions
+        - AmrLinkCheck
+        - AmrLinkReason
+        - AmrReadResult
+        - AmrContext
+        - AmrIssue
+        - AmrIssueCode
+        - AmrCheckReport
         - Contradiction
         - SemanticForgetResult
         - SemanticForgetOptions
@@ -19063,6 +19199,27 @@ modules:
         - decompressFromBase64
       constants:
         - DEFAULT_MAX_DECOMPRESSED_BYTES
+    src/utils/confinedPath.ts:
+      description: "Shared path confinement helpers: pseudo-filesystem detection, strict containment and existence checks."
+      externalDependencies: []
+      nodeDependencies:
+        - module: fs
+          imports:
+            - promises
+        - module: path
+          imports:
+            - isAbsolute
+            - relative
+            - sep
+      internalDependencies: []
+      exports:
+        - isSpecial
+        - strictlyInside
+        - pathExists
+      functions:
+        - isSpecial
+        - strictlyInside
+        - pathExists
     src/utils/constants.ts:
       description: Application Constants
       externalDependencies: []
@@ -21491,6 +21648,7 @@ dependencyGraph:
         - src/features/StreamingExporter.ts
         - src/features/TagManager.ts
         - src/features/amr/AmrCodec.ts
+        - src/features/amr/AmrReader.ts
         - src/features/amr/index.ts
         - src/features/index.ts
     - name: Entry
@@ -21606,6 +21764,7 @@ dependencyGraph:
         - src/utils/compression/CompressedMap.ts
         - src/utils/compression/ICompressionAdapter.ts
         - src/utils/compressionUtil.ts
+        - src/utils/confinedPath.ts
         - src/utils/constants.ts
         - src/utils/durableWriteFile.ts
         - src/utils/entityUtils.ts
@@ -21652,27 +21811,27 @@ reachability:
     - src/index.ts
     - src/sqlite.ts
     - src/workers/levenshteinWorker.ts
-  reachableCount: 418
+  reachableCount: 420
   dormantCount: 0
   orphaned: []
   testOnly: []
 statistics:
-  totalTypeScriptFiles: 418
+  totalTypeScriptFiles: 420
   totalModules: 12
-  totalLinesOfCode: 135919
-  totalExports: 2940
+  totalLinesOfCode: 136640
+  totalExports: 2977
   totalClasses: 308
-  totalInterfaces: 856
-  totalFunctions: 702
-  totalTypeGuards: 49
+  totalInterfaces: 860
+  totalFunctions: 709
+  totalTypeGuards: 50
   totalEnums: 4
-  totalConstants: 197
-  totalReExports: 1731
+  totalConstants: 198
+  totalReExports: 1759
   totalTypeOnlyImports: 882
   runtimeCircularDeps: 0
   typeOnlyCircularDeps: 16
   entryRoots: 4
-  reachableFiles: 418
+  reachableFiles: 420
   dormantFiles: 0
   orphanedFiles: 0
   testOnlyFiles: 0

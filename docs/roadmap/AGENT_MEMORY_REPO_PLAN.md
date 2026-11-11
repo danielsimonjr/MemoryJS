@@ -93,14 +93,14 @@ Every new module is in `src/features/amr/` and carries `@experimental`. Tests ar
 - Extract the shared confinement code of `skillTreeFs.ts` without a change in its behavior. The `SkillPublisher` tests run unchanged as the regression gate.
 - Build the confined reader on it. Exclude `.git` and its case and alias variants. Detect case-fold duplicates and reserved Windows names.
   - The reader checks the real path of each file. A real-path segment below the root that is `.git` or an `ignore` name is refused, so a junction or a committed symlink to `.git` cannot expose it.
-  - The reader opens a handle, then checks the handle again: regular file, size, real path and file identity.
+  - The reader opens a handle. The reader then checks the handle again for regular file, size, real path and file identity.
   - No fs error escapes. An error becomes a reason, a warning or an issue with a short code, never an absolute path.
 - Write `loadAmrContext(root, opts)`:
   - It reads `MEMORY.md` first, then the bullets above `## Index`, then the links, with byte, file and depth limits from config.
   - It returns a labelled data block.
   - It fails loudly when `MEMORY.md` is missing.
-- Write `checkAmr(root)`. It is read-only. It reports dangling links, unsafe link targets, bad dates, malformed metadata, case duplicates, traversal, unparseable files and the size of `MEMORY.md`.
-  - It resolves link targets without a read, and it reads each walked file once.
+- Write `checkAmr(root)`. `checkAmr` is read-only. It reports dangling links, unsafe link targets, bad dates, malformed metadata, case duplicates, traversal, unparseable files and the size of `MEMORY.md`.
+  - `checkAmr` resolves link targets without a read. `checkAmr` reads each walked file once.
 - Budgets bound the I/O: the loader reads no more files when a budget is full. A `MEMORY.md` above the byte budget is cut and marked `[truncated]`. Each file header holds the nonce of the data block.
 - Tests:
   - Traversal links: `../x`, `/etc/passwd`, `C:\x`, `a\b`, `a//b`, NUL and `CON`.

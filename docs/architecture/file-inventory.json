@@ -1,11 +1,11 @@
 {
-  "totalFiles": 1062,
+  "totalFiles": 1065,
   "byDisposition": {
-    "reachable": 414,
+    "reachable": 416,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 612,
+    "test": 613,
     "tool": 10,
     "config": 2,
     "bench": 5,
@@ -14,8 +14,8 @@
   "byArea": {
     "benchmarks": 5,
     "examples": 15,
-    "src": 418,
-    "tests": 612,
+    "src": 420,
+    "tests": 613,
     "tools": 10,
     "config": 2
   },
@@ -1390,7 +1390,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 165
+      "loc": 132
     },
     {
       "file": "src/agent/SQLiteBackend.ts",
@@ -1981,11 +1981,18 @@
       "loc": 523
     },
     {
+      "file": "src/features/amr/AmrReader.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 673
+    },
+    {
       "file": "src/features/amr/index.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 7
+      "loc": 23
     },
     {
       "file": "src/features/AnalyticsManager.ts",
@@ -2062,7 +2069,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 122
+      "loc": 136
     },
     {
       "file": "src/features/IOManager.ts",
@@ -2756,6 +2763,13 @@
       "area": "src",
       "disposition": "reachable",
       "loc": 422
+    },
+    {
+      "file": "src/utils/confinedPath.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 51
     },
     {
       "file": "src/utils/constants.ts",
@@ -5822,6 +5836,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 560
+    },
+    {
+      "file": "tests/unit/features/amr/AmrReader.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 679
     },
     {
       "file": "tests/unit/features/amr/observationMetaMeta.test.ts",
