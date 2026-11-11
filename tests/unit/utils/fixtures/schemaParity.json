@@ -4112,6 +4112,18 @@
                 },
                 "sourceRef": {
                   "type": "string"
+                },
+                "meta": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
                 }
               },
               "required": [
@@ -4273,6 +4285,18 @@
                 },
                 "sourceRef": {
                   "type": "string"
+                },
+                "meta": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
                 }
               },
               "required": [
@@ -4630,6 +4654,18 @@
                   },
                   "sourceRef": {
                     "type": "string"
+                  },
+                  "meta": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
                   }
                 },
                 "required": [

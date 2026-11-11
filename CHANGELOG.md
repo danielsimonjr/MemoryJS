@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Agent Memory Repo codec, phase 1** (`src/features/amr/AmrCodec.ts`, `@experimental`): pure parse and render of AMR Markdown. A line model keeps every physical line and its own EOL, so an unedited file renders byte for byte (BOM, CRLF, mixed EOL). It reads bullets, continuations, nested bullets, task prefixes, fences and front matter. Trailing `[key: value; key: value]` groups are read into `Record<string, string[]>`, and repeats keep their order. A narrow escape keeps `decode(encode(x)) == x`. `extractLinks` reads `[[path]]` links. `setEntry` edits one bullet and changes only its line. Parsing is linear in line length.
+- **`observationMeta[].meta`** (`src/types/types.ts`, both zod objects in `src/utils/schemas.ts`): an optional open provenance map, for example AMR `source`. JSONL and SQLite keep it through `createEntities`, `updateEntity` and a reload.
+
 - **npm publish workflow** (`.github/workflows/publish.yml`): on `v*` tag push or `workflow_dispatch` with a required `tag` input (for releases whose tag predates the workflow, e.g. v5.0.0). Checks out the tagged commit, runs `scripts/publish-version-guard.mjs` so the tag minus `v` equals `package.json` version, then `npm publish --provenance --access public` after `prepublishOnly` (clean, build, `test:ci`). Uses repository secret `NPM` and fails clearly when it is missing. Bun 1.4.2 install with frozen `bun.lock`; Node 22.16 for publish (engines floor).
 
 ## [5.0.0] - 2026-11-11

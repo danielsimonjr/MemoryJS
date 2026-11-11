@@ -140,6 +140,7 @@ export const CreateEntitySchema = z.object({
     recordedAt: z.string().optional(),
     // R4b: ingest source-chunk provenance (`<ingestId>-chunk-<n>`)
     sourceRef: z.string().optional(),
+    meta: z.record(z.string(), z.array(z.string())).optional(),
   })).optional(),
   lifecycleStatus: z.enum(['draft', 'published', 'archived']).optional(),
   heuristicRecord: z.unknown().optional(),
@@ -224,6 +225,7 @@ export const UpdateEntitySchema = z.object({
     recordedAt: z.string().optional(),
     // R4b: ingest source-chunk provenance (`<ingestId>-chunk-<n>`)
     sourceRef: z.string().optional(),
+    meta: z.record(z.string(), z.array(z.string())).optional(),
   })).optional(),
   lifecycleStatus: z.enum(['draft', 'published', 'archived']).optional(),
   // AgentEntity extension (src/types/agent-memory.ts)

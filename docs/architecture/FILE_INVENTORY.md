@@ -9,22 +9,22 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 1058
+**Total files**: 1062
 
 ## Disposition counts
 
 | Disposition | Count | Meaning |
 | --- | --: | --- |
-| `reachable` | 412 | A `src/` file in the module graph, reachable from a root. |
+| `reachable` | 414 | A `src/` file in the module graph, reachable from a root. |
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 610 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 612 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 5 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 15 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **1058** | |
+| **Total** | **1062** | |
 
 ## Per-area counts
 
@@ -33,8 +33,8 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `benchmarks` | 5 |
 | `config` | 2 |
 | `examples` | 15 |
-| `src` | 416 |
-| `tests` | 610 |
+| `src` | 418 |
+| `tests` | 612 |
 | `tools` | 10 |
 
 ## All files
@@ -320,6 +320,8 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/core/StorageFactory.ts` | src | reachable | 158 |
 | `src/core/TransactionManager.ts` | src | reachable | 763 |
 | `src/core/TransitionLedger.ts` | src | reachable | 428 |
+| `src/features/amr/AmrCodec.ts` | src | reachable | 523 |
+| `src/features/amr/index.ts` | src | reachable | 7 |
 | `src/features/AnalyticsManager.ts` | src | reachable | 247 |
 | `src/features/ArchiveManager.ts` | src | reachable | 421 |
 | `src/features/AuditLog.ts` | src | reachable | 554 |
@@ -330,7 +332,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/features/FactExtractor.ts` | src | reachable | 353 |
 | `src/features/FreshnessManager.ts` | src | reachable | 307 |
 | `src/features/GovernanceManager.ts` | src | reachable | 717 |
-| `src/features/index.ts` | src | reachable | 106 |
+| `src/features/index.ts` | src | reachable | 122 |
 | `src/features/IOManager.ts` | src | reachable | 2168 |
 | `src/features/KeywordExtractor.ts` | src | reachable | 150 |
 | `src/features/ObservableDataModelAdapter.ts` | src | reachable | 360 |
@@ -421,7 +423,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/types/search.ts` | src | reachable | 345 |
 | `src/types/skills.ts` | src | reachable | 287 |
 | `src/types/task-scheduler.ts` | src | reachable | 34 |
-| `src/types/types.ts` | src | reachable | 2586 |
+| `src/types/types.ts` | src | reachable | 2588 |
 | `src/utils/AsyncMutex.ts` | src | reachable | 174 |
 | `src/utils/BatchProcessor.ts` | src | reachable | 526 |
 | `src/utils/boundedTopK.ts` | src | reachable | 57 |
@@ -461,7 +463,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/utils/relationValidation.ts` | src | reachable | 257 |
 | `src/utils/RunExclusiveMutex.ts` | src | reachable | 44 |
 | `src/utils/schema.ts` | src | reachable | 1658 |
-| `src/utils/schemas.ts` | src | reachable | 812 |
+| `src/utils/schemas.ts` | src | reachable | 814 |
 | `src/utils/SchemaValidator.ts` | src | reachable | 373 |
 | `src/utils/searchAlgorithms.ts` | src | reachable | 252 |
 | `src/utils/searchCache.ts` | src | reachable | 523 |
@@ -867,6 +869,8 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/write-path-delta.test.ts` | tests | test | 745 |
 | `tests/unit/exports-barrels.recursa.test.ts` | tests | test | 233 |
 | `tests/unit/exports-barrels.test.ts` | tests | test | 198 |
+| `tests/unit/features/amr/AmrCodec.test.ts` | tests | test | 560 |
+| `tests/unit/features/amr/observationMetaMeta.test.ts` | tests | test | 80 |
 | `tests/unit/features/AnalyticsManager.test.ts` | tests | test | 400 |
 | `tests/unit/features/ArchiveManager.test.ts` | tests | test | 774 |
 | `tests/unit/features/AuditLog.test.ts` | tests | test | 477 |

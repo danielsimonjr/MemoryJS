@@ -103,3 +103,19 @@ export {
   type GraphProjection,
   type JSONValue,
 } from './ObservableDataModelAdapter.js';
+
+// Agent Memory Repo codec (experimental)
+export {
+  parseEntryText,
+  formatEntryText,
+  extractLinks,
+  parseAmrDocument,
+  renderAmrDocument,
+  setEntry,
+  type AmrEol,
+  type AmrLineKind,
+  type AmrEntry,
+  type AmrLine,
+  type AmrDocument,
+  type ParsedEntryText,
+} from './amr/index.js';

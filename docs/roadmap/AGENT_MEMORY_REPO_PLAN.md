@@ -57,10 +57,20 @@ AMR keeps agent memory in a separate git repo of plain files. Its rules:
   - `added` maps to `recordedAt`. The exporter writes the UTC date. The importer keeps the existing timestamp when its date is the same.
   - `source` and every other key go to a new optional field, `observationMeta[].meta?: Record<string, string[]>`. The values are arrays because the spec example repeats `source`.
   - Do not reuse `sourceRef`.
-- **Metadata parse.** Read all consecutive trailing groups from right to left. Split pairs only at `;` followed by space and a `key:` shape. Split the key from the value at the first `:`. Text that does not parse stays as text, and the report gets a warning.
-- **Escape.** The encoder writes `\[` for a `[` in the text that opens a metadata-shaped group. The decoder reads `\[` as text. `[[` is not changed.
+- **Metadata parse.**
+  - Read all consecutive trailing groups from right to left. Only an unescaped `[` opens a group, and `[[` never opens one.
+  - Split the group body at every `;` that one or more spaces follow. A URL such as `a;jsessionid=9` has no space, so it stays whole.
+  - Every segment must match `key: value`, with whitespace after the colon. So `[https://example.com]` and `[Q3:done]` stay text. Split the key from the value at the first `:`.
+  - One rule set applies to the reader and the writer. A key matches `^[A-Za-z][\w-]*$` and is not an `Object.prototype` name. A value is not empty, has no edge whitespace, and holds no `[`, `]`, `;` and whitespace, or line separator (`\r`, `\n`, `\v`, `\f`, `\x1c`-`\x1e`, `\x85`, U+2028, U+2029). So every metadata that the reader accepts can be written back.
+  - When one segment fails, the whole group stays text. The report gets a warning when a segment starts with `key:` and whitespace.
+- **Escape.**
+  - The encoder escapes only a `[` that can change the reading: the last `[` of a text that ends in `]` (unless a `[` comes directly before it), and the `[` of a leading `[ ] ` or `[x] `. `[[...]]` links are not changed.
+  - A backslash is special only in a run directly before `[`. The encoder doubles such a run. The decoder halves it: an odd run ends in a literal `[`. Every other backslash stays, so `C:\Users\x` and `\\server\data` do not change.
+  - The encoder rejects entry text with a line separator or edge whitespace.
+- **Front matter.** The codec exposes the raw front matter string. Unclosed front matter makes the file not parseable.
 - **Relations.** Typed relations go under a `## Relations` section. An inline `[[path]]` gives a `links_to` relation with `properties.method = imported` and `properties.source = amr:<file>`. Reconcile changes only the edges that have this source. The export skips a relation that a bullet already holds inline.
-- **Lossy items.** Sub-day times, entity ids, newlines in observations (collapsed to one space and reported) and nested bullet structure on graph-origin export.
+- **Lossy items.** Sub-day times, entity ids, line separators in observations (collapsed to one space and reported), edge whitespace of observations (trimmed and reported) and nested bullet structure on graph-origin export.
+- **Key order.** The encoder writes metadata keys in insertion order. PostgreSQL JSONB does not keep key order, so Phase 4 compares metadata without key order and does not rewrite an unchanged entry.
 
 ## 5. Phases
 
@@ -69,16 +79,19 @@ Every new module is in `src/features/amr/` and carries `@experimental`. Tests ar
 ### Phase 1: type field and codec (pure, no I/O)
 
 - Add `meta` to `observationMeta` in `types.ts` and in the two zod objects (`src/utils/schemas.ts`).
-- Write `AmrCodec`: a line model per file (heading, bullet, continuation, fence, front matter, link, blank, prose), the metadata parser, the escape, per-file EOL and BOM.
+- Write `AmrCodec`: a line model per file (heading, bullet, continuation, fence, front matter, blank, prose), the metadata parser, the escape, per-file EOL and BOM. Front matter stays a raw string.
 - Tests:
   - Write `meta` through `createEntities` and `updateEntity`, then reload it from disk on JSONL and on SQLite.
   - Fixtures: the README bullet with three `source` groups, a URL with `;jsessionid=`, `[TODO]`, `[x]`, `[ ]`, CRLF, a BOM, a fenced block that contains `- foo`, `*`, `+` and `1.` markers, and `[[a|alias]]`, `[[a#h]]` and `[[ a ]]` links.
-  - Property test: `decode(encode(obs, meta))` returns `(obs, meta)` for random strings over `[ ] : ; \ space a`.
+  - Property test: `decode(encode(obs, meta))` returns `(obs, meta)` for random strings over `[ ] [[ ]] : ; \ | # backtick tab space a` with no edge whitespace.
+  - Reverse property test: for a random raw line with metadata, `encode(decode(line))` does not throw and reads back the same result. Text with edge whitespace or a line separator is excluded.
+  - Time budget tests: a line with a 100 000-space run, and 14 285 metadata groups, parse in linear time.
   - An edited bullet changes exactly one line.
 
-### Phase 2: confined tree I/O, context loader and `amr check`
+### Phase 2: confined reader, context loader and `amr check` (read-only)
 
-- Generalise `skillTreeFs.ts` into the confined reader and writer. Exclude `.git` and its case and alias variants. Put temp files under `.git/`. Write `.md` files only. Detect case-fold duplicates and reserved Windows names.
+- Extract the shared confinement code of `skillTreeFs.ts` without a change in its behavior. The `SkillPublisher` tests run unchanged as the regression gate.
+- Build the confined reader on it. Exclude `.git` and its case and alias variants. Detect case-fold duplicates and reserved Windows names.
 - Write `loadAmrContext(root, opts)`:
   - It reads `MEMORY.md` first, then the bullets above `## Index`, then the links, with byte, file and depth limits from config.
   - It returns a labelled data block.
@@ -89,8 +102,27 @@ Every new module is in `src/features/amr/` and carries `@experimental`. Tests ar
   - A directory junction that points out of the root.
   - A bullet that holds the closing label text cannot end the data block.
 
-### Phase 3: one-way export and import (dry-run by default)
+### Phase 3: git helper, secret scanner and confined writer
 
+The write guards come before the first write, so the scanner runs on every write from the start.
+
+- Write an injected `GitRunner`:
+  - It uses an allow-listed argv and refuses `add -A`, `-f`, `--force`, `reset`, `clean` and `push`.
+  - It drops every `GIT_*` variable from the child environment and adds `--literal-pathspecs` to every call.
+  - It requires a timeout and a cwd. The binary, the timeouts and the commit prefix come from config.
+- Clean check: read the exit code of `status --porcelain` and compare the realpath of `rev-parse --show-toplevel` with the root (case-insensitive on Windows).
+- After `add`, the staged set must equal the intended set. "Nothing to commit" is a no-op.
+- Secret scanner: block and report. It ships a default pattern file that an environment variable can override. Tests build their secret fixtures at runtime, so no key-shaped literal is committed.
+- Confined writer: `.md` files only. Temp files go in the directory that `git rev-parse --absolute-git-dir` names, because `.git` is a file in a linked worktree or a submodule. Every write passes the secret scanner.
+- Tests:
+  - Set `GIT_DIR` to a decoy repo and assert that the decoy is unchanged.
+  - Isolate the git config with `GIT_CONFIG_GLOBAL` and `GIT_CONFIG_NOSYSTEM`, and assert that a missing identity fails.
+  - A runner with a hanging child times out.
+  - A write of a secret-shaped line is blocked, and no file changes.
+
+### Phase 4: one-way export and import (dry-run by default)
+
+- Write the front matter parser: it reads scalars and flow lists from the raw front matter string of the codec. It adds no YAML dependency.
 - Write `exportAmr(graph, root, opts)`:
   - Filter with a type allow-list from config, skip `isLatest: false`, skip archived and private entities, and skip observations that are not valid now. Report each count.
   - Create new files. Edit existing files in place through the line model, and change only the bullets that changed.
@@ -107,20 +139,6 @@ Every new module is in `src/features/amr/` and carries `@experimental`. Tests ar
   - An AutoLinker edge survives when its `[[link]]` is removed.
   - An ingested observation with a newline exports as one line and is kept on re-import.
 
-### Phase 4: git helper and secret scanner
-
-- Write an injected `GitRunner`:
-  - It uses an allow-listed argv and refuses `add -A`, `-f`, `--force`, `reset`, `clean` and `push`.
-  - It drops every `GIT_*` variable from the child environment and adds `--literal-pathspecs` to every call.
-  - It requires a timeout and a cwd. The binary, the timeouts and the commit prefix come from config.
-- Clean check: read the exit code of `status --porcelain` and compare the realpath of `rev-parse --show-toplevel` with the root (case-insensitive on Windows).
-- After `add`, the staged set must equal the intended set. "Nothing to commit" is a no-op.
-- Secret scanner: block and report. It ships a default pattern file that an environment variable can override. Tests build their secret fixtures at runtime, so no key-shaped literal is committed.
-- Tests:
-  - Set `GIT_DIR` to a decoy repo and assert that the decoy is unchanged.
-  - Isolate the git config with `GIT_CONFIG_GLOBAL` and `GIT_CONFIG_NOSYSTEM`, and assert that a missing identity fails.
-  - A runner with a hanging child times out.
-
 ### Phase 5: CLI, tool adapter and docs
 
 - Add the CLI group `memory amr context|check|export|import|commit` and register it in `src/cli/commands/index.ts`.
@@ -131,7 +149,7 @@ Every new module is in `src/features/amr/` and carries `@experimental`. Tests ar
 ## 6. Deferred
 
 - Three-way sync. Build it only after phases 3 and 4 are in real use. When it is built:
-  - Key the state by the repo realpath and the graph identity, and keep it under the repo's `.git/`.
+  - Key the state by the repo realpath and the graph identity, and keep it in the git directory of the repo.
   - Treat a missing base as "adopt the repo".
   - Gate deletes and renames with a flag and a dry-run report.
 - More than one repo in one graph, beyond `namespace`.
