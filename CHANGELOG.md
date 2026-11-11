@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Internal helpers now back the 21 `repo-tools clones` near-pair refactors from `docs/superpowers/plans/2026-11-10-clones-dedup-plan.md` (shared cores for `raceAbort`, chrono `imply`/`assign` similar-field writers, knowledge load packing, salience scoring, schedulers, graph traversal setup, I/O export loops, Bloom hash bits, and related paths). Behaviour is unchanged except where noted under Fixed; no new public exports.
+- Internal helpers now back the 21 `repo-tools clones` near-pair refactors from `docs/superpowers/plans/2026-11-10-clones-dedup-plan.md` (shared cores for `raceAbort`, chrono `imply`/`assign` similar-field writers, knowledge load packing, salience scoring, schedulers, graph traversal setup, I/O export loops, Bloom hash bits, relative date-merge refiners, and related paths). Behaviour is unchanged except where noted under Fixed; no new public exports.
 
 ### Fixed
 

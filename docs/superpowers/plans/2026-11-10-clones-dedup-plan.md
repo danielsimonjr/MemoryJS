@@ -730,6 +730,7 @@ Every REFACTOR row landed with behavior-pinning tests first (each new test file 
 | 16 | N22 | `inducedSubgraph` | `tests/unit/search/inducedSubgraph.test.ts` |
 | 18 | E2/N2 | `copySimilarDateFields`, `copySimilarTimeFields` | `tests/unit/search/enDate.similarFields.test.ts` |
 | 19 | N12 | `checkAndReturnTimePattern(result, kind)` | `tests/unit/search/enDate.timePatterns.test.ts` |
+| — | (post-gate) | `mergeRelativeAdjacent(kind)` for after-date / follow-by-date refiners | `tests/unit/search/enDate.relativeMerge.test.ts` |
 | 20 | N26 | `omitNamedEndpoints` | `tests/unit/core/storageCache.test.ts` |
 | 21 | N27 | `privateRecordEntity` | `tests/unit/agent/privateRecordEntity.test.ts` |
 
@@ -742,8 +743,8 @@ N4, N11 and N17 needed a second, larger extract: the first pass moved only the t
 | Metric | Before | After |
 |---|---|---|
 | files | 415 | 416 (one new `@internal` module, `src/agent/knowledge/privateRecordEntity.ts`) |
-| units | 1849 | 1841 |
+| units | 1849 | 1840 |
 | **exact groups** | **2** | **0** |
-| **near pairs** | **27** | **6** |
+| **near pairs** | **27** | **5** (KEEP N18, N20, N23, N24, N25). N6 (`ExtractTimezoneAbbrRefiner.refine` / `MergeWeekdayComponentRefiner.refine`) is still present in source and still KEEP, but is no longer a detector pair. The 0.73 `refine`/`refine` hit that remained after the first extract was **not** N6: it was `MergeRelativeAfterDateRefiner.refine` / `MergeRelativeFollowByDateRefiner.refine`, which share `mergeAdjacent` + `createRelativeFromReference`. That pair is now `mergeRelativeAdjacent(kind)` and has dropped. |
 
-The six remaining near pairs are exactly the KEEP set: N6 (`ExtractTimezoneAbbrRefiner.refine` / `MergeWeekdayComponentRefiner.refine`), N18 (`LearningTrace.flush` / `KeyedMutex.run`), N20 (`LeafLearnerDeps.editor.edit` / `makeRound`), N23 (`parseVerdicts` / `makeRound`), N24 (`createLeafLearnerDeps` / `makeRound`), N25 (`Bootstrapper.run` / `makeRound`). No REFACTOR row is left.
+The five remaining near pairs are KEEP N18 (`LearningTrace.flush` / `KeyedMutex.run`), N20 (`LeafLearnerDeps.editor.edit` / `makeRound`), N23 (`parseVerdicts` / `makeRound`), N24 (`createLeafLearnerDeps` / `makeRound`), N25 (`Bootstrapper.run` / `makeRound`). No REFACTOR row is left.

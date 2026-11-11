@@ -9,7 +9,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 1056
+**Total files**: 1057
 
 ## Disposition counts
 
@@ -19,12 +19,12 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 608 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 609 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 5 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 15 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **1056** | |
+| **Total** | **1057** | |
 
 ## Per-area counts
 
@@ -34,7 +34,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `config` | 2 |
 | `examples` | 15 |
 | `src` | 416 |
-| `tests` | 608 |
+| `tests` | 609 |
 | `tools` | 10 |
 
 ## All files
@@ -352,7 +352,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/search/enDate/constants.ts` | src | reachable | 310 |
 | `src/search/enDate/parseEnDate.ts` | src | reachable | 117 |
 | `src/search/enDate/parsers.ts` | src | reachable | 980 |
-| `src/search/enDate/refiners.ts` | src | reachable | 536 |
+| `src/search/enDate/refiners.ts` | src | reachable | 544 |
 | `src/search/enDate/timezones.ts` | src | reachable | 133 |
 | `src/search/enDate/types.ts` | src | reachable | 84 |
 | `src/search/EvidencePathBuilder.ts` | src | reachable | 222 |
@@ -914,6 +914,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/search/enDate.challenger.test.ts` | tests | test | 76 |
 | `tests/unit/search/enDate.inventory.test.ts` | tests | test | 94 |
 | `tests/unit/search/enDate.parity.test.ts` | tests | test | 207 |
+| `tests/unit/search/enDate.relativeMerge.test.ts` | tests | test | 45 |
 | `tests/unit/search/enDate.similarFields.test.ts` | tests | test | 117 |
 | `tests/unit/search/enDate.timePatterns.test.ts` | tests | test | 65 |
 | `tests/unit/search/EvidencePathBuilder.test.ts` | tests | test | 225 |

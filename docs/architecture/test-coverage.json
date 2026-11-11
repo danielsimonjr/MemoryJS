@@ -1,7 +1,7 @@
 {
   "metadata": {
     "totalSourceFiles": 416,
-    "totalTestFiles": 584,
+    "totalTestFiles": 585,
     "testedCount": 386,
     "untestedCount": 30,
     "coveragePercent": "92.8",
@@ -3741,6 +3741,7 @@
     "src/search/enDate/parseEnDate.ts": [
       "tests/unit/search/enDate.challenger.test.ts",
       "tests/unit/search/enDate.parity.test.ts",
+      "tests/unit/search/enDate.relativeMerge.test.ts",
       "tests/unit/search/enDate.timePatterns.test.ts"
     ],
     "src/search/enDate/parsers.ts": [],
@@ -11378,6 +11379,9 @@
     "tests/unit/search/enDate.parity.test.ts": [
       "src/search/enDate/parseEnDate.ts",
       "src/search/TemporalQueryParser.ts"
+    ],
+    "tests/unit/search/enDate.relativeMerge.test.ts": [
+      "src/search/enDate/parseEnDate.ts"
     ],
     "tests/unit/search/enDate.similarFields.test.ts": [
       "src/search/enDate/components.ts",

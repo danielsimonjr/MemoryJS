@@ -9,7 +9,7 @@
 | Metric | Count |
 |--------|-------|
 | Total Source Files | 416 |
-| Total Test Files | 584 |
+| Total Test Files | 585 |
 | Source Files with Tests | 386 |
 | Source Files without Tests | 30 |
 | Coverage (raw, direct-import) | **92.8%** |
@@ -378,7 +378,7 @@ The following 30 source files are not directly imported by any test file:
 | `search/TemporalSearch.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `LazyGetters.freshness-temporal.test.ts`, `exports-barrels.recursa.test.ts`, `exports-barrels.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts`, `TemporalSearch.test.ts`, `searchTwinsSemantic.test.ts` |
 | `search/VectorStore.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `embedding-benchmarks.test.ts`, `MemoryEngine.test.ts`, `ManagerContext-vectorStore.test.ts`, `exports-barrels.recursa.test.ts`, `exports-barrels.test.ts`, `LSHVectorStore.test.ts`, `SemanticSearch.resolver.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts`, `VectorStore-topk-pins.test.ts`, `VectorStore.test.ts`, `searchTwinsSemantic.test.ts` |
 | `enDate/components.ts` | `enDate.similarFields.test.ts` |
-| `enDate/parseEnDate.ts` | `enDate.challenger.test.ts`, `enDate.parity.test.ts`, `enDate.timePatterns.test.ts` |
+| `enDate/parseEnDate.ts` | `enDate.challenger.test.ts`, `enDate.parity.test.ts`, `enDate.relativeMerge.test.ts`, `enDate.timePatterns.test.ts` |
 | `enDate/types.ts` | `enDate.similarFields.test.ts` |
 | `search/ftsCandidates.ts` | `searchTwinsFts.test.ts` |
 | `search/hybridLayers.ts` | `hybridLayers.test.ts` |
@@ -943,6 +943,7 @@ The following 30 source files are not directly imported by any test file:
 | `search/enDate.challenger.test.ts` | 1 files |
 | `search/enDate.inventory.test.ts` | 1 files |
 | `search/enDate.parity.test.ts` | 2 files |
+| `search/enDate.relativeMerge.test.ts` | 1 files |
 | `search/enDate.similarFields.test.ts` | 2 files |
 | `search/enDate.timePatterns.test.ts` | 1 files |
 | `search/hybridLayers.test.ts` | 16 files |
