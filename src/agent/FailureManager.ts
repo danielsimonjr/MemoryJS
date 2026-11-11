@@ -40,7 +40,7 @@ import {
 } from '../types/agent-memory.js';
 import type { BlamedComponent, BlamedComponentKind } from '../types/agent-memory.js';
 import type { EntityManager } from '../core/EntityManager.js';
-import { versionedWriteFailure } from './versionedWriteFailure.js';
+import { patchVersionedRecord } from './versionedRecordUpdate.js';
 import { loadProjectedRecords, matchesDefined } from './recordQuery.js';
 import { validateNonEmpty } from '../utils/index.js';
 import {
@@ -376,32 +376,27 @@ export class FailureManager {
    *                            re-read and retry if their reason is
    *                            still relevant.
    */
-  async markResolved(id: string, reason?: string): Promise<MarkResolvedResult> {
-    const entity = this.storage.getEntityByName(id);
-    if (!entity || !isFailureMemory(entity)) return 'not-found';
-    if (entity.failureRecord.lifecycle.status === 'resolved') return 'already-resolved';
-
-    const now = toIsoDateTime(new Date());
-    const newLifecycle: FailureLifecycle = reason
-      ? { status: 'resolved', resolvedAt: now, resolvedReason: reason }
-      : { status: 'resolved', resolvedAt: now };
-    const updatedRecord: FailureRecord = {
-      ...entity.failureRecord,
-      lifecycle: newLifecycle,
-    };
-    try {
-      await this.entityManager.updateEntity(
-        id,
-        {
-          failureRecord: updatedRecord,
-          lastModified: now,
-        } as unknown as Partial<Entity>,
-        { expectedVersion: entity.version ?? 1 },
-      );
-      return 'resolved';
-    } catch (err) {
-      return versionedWriteFailure(err);
-    }
+  markResolved(id: string, reason?: string): Promise<MarkResolvedResult> {
+    return patchVersionedRecord<FailureEntity, MarkResolvedResult>({
+      storage: this.storage,
+      entityManager: this.entityManager,
+      id,
+      asTarget: isFailureMemory,
+      already: (entity) => (entity.failureRecord.lifecycle.status === 'resolved' ? 'already-resolved' : undefined),
+      patch: (entity, now) => {
+        const at = toIsoDateTime(now);
+        const newLifecycle: FailureLifecycle = reason
+          ? { status: 'resolved', resolvedAt: at, resolvedReason: reason }
+          : { status: 'resolved', resolvedAt: at };
+        return {
+          updates: {
+            failureRecord: { ...entity.failureRecord, lifecycle: newLifecycle },
+            lastModified: now,
+          } as unknown as Partial<Entity>,
+          result: 'resolved',
+        };
+      },
+    });
   }
 
   // ==================== Get-all ====================

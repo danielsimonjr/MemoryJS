@@ -32,7 +32,7 @@ import type {
 } from '../types/agent-memory.js';
 import { isReflectionMemory, toIsoDateTime } from '../types/agent-memory.js';
 import type { EntityManager } from '../core/EntityManager.js';
-import { versionedWriteFailure } from './versionedWriteFailure.js';
+import { patchVersionedRecord } from './versionedRecordUpdate.js';
 import { matchesDefined } from './recordQuery.js';
 import { validateNonEmpty, validateNonEmptyArray } from '../utils/index.js';
 
@@ -231,30 +231,21 @@ export class AgentReflectionManager {
 
   // ==================== Lifecycle ====================
 
-  async archive(id: ReflectionId | string): Promise<ArchiveReflectionResult> {
-    const entity = this.storage.getEntityByName(id);
-    if (!entity || !isReflectionMemory(entity)) return 'not-found';
-    if (entity.reflectionRecord.archived === true) return 'already-archived';
-
-    const now = toIsoDateTime(new Date());
-    const updated: ReflectionRecord = {
-      ...entity.reflectionRecord,
-      archived: true,
-      archivedAt: now,
-    };
-    try {
-      await this.entityManager.updateEntity(
-        id,
-        {
-          reflectionRecord: updated,
+  archive(id: ReflectionId | string): Promise<ArchiveReflectionResult> {
+    return patchVersionedRecord<ReflectionEntity, ArchiveReflectionResult>({
+      storage: this.storage,
+      entityManager: this.entityManager,
+      id,
+      asTarget: isReflectionMemory,
+      already: (entity) => (entity.reflectionRecord.archived === true ? 'already-archived' : undefined),
+      patch: (entity, now) => ({
+        updates: {
+          reflectionRecord: { ...entity.reflectionRecord, archived: true, archivedAt: now },
           lastModified: now,
         } as unknown as Partial<Entity>,
-        { expectedVersion: entity.version ?? 1 },
-      );
-      return 'archived';
-    } catch (err) {
-      return versionedWriteFailure(err);
-    }
+        result: 'archived',
+      }),
+    });
   }
 
   // ==================== Internal ====================
