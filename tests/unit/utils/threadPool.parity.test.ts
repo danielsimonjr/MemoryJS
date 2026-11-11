@@ -22,6 +22,13 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+
+/** Wait until the pool reports a state, without guessing how long a worker takes to start. */
+async function waitUntil(predicate: () => boolean): Promise<void> {
+  while (!predicate()) {
+    await new Promise<void>((resolve) => { setImmediate(resolve); });
+  }
+}
 import { pool as createPool, cpus, Pool, PoolPromise, CancellationError, TimeoutError } from '../../../src/utils/threadPool.js';
 import {
   observeAll,
@@ -212,7 +219,7 @@ describe('threadPool parity with @danielsimonjr/workerpool 10.2.0', () => {
           await new Promise((resolve) => setTimeout(resolve, ms));
           return ms;
         }, [5000]);
-        await new Promise((resolve) => setTimeout(resolve, 50));
+        await waitUntil(() => pool.stats().busyWorkers === 1 && running.pending);
         expect(running.pending).toBe(true);
         const settled = running.catch((error: unknown) => error);
         running.cancel();
