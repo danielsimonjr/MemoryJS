@@ -575,7 +575,7 @@ Reviewed 2026-11-11 by reading both function bodies for every pair (not the plan
 - **E2/N2.** The two functions are the same five time fields. The only semantic difference is the writer (`imply` does not overwrite `known`; `assign` does). A shared `copySimilarFields(..., write)` keeps both exports and both semantics. Exact-group target moves from 1 to 0. The date pair (`implySimilarDate` / `assignSimilarDate`) is the same shape and is under `minNodes` today; it goes through the same writer so it cannot reappear as an exact group.
 - **N12.** The shared tail is real: dotted-ending reject via `/\d(\.\d{2})+$/` and `parseInt > 24`. The differing regexes are parameters of `checkAndReturnTimePattern`. Chrono names stay as wrappers. "Different regex" was not a reason to keep the duplicated reject.
 - **N26.** `archiveEntities` inlines `deleteNamesFromSnapshot`'s filter twice, including "either endpoint". That is shared behavior at jStruct 0.09. `omitNamedEndpoints` is the core. Scoring and the archive file stay put.
-- **N27.** The contained 57-node literal is the same private-entity shell (importance 5, visibility private, accessCount 0, confirmationCount 0, version 1) with a different `confidence` and record key. `buildSkillEntity` is included so the extract does not create a replacement pair. Instruction-set entities are in only when the field list matches.
+- **N27.** The contained 57-node literal is the same private-entity shell (importance 5, visibility private, accessCount 0, confirmationCount 0, version 1) with a different `confidence` and record key. `buildSkillEntity` and `buildInstructionSetEntity` (`InstructionSetManager.ts` 291–306, confidence `1`, no `contentHash`) use that shell and are included so the extract does not create a replacement pair.
 
 **KEEP that survived the challenge**
 
@@ -674,7 +674,8 @@ export function omitNamedEndpoints(
 
 **Files:**
 - Modify: `src/agent/learning/LearningTrace.ts` `buildTraceEntity`
-- Modify: `src/agent/knowledge/knowledgeRevision.ts` `heuristic.add`, `memory.reflect`, `buildSkillEntity` (and `buildInstructionSetEntity` if it uses the same shell — read it first; include it only when the field set matches)
+- Modify: `src/agent/knowledge/knowledgeRevision.ts` `heuristic.add`, `memory.reflect`, `buildSkillEntity`
+- Modify: `src/agent/knowledge/InstructionSetManager.ts` `buildInstructionSetEntity` (same shell: confidence `1`, no `contentHash`, record key `instructionSetRecord`; `InstructionSetManager.ts` 291–306)
 - Test: learning-trace create tests and knowledge-revision apply tests. Snapshot the entity objects (confidence, `contentHash` presence, record property name).
 
 **Interfaces:**
@@ -697,6 +698,6 @@ function privateRecordEntity(
 
 `buildTraceEntity` keeps its public signature and its `as LearningTraceEntity` cast. Heuristic and reflection stay `as unknown as Entity` with `confidence: 0.5`. Skill keeps `contentHash` and `confidence: 1`. Do not export this helper from a barrel.
 
-- [ ] **Steps:** characterize one entity per kind (learning_trace, heuristic, reflection, skill) → extract → same objects → commit `refactor: share private memory entity shell`
+- [ ] **Steps:** characterize one entity per kind (learning_trace, heuristic, reflection, skill, instruction_set) → extract → same objects → commit `refactor: share private memory entity shell`
 
-**Risks:** `createdAt` / `lastModified` for these literals are the `now` argument, not `toIsoDateTime(now)` (the nested records use `toIsoDateTime`). Do not swap them. Instruction-set entities use a different observation and may omit fields — leave them alone unless the field list matches exactly. `applyOp` validation strings stay in the switch.
+**Risks:** `createdAt` / `lastModified` for these literals are the `now` argument, not `toIsoDateTime(now)` (the nested records use `toIsoDateTime`). Do not swap them. `buildInstructionSetEntity` stays exported with the same signature and cast. `applyOp` validation strings stay in the switch.
