@@ -6,6 +6,8 @@ release where applicable.
 
 ## In progress
 
+- [ ] **Plan: Agent Memory Repo (AMR) support.** Filed 2026-11-11 12:05. Write `docs/roadmap/AGENT_MEMORY_REPO_PLAN.md` from the relay review of github.com/AgentMemoryRepo/agentmemoryrepo. Implementation phases follow as separate rows.
+
 - [x] **Flaky: `known-issue-fixes.test.ts` times out on windows/node-24 under full-suite load.**
       Found by the 2026-09-07 02:18 patrol. Nightly run 34094099357, leg
       `ci (windows-latest, 24)`; the other five legs passed. Two failures, both timeouts:

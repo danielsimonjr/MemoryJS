@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation
+
+- **Agent Memory Repo plan** (`docs/roadmap/AGENT_MEMORY_REPO_PLAN.md`): gap analysis and a five-phase plan to support the Agent Memory Repo spec (git repo of Markdown memory, `MEMORY.md` index, `[key: value]` metadata, `[[path]]` links). Chosen design: a pure line-model codec, a confined read-only loader and `amr check`, one-way export and import, and a guarded git helper. Three-way sync is deferred.
+
 ### Added
 
 - **npm publish workflow** (`.github/workflows/publish.yml`): on `v*` tag push or `workflow_dispatch` with a required `tag` input (for releases whose tag predates the workflow, e.g. v5.0.0). Checks out the tagged commit, runs `scripts/publish-version-guard.mjs` so the tag minus `v` equals `package.json` version, then `npm publish --provenance --access public` after `prepublishOnly` (clean, build, `test:ci`). Uses repository secret `NPM` and fails clearly when it is missing. Bun 1.4.2 install with frozen `bun.lock`; Node 22.16 for publish (engines floor).
