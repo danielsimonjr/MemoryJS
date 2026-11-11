@@ -3007,7 +3007,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1051
+      "loc": 1059
     },
     {
       "file": "src/utils/timing.ts",
@@ -6899,7 +6899,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 448
+      "loc": 490
     },
     {
       "file": "tests/unit/utils/ids.test.ts",
@@ -7116,7 +7116,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 37
+      "loc": 33
     },
     {
       "file": "tests/unit/utils/threadPool.parity.test.ts",
@@ -7130,7 +7130,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 443
+      "loc": 512
     },
     {
       "file": "tests/unit/utils/timing.test.ts",

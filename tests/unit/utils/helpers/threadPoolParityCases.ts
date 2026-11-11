@@ -101,6 +101,47 @@ export interface ErrorShape {
   stackHead?: string;
 }
 
+/** Yield one macrotask so worker exit / spawn can run. */
+function yieldEventLoop(): Promise<void> {
+  return new Promise((resolve) => { setImmediate(resolve); });
+}
+
+/** Wait until `predicate` is true, driven by the event loop rather than a timer. */
+async function waitUntil(predicate: () => boolean | Promise<boolean>): Promise<void> {
+  while (!(await predicate())) {
+    await yieldEventLoop();
+  }
+}
+
+/** True when the pool is still tearing down a cancelled or timed-out worker. */
+function isWorkerTerminated(error: unknown): boolean {
+  return error instanceof Error && error.message === 'Worker terminated';
+}
+
+/**
+ * Run `exec` until the pool actually serves the task.
+ *
+ * After a timeout or cancel, workerpool 10.2.0 (and this pool) may reject the
+ * next newly submitted `exec` once with `Worker terminated` while the old
+ * worker slot is torn down. Waiting a fixed number of milliseconds hides that
+ * race on a fast machine and flakes on a slow one. Retrying only that one-shot
+ * rejection waits on the real event: the pool is ready to run work again.
+ */
+async function execOncePoolCanServe(
+  pool: PoolLike,
+  method: string | ((...args: never[]) => unknown),
+  params?: unknown[],
+): Promise<unknown> {
+  for (;;) {
+    try {
+      return await pool.exec(method, params);
+    } catch (error) {
+      if (!isWorkerTerminated(error)) throw error;
+      await yieldEventLoop();
+    }
+  }
+}
+
 /** Capture the comparable part of a rejection. */
 export function errorShape(error: unknown, withStack = false): ErrorShape {
   const value = error as { constructor?: { name?: string }; name?: string; message?: string; stack?: string };
@@ -339,12 +380,10 @@ export async function observeTimeoutAndCancel(createPool: PoolFactory): Promise<
       out.timeout = errorShape(error);
     }
     // The pool must still serve tasks after a timed-out task killed its worker.
-    // The settle wait matters: workerpool starts the replacement worker
-    // asynchronously, so an exec issued in the same tick as the timeout races
-    // the kill and sometimes sees 'Worker terminated'. Waiting removes the race
-    // from both implementations without hiding anything MemoryJS relies on.
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    out.afterTimeout = await pool.exec(multiply, [3, 4]);
+    // The next newly submitted exec may reject once with 'Worker terminated'
+    // (workerpool 10.2.0's cleanup race). Retry that one-shot rather than
+    // sleeping a fixed delay, which flakes on slow hosts and on Windows.
+    out.afterTimeout = await execOncePoolCanServe(pool, multiply, [3, 4]);
     out.statsAfterTimeout = pickStats(await Promise.resolve(pool.stats()));
 
     const queueStarted = Date.now();
@@ -367,24 +406,24 @@ export async function observeTimeoutAndCancel(createPool: PoolFactory): Promise<
   const cancelling = createPool({ maxWorkers: 1 });
   try {
     const running = execSleep(cancelling, 5000);
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await waitUntil(() => pickStats(cancelling.stats()).busyWorkers >= 1);
     out.pendingBeforeCancel = running.pending;
     const cancelled = running.catch((error: unknown) => errorShape(error));
     running.cancel!();
     out.cancel = await cancelled;
     out.pendingAfterCancel = running.pending;
     out.rejectedAfterCancel = running.rejected;
-    // Let the pool notice the worker it had to stop.
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await waitUntil(() => pickStats(cancelling.stats()).totalWorkers === 0);
     out.statsAfterCancel = pickStats(await Promise.resolve(cancelling.stats()));
-    out.afterCancel = await cancelling.exec(subtract, [9, 4]);
+    out.afterCancel = await execOncePoolCanServe(cancelling, subtract, [9, 4]);
 
     // Cancelling a task that never started must not disturb a worker.
     const busy = execSleep(cancelling, 300);
+    await waitUntil(() => pickStats(cancelling.stats()).busyWorkers >= 1);
     const queued = cancelling.exec(identity, [1]);
     let queuedShape: ErrorShape | undefined;
     const queuedRejected = queued.catch((error: unknown) => { queuedShape = errorShape(error); });
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await waitUntil(() => pickStats(cancelling.stats()).pendingTasks >= 1);
     queued.cancel!();
     await queuedRejected;
     out.queuedCancel = queuedShape;
@@ -405,14 +444,14 @@ export async function observeTerminate(createPool: PoolFactory): Promise<Record<
     (value: unknown) => ({ resolved: value }),
     (error: unknown) => ({ error: errorShape(error) }),
   );
-  await new Promise((resolve) => setTimeout(resolve, 100));
+  await waitUntil(() => pickStats(forced.stats()).busyWorkers >= 1);
   await forced.terminate(true);
   out.forcedInflight = await forcedResult;
   out.statsAfterForced = pickStats(await Promise.resolve(forced.stats()));
 
   const graceful = createPool({ maxWorkers: 1 });
   const inflight = execSleep(graceful, 300);
-  await new Promise((resolve) => setTimeout(resolve, 50));
+  await waitUntil(() => pickStats(graceful.stats()).busyWorkers >= 1);
   await graceful.terminate();
   out.gracefulInflight = await inflight;
   out.statsAfterGraceful = pickStats(await Promise.resolve(graceful.stats()));
@@ -426,7 +465,10 @@ export async function observeTerminate(createPool: PoolFactory): Promise<Record<
     (value: unknown) => ({ resolved: value }),
     (error: unknown) => ({ error: errorShape(error) }),
   );
-  await new Promise((resolve) => setTimeout(resolve, 30));
+  await waitUntil(() => {
+    const stats = pickStats(queuedPool.stats());
+    return stats.busyWorkers >= 1 && stats.pendingTasks >= 1;
+  });
   await queuedPool.terminate();
   out.queuedAtTerminate = await tailResult;
   out.headAtTerminate = await head;

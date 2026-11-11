@@ -467,7 +467,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/utils/sidecarPath.ts` | src | reachable | 40 |
 | `src/utils/taskScheduler.ts` | src | reachable | 642 |
 | `src/utils/textSimilarity.ts` | src | reachable | 214 |
-| `src/utils/threadPool.ts` | src | reachable | 1051 |
+| `src/utils/threadPool.ts` | src | reachable | 1059 |
 | `src/utils/timing.ts` | src | reachable | 100 |
 | `src/utils/tokenEstimate.ts` | src | reachable | 28 |
 | `src/utils/unrefInterval.ts` | src | reachable | 32 |
@@ -1023,7 +1023,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/utils/helpers/schemaParityCases.ts` | tests | test | 640 |
 | `tests/unit/utils/helpers/schemaParityFormat.ts` | tests | test | 99 |
 | `tests/unit/utils/helpers/schemaSyntheticCases.ts` | tests | test | 216 |
-| `tests/unit/utils/helpers/threadPoolParityCases.ts` | tests | test | 448 |
+| `tests/unit/utils/helpers/threadPoolParityCases.ts` | tests | test | 490 |
 | `tests/unit/utils/ids.test.ts` | tests | test | 35 |
 | `tests/unit/utils/indexBuckets.test.ts` | tests | test | 98 |
 | `tests/unit/utils/indexes.test.ts` | tests | test | 898 |
@@ -1054,9 +1054,9 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/utils/taskScheduler.test.ts` | tests | test | 1118 |
 | `tests/unit/utils/textSimilarity.test.ts` | tests | test | 147 |
 | `tests/unit/utils/textSimilarity.tokenSets.test.ts` | tests | test | 95 |
-| `tests/unit/utils/threadPool.challenger.test.ts` | tests | test | 37 |
+| `tests/unit/utils/threadPool.challenger.test.ts` | tests | test | 33 |
 | `tests/unit/utils/threadPool.parity.test.ts` | tests | test | 272 |
-| `tests/unit/utils/threadPool.test.ts` | tests | test | 443 |
+| `tests/unit/utils/threadPool.test.ts` | tests | test | 512 |
 | `tests/unit/utils/timing.test.ts` | tests | test | 192 |
 | `tests/unit/utils/tokenEstimate.test.ts` | tests | test | 40 |
 | `tests/unit/utils/unrefInterval.test.ts` | tests | test | 92 |

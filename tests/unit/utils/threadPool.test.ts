@@ -33,6 +33,18 @@ const sleep = async (ms: number): Promise<number> => {
   return ms;
 };
 
+/** Yield one macrotask so worker spawn / exit can run. */
+function yieldEventLoop(): Promise<void> {
+  return new Promise((resolve) => { setImmediate(resolve); });
+}
+
+/** Wait until `predicate` is true, driven by the event loop rather than a timer. */
+async function waitUntil(predicate: () => boolean | Promise<boolean>): Promise<void> {
+  while (!(await predicate())) {
+    await yieldEventLoop();
+  }
+}
+
 /** A function that reports which worker ran it. */
 const threadId = (): number => {
   // `worker_threads` is available inside both thread and process workers; in the
@@ -53,7 +65,7 @@ describe('threadPool', () => {
       const poolUnderTest = pool({ maxWorkers: 2 });
       try {
         const tasks = Array.from({ length: 6 }, () => poolUnderTest.exec(sleep, [120]));
-        await new Promise((resolve) => setTimeout(resolve, 40));
+        await waitUntil(() => poolUnderTest.stats().busyWorkers > 0);
         const stats = poolUnderTest.stats();
         expect(stats.totalWorkers).toBeLessThanOrEqual(2);
         expect(stats.pendingTasks).toBeGreaterThan(0);
@@ -191,13 +203,23 @@ describe('threadPool', () => {
         await poolUnderTest.exec(sleep, [10]);
         expect(poolUnderTest.stats().totalWorkers).toBe(1);
         const running = poolUnderTest.exec(sleep, [5000]);
-        await new Promise((resolve) => setTimeout(resolve, 50));
+        await waitUntil(() => poolUnderTest.stats().busyWorkers === 1);
         const settled = running.catch((reason: unknown) => reason);
         running.cancel();
         await settled;
-        await new Promise((resolve) => setTimeout(resolve, 150));
+        await waitUntil(() => poolUnderTest.stats().totalWorkers === 0);
         expect(poolUnderTest.stats().totalWorkers).toBe(0);
-        expect(await poolUnderTest.exec((n: number) => n + 1, [1])).toBe(2);
+        let recovered: number | undefined;
+        for (;;) {
+          try {
+            recovered = await poolUnderTest.exec((n: number) => n + 1, [1]) as number;
+            break;
+          } catch (error) {
+            if (!(error instanceof Error) || error.message !== 'Worker terminated') throw error;
+            await yieldEventLoop();
+          }
+        }
+        expect(recovered).toBe(2);
         expect(poolUnderTest.stats().totalWorkers).toBe(1);
       } finally {
         await poolUnderTest.terminate(true);
@@ -237,7 +259,10 @@ describe('threadPool', () => {
       const queued = poolUnderTest.exec(sleep, [10]);
       const runningResult = running.catch((reason: unknown) => (reason as Error).message);
       const queuedResult = queued.catch((reason: unknown) => (reason as Error).message);
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await waitUntil(() => {
+        const stats = poolUnderTest.stats();
+        return stats.busyWorkers === 1 && stats.pendingTasks === 1;
+      });
       await poolUnderTest.terminate(true);
       expect(await runningResult).toBe('Worker terminated');
       expect(await queuedResult).toBe('Pool terminated');
@@ -246,7 +271,7 @@ describe('threadPool', () => {
     it('lets an in-flight task finish before a graceful shutdown', async () => {
       const poolUnderTest = pool({ maxWorkers: 1 });
       const running = poolUnderTest.exec(sleep, [250]);
-      await new Promise((resolve) => setTimeout(resolve, 40));
+      await waitUntil(() => poolUnderTest.stats().busyWorkers === 1);
       const started = Date.now();
       await poolUnderTest.terminate();
       expect(Date.now() - started).toBeGreaterThanOrEqual(100);
@@ -290,7 +315,7 @@ describe('threadPool', () => {
       try {
         const running = poolUnderTest.exec(sleep, [5000], { signal: controller.signal });
         const settled = running.catch((reason: unknown) => reason);
-        await new Promise((resolve) => setTimeout(resolve, 50));
+        await waitUntil(() => poolUnderTest.stats().busyWorkers === 1);
         controller.abort();
         expect(await settled).toBeInstanceOf(CancellationError);
       } finally {
@@ -331,6 +356,47 @@ describe('threadPool', () => {
       }
     });
 
+    it('poisons only one newly submitted exec under concurrent recovery', async () => {
+      const poolUnderTest = pool({ maxWorkers: 1 });
+      const add = (a: number, b: number) => a + b;
+      try {
+        await poolUnderTest.exec(add, [0, 0]);
+        await poolUnderTest.exec(sleep, [5000]).timeout(50).catch(() => {});
+        const settled = await Promise.allSettled([
+          poolUnderTest.exec(add, [1, 1]),
+          poolUnderTest.exec(add, [2, 2]),
+          poolUnderTest.exec(add, [3, 3]),
+          poolUnderTest.exec(add, [4, 4]),
+        ]);
+        const poisons = settled.filter(
+          (result) => result.status === 'rejected' && (result.reason as Error).message === 'Worker terminated',
+        );
+        const successes = settled.filter((result) => result.status === 'fulfilled');
+        expect(poisons).toHaveLength(1);
+        expect(successes).toHaveLength(3);
+        expect(successes.map((result) => (result as PromiseFulfilledResult<number>).value).sort((a, b) => a - b))
+          .toEqual([4, 6, 8]);
+      } finally {
+        await poolUnderTest.terminate(true);
+      }
+    });
+
+    it('does not poison a task that was already queued when the running task timed out', async () => {
+      const poolUnderTest = pool({ maxWorkers: 1 });
+      const add = (a: number, b: number) => a + b;
+      try {
+        await poolUnderTest.exec(add, [0, 0]);
+        const running = poolUnderTest.exec(sleep, [5000]);
+        running.timeout(80);
+        const queued = poolUnderTest.exec(add, [10, 20]);
+        const runningResult = running.then(() => 'ok', (reason: unknown) => (reason as Error).name);
+        expect(await runningResult).toBe('TimeoutError');
+        expect(await queued).toBe(30);
+      } finally {
+        await poolUnderTest.terminate(true);
+      }
+    });
+
     it('does not fire a timeout once the task finished', async () => {
       const poolUnderTest = pool({ maxWorkers: 1 });
       try {
@@ -340,7 +406,6 @@ describe('threadPool', () => {
         expect(await poolUnderTest.exec((n: number) => n, [0])).toBe(0);
         const promise = poolUnderTest.exec((n: number) => n, [7]);
         expect(await promise.timeout(2000)).toBe(7);
-        await new Promise((resolve) => setTimeout(resolve, 100));
         expect(promise.resolved).toBe(true);
         expect(promise.rejected).toBe(false);
       } finally {
@@ -428,6 +493,10 @@ describe('threadPool', () => {
           'const product = await forked.exec((a, b) => a * b, [3, 4]);',
           'await created.terminate(true);',
           'await forked.terminate();',
+          'const draining = pool({ maxWorkers: 1 });',
+          'await draining.exec((n) => n, [0]);',
+          'await draining.exec(async (ms) => { await new Promise((r) => setTimeout(r, ms)); return ms; }, [5000]).timeout(40).catch(() => {});',
+          'await draining.terminate(true);',
           'process.stdout.write("DONE " + sum + " " + product);',
           '',
         ].join('\n'),

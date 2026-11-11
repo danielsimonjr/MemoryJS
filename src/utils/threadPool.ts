@@ -616,6 +616,10 @@ class WorkerSlot {
         stdout: false,
         stderr: false,
         ...(script ? {} : { eval: true }),
+        // Do not inherit the parent's execArgv (for example `--input-type` from
+        // `node --eval`). Callers that need tsx or an inspector pass it in
+        // `workerThreadOpts.execArgv`, as the parity suite does.
+        execArgv: [],
         ...threadOpts,
         ...(threadOpts.workerData ? { workerData: threadOpts.workerData } : {}),
       });
@@ -1034,6 +1038,10 @@ export class Pool {
       if (task.promise.pending) task.promise.reject(new Error('Pool terminated'));
     }
     const slots = this.workers.splice(0);
+    const draining = this.drainingSlot;
+    this.drainingSlot = null;
+    this.poisonQueuedBeforeAbort.clear();
+    if (draining) slots.push(draining);
     await Promise.all(slots.map((slot) => slot.stop(Boolean(force))));
   }
 }
