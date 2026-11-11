@@ -1,7 +1,7 @@
 {
   "metadata": {
     "totalSourceFiles": 416,
-    "totalTestFiles": 583,
+    "totalTestFiles": 584,
     "testedCount": 386,
     "untestedCount": 30,
     "coveragePercent": "92.8",
@@ -2488,6 +2488,7 @@
       "tests/knowledge-graph.test.ts",
       "tests/unit/agent/CausalReasoner.test.ts",
       "tests/unit/agent/CollaborativeSynthesis.test.ts",
+      "tests/unit/core/GraphTraversal.bfsDuplicates.test.ts",
       "tests/unit/core/GraphTraversal.test.ts",
       "tests/unit/core/GraphTraversalLookFor.test.ts",
       "tests/unit/core/ManagerContext.test.ts",
@@ -5322,6 +5323,7 @@
       "tests/unit/core/GraphEventEmitter.test.ts",
       "tests/unit/core/GraphEvents.test.ts",
       "tests/unit/core/GraphStorage.test.ts",
+      "tests/unit/core/GraphTraversal.bfsDuplicates.test.ts",
       "tests/unit/core/HierarchyManager.test.ts",
       "tests/unit/core/ObservationManager.dedup.test.ts",
       "tests/unit/core/ObservationManager.events.test.ts",
@@ -8907,6 +8909,10 @@
     ],
     "tests/unit/core/GraphStorage.test.ts": [
       "src/core/GraphStorage.ts",
+      "src/types/types.ts"
+    ],
+    "tests/unit/core/GraphTraversal.bfsDuplicates.test.ts": [
+      "src/core/GraphTraversal.ts",
       "src/types/types.ts"
     ],
     "tests/unit/core/GraphTraversal.test.ts": [
