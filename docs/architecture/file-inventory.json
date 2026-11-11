@@ -1,11 +1,11 @@
 {
-  "totalFiles": 1044,
+  "totalFiles": 1045,
   "byDisposition": {
     "reachable": 411,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 597,
+    "test": 598,
     "tool": 10,
     "config": 2,
     "bench": 5,
@@ -15,7 +15,7 @@
     "benchmarks": 5,
     "examples": 15,
     "src": 415,
-    "tests": 597,
+    "tests": 598,
     "tools": 10,
     "config": 2
   },
@@ -5430,6 +5430,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 108
+    },
+    {
+      "file": "tests/unit/core/node-sqlite-adapter-edge-parity.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 164
     },
     {
       "file": "tests/unit/core/node-sqlite-probe.test.ts",
