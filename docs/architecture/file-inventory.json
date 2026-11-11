@@ -5436,7 +5436,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 159
+      "loc": 171
     },
     {
       "file": "tests/unit/core/node-sqlite-probe.test.ts",
