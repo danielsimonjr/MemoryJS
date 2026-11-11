@@ -39,17 +39,29 @@ import type { SqliteDatabase } from '../../../src/core/nodeSqliteAdapter.js';
 
 describe.skipIf(typeof Bun !== 'undefined')('node:sqlite adapter edge parity (better-sqlite3 13.0.3)', () => {
   let dir: string;
+  let openDbs: SqliteDatabase[];
 
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), 'memoryjs-adapter-edge-'));
+    openDbs = [];
   });
 
   afterEach(() => {
+    for (const db of openDbs) {
+      try {
+        db.close();
+      } catch {
+        // Windows keeps the file locked until close(); the idempotent second close is fine.
+      }
+    }
     rmSync(dir, { recursive: true, force: true });
   });
 
-  const open = (...args: ConstructorParameters<ReturnType<typeof createNodeSqliteDatabaseCtor>>): SqliteDatabase =>
-    new (createNodeSqliteDatabaseCtor())(...args);
+  const open = (...args: ConstructorParameters<ReturnType<typeof createNodeSqliteDatabaseCtor>>): SqliteDatabase => {
+    const db = new (createNodeSqliteDatabaseCtor())(...args);
+    openDbs.push(db);
+    return db;
+  };
 
   it('treats a second close() as a no-op, like better-sqlite3', () => {
     const db = open(join(dir, 'a.db'));
