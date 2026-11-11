@@ -8,6 +8,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { PartialIndexAdvisor } from '../../../src/search/PartialIndexAdvisor.js';
+import { createNodeSqliteDatabaseCtor } from '../../../src/core/nodeSqliteAdapter.js';
 
 describe('PartialIndexAdvisor', () => {
   const ORIGINAL_ENV = process.env.MEMORY_SQLITE_AUTO_INDEX;
@@ -75,8 +76,7 @@ describe('PartialIndexAdvisor', () => {
   });
 
   it('apply() creates and drops advisor indexes on sqlite', async () => {
-    const Database = (await import('better-sqlite3')).default;
-    const db = new Database(':memory:');
+    const db = new (createNodeSqliteDatabaseCtor())(':memory:');
     db.exec(`
       CREATE TABLE entities (
         name TEXT PRIMARY KEY,

@@ -7,11 +7,9 @@ import path from 'node:path';
 import os from 'node:os';
 
 /** Build a fresh `SQLiteBackend` backed by a real `ManagerContext` over a
- * tmp JSONL store (the SQLite path requires native better-sqlite3 which
- * isn't always rebuilt in CI; JSONL works for the contract surface and
- * exercises the same MemoryEngine code path SQLiteBackend wraps). The
- * backend's name is "SQLiteBackend" but its durable substrate here is
- * JSONL — the contract is what matters. */
+ * tmp JSONL store. The contract surface is the same either way, and JSONL works
+ * without any driver; the one test that needs the real SQLite backend opts in
+ * through `MEMORY_STORAGE_TYPE=sqlite` below. */
 let activeFiles: string[] = [];
 /** Contexts that afterEach closes before it removes the files. */
 let activeContexts: ManagerContext[] = [];
@@ -136,9 +134,9 @@ describe('SQLiteBackend specifics', () => {
   });
 
   it('round-trips through actual SQLite storage when MEMORY_STORAGE_TYPE=sqlite', async () => {
-    // Real SQLite path (no JSONL fallback). Skipped if better-sqlite3
-    // ABI is incompatible with the running Node version — see CLAUDE.md
-    // gotcha "npm rebuild better-sqlite3".
+    // Real SQLite path (no JSONL fallback). Since Sprint 9 the driver is Node's
+    // built-in node:sqlite, so there is no native binding to be missing; a
+    // failure here is a real failure.
     const file = path.join(os.tmpdir(), `sqlite-backend-real-${Date.now()}.db`);
     activeFiles.push(file);
     const prev = process.env.MEMORY_STORAGE_TYPE;
@@ -147,15 +145,6 @@ describe('SQLiteBackend specifics', () => {
     try {
       const ctx = track(new ManagerContext(file));
       backend = new SQLiteBackend(ctx.memoryEngine, ctx.decayEngine);
-    } catch (err) {
-      // better-sqlite3 native binding mismatch; skip rather than fail.
-      const msg = String(err);
-      if (msg.includes('NODE_MODULE_VERSION') || msg.includes('better_sqlite3')) {
-        // eslint-disable-next-line no-console
-        console.warn('Skipping real-SQLite test:', msg.slice(0, 120));
-        return;
-      }
-      throw err;
     } finally {
       if (prev === undefined) delete process.env.MEMORY_STORAGE_TYPE;
       else process.env.MEMORY_STORAGE_TYPE = prev;

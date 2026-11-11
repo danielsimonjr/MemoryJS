@@ -1,0 +1,62 @@
+{
+  "reader": "better-sqlite3 13.0.3",
+  "writer": "node:sqlite via src/core/nodeSqliteAdapter.ts",
+  "userVersion": 1,
+  "integrityCheck": "ok",
+  "entities": [
+    {
+      "name": "Alice",
+      "entityType": "person",
+      "importance": 8,
+      "parentId": null
+    },
+    {
+      "name": "Bob",
+      "entityType": "person",
+      "importance": 5,
+      "parentId": "Alice"
+    },
+    {
+      "name": "Zephyr",
+      "entityType": "project",
+      "importance": 9,
+      "parentId": null
+    }
+  ],
+  "relations": [
+    {
+      "fromEntity": "Bob",
+      "toEntity": "Alice",
+      "relationType": "works_with",
+      "weight": 0.9
+    },
+    {
+      "fromEntity": "Zephyr",
+      "toEntity": "Alice",
+      "relationType": "led_by",
+      "weight": null
+    }
+  ],
+  "ftsZephyr": [
+    {
+      "name": "Zephyr"
+    }
+  ],
+  "ftsAlice": [
+    {
+      "name": "Alice"
+    },
+    {
+      "name": "Bob"
+    }
+  ],
+  "embedding": {
+    "dimensions": 3,
+    "values": [
+      0.25,
+      -0.5,
+      1.75
+    ],
+    "isBuffer": true
+  }
+}

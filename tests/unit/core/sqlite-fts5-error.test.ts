@@ -2,7 +2,8 @@
  * A SQLite build with no FTS5 module.
  *
  * `SQLiteStorage` keeps its full-text index in an FTS5 virtual table. The SQLite inside
- * `node:sqlite` has FTS5 from Node 22.16.0 (nodejs/node#57621). On an older Node the
+ * `node:sqlite` has FTS5 from Node 22.16.0 (nodejs/node#57621), and that is why
+ * `engines.node` is `>=22.16.0` since Sprint 9. On an older Node the
  * `CREATE VIRTUAL TABLE` fails with the bare message "no such module: fts5", which names
  * neither the cause nor the way out. These tests pin the message that replaces it.
  */
@@ -65,7 +66,7 @@ describe('explainMissingFts5', () => {
     expect(explainMissingFts5(error)).toBe(error);
   });
 
-  it('names the cause, the Node version that fixes it and the other way out', () => {
+  it('names the cause and the Node version that fixes it', () => {
     const original = new Error('no such module: fts5');
     const explained = explainMissingFts5(original);
     expect(explained).toBeInstanceOf(Error);
@@ -73,7 +74,6 @@ describe('explainMissingFts5', () => {
     expect(message).toContain('FTS5');
     expect(message).toContain('22.16.0');
     expect(message).toContain(process.version);
-    expect(message).toContain('better-sqlite3');
     expect((explained as Error).cause).toBe(original);
   });
 });
@@ -96,20 +96,16 @@ describe.skipIf(!isNodeSqliteAvailable())('the format of the error that node:sql
 });
 
 describe.skipIf(!isNodeSqliteAvailable())('SQLiteStorage on a SQLite build with no FTS5', () => {
-  const previousDriver = process.env.MEMORY_SQLITE_DRIVER;
   const folders: string[] = [];
 
   afterEach(() => {
     connections.opened = 0;
     connections.closed = 0;
-    if (previousDriver === undefined) delete process.env.MEMORY_SQLITE_DRIVER;
-    else process.env.MEMORY_SQLITE_DRIVER = previousDriver;
     __resetDatabaseCtorForTests();
     for (const folder of folders.splice(0)) rmSync(folder, { recursive: true, force: true });
   });
 
   it('fails with the explained error, not the bare SQLite text', async () => {
-    process.env.MEMORY_SQLITE_DRIVER = 'node';
     __resetDatabaseCtorForTests();
     const folder = mkdtempSync(join(tmpdir(), 'memoryjs-nofts5-'));
     folders.push(folder);
@@ -127,7 +123,6 @@ describe.skipIf(!isNodeSqliteAvailable())('SQLiteStorage on a SQLite build with 
   });
 
   it('leaves no connection open after the failed start, and fails the same way again', async () => {
-    process.env.MEMORY_SQLITE_DRIVER = 'node';
     __resetDatabaseCtorForTests();
     const folder = mkdtempSync(join(tmpdir(), 'memoryjs-nofts5-'));
     folders.push(folder);

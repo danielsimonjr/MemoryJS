@@ -9,7 +9,8 @@
  * `tests/unit/utils/fixtures/threadPoolParity.json`.
  *
  * The worker is the real Levenshtein worker (`src/workers/levenshteinWorker.ts`),
- * loaded as an ESM worker thread through `tsx` so the suite needs no build.
+ * loaded as an ESM worker thread through the loader in `tsWorkerExecArgv()` so the
+ * suite needs no build.
  * Timing-sensitive behaviours (timeout, cancel, terminate) use the built-in
  * script-less worker and stringified functions, because the Levenshtein worker
  * has no slow method and a race on a fast method proves nothing.
@@ -42,6 +43,24 @@ export interface WorkerConfig {
   options: Record<string, unknown>;
 }
 
+/**
+ * Worker `execArgv` that load TypeScript source inside a worker thread.
+ *
+ * `--import tsx` is not enough here: tsx 4.23.1 registers its ESM hooks only on
+ * the main thread below Node 22.22.3, so a worker loaded with it on the Node
+ * 22.16 leg fails with `Unknown file extension ".ts"`. `tsWorkerLoader.mjs` uses
+ * Node's own type stripping plus a `.js` -> `.ts` resolve hook instead.
+ */
+export function tsWorkerExecArgv(): string[] {
+  const here = fileURLToPath(new URL('.', import.meta.url));
+  return [
+    '--experimental-strip-types',
+    '--no-warnings',
+    '--import',
+    join(here, 'tsWorkerLoader.mjs'),
+  ];
+}
+
 /** The Levenshtein worker plus the options that load it as an ESM module. */
 export function levenshteinWorkerConfig(): WorkerConfig {
   const here = fileURLToPath(new URL('.', import.meta.url));
@@ -50,7 +69,7 @@ export function levenshteinWorkerConfig(): WorkerConfig {
     options: {
       maxWorkers: 2,
       workerType: 'thread',
-      workerThreadOpts: { type: 'module', execArgv: ['--import', 'tsx'] },
+      workerThreadOpts: { type: 'module', execArgv: tsWorkerExecArgv() },
     },
   };
 }

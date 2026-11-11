@@ -1,0 +1,1094 @@
+{
+  "betterSqlite3": "13.0.3",
+  "record": {
+    "crudInsertRun": {
+      "$type": "object",
+      "proto": "Object",
+      "value": {
+        "changes": {
+          "$type": "number",
+          "value": 1
+        },
+        "lastInsertRowid": {
+          "$type": "number",
+          "value": 1
+        }
+      }
+    },
+    "crudInsertSecond": {
+      "$type": "object",
+      "proto": "Object",
+      "value": {
+        "changes": {
+          "$type": "number",
+          "value": 1
+        },
+        "lastInsertRowid": {
+          "$type": "number",
+          "value": 2
+        }
+      }
+    },
+    "crudGet": {
+      "$type": "object",
+      "proto": "Object",
+      "value": {
+        "name": "Alice",
+        "entityType": "person",
+        "observations": "[\"engineer\"]",
+        "importance": {
+          "$type": "number",
+          "value": 7
+        },
+        "parentId": null
+      }
+    },
+    "crudGetMiss": {
+      "$type": "undefined"
+    },
+    "crudAll": [
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "name": "Alice",
+          "importance": {
+            "$type": "number",
+            "value": 7
+          }
+        }
+      },
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "name": "Bob",
+          "importance": null
+        }
+      }
+    ],
+    "crudUpdateChanges": {
+      "$type": "object",
+      "proto": "Object",
+      "value": {
+        "changes": {
+          "$type": "number",
+          "value": 1
+        },
+        "lastInsertRowid": {
+          "$type": "number",
+          "value": 2
+        }
+      }
+    },
+    "crudUpdateMiss": {
+      "$type": "object",
+      "proto": "Object",
+      "value": {
+        "changes": {
+          "$type": "number",
+          "value": 0
+        },
+        "lastInsertRowid": {
+          "$type": "number",
+          "value": 2
+        }
+      }
+    },
+    "crudDeleteChanges": {
+      "$type": "object",
+      "proto": "Object",
+      "value": {
+        "changes": {
+          "$type": "number",
+          "value": 1
+        },
+        "lastInsertRowid": {
+          "$type": "number",
+          "value": 2
+        }
+      }
+    },
+    "crudDeleteMiss": {
+      "$type": "object",
+      "proto": "Object",
+      "value": {
+        "changes": {
+          "$type": "number",
+          "value": 0
+        },
+        "lastInsertRowid": {
+          "$type": "number",
+          "value": 2
+        }
+      }
+    },
+    "crudCount": {
+      "$type": "object",
+      "proto": "Object",
+      "value": {
+        "c": {
+          "$type": "number",
+          "value": 1
+        }
+      }
+    },
+    "pragmaSimpleForeignKeys": {
+      "$type": "number",
+      "value": 1
+    },
+    "pragmaRowsForeignKeys": [
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "foreign_keys": {
+            "$type": "number",
+            "value": 1
+          }
+        }
+      }
+    ],
+    "pragmaTableInfo": [
+      "id",
+      "name"
+    ],
+    "pragmaJournalModeSetter": [
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "journal_mode": "wal"
+        }
+      }
+    ],
+    "pragmaJournalModeReader": [
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "journal_mode": "wal"
+        }
+      }
+    ],
+    "pragmaUserVersionSetter": [],
+    "pragmaUserVersionSimple": {
+      "$type": "number",
+      "value": 7
+    },
+    "pragmaSynchronous": [],
+    "pragmaBusyTimeout": [
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "timeout": {
+            "$type": "number",
+            "value": 5000
+          }
+        }
+      }
+    ],
+    "pragmaCacheSize": [],
+    "pragmaTempStore": [],
+    "pragmaWalCheckpoint": [
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "busy": {
+            "$type": "number",
+            "value": 0
+          },
+          "log": {
+            "$type": "number",
+            "value": 0
+          },
+          "checkpointed": {
+            "$type": "number",
+            "value": 0
+          }
+        }
+      }
+    ],
+    "ftsRankedNames": [
+      "Haystack",
+      "Needle",
+      "Ünïcode"
+    ],
+    "ftsRankedScores": [
+      "-0.000001774947",
+      "-0.000001626459",
+      "-0.000001553903"
+    ],
+    "ftsLimit": [
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "name": "Haystack"
+        }
+      },
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "name": "Needle"
+        }
+      }
+    ],
+    "ftsNoMatch": [],
+    "ftsPrefix": [
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "name": "Haystack"
+        }
+      },
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "name": "Needle"
+        }
+      },
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "name": "Ünïcode"
+        }
+      }
+    ],
+    "ftsColumnFilter": [
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "name": "Haystack"
+        }
+      },
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "name": "Needle"
+        }
+      },
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "name": "Ünïcode"
+        }
+      }
+    ],
+    "ftsUnicode": [
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "name": "Ünïcode"
+        }
+      }
+    ],
+    "ftsIntegrityCheck": {
+      "threw": false
+    },
+    "txCommitReturn": "ok",
+    "txCommitRows": [
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "n": {
+            "$type": "number",
+            "value": 1
+          }
+        }
+      },
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "n": {
+            "$type": "number",
+            "value": 2
+          }
+        }
+      }
+    ],
+    "txRollbackError": {
+      "threw": true,
+      "ctor": "Error",
+      "name": "Error",
+      "message": "boom"
+    },
+    "txRollbackRows": [
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "n": {
+            "$type": "number",
+            "value": 1
+          }
+        }
+      },
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "n": {
+            "$type": "number",
+            "value": 2
+          }
+        }
+      }
+    ],
+    "txNestedError": {
+      "threw": false
+    },
+    "txNestedRows": [
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "n": {
+            "$type": "number",
+            "value": 1
+          }
+        }
+      },
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "n": {
+            "$type": "number",
+            "value": 2
+          }
+        }
+      },
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "n": {
+            "$type": "number",
+            "value": 4
+          }
+        }
+      },
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "n": {
+            "$type": "number",
+            "value": 6
+          }
+        }
+      }
+    ],
+    "txHasModes": [
+      "function",
+      "function",
+      "function"
+    ],
+    "walReadonlySeesCommitted": [
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "n": {
+            "$type": "number",
+            "value": 1
+          }
+        }
+      }
+    ],
+    "walReadonlyWriteRefused": {
+      "threw": true,
+      "ctor": "SqliteError",
+      "name": "SqliteError",
+      "code": "SQLITE_READONLY",
+      "message": "attempt to write a readonly database"
+    },
+    "walWriterCount": {
+      "$type": "object",
+      "proto": "Object",
+      "value": {
+        "c": {
+          "$type": "number",
+          "value": 2
+        }
+      }
+    },
+    "walReopenRows": [
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "n": {
+            "$type": "number",
+            "value": 1
+          }
+        }
+      },
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "n": {
+            "$type": "number",
+            "value": 2
+          }
+        }
+      }
+    ],
+    "walJournalMode": "wal",
+    "blobInsert": {
+      "$type": "object",
+      "proto": "Object",
+      "value": {
+        "changes": {
+          "$type": "number",
+          "value": 1
+        },
+        "lastInsertRowid": {
+          "$type": "number",
+          "value": 1
+        }
+      }
+    },
+    "blobReadLength": {
+      "$type": "number",
+      "value": 262144
+    },
+    "blobReadConstructor": "Buffer",
+    "blobReadHash": "3e46d45d",
+    "blobSmallBytes": [
+      {
+        "$type": "number",
+        "value": 1
+      },
+      {
+        "$type": "number",
+        "value": 2
+      },
+      {
+        "$type": "number",
+        "value": 3
+      }
+    ],
+    "blobSmallIsBuffer": true,
+    "blobFloat32RoundTrip": [
+      {
+        "$type": "number",
+        "value": 1.5
+      },
+      {
+        "$type": "number",
+        "value": -2.25
+      },
+      {
+        "$type": "number",
+        "value": 0
+      },
+      {
+        "$type": "number",
+        "value": 3.125
+      }
+    ],
+    "intBindBigintAboveSafe": {
+      "$type": "object",
+      "proto": "Object",
+      "value": {
+        "changes": {
+          "$type": "number",
+          "value": 1
+        },
+        "lastInsertRowid": {
+          "$type": "number",
+          "value": 1
+        }
+      }
+    },
+    "intReadAboveSafe": {
+      "$type": "object",
+      "proto": "Object",
+      "value": {
+        "v": {
+          "$type": "number",
+          "value": 9007199254740992
+        }
+      }
+    },
+    "intBindSafe": {
+      "$type": "object",
+      "proto": "Object",
+      "value": {
+        "changes": {
+          "$type": "number",
+          "value": 1
+        },
+        "lastInsertRowid": {
+          "$type": "number",
+          "value": 2
+        }
+      }
+    },
+    "intReadSafe": {
+      "$type": "object",
+      "proto": "Object",
+      "value": {
+        "v": {
+          "$type": "number",
+          "value": 9007199254740991
+        }
+      }
+    },
+    "intBindNegative": {
+      "$type": "object",
+      "proto": "Object",
+      "value": {
+        "changes": {
+          "$type": "number",
+          "value": 1
+        },
+        "lastInsertRowid": {
+          "$type": "number",
+          "value": 3
+        }
+      }
+    },
+    "intReadNegative": {
+      "$type": "object",
+      "proto": "Object",
+      "value": {
+        "v": {
+          "$type": "number",
+          "value": -9007199254740992
+        }
+      }
+    },
+    "intBindUnsafeNumber": {
+      "$type": "object",
+      "proto": "Object",
+      "value": {
+        "changes": {
+          "$type": "number",
+          "value": 1
+        },
+        "lastInsertRowid": {
+          "$type": "number",
+          "value": 4
+        }
+      }
+    },
+    "intReadUnsafeNumber": {
+      "$type": "object",
+      "proto": "Object",
+      "value": {
+        "v": {
+          "$type": "number",
+          "value": 1152921504606847000
+        }
+      }
+    },
+    "intMaxInt64": {
+      "$type": "object",
+      "proto": "Object",
+      "value": {
+        "changes": {
+          "$type": "number",
+          "value": 1
+        },
+        "lastInsertRowid": {
+          "$type": "number",
+          "value": 5
+        }
+      }
+    },
+    "intReadMaxInt64": {
+      "$type": "object",
+      "proto": "Object",
+      "value": {
+        "v": {
+          "$type": "number",
+          "value": 9223372036854776000
+        }
+      }
+    },
+    "bindNull": {
+      "$type": "object",
+      "proto": "Object",
+      "value": {
+        "changes": {
+          "$type": "number",
+          "value": 1
+        },
+        "lastInsertRowid": {
+          "$type": "number",
+          "value": 1
+        }
+      }
+    },
+    "bindUndefined": {
+      "$type": "object",
+      "proto": "Object",
+      "value": {
+        "changes": {
+          "$type": "number",
+          "value": 1
+        },
+        "lastInsertRowid": {
+          "$type": "number",
+          "value": 2
+        }
+      }
+    },
+    "bindString": {
+      "$type": "object",
+      "proto": "Object",
+      "value": {
+        "changes": {
+          "$type": "number",
+          "value": 1
+        },
+        "lastInsertRowid": {
+          "$type": "number",
+          "value": 3
+        }
+      }
+    },
+    "bindNumber": {
+      "$type": "object",
+      "proto": "Object",
+      "value": {
+        "changes": {
+          "$type": "number",
+          "value": 1
+        },
+        "lastInsertRowid": {
+          "$type": "number",
+          "value": 4
+        }
+      }
+    },
+    "bindBoolean": {
+      "threw": true,
+      "ctor": "TypeError",
+      "name": "TypeError",
+      "message": "SQLite3 can only bind numbers, strings, bigints, buffers, and null"
+    },
+    "bindFalse": {
+      "threw": true,
+      "ctor": "TypeError",
+      "name": "TypeError",
+      "message": "SQLite3 can only bind numbers, strings, bigints, buffers, and null"
+    },
+    "bindDate": {
+      "threw": true,
+      "ctor": "TypeError",
+      "name": "TypeError",
+      "message": "SQLite3 can only bind numbers, strings, bigints, buffers, and null"
+    },
+    "bindObject": {
+      "threw": true,
+      "ctor": "RangeError",
+      "name": "RangeError",
+      "message": "Too few parameter values were provided"
+    },
+    "bindSymbol": {
+      "threw": true,
+      "ctor": "TypeError",
+      "name": "TypeError",
+      "message": "SQLite3 can only bind numbers, strings, bigints, buffers, and null"
+    },
+    "undefinedIsNull": {
+      "$type": "object",
+      "proto": "Object",
+      "value": {
+        "v": null
+      }
+    },
+    "nullIsNull": {
+      "$type": "object",
+      "proto": "Object",
+      "value": {
+        "v": null
+      }
+    },
+    "bindTooFew": {
+      "threw": true,
+      "ctor": "RangeError",
+      "name": "RangeError",
+      "message": "Too few parameter values were provided"
+    },
+    "unicodeInserts": [
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "changes": {
+            "$type": "number",
+            "value": 1
+          },
+          "lastInsertRowid": {
+            "$type": "number",
+            "value": 1
+          }
+        }
+      },
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "changes": {
+            "$type": "number",
+            "value": 1
+          },
+          "lastInsertRowid": {
+            "$type": "number",
+            "value": 2
+          }
+        }
+      },
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "changes": {
+            "$type": "number",
+            "value": 1
+          },
+          "lastInsertRowid": {
+            "$type": "number",
+            "value": 3
+          }
+        }
+      },
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "changes": {
+            "$type": "number",
+            "value": 1
+          },
+          "lastInsertRowid": {
+            "$type": "number",
+            "value": 4
+          }
+        }
+      },
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "changes": {
+            "$type": "number",
+            "value": 1
+          },
+          "lastInsertRowid": {
+            "$type": "number",
+            "value": 5
+          }
+        }
+      },
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "changes": {
+            "$type": "number",
+            "value": 1
+          },
+          "lastInsertRowid": {
+            "$type": "number",
+            "value": 6
+          }
+        }
+      }
+    ],
+    "unicodeReadBack": [
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "v": "naïve café"
+        }
+      },
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "v": "日本語のテキスト"
+        }
+      },
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "v": "emoji 🧠🔍"
+        }
+      },
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "v": "combining e + U+0301: é"
+        }
+      },
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "v": "quotes ' \" ` and\nnewlines\tand\ttabs"
+        }
+      },
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "v": "surrogate pair 😀"
+        }
+      }
+    ],
+    "unicodeLengths": [
+      {
+        "$type": "number",
+        "value": 10
+      },
+      {
+        "$type": "number",
+        "value": 8
+      },
+      {
+        "$type": "number",
+        "value": 10
+      },
+      {
+        "$type": "number",
+        "value": 24
+      },
+      {
+        "$type": "number",
+        "value": 34
+      },
+      {
+        "$type": "number",
+        "value": 17
+      }
+    ],
+    "unicodeLikeNoCase": [],
+    "nulTextStoredHex": {
+      "$type": "object",
+      "proto": "Object",
+      "value": {
+        "h": "6E756C2D696E2D002D6D6964646C65"
+      }
+    },
+    "nulTextRead": {
+      "$type": "object",
+      "proto": "Object",
+      "value": {
+        "v": "nul-in-\u0000-middle"
+      }
+    },
+    "nulJsonEncodedRoundTrip": {
+      "$type": "object",
+      "proto": "Object",
+      "value": {
+        "v": "{\"o\":[\"a\\u0000b\"]}"
+      }
+    },
+    "errUnique": {
+      "threw": true,
+      "ctor": "SqliteError",
+      "name": "SqliteError",
+      "code": "SQLITE_CONSTRAINT_UNIQUE",
+      "message": "UNIQUE constraint failed: p.name"
+    },
+    "errForeignKey": {
+      "threw": true,
+      "ctor": "SqliteError",
+      "name": "SqliteError",
+      "code": "SQLITE_CONSTRAINT_FOREIGNKEY",
+      "message": "FOREIGN KEY constraint failed"
+    },
+    "errNotNull": {
+      "threw": true,
+      "ctor": "SqliteError",
+      "name": "SqliteError",
+      "code": "SQLITE_CONSTRAINT_NOTNULL",
+      "message": "NOT NULL constraint failed: c.v"
+    },
+    "errNoSuchTable": {
+      "threw": true,
+      "ctor": "SqliteError",
+      "name": "SqliteError",
+      "code": "SQLITE_ERROR",
+      "message": "no such table: nope"
+    },
+    "errSyntax": {
+      "threw": true,
+      "ctor": "SqliteError",
+      "name": "SqliteError",
+      "code": "SQLITE_ERROR",
+      "message": "near \"selec\": syntax error"
+    },
+    "errNoSuchColumn": {
+      "threw": true,
+      "ctor": "SqliteError",
+      "name": "SqliteError",
+      "code": "SQLITE_ERROR",
+      "message": "no such column: nope"
+    },
+    "errNoSuchModule": {
+      "threw": true,
+      "ctor": "SqliteError",
+      "name": "SqliteError",
+      "code": "SQLITE_ERROR",
+      "message": "no such module: nosuchmodule"
+    },
+    "errReadonly": {
+      "threw": true,
+      "ctor": "SqliteError",
+      "name": "SqliteError",
+      "code": "SQLITE_READONLY",
+      "message": "attempt to write a readonly database"
+    },
+    "errClosedPrepare": {
+      "threw": true,
+      "ctor": "TypeError",
+      "name": "TypeError",
+      "message": "The database connection is not open"
+    },
+    "errClosedExec": {
+      "threw": true,
+      "ctor": "TypeError",
+      "name": "TypeError",
+      "message": "The database connection is not open"
+    },
+    "stalePostingError": {
+      "threw": true,
+      "ctor": "SqliteError",
+      "name": "SqliteError",
+      "code": "SQLITE_CORRUPT_VTAB",
+      "message": "fts5: missing row 1 from content table 'main'.'entities'"
+    },
+    "stalePostingJoined": [],
+    "ondiskRows": [
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "name": "Alice",
+          "id": "id-1",
+          "entityType": "person",
+          "observations": "[\"engineer\"]",
+          "tags": "[\"team\"]",
+          "importance": {
+            "$type": "number",
+            "value": 7
+          },
+          "createdAt": "2024-01-01T00:00:00.000Z",
+          "lastModified": "2024-01-01T00:00:00.000Z"
+        }
+      },
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "name": "Bob",
+          "id": "id-2",
+          "entityType": "person",
+          "observations": "[\"designer\"]",
+          "tags": null,
+          "importance": null,
+          "createdAt": "2024-01-02T00:00:00.000Z",
+          "lastModified": "2024-01-02T00:00:00.000Z"
+        }
+      }
+    ],
+    "ondiskUserVersion": {
+      "$type": "number",
+      "value": 3
+    },
+    "ondiskSchema": [
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "type": "index",
+          "name": "idx_entity_type"
+        }
+      },
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "type": "table",
+          "name": "entities"
+        }
+      }
+    ],
+    "storageSchemaFts": [
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "name": "Child"
+        }
+      }
+    ],
+    "storageSchemaParent": [
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "name": "Child",
+          "parentId": "Parent"
+        }
+      },
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "name": "Parent",
+          "parentId": null
+        }
+      }
+    ],
+    "storageSchemaAfterCascade": {
+      "$type": "object",
+      "proto": "Object",
+      "value": {
+        "entities": [
+          {
+            "$type": "object",
+            "proto": "Object",
+            "value": {
+              "name": "Child",
+              "parentId": null
+            }
+          }
+        ],
+        "relations": []
+      }
+    },
+    "storageSchemaFtsAfterCascade": [
+      {
+        "$type": "object",
+        "proto": "Object",
+        "value": {
+          "name": "Child"
+        }
+      }
+    ]
+  }
+}

@@ -1,1 +1,7 @@
 package-lock.json linguist-generated=true
+
+# Committed SQLite fixture: a binary database written by better-sqlite3 13.0.3
+# and opened by node:sqlite in tests/unit/core/sqlite-on-disk-compat.test.ts.
+# `binary` is `-text -diff`: without it a Windows checkout with core.autocrlf
+# would rewrite the bytes and the file would no longer be a valid database.
+tests/unit/core/fixtures/*.db binary

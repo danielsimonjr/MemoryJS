@@ -8,7 +8,10 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import Database from 'better-sqlite3';
+import { createNodeSqliteDatabaseCtor } from '../../../src/core/nodeSqliteAdapter.js';
+
+/** Raw connection on the driver under test, for tests that inspect stored rows. */
+const Database = createNodeSqliteDatabaseCtor();
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';

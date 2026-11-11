@@ -6,7 +6,6 @@
  */
 
 import { describe, it, expect, afterEach } from 'vitest';
-import { createRequire } from 'node:module';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -17,18 +16,8 @@ import { SQLiteStorage } from '../../../src/core/SQLiteStorage.js';
 import { isNodeSqliteAvailable } from '../../../src/core/nodeSqliteAdapter.js';
 import type { GraphStorage as GraphStorageType } from '../../../src/core/GraphStorage.js';
 
-const require = createRequire(import.meta.url);
-
-function isBetterSqlite3Available(): boolean {
-  try {
-    require('better-sqlite3');
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-const sqliteDriverAvailable = isBetterSqlite3Available() || isNodeSqliteAvailable();
+/** The SQLite backend is testable whenever its driver (`node:sqlite`) exists. */
+const sqliteDriverAvailable = isNodeSqliteAvailable();
 
 const proceduralGraphMetadata = {
   proceduralGraph: {

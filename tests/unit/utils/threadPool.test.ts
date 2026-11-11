@@ -26,6 +26,7 @@ import {
   TimeoutError,
   TerminateError,
 } from '../../../src/utils/threadPool.js';
+import { tsWorkerExecArgv } from './helpers/threadPoolParityCases.js';
 
 /** A function that sleeps inside the built-in script-less worker. */
 const sleep = async (ms: number): Promise<number> => {
@@ -179,7 +180,7 @@ describe('threadPool', () => {
       const poolUnderTest = pool(script, {
         maxWorkers: 1,
         workerType: 'thread',
-        workerThreadOpts: { type: 'module', execArgv: ['--import', 'tsx'] },
+        workerThreadOpts: { type: 'module', execArgv: tsWorkerExecArgv() },
       });
       try {
         expect(await poolUnderTest.exec('echo', ['hello'])).toBe('hello');
