@@ -154,6 +154,21 @@ export interface PrioritizeOptions {
  * console.log(`Retrieved ${result.memories.length} memories using ${result.totalTokens} tokens`);
  * ```
  */
+/** Fully-populated default context-window config, hoisted out of the constructor. */
+const DEFAULT_CONTEXT_WINDOW_CONFIG: Required<ContextWindowManagerConfig> = {
+  defaultMaxTokens: 4000,
+  tokenMultiplier: 1.3,
+  reserveBuffer: 100,
+  maxEntitiesToConsider: 1000,
+  workingBudgetPct: 0.3,
+  episodicBudgetPct: 0.3,
+  semanticBudgetPct: 0.4,
+  recentSessionCount: 3,
+  diversityThreshold: 0.8,
+  enforceDiversity: true,
+  maxEvictionLines: 5,
+};
+
 export class ContextWindowManager {
   private readonly storage: IGraphStorage;
   private readonly salienceEngine: SalienceEngine;
@@ -174,20 +189,7 @@ export class ContextWindowManager {
     this.storage = storage;
     this.salienceEngine = salienceEngine;
     this.contextProfileManager = new ContextProfileManager();
-    const defaults: Required<ContextWindowManagerConfig> = {
-      defaultMaxTokens: 4000,
-      tokenMultiplier: 1.3,
-      reserveBuffer: 100,
-      maxEntitiesToConsider: 1000,
-      workingBudgetPct: 0.3,
-      episodicBudgetPct: 0.3,
-      semanticBudgetPct: 0.4,
-      recentSessionCount: 3,
-      diversityThreshold: 0.8,
-      enforceDiversity: true,
-      maxEvictionLines: 5,
-    };
-    this.config = fillDefaults(config, defaults);
+    this.config = fillDefaults(config, DEFAULT_CONTEXT_WINDOW_CONFIG);
   }
 
   // ==================== Distillation ====================

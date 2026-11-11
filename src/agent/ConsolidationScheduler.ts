@@ -57,6 +57,15 @@ export interface ConsolidationCycleResult {
 
 // ==================== Scheduler Class ====================
 
+/** Defaults for the scheduler config, hoisted out of the constructor. */
+const DEFAULT_CONSOLIDATION_SCHEDULER_CONFIG: Required<
+  Pick<ConsolidationSchedulerConfig, 'consolidationIntervalMs' | 'autoMergeDuplicates' | 'duplicateThreshold'>
+> = {
+  consolidationIntervalMs: 60 * 60 * 1000,
+  autoMergeDuplicates: false,
+  duplicateThreshold: 0.9,
+};
+
 /**
  * Schedules periodic memory consolidation operations.
  *
@@ -104,13 +113,8 @@ export class ConsolidationScheduler extends EventEmitter {
     super();
     this.pipeline = pipeline;
     this.compressionManager = compressionManager;
-    const filled = fillDefaults(config, {
-      consolidationIntervalMs: 60 * 60 * 1000,
-      autoMergeDuplicates: false,
-      duplicateThreshold: 0.9,
-    });
     this.config = {
-      ...filled,
+      ...fillDefaults(config, DEFAULT_CONSOLIDATION_SCHEDULER_CONFIG),
       onConsolidationComplete: config.onConsolidationComplete,
       onError: config.onError,
     };

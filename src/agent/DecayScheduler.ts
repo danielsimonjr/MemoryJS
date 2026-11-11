@@ -46,6 +46,14 @@ export interface DecayCycleResult {
 }
 
 /**
+ * Defaults for the scheduler config, hoisted out of the constructor.
+ */
+const DEFAULT_DECAY_SCHEDULER_CONFIG: Required<Pick<DecaySchedulerConfig, 'decayIntervalMs' | 'autoForget'>> = {
+  decayIntervalMs: 60 * 60 * 1000,
+  autoForget: false,
+};
+
+/**
  * Schedules periodic decay and forget operations.
  *
  * The DecayScheduler runs decay analysis at configurable intervals
@@ -98,12 +106,8 @@ export class DecayScheduler {
 
   constructor(decayEngine: DecayEngine, config: DecaySchedulerConfig = {}) {
     this.decayEngine = decayEngine;
-    const filled = fillDefaults(config, {
-      decayIntervalMs: 60 * 60 * 1000,
-      autoForget: false,
-    });
     this.config = {
-      ...filled,
+      ...fillDefaults(config, DEFAULT_DECAY_SCHEDULER_CONFIG),
       forgetOptions: config.forgetOptions,
       onDecayComplete: config.onDecayComplete,
       onForgetComplete: config.onForgetComplete,

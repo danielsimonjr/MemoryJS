@@ -38,6 +38,22 @@ function limitCount(limit: number, size: number): number {
   return Number.isFinite(limit) ? Math.min(size, Math.floor(limit)) : size;
 }
 
+/** Fully-populated default salience config, hoisted out of the constructor. */
+const DEFAULT_SALIENCE_ENGINE_CONFIG: Required<SalienceEngineConfig> = {
+  importanceWeight: 0.25,
+  recencyWeight: 0.25,
+  frequencyWeight: 0.2,
+  contextWeight: 0.2,
+  noveltyWeight: 0.1,
+  recencyDecayHours: 24,
+  sessionBoostFactor: 1.0,
+  recentEntityBoostFactor: 0.7,
+  useSemanticSimilarity: true,
+  uniquenessThreshold: 0.5,
+  freshnessWeight: 0.15,
+  connectivityWeight: 0,
+};
+
 /**
  * Calculates multi-factor salience scores for memories.
  *
@@ -80,21 +96,7 @@ export class SalienceEngine {
     this.decayEngine = decayEngine;
     this.summarizationService = new SummarizationService();
     this.freshnessManager = new FreshnessManager(storage);
-    const defaults: Required<SalienceEngineConfig> = {
-      importanceWeight: 0.25,
-      recencyWeight: 0.25,
-      frequencyWeight: 0.2,
-      contextWeight: 0.2,
-      noveltyWeight: 0.1,
-      recencyDecayHours: 24,
-      sessionBoostFactor: 1.0,
-      recentEntityBoostFactor: 0.7,
-      useSemanticSimilarity: true,
-      uniquenessThreshold: 0.5,
-      freshnessWeight: 0.15,
-      connectivityWeight: 0,
-    };
-    this.config = fillDefaults(config, defaults);
+    this.config = fillDefaults(config, DEFAULT_SALIENCE_ENGINE_CONFIG);
   }
 
   // ==================== Main Salience Calculation ====================
