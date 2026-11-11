@@ -261,6 +261,26 @@ export function rebuildRelationIndexes(
 }
 
 /**
+ * Drop named entities and every relation with an endpoint in the set.
+ *
+ * Returns fresh arrays and never mutates `graph`, so a caller that keeps the old arrays (or a
+ * dry-run that must not touch the live graph) is unaffected.
+ *
+ * @param graph - Entities and relations to filter
+ * @param nameSet - Entity names to omit
+ * @returns The filtered entities and relations
+ */
+export function omitNamedEndpoints(
+  graph: { entities: readonly Entity[]; relations: readonly Relation[] },
+  nameSet: ReadonlySet<string>,
+): { entities: Entity[]; relations: Relation[] } {
+  return {
+    entities: graph.entities.filter(e => !nameSet.has(e.name)),
+    relations: graph.relations.filter(r => !nameSet.has(r.from) && !nameSet.has(r.to)),
+  };
+}
+
+/**
  * Remove entities and incident relations from an in-memory graph snapshot.
  *
  * The caller runs this after the durable delete. Index maintenance is separate
@@ -270,10 +290,9 @@ export function deleteNamesFromSnapshot(
   cache: KnowledgeGraph,
   nameSet: ReadonlySet<string>,
 ): void {
-  cache.entities = cache.entities.filter(e => !nameSet.has(e.name));
-  cache.relations = cache.relations.filter(
-    r => !nameSet.has(r.from) && !nameSet.has(r.to),
-  );
+  const kept = omitNamedEndpoints(cache, nameSet);
+  cache.entities = kept.entities;
+  cache.relations = kept.relations;
 }
 
 /**

@@ -9,6 +9,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   deleteNamesFromSnapshot,
+  omitNamedEndpoints,
   deleteRelationsFromSnapshot,
   bindStorageCacheState,
   relationKeyOf,
@@ -304,6 +305,63 @@ describe('deleteNamesFromSnapshot', () => {
     deleteNamesFromSnapshot(cache, new Set(['e1']));
     expect(cache.entities.map(e => e.name)).toEqual(['e2']);
     expect(cache.relations).toEqual([{ from: 'e2', to: 'e3', relationType: 't' }]);
+  });
+
+  it('removes a relation when either endpoint is in the set, and keeps the rest', () => {
+    const cache: KnowledgeGraph = {
+      entities: ['a', 'b', 'c', 'd'].map(name => ({ name, entityType: 'A', observations: [] })),
+      relations: [
+        { from: 'a', to: 'b', relationType: 't' }, // both in set
+        { from: 'a', to: 'c', relationType: 't' }, // from in set
+        { from: 'c', to: 'a', relationType: 't' }, // to in set
+        { from: 'c', to: 'd', relationType: 't' }, // neither
+      ],
+    };
+    deleteNamesFromSnapshot(cache, new Set(['a', 'b']));
+    expect(cache.entities.map(e => e.name)).toEqual(['c', 'd']);
+    expect(cache.relations).toEqual([{ from: 'c', to: 'd', relationType: 't' }]);
+  });
+
+  it('assigns new arrays so a held entity array reference still sees the old list', () => {
+    const cache: KnowledgeGraph = {
+      entities: [{ name: 'a', entityType: 'A', observations: [] }],
+      relations: [],
+    };
+    const before = cache.entities;
+    deleteNamesFromSnapshot(cache, new Set(['a']));
+    expect(cache.entities).not.toBe(before);
+    expect(before).toHaveLength(1);
+  });
+});
+
+describe('omitNamedEndpoints', () => {
+  const graph = () => ({
+    entities: ['a', 'b', 'c'].map(name => ({ name, entityType: 'A', observations: [] })),
+    relations: [
+      { from: 'a', to: 'b', relationType: 't' },
+      { from: 'b', to: 'c', relationType: 't' },
+      { from: 'a', to: 'c', relationType: 't' },
+    ],
+  });
+
+  it('drops entities by name and relations with either endpoint in the set', () => {
+    const out = omitNamedEndpoints(graph(), new Set(['a']));
+    expect(out.entities.map(e => e.name)).toEqual(['b', 'c']);
+    expect(out.relations).toEqual([{ from: 'b', to: 'c', relationType: 't' }]);
+  });
+
+  it('keeps every relation whose endpoints are both outside the set', () => {
+    const out = omitNamedEndpoints(graph(), new Set(['zzz']));
+    expect(out.entities).toHaveLength(3);
+    expect(out.relations).toHaveLength(3);
+  });
+
+  it('returns fresh arrays and leaves the input untouched', () => {
+    const input = graph();
+    const out = omitNamedEndpoints(input, new Set(['b']));
+    expect(input.entities).toHaveLength(3);
+    expect(out.entities).not.toBe(input.entities);
+    expect(out.relations).not.toBe(input.relations);
   });
 });
 

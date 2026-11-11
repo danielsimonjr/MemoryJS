@@ -13,6 +13,7 @@ import { promises as fs } from 'fs';
 import { dirname, join } from 'path';
 import type { Entity, LongRunningOperationOptions } from '../types/index.js';
 import type { GraphStorage } from '../core/GraphStorage.js';
+import { omitNamedEndpoints } from '../core/storageCache.js';
 import {
   compress,
   COMPRESSION_CONFIG,
@@ -218,12 +219,7 @@ export class ArchiveManager {
     checkCancellation(opts.signal, 'archiveEntities');
 
     const archiveNames = new Set(toArchive.map(e => e.name));
-    const postArchiveGraph = {
-      entities: readGraph.entities.filter(e => !archiveNames.has(e.name)),
-      relations: readGraph.relations.filter(
-        r => !archiveNames.has(r.from) && !archiveNames.has(r.to),
-      ),
-    };
+    const postArchiveGraph = omitNamedEndpoints(readGraph, archiveNames);
     // Policy-check before writing even the archive sidecar. A denied archive
     // must not leak a copy of protected entities to a new file.
     const auditEvents = preflightGovernedGraphMutation(
@@ -260,10 +256,9 @@ export class ArchiveManager {
     const graph = await this.storage.getGraphForMutation();
 
     // Remove archived entities from main graph
-    graph.entities = graph.entities.filter(e => !archiveNames.has(e.name));
-    graph.relations = graph.relations.filter(
-      r => !archiveNames.has(r.from) && !archiveNames.has(r.to)
-    );
+    const kept = omitNamedEndpoints(graph, archiveNames);
+    graph.entities = kept.entities;
+    graph.relations = kept.relations;
     await this.storage.saveGraph(graph);
     fireGovernanceAudits(this.governanceHooks, auditEvents, 'ArchiveManager');
 
