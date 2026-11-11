@@ -13,7 +13,7 @@ import { SEARCH_LIMITS, QUERY_LIMITS } from '../utils/constants.js';
 import { ValidationError } from '../utils/errors.js';
 import { cleanupExpiredEntries } from '../utils/searchCache.js';
 import { SearchFilterChain, type SearchFilters } from './SearchFilterChain.js';
-import { collectInducedRelations } from './inducedSubgraph.js';
+import { inducedSubgraph } from './inducedSubgraph.js';
 
 /**
  * Phase 4 Sprint 4: Cache entry for Boolean search AST and results.
@@ -208,8 +208,7 @@ export class BooleanSearch {
         // Return cached results
         const cachedNameSet = new Set(cached.entityNames);
         const cachedEntities = graph.entities.filter(e => cachedNameSet.has(e.name));
-        const cachedRelations = collectInducedRelations(this.storage, cachedNameSet);
-        return { entities: cachedEntities as Entity[], relations: cachedRelations };
+        return inducedSubgraph(this.storage, cachedEntities) as { entities: Entity[]; relations: KnowledgeGraph['relations'] };
       }
     }
 
@@ -256,10 +255,7 @@ export class BooleanSearch {
       this.cleanupResultCache();
     }
 
-    const filteredEntityNames = new Set(paginatedEntities.map(e => e.name));
-    const filteredRelations = collectInducedRelations(this.storage, filteredEntityNames);
-
-    return { entities: paginatedEntities, relations: filteredRelations };
+    return inducedSubgraph(this.storage, paginatedEntities) as { entities: Entity[]; relations: KnowledgeGraph['relations'] };
   }
 
   /**

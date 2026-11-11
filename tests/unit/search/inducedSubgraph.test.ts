@@ -3,9 +3,9 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { collectInducedRelations } from '../../../src/search/inducedSubgraph.js';
+import { collectInducedRelations, inducedSubgraph } from '../../../src/search/inducedSubgraph.js';
 import type { GraphStorage } from '../../../src/core/GraphStorage.js';
-import type { Relation } from '../../../src/types/index.js';
+import type { Entity, Relation } from '../../../src/types/index.js';
 
 function fakeStorage(relations: Relation[]): GraphStorage {
   const byFrom = new Map<string, Relation[]>();
@@ -82,5 +82,38 @@ describe('collectInducedRelations', () => {
     const storage = { getRelationsFrom } as unknown as GraphStorage;
     collectInducedRelations(storage, new Set(['A', 'B']));
     expect(getRelationsFrom.mock.calls.map(c => c[0])).toEqual(['A', 'B']);
+  });
+});
+
+describe('inducedSubgraph', () => {
+  const entities: Entity[] = [
+    { name: 'A', entityType: 't', observations: [] },
+    { name: 'B', entityType: 't', observations: [] },
+    { name: 'C', entityType: 't', observations: [] },
+  ];
+
+  it('returns exactly the given entities and the relations among them', () => {
+    const storage = fakeStorage([rel('A', 'B'), rel('B', 'C'), rel('C', 'A')]);
+    const out = inducedSubgraph(storage, [entities[0]!, entities[1]!]);
+    expect(out.entities).toEqual([entities[0], entities[1]]);
+    expect(out.relations.map(r => `${r.from}>${r.to}`)).toEqual(['A>B']);
+  });
+
+  it('applies an optional relation predicate', () => {
+    const storage = fakeStorage([rel('A', 'B', 'keep'), rel('B', 'A', 'drop')]);
+    const out = inducedSubgraph(storage, entities.slice(0, 2), r => r.relationType === 'keep');
+    expect(out.relations.map(r => r.relationType)).toEqual(['keep']);
+  });
+
+  it('returns no relations for an empty entity list', () => {
+    const storage = fakeStorage([rel('A', 'B')]);
+    expect(inducedSubgraph(storage, [])).toEqual({ entities: [], relations: [] });
+  });
+
+  it('keeps entity order and identity from the argument', () => {
+    const storage = fakeStorage([]);
+    const out = inducedSubgraph(storage, [entities[2]!, entities[0]!]);
+    expect(out.entities.map(e => e.name)).toEqual(['C', 'A']);
+    expect(out.entities[0]).toBe(entities[2]);
   });
 });
