@@ -14,6 +14,7 @@ import { AccessTracker } from '../../../src/agent/AccessTracker.js';
 import type { IGraphStorage, Entity } from '../../../src/types/types.js';
 import type { AgentEntity } from '../../../src/types/agent-memory.js';
 import { GraphStorage } from '../../../src/core/GraphStorage.js';
+import { clampedHalfLifeScore } from '../../../src/utils/halfLife.js';
 import { makeTempDir, removeTempDir } from '../../helpers/tempStorage.js';
 import * as path from 'path';
 
@@ -183,6 +184,49 @@ describe('DecayEngine.calculateDecayFactor', () => {
       expect(factor).toBeGreaterThanOrEqual(0);
       expect(factor).toBeLessThanOrEqual(1);
     }
+  });
+
+  it('equals clampedHalfLifeScore when no boost and no TTL apply', () => {
+    vi.useFakeTimers();
+    const now = Date.now();
+    vi.setSystemTime(now);
+    for (const hours of [0, 1, 12, 24, 168]) {
+      const past = new Date(now - hours * 60 * 60 * 1000).toISOString();
+      expect(decay.calculateDecayFactor(past, 24)).toBe(clampedHalfLifeScore(past, 24));
+    }
+  });
+
+  it('decays a past-TTL entity faster than the same timestamp without a TTL', () => {
+    vi.useFakeTimers();
+    const now = Date.now();
+    vi.setSystemTime(now);
+    const past = new Date(now - 48 * 60 * 60 * 1000).toISOString();
+    const createdAt = new Date(now - 10 * 24 * 60 * 60 * 1000).toISOString();
+    const withTtl = decay.calculateDecayFactor(past, 24, undefined, { ttl: 1000, createdAt });
+    const withoutTtl = decay.calculateDecayFactor(past, 24, undefined, { createdAt });
+    // TTL expired -> effective half-life shrinks -> lower score.
+    expect(withTtl).toBeLessThan(withoutTtl);
+    expect(withTtl).toBe(clampedHalfLifeScore(past, 24 / decay.config.ttlExpiredDecayMultiplier));
+  });
+
+  it('uses createdAt ?? now for the TTL check and ignores a TTL when createdAt is in the future', () => {
+    vi.useFakeTimers();
+    const now = Date.now();
+    vi.setSystemTime(now);
+    const past = new Date(now - 48 * 60 * 60 * 1000).toISOString();
+    // createdAt omitted: treated as `now`, so ttl cannot be exceeded yet.
+    expect(decay.calculateDecayFactor(past, 24, undefined, { ttl: 1000 })).toBe(clampedHalfLifeScore(past, 24));
+  });
+
+  it('ignores importanceBoost when importanceModulation is false', () => {
+    vi.useFakeTimers();
+    const now = Date.now();
+    vi.setSystemTime(now);
+    const past = new Date(now - 24 * 60 * 60 * 1000).toISOString();
+    const plain = new DecayEngine(createMockStorage([]), new AccessTracker(createMockStorage([])), {
+      importanceModulation: false,
+    });
+    expect(plain.calculateDecayFactor(past, 24, 10)).toBe(plain.calculateDecayFactor(past, 24));
   });
 });
 

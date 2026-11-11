@@ -14,7 +14,7 @@ import { isAgentEntity } from '../types/agent-memory.js';
 import { AccessTracker } from './AccessTracker.js';
 import { FreshnessManager } from '../features/FreshnessManager.js';
 import { tokenizeToSet } from '../utils/textSimilarity.js';
-import { clampedHalfLifeScore, halfLifeFactor } from '../utils/halfLife.js';
+import { clampedHalfLifeScore } from '../utils/halfLife.js';
 import { computeDegreeMap, normalizedDegree, type DegreeMap } from './connectivity.js';
 import { hasDeltaPrimitives } from '../core/storageCapabilities.js';
 
@@ -248,8 +248,6 @@ export class DecayEngine {
     }
 
     const now = Date.now();
-    const lastAccess = new Date(lastAccessedAt).getTime();
-    const ageHours = (now - lastAccess) / (1000 * 60 * 60);
 
     // Apply importance boost to half-life if provided and modulation enabled
     let effectiveHalfLife = halfLifeHours;
@@ -269,9 +267,7 @@ export class DecayEngine {
       }
     }
 
-    const decayFactor = halfLifeFactor(ageHours, effectiveHalfLife);
-
-    return Math.max(0, Math.min(1, decayFactor));
+    return clampedHalfLifeScore(lastAccessedAt, effectiveHalfLife);
   }
 
   /**
