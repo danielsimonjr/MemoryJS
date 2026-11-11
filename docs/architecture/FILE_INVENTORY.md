@@ -9,7 +9,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 1055
+**Total files**: 1056
 
 ## Disposition counts
 
@@ -19,12 +19,12 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 607 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 608 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 5 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 15 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **1055** | |
+| **Total** | **1056** | |
 
 ## Per-area counts
 
@@ -34,7 +34,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `config` | 2 |
 | `examples` | 15 |
 | `src` | 416 |
-| `tests` | 607 |
+| `tests` | 608 |
 | `tools` | 10 |
 
 ## All files
@@ -794,6 +794,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/GraphEventEmitter.test.ts` | tests | test | 519 |
 | `tests/unit/core/GraphEvents.test.ts` | tests | test | 480 |
 | `tests/unit/core/GraphStorage.test.ts` | tests | test | 666 |
+| `tests/unit/core/GraphTraversal.bfsDuplicates.test.ts` | tests | test | 75 |
 | `tests/unit/core/GraphTraversal.test.ts` | tests | test | 684 |
 | `tests/unit/core/GraphTraversalLookFor.test.ts` | tests | test | 191 |
 | `tests/unit/core/helpers/captureSqliteDriverParity.ts` | tests | test | 60 |

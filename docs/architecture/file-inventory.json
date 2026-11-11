@@ -1,11 +1,11 @@
 {
-  "totalFiles": 1055,
+  "totalFiles": 1056,
   "byDisposition": {
     "reachable": 412,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 607,
+    "test": 608,
     "tool": 10,
     "config": 2,
     "bench": 5,
@@ -15,7 +15,7 @@
     "benchmarks": 5,
     "examples": 15,
     "src": 416,
-    "tests": 607,
+    "tests": 608,
     "tools": 10,
     "config": 2
   },
@@ -5290,6 +5290,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 666
+    },
+    {
+      "file": "tests/unit/core/GraphTraversal.bfsDuplicates.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 75
     },
     {
       "file": "tests/unit/core/GraphTraversal.test.ts",
