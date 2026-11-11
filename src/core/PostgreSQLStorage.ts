@@ -277,28 +277,24 @@ export class PostgreSQLStorage implements IGraphStorage {
       entityType: columnText(row.entity_type),
       observations: Array.isArray(row.observations) ? row.observations as string[] : [],
     };
-    if (row.parent_id != null) entity.parentId = columnText(row.parent_id);
+    assignOptional(entity, 'parentId', readOptional(row, 'parent_id', columnText));
     if (Array.isArray(row.tags)) entity.tags = row.tags as string[];
-    if (row.importance != null) entity.importance = Number(row.importance);
-    if (row.created_at != null) entity.createdAt = columnIso(row.created_at);
-    if (row.last_modified != null) entity.lastModified = columnIso(row.last_modified);
-    if (row.ttl != null) entity.ttl = Number(row.ttl);
-    if (row.confidence != null) entity.confidence = Number(row.confidence);
-    if (row.project_id != null) entity.projectId = columnText(row.project_id);
-    if (row.version != null) entity.version = Number(row.version);
-    if (row.parent_entity_name != null) entity.parentEntityName = columnText(row.parent_entity_name);
-    if (row.root_entity_name != null) entity.rootEntityName = columnText(row.root_entity_name);
-    if (row.is_latest != null) entity.isLatest = Boolean(row.is_latest);
-    if (row.superseded_by != null) entity.supersededBy = columnText(row.superseded_by);
-    if (row.content_hash != null) entity.contentHash = columnText(row.content_hash);
-    if (row.valid_from != null) entity.validFrom = columnIso(row.valid_from);
-    if (row.valid_until != null) entity.validUntil = columnIso(row.valid_until);
-    if (row.observation_meta != null) {
-      entity.observationMeta = row.observation_meta as Entity['observationMeta'];
-    }
-    if (row.lifecycle_status != null) {
-      entity.lifecycleStatus = columnText(row.lifecycle_status) as Entity['lifecycleStatus'];
-    }
+    assignOptional(entity, 'importance', readOptional(row, 'importance', Number));
+    assignOptional(entity, 'createdAt', readOptional(row, 'created_at', columnIso));
+    assignOptional(entity, 'lastModified', readOptional(row, 'last_modified', columnIso));
+    assignOptional(entity, 'ttl', readOptional(row, 'ttl', Number));
+    assignOptional(entity, 'confidence', readOptional(row, 'confidence', Number));
+    assignOptional(entity, 'projectId', readOptional(row, 'project_id', columnText));
+    assignOptional(entity, 'version', readOptional(row, 'version', Number));
+    assignOptional(entity, 'parentEntityName', readOptional(row, 'parent_entity_name', columnText));
+    assignOptional(entity, 'rootEntityName', readOptional(row, 'root_entity_name', columnText));
+    assignOptional(entity, 'isLatest', readOptional(row, 'is_latest', Boolean));
+    assignOptional(entity, 'supersededBy', readOptional(row, 'superseded_by', columnText));
+    assignOptional(entity, 'contentHash', readOptional(row, 'content_hash', columnText));
+    assignOptional(entity, 'validFrom', readOptional(row, 'valid_from', columnIso));
+    assignOptional(entity, 'validUntil', readOptional(row, 'valid_until', columnIso));
+    assignOptional(entity, 'observationMeta', readOptional(row, 'observation_meta', (v) => v as Entity['observationMeta']));
+    assignOptional(entity, 'lifecycleStatus', readOptional(row, 'lifecycle_status', (v) => columnText(v) as Entity['lifecycleStatus']));
     mergeExtensionFields(entity, row.extra, FIRST_CLASS_ENTITY_KEYS);
     return entity;
   }
@@ -309,12 +305,12 @@ export class PostgreSQLStorage implements IGraphStorage {
       to: String(row.to_name),
       relationType: String(row.relation_type),
     };
-    if (row.metadata != null) relation.metadata = row.metadata as Relation['metadata'];
-    if (row.properties != null) relation.properties = row.properties as Relation['properties'];
-    if (row.weight != null) relation.weight = Number(row.weight);
-    if (row.confidence != null) relation.confidence = Number(row.confidence);
-    if (row.created_at != null) relation.createdAt = columnIso(row.created_at);
-    if (row.last_modified != null) relation.lastModified = columnIso(row.last_modified);
+    assignOptional(relation, 'metadata', readOptional(row, 'metadata', (v) => v as Relation['metadata']));
+    assignOptional(relation, 'properties', readOptional(row, 'properties', (v) => v as Relation['properties']));
+    assignOptional(relation, 'weight', readOptional(row, 'weight', Number));
+    assignOptional(relation, 'confidence', readOptional(row, 'confidence', Number));
+    assignOptional(relation, 'createdAt', readOptional(row, 'created_at', columnIso));
+    assignOptional(relation, 'lastModified', readOptional(row, 'last_modified', columnIso));
     mergeExtensionFields(relation, row.extra, FIRST_CLASS_RELATION_KEYS);
     return relation;
   }
@@ -725,6 +721,31 @@ function columnText(value: unknown): string {
 /** ISO-8601 form of a `pg` timestamp column (Date or parseable string). */
 function columnIso(value: unknown): string {
   return new Date(value instanceof Date ? value : columnText(value)).toISOString();
+}
+
+/**
+ * Read an optional column, converting it only when it is neither `null` nor `undefined`.
+ *
+ * @param row - Result row.
+ * @param column - Column name.
+ * @param map - Converter applied to the raw column value.
+ * @returns The converted value, or `undefined` when the column is absent or NULL.
+ */
+function readOptional<T>(row: Record<string, unknown>, column: string, map: (value: unknown) => T): T | undefined {
+  const raw = row[column];
+  return raw == null ? undefined : map(raw);
+}
+
+/**
+ * Set `target[key]` only when the read found a value, so a NULL or missing column leaves no key
+ * at all (matching the inline `if (...) assign` shape this replaced).
+ *
+ * @param target - Object to populate.
+ * @param key - Property to set.
+ * @param value - Converted column value, or `undefined`.
+ */
+function assignOptional<T extends object, K extends keyof T>(target: T, key: K, value: T[K] | undefined): void {
+  if (value !== undefined) target[key] = value;
 }
 
 /** Collision-free composite key, including names containing delimiters. */
