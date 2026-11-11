@@ -720,7 +720,7 @@ Every REFACTOR row landed with behavior-pinning tests first (each new test file 
 | 6 | N8, N15 | `DEFAULT_*` module constants | existing constructor tests |
 | 7 | N9 | `loadTasksByIds` | `tests/unit/agent/learning/loadTasksByIds.test.ts` |
 | 8 | N10 | `patchVersionedRecord` (in `versionedWriteFailure.ts`) | existing archive/markResolved pins + microtask-turn pins |
-| 9 | N11 | `emptyTraversal`, `beginTraversal`, `visitNode`, `unvisitedNeighbors` | `tests/unit/core/GraphTraversal.test.ts` (diamond timing pins) |
+| 9 | N11 | `emptyTraversal`, `beginTraversal`, `visitNode`, `forEachOpenNeighbor` | `tests/unit/core/GraphTraversal.test.ts` (diamond timing pins), `tests/unit/core/GraphTraversal.bfsDuplicates.test.ts` |
 | 10 | N13 | `mapGraphXml` | `tests/unit/features/IOManager.xmlGoldens.test.ts` (byte-for-byte) |
 | 11 | N14 | `foldRuleResult` | `tests/unit/utils/EntityValidator.results.test.ts` |
 | 12 | N16 | `applyHashBits(item, mode)` (no per-call closure/array) | `tests/unit/search/BloomFilter.test.ts` (bit-layout pin) |
@@ -733,7 +733,7 @@ Every REFACTOR row landed with behavior-pinning tests first (each new test file 
 | 20 | N26 | `omitNamedEndpoints` | `tests/unit/core/storageCache.test.ts` |
 | 21 | N27 | `privateRecordEntity` | `tests/unit/agent/privateRecordEntity.test.ts` |
 
-N4, N11 and N17 needed a second, larger extract: the first pass moved only the tail, and Task 17's gate still reported the pair. The helpers gained `prepareLoad` / `loadSkillMatches` (N4), `visitNode` + `unvisitedNeighbors` (N11), and the table-driven `applyOptionalColumns` (N17) before those rows dropped.
+N4, N11 and N17 needed a second, larger extract: the first pass moved only the tail, and Task 17's gate still reported the pair. The helpers gained `prepareLoad` / `loadSkillMatches` (N4), `visitNode` + `forEachOpenNeighbor` with `claimOnVisit` for BFS vs DFS (N11), and the table-driven `applyOptionalColumns` (N17) before those rows dropped.
 
 ### Clone counts
 

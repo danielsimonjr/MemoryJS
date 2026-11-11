@@ -12,8 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Node 22.16.0 or later is required** (`engines.node` is now `>=22.16.0`, previously `>=22.12.0`). The SQLite backend runs on Node's built-in `node:sqlite` instead of the native `better-sqlite3` addon, and FTS5 — which `SQLiteStorage` needs for its full-text index — only arrived in `node:sqlite` in Node 22.16.0. Node 22.13–22.15 load the module and then fail to create the index with `no such module: fts5`. README, DEVELOPMENT_SETUP, and QUICK_REFERENCE state the same floor.
 - `better-sqlite3` is no longer a dependency. There is no native addon to install, compile, or rebuild, so `NODE_MODULE_VERSION` ABI mismatches cannot happen and installs no longer need a C++ toolchain. `MEMORY_SQLITE_DRIVER` is still accepted; it selects the same driver.
 
+### Changed
+
+- Internal helpers now back the 21 `repo-tools clones` near-pair refactors from `docs/superpowers/plans/2026-11-10-clones-dedup-plan.md` (shared cores for `raceAbort`, chrono `imply`/`assign` similar-field writers, knowledge load packing, salience scoring, schedulers, graph traversal setup, I/O export loops, Bloom hash bits, and related paths). Behaviour is unchanged except where noted under Fixed; no new public exports.
+
 ### Fixed
 
+- `GraphTraversal.bfs` claims each neighbor on enqueue again when parallel edges (multiple relation types or `direction: 'both'`) return the same target twice from `getNeighborsWithRelations`, so `result.nodes` lists each entity once (regression from shared `unvisitedNeighbors`; pinned in `tests/unit/core/GraphTraversal.bfsDuplicates.test.ts`).
 - `src/core/nodeSqliteAdapter.ts` now matches seven better-sqlite3 13.0.3 behaviours the main parity corpus does not cover: savepoint depth after a failed `COMMIT`, idempotent `close()`, the missing-directory `TypeError`, closed-handle errors through `transaction`, reader/writer statement enforcement, zeroed `run()` counters on readers, and int64 bind overflow. Pinned in `tests/unit/core/node-sqlite-adapter-edge-parity.test.ts`.
 - The worker-thread tests load TypeScript through `tests/unit/utils/helpers/tsWorkerLoader.mjs` instead of `--import tsx`. tsx 4.23.1 registers its ESM hooks only on the main thread below Node 22.22.3, so the parity suite failed with `Unknown file extension ".ts"` on the Node 22.16 CI leg. The loader uses Node's own `--experimental-strip-types` plus a `.js` → `.ts` resolve hook, and the same tests pass on 22.16, 22.23 and 24.
 

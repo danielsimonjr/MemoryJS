@@ -339,11 +339,10 @@ export class GraphTraversal {
       this.visitNode(node, depth, nodes, depths);
 
       // Neighbors are claimed on enqueue, so each node keeps the first parent that reached it.
-      for (const neighbor of this.unvisitedNeighbors(node, opts, visited)) {
-        visited.add(neighbor);
+      this.forEachOpenNeighbor(node, opts, visited, (neighbor) => {
         queue.push({ node: neighbor, depth: depth + 1 });
         parents.set(neighbor, node);
-      }
+      }, true);
     }
 
     return { nodes, depths, parents };
@@ -377,12 +376,12 @@ export class GraphTraversal {
       this.visitNode(node, depth, nodes, depths);
 
       // Neighbors are pushed unclaimed; the first pop that reaches one keeps the parent.
-      for (const neighbor of this.unvisitedNeighbors(node, opts, visited)) {
+      this.forEachOpenNeighbor(node, opts, visited, (neighbor) => {
         stack.push({ node: neighbor, depth: depth + 1 });
         if (!parents.has(neighbor)) {
           parents.set(neighbor, node);
         }
-      }
+      }, false);
     }
 
     return { nodes, depths, parents };
@@ -402,20 +401,31 @@ export class GraphTraversal {
   }
 
   /**
-   * Neighbors of `node` that are not visited yet, in the order `getNeighborsWithRelations` returns
-   * them. The traversal direction and relation-type filters come from `opts`.
+   * Walk neighbors from `getNeighborsWithRelations` that are not in `visited` yet.
+   *
+   * When `claimOnVisit` is true (BFS enqueue), each neighbor is added to `visited` as it is
+   * yielded so parallel edges to the same target are expanded once. When false (DFS stack push),
+   * neighbors are left unclaimed until the caller pops them.
    *
    * @param node - Node being expanded.
    * @param opts - Resolved traversal options.
-   * @param visited - Nodes already claimed.
-   * @returns Neighbor names still open for expansion.
+   * @param visited - Nodes already claimed or reserved.
+   * @param onNeighbor - Called for each open neighbor in relation order.
+   * @param claimOnVisit - Whether to add each yielded neighbor to `visited` immediately.
    */
-  private unvisitedNeighbors(node: string, opts: Required<TraversalOptions>, visited: Set<string>): string[] {
-    const open: string[] = [];
+  private forEachOpenNeighbor(
+    node: string,
+    opts: Required<TraversalOptions>,
+    visited: Set<string>,
+    onNeighbor: (neighbor: string) => void,
+    claimOnVisit: boolean,
+  ): void {
     for (const { neighbor } of this.getNeighborsWithRelations(node, opts)) {
-      if (!visited.has(neighbor)) open.push(neighbor);
+      if (!visited.has(neighbor)) {
+        if (claimOnVisit) visited.add(neighbor);
+        onNeighbor(neighbor);
+      }
     }
-    return open;
   }
 
   // ==================== Sprint 7: Path Finding Algorithms ====================
