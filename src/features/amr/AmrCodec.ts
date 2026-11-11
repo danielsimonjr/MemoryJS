@@ -2,7 +2,7 @@
  * @module features/amr/AmrCodec
  * @experimental
  *
- * Agent Memory Repo (AMR) codec. It reads and writes entry metadata, escapes entry text,
+ * Agent Memory Repo (AMR) codec. The codec reads and writes entry metadata, escapes entry text,
  * extracts wiki links and models a Markdown file as physical lines. All functions are pure.
  */
 import { ValidationError } from '../../utils/errors.js';
@@ -109,7 +109,7 @@ function trimTrailingBlanks(s: string): string {
 }
 
 /**
- * Tells whether a metadata key is valid: it matches the key pattern and is not an
+ * Tells whether a metadata key is valid: the key matches the key pattern and is not an
  * `Object.prototype` property name.
  * @param key - Key to check.
  * @returns True when the key is valid.
@@ -135,7 +135,8 @@ function isValidValue(value: string): boolean {
 }
 
 /**
- * Tells whether the character at `index` is escaped by an odd run of backslashes before it.
+ * Tells whether the character at `index` is escaped. A character is escaped when an odd run of
+ * backslashes comes directly before it.
  * @param s - Source string.
  * @param index - Position to check.
  * @returns True when the character is escaped.
@@ -180,10 +181,10 @@ function decodeText(s: string): string {
 }
 
 /**
- * Escapes the text. Only two brackets can change the reading, and only they get a backslash:
- * the last `[` of a text that ends in `]` (unless a `[` comes directly before it), and the `[`
- * of a leading task prefix (`[ ] ` or `[x] `). A backslash run directly before any `[` is
- * doubled, so the decoder can halve it. Every other character stays as it is.
+ * Escapes the text. Only two brackets can change the reading, and only they get a backslash.
+ * The first is the last `[` of a text that ends in `]`, unless a `[` comes directly before it.
+ * The second is the `[` of a leading task prefix (`[ ] ` or `[x] `). A backslash run directly
+ * before any `[` is doubled, so the decoder can halve it. Every other character stays as it is.
  * @param text - Entry text without metadata.
  * @returns Escaped text.
  */
@@ -479,9 +480,9 @@ export function renderAmrDocument(doc: AmrDocument): string {
 }
 
 /**
- * Replaces the entry on one bullet line. It keeps the indent characters, the marker, the
- * whitespace after the marker and the task prefix, and removes the continuation lines of that
- * entry. The result is parsed again, so its entries and warnings match the new text.
+ * Replaces the entry on one bullet line. The new entry keeps the indent characters, the marker,
+ * the whitespace after the marker and the task prefix. The function removes the continuation
+ * lines of that entry. The result is parsed again, so its entries and warnings match the new text.
  * @param doc - Document to change. It is not modified.
  * @param index - Index of the bullet line in `doc.lines`.
  * @param text - New entry text without metadata.
