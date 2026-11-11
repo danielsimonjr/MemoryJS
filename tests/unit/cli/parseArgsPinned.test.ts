@@ -91,7 +91,7 @@ function buildProgram(captured: Captured[], written: string[]): Command {
 
   const program = new RecordingCommand();
   program.name('memory').description('MemoryJS - Knowledge Graph CLI');
-  program.version('4.6.0', '-v, --version', 'Output the current version');
+  program.version('5.0.0', '-v, --version', 'Output the current version');
   program
     .option('-s, --storage <path>', 'Path to storage file', './memory.jsonl')
     .option('--output-format <type>', 'Console output format (json|table|csv)', 'json')
@@ -140,7 +140,7 @@ function asRecorded<T>(value: T): unknown {
 describe('parseArgs pinned behavior', () => {
   it('was recorded from commander 15.0.0', () => {
     expect(fixture.commanderVersion).toBe('15.0.0');
-    expect(fixture.program).toEqual({ name: 'memory', version: '4.6.0' });
+    expect(fixture.program).toEqual({ name: 'memory', version: '5.0.0' });
   });
 
   describe('help text', () => {
@@ -208,7 +208,7 @@ describe('parseArgs pinned behavior', () => {
   it('matches the recorded version output, stream, and exit code', async () => {
     const ours = await replay(['--version']);
     expect(ours.written).toEqual(fixture.version.written);
-    expect(ours.written).toEqual(['4.6.0\n']);
+    expect(ours.written).toEqual(['5.0.0\n']);
     expect(ours.exitCode ?? null).toBe(fixture.version.exitCode);
     expect(fixture.version.exitCode).toBe(0);
   });

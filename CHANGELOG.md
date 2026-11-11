@@ -7,10 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed — BREAKING
+## [5.0.0] - 2026-11-11
 
-- **Node 22.16.0 or later is required** (`engines.node` is now `>=22.16.0`, previously `>=22.12.0`). The SQLite backend runs on Node's built-in `node:sqlite` instead of the native `better-sqlite3` addon, and FTS5 — which `SQLiteStorage` needs for its full-text index — only arrived in `node:sqlite` in Node 22.16.0. Node 22.13–22.15 load the module and then fail to create the index with `no such module: fts5`. README, DEVELOPMENT_SETUP, and QUICK_REFERENCE state the same floor.
-- `better-sqlite3` is no longer a dependency. There is no native addon to install, compile, or rebuild, so `NODE_MODULE_VERSION` ABI mismatches cannot happen and installs no longer need a C++ toolchain. `MEMORY_SQLITE_DRIVER` is still accepted; it selects the same driver.
+Major release: zero runtime `dependencies`, Node `>=22.16.0`, and SQLite on `node:sqlite` (dependency-reduction sprints 1–9 and repo-tools clones dedup #324).
+
+### Breaking changes
+
+- **Node 22.16.0 or later is required** (`engines.node` is now `>=22.16.0`, previously `>=22.12.0`). The SQLite backend uses Node's built-in `node:sqlite`; FTS5 — which `SQLiteStorage` needs — only arrived there in Node 22.16.0. Node 22.13–22.15 load the module and then fail with `no such module: fts5`.
+- **`better-sqlite3` is removed.** There is no native addon to compile or rebuild; `MEMORY_SQLITE_DRIVER` still selects the built-in driver. On-disk SQLite files written by 4.x remain compatible (parity and bidirectional fixtures in the test suite).
+- **Zero runtime `dependencies`.** Former runtime packages (`better-sqlite3`, `chrono-node`, `commander`, `zod`, `@danielsimonjr/workerpool`, `async-mutex`, `cli-table3`, `chalk`, and related) are replaced by in-repo implementations with fixture-pinned behaviour. Optional integrations remain **peer** dependencies only (`@huggingface/transformers`, `pg`, `yaml`).
+
+### Migration
+
+1. Upgrade the runtime to **Node >= 22.16.0** (22.12–22.15 stay on the 4.x line).
+2. Run a normal `npm install` — no C++ toolchain or `better-sqlite3` rebuild step.
+3. If you pinned `better-sqlite3` alongside MemoryJS, drop it; MemoryJS does not use it from 5.0.0 onward.
+4. Public APIs, CLI flags, and on-disk formats targeted by the parity suites are unchanged unless noted below under **Changed** / **Fixed**.
 
 ### Changed
 
