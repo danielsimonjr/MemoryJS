@@ -4,9 +4,7 @@
  *
  * Every expectation here was verified against the real `better-sqlite3`
  * 13.0.3 addon (installed from npm in a scratch directory) before being
- * written down. Each test currently FAILS against
- * `src/core/nodeSqliteAdapter.ts` at the PR head, which is the point: these
- * are recorded defects, not aspirational behaviour.
+ * written down and replayed against `src/core/nodeSqliteAdapter.ts`.
  *
  * Covered gaps:
  * - `close()` on an already-closed database (better-sqlite3: silent no-op);
