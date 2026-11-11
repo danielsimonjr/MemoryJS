@@ -7,16 +7,13 @@
     "`unreferencedAnywhereNotes`'s dynamic-import check (`_dynamic_import_referrers`) only sees `import(...)` calls with a LITERAL string specifier. A dynamic import built from a variable or template literal (e.g. `import(`./cmds/${name}.js`)`, a command-dispatcher pattern) is invisible to it -- 'found none' in a note means no LITERAL match was found, NOT that nothing imports the file."
   ],
   "summary": {
-    "unusedExportCount": 155,
-    "unreferencedAnywhereCount": 5,
-    "referencedInModuleCount": 150,
+    "unusedExportCount": 111,
+    "unreferencedAnywhereCount": 3,
+    "referencedInModuleCount": 108,
     "unclassifiedExportCount": 0,
     "noImporterFileCount": 0
   },
   "unreferencedAnywhere": {
-    "src/cli/commands/doctor.ts": [
-      "MIN_NODE_MAJOR"
-    ],
     "src/search/enDate/calendar.ts": [
       "mostLikelyAdYear"
     ],
@@ -25,15 +22,9 @@
     ],
     "src/search/enDate/constants.ts": [
       "TIME_UNITS_NO_ABBR_PATTERN"
-    ],
-    "src/utils/schema.ts": [
-      "ZodIssue"
     ]
   },
   "unreferencedAnywhereNotes": {
-    "src/cli/commands/doctor.ts": {
-      "MIN_NODE_MAJOR": "Checked for a dynamic import() call with a LITERAL string specifier resolving to 'src/cli/commands/doctor.ts' across the whole repo and found none. This scan can only see import() calls with a literal string specifier -- a dynamic import built from a variable or template literal (e.g. import(`./cmds/${name}.js`)) is invisible to it, so 'found none' means no LITERAL match was found, NOT that nothing imports this. 'MIN_NODE_MAJOR' may still be consumed via such a call. Also verify against consumption this scan cannot see at all (docs examples, published API surface, a runtime-built path/`new Worker(...)`) before deleting."
-    },
     "src/search/enDate/calendar.ts": {
       "mostLikelyAdYear": "Checked for a dynamic import() call with a LITERAL string specifier resolving to 'src/search/enDate/calendar.ts' across the whole repo and found none. This scan can only see import() calls with a literal string specifier -- a dynamic import built from a variable or template literal (e.g. import(`./cmds/${name}.js`)) is invisible to it, so 'found none' means no LITERAL match was found, NOT that nothing imports this. 'mostLikelyAdYear' may still be consumed via such a call. Also verify against consumption this scan cannot see at all (docs examples, published API surface, a runtime-built path/`new Worker(...)`) before deleting."
     },
@@ -42,9 +33,6 @@
     },
     "src/search/enDate/constants.ts": {
       "TIME_UNITS_NO_ABBR_PATTERN": "Checked for a dynamic import() call with a LITERAL string specifier resolving to 'src/search/enDate/constants.ts' across the whole repo and found none. This scan can only see import() calls with a literal string specifier -- a dynamic import built from a variable or template literal (e.g. import(`./cmds/${name}.js`)) is invisible to it, so 'found none' means no LITERAL match was found, NOT that nothing imports this. 'TIME_UNITS_NO_ABBR_PATTERN' may still be consumed via such a call. Also verify against consumption this scan cannot see at all (docs examples, published API surface, a runtime-built path/`new Worker(...)`) before deleting."
-    },
-    "src/utils/schema.ts": {
-      "ZodIssue": "Checked for a dynamic import() call with a LITERAL string specifier resolving to 'src/utils/schema.ts' across the whole repo and found none. This scan can only see import() calls with a literal string specifier -- a dynamic import built from a variable or template literal (e.g. import(`./cmds/${name}.js`)) is invisible to it, so 'found none' means no LITERAL match was found, NOT that nothing imports this. 'ZodIssue' may still be consumed via such a call. Also verify against consumption this scan cannot see at all (docs examples, published API surface, a runtime-built path/`new Worker(...)`) before deleting."
     }
   },
   "referencedInModule": {
@@ -59,6 +47,9 @@
     ],
     "src/adapters/recursaToolBounds.ts": [
       "byteSize"
+    ],
+    "src/adapters/recursaToolSupport.ts": [
+      "messageOf"
     ],
     "src/agent/AgentEnvDefaults.ts": [
       "DEFAULT_COGNITIVE_LOAD_MAX",
@@ -102,15 +93,8 @@
       "SkillMatcher"
     ],
     "src/agent/knowledge/knowledgeLoad.ts": [
-      "DEFAULT_BUDGET_TOKENS",
-      "DEFAULT_LOAD_SECTIONS",
       "DEFAULT_MAX_SKILLS",
-      "LoadSetup",
-      "MAX_TASK_SKILLS",
-      "resolveMaxSkills"
-    ],
-    "src/agent/knowledge/privateRecordEntity.ts": [
-      "PrivateRecordEntityFields"
+      "MAX_TASK_SKILLS"
     ],
     "src/agent/learning/ChildKnowledgeOverlay.ts": [
       "CHILD_REVISIONS_TAG",
@@ -137,7 +121,8 @@
       "runDedup"
     ],
     "src/agent/learning/LearningTrace.ts": [
-      "DEFAULT_TRACE_MAX_ACTIONS"
+      "DEFAULT_TRACE_MAX_ACTIONS",
+      "buildTraceEntity"
     ],
     "src/agent/learning/RecursiveChildren.ts": [
       "RecursiveCtor"
@@ -185,11 +170,6 @@
     "src/agent/skills/skillTreeFs.ts": [
       "TreeDirRefusal"
     ],
-    "src/agent/versionedWriteFailure.ts": [
-      "PatchVersionedRecordOptions",
-      "VersionedPatchFailure",
-      "versionedWriteFailure"
-    ],
     "src/cli/commands/audit.ts": [
       "AUDIT_OPERATIONS"
     ],
@@ -198,10 +178,6 @@
       "DoctorStatus",
       "EXTRA_NUMERIC_VARS",
       "defaultWorkerDirs"
-    ],
-    "src/cli/commands/helpers.ts": [
-      "JsonCommandOption",
-      "JsonCommandSpec"
     ],
     "src/cli/plainTable.ts": [
       "PlainTableOptions"
@@ -277,44 +253,6 @@
     ],
     "src/utils/jsonlMapFile.ts": [
       "JsonlMapParseOptions"
-    ],
-    "src/utils/schema.ts": [
-      "AnySchema",
-      "ArraySchema",
-      "BooleanSchema",
-      "DefaultSchema",
-      "DiscriminatedUnionSchema",
-      "EnumSchema",
-      "IssuePath",
-      "LiteralSchema",
-      "MessageParams",
-      "NullSchema",
-      "NullableSchema",
-      "NumberSchema",
-      "ObjectOutput",
-      "ObjectSchema",
-      "OptionalSchema",
-      "RecordSchema",
-      "RefineParams",
-      "SafeParseResult",
-      "SchemaIssue",
-      "SchemaShape",
-      "StringSchema",
-      "ToJSONSchemaParams",
-      "TupleSchema",
-      "UnionSchema",
-      "UnknownSchema",
-      "ZodType",
-      "infer",
-      "input",
-      "output"
-    ],
-    "src/utils/threadPool.ts": [
-      "ExecOptions",
-      "PoolStats",
-      "WorkerPoolOptions",
-      "WorkerRegisterOptions",
-      "WorkerType"
     ]
   },
   "unclassifiedExports": {},
