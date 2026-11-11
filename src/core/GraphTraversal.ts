@@ -274,6 +274,46 @@ export class GraphTraversal {
   }
 
   /**
+   * Empty traversal result, returned when the start entity does not exist.
+   *
+   * @returns A result with no nodes, depths or parents.
+   */
+  private emptyTraversal(): TraversalResult {
+    return { nodes: [], depths: new Map(), parents: new Map() };
+  }
+
+  /**
+   * Shared setup for {@link bfs} and {@link dfs}: resolve options and allocate the result maps.
+   *
+   * Visit timing stays with the callers — BFS marks visited on enqueue, DFS on pop — so this
+   * method only performs work that is identical for both and runs once per traversal call.
+   *
+   * @param startEntity - Entity name to start traversal from
+   * @param options - Traversal options
+   * @returns The resolved options and fresh result containers, or `null` when the start entity is unknown
+   */
+  private beginTraversal(
+    startEntity: string,
+    options: TraversalOptions,
+  ): {
+    opts: Required<TraversalOptions>;
+    visited: Set<string>;
+    nodes: string[];
+    depths: Map<string, number>;
+    parents: Map<string, string | null>;
+  } | null {
+    const opts = { ...DEFAULT_OPTIONS, ...options };
+    if (!this.storage.hasEntity(startEntity)) return null;
+    return {
+      opts,
+      visited: new Set<string>(),
+      nodes: [],
+      depths: new Map<string, number>(),
+      parents: new Map<string, string | null>(),
+    };
+  }
+
+  /**
    * Breadth-First Search traversal starting from a given entity.
    *
    * @param startEntity - Entity name to start traversal from
@@ -281,19 +321,11 @@ export class GraphTraversal {
    * @returns Traversal result with visited nodes, depths, and parent pointers
    */
   bfs(startEntity: string, options: TraversalOptions = {}): TraversalResult {
-    const opts = { ...DEFAULT_OPTIONS, ...options };
+    const begin = this.beginTraversal(startEntity, options);
+    if (begin === null) return this.emptyTraversal();
+    const { opts, visited, nodes, depths, parents } = begin;
 
-    // Validate start entity exists
-    if (!this.storage.hasEntity(startEntity)) {
-      return { nodes: [], depths: new Map(), parents: new Map() };
-    }
-
-    const visited = new Set<string>();
     const queue: Array<{ node: string; depth: number }> = [{ node: startEntity, depth: 0 }];
-    const nodes: string[] = [];
-    const depths = new Map<string, number>();
-    const parents = new Map<string, string | null>();
-
     visited.add(startEntity);
     parents.set(startEntity, null);
 
@@ -329,19 +361,11 @@ export class GraphTraversal {
    * @returns Traversal result with visited nodes, depths, and parent pointers
    */
   dfs(startEntity: string, options: TraversalOptions = {}): TraversalResult {
-    const opts = { ...DEFAULT_OPTIONS, ...options };
+    const begin = this.beginTraversal(startEntity, options);
+    if (begin === null) return this.emptyTraversal();
+    const { opts, visited, nodes, depths, parents } = begin;
 
-    // Validate start entity exists
-    if (!this.storage.hasEntity(startEntity)) {
-      return { nodes: [], depths: new Map(), parents: new Map() };
-    }
-
-    const visited = new Set<string>();
     const stack: Array<{ node: string; depth: number }> = [{ node: startEntity, depth: 0 }];
-    const nodes: string[] = [];
-    const depths = new Map<string, number>();
-    const parents = new Map<string, string | null>();
-
     parents.set(startEntity, null);
 
     while (stack.length > 0) {

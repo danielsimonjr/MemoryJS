@@ -16,6 +16,7 @@ describe('GraphTraversal', () => {
   let memoryFilePath: string;
   let storage: GraphStorage;
   let traversal: GraphTraversal;
+  const tempDirs: string[] = [];
 
   beforeEach(async () => {
     // Create temp directory for tests
@@ -141,6 +142,74 @@ describe('GraphTraversal', () => {
       expect(result.nodes).toContain('A');
       expect(result.nodes).toContain('B');
       expect(result.nodes).not.toContain('C'); // Depth 2
+    });
+  });
+
+  describe('BFS vs DFS visit timing (pinned before the shared-setup extract)', () => {
+    /**
+     * Diamond: S -> L, S -> R, L -> T, R -> T.
+     * Both paths reach T at depth 2, but only DFS can pick the parent of the *second* path,
+     * because BFS marks T visited (and sets its parent) when L is expanded — before R is even
+     * dequeued — while DFS marks it on pop and then refuses to overwrite the parent.
+     */
+    let diamond: GraphTraversal;
+
+    beforeEach(async () => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'graph-diamond-'));
+      tempDirs.push(dir);
+      const store = new GraphStorage(path.join(dir, 'memory.jsonl'));
+      diamond = new GraphTraversal(store);
+      await store.saveGraph({
+        entities: ['S', 'L', 'R', 'T'].map((name) => ({ name, entityType: 'node', observations: [] })),
+        relations: [
+          { from: 'S', to: 'L', relationType: 'connects' },
+          { from: 'S', to: 'R', relationType: 'connects' },
+          { from: 'L', to: 'T', relationType: 'connects' },
+          { from: 'R', to: 'T', relationType: 'connects' },
+        ],
+      });
+    });
+
+    afterEach(() => {
+      for (const dir of tempDirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
+    });
+
+    it('BFS visits each node once and records the first parent that reached it', () => {
+      const result = diamond.bfs('S');
+      expect(result.nodes).toEqual(['S', 'L', 'R', 'T']);
+      expect(result.depths.get('T')).toBe(2);
+      // L is expanded before R, so L claims T.
+      expect(result.parents.get('T')).toBe('L');
+      expect(result.parents.get('S')).toBeNull();
+    });
+
+    it('DFS marks visited on pop, so both L and R are pushed before T is popped', () => {
+      const result = diamond.dfs('S');
+      // Visiting on pop means the order is not the BFS level order; assert the invariant
+      // directly: S first, each node once.
+      expect(result.nodes[0]).toBe('S');
+      expect(new Set(result.nodes).size).toBe(result.nodes.length);
+      expect(result.nodes).toContain('T');
+      // Parent-first-wins: whichever of L/R popped T first stays the parent of T.
+      expect(['L', 'R']).toContain(result.parents.get('T'));
+      expect(result.parents.get('S')).toBeNull();
+    });
+
+    it('BFS and DFS agree on the reachable set', () => {
+      expect(new Set(diamond.bfs('S').nodes)).toEqual(new Set(diamond.dfs('S').nodes));
+    });
+
+    it('an unknown start yields empty maps from both algorithms', () => {
+      for (const result of [diamond.bfs('nope'), diamond.dfs('nope')]) {
+        expect(result.nodes).toEqual([]);
+        expect(result.depths.size).toBe(0);
+        expect(result.parents.size).toBe(0);
+      }
+    });
+
+    it('maxDepth 0 stops after the start node in both algorithms', () => {
+      expect(diamond.bfs('S', { maxDepth: 0 }).nodes).toEqual(['S']);
+      expect(diamond.dfs('S', { maxDepth: 0 }).nodes).toEqual(['S']);
     });
   });
 
