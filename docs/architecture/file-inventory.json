@@ -1866,7 +1866,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 561
+      "loc": 614
     },
     {
       "file": "src/core/ObservationManager.ts",
@@ -5436,7 +5436,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 164
+      "loc": 159
     },
     {
       "file": "tests/unit/core/node-sqlite-probe.test.ts",

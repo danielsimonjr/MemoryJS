@@ -304,7 +304,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/core/ManagerContext.ts` | src | reachable | 777 |
 | `src/core/mmap/FsReadMmapBackend.ts` | src | reachable | 239 |
 | `src/core/mmap/IMmapBackend.ts` | src | reachable | 169 |
-| `src/core/nodeSqliteAdapter.ts` | src | reachable | 561 |
+| `src/core/nodeSqliteAdapter.ts` | src | reachable | 614 |
 | `src/core/ObservationManager.ts` | src | reachable | 1009 |
 | `src/core/ObservationStore.ts` | src | reachable | 196 |
 | `src/core/PostgreSQLStorage.ts` | src | reachable | 743 |
@@ -814,7 +814,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/mmap/IMmapBackend.test.ts` | tests | test | 198 |
 | `tests/unit/core/mmap/mmap-review-fixes.test.ts` | tests | test | 272 |
 | `tests/unit/core/mutation-isolation.test.ts` | tests | test | 108 |
-| `tests/unit/core/node-sqlite-adapter-edge-parity.test.ts` | tests | test | 164 |
+| `tests/unit/core/node-sqlite-adapter-edge-parity.test.ts` | tests | test | 159 |
 | `tests/unit/core/node-sqlite-probe.test.ts` | tests | test | 189 |
 | `tests/unit/core/nodeSqliteAdapter.test.ts` | tests | test | 297 |
 | `tests/unit/core/observation-validate-hook.test.ts` | tests | test | 128 |
