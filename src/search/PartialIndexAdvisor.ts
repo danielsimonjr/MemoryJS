@@ -25,7 +25,7 @@
  *   thresholds and index-naming scheme may evolve.
  */
 
-import type { Database as DatabaseType } from 'better-sqlite3';
+import type { SqliteDatabase } from '../core/nodeSqliteAdapter.js';
 
 /** A single filter observation. */
 export interface FilterObservation {
@@ -141,11 +141,11 @@ export class PartialIndexAdvisor {
    * advisor-managed indexes that no longer make the cut. Idempotent.
    * No-op when disabled.
    *
-   * @param db - The writer-side `better-sqlite3` connection. Read-only
+   * @param db - The writer-side SQLite connection. Read-only
    *   pool connections cannot run DDL.
    * @returns Counts of indexes created and dropped.
    */
-  apply(db: DatabaseType): { created: number; dropped: number } {
+  apply(db: SqliteDatabase): { created: number; dropped: number } {
     if (!this.enabled) return { created: 0, dropped: 0 };
 
     const recs = this.recommend();
@@ -187,7 +187,7 @@ export class PartialIndexAdvisor {
    * Drop every advisor-managed index. Used during teardown so we don't
    * leave orphaned `idx_advisor_*` indexes on the file across runs.
    */
-  dropAll(db: DatabaseType): void {
+  dropAll(db: SqliteDatabase): void {
     for (const name of this.liveIndexes) {
       db.exec(`DROP INDEX IF EXISTS ${name}`);
     }

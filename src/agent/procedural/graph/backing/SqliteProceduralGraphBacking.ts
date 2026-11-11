@@ -5,8 +5,8 @@
  * retained revision is one `db.transaction` whose head predicate is
  * `UPDATE pg_heads ... WHERE graph_id=? AND head_version=?` with `changes === 1`.
  *
- * Driver selection goes through `resolveSQLiteDatabaseCtor()` so both
- * `better-sqlite3` and `node:sqlite` are honored (A4, A12).
+ * Driver selection goes through `resolveSQLiteDatabaseCtor()`, so this backing
+ * uses the same `node:sqlite` driver as `SQLiteStorage` (A4, A12).
  *
  * @module agent/procedural/graph/backing/SqliteProceduralGraphBacking
  * @experimental
@@ -15,6 +15,10 @@
 import { mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { resolveSQLiteDatabaseCtor, resolveSQLiteSynchronousMode } from '../../../../core/SQLiteStorage.js';
+import type {
+  SqliteDatabase,
+  SqliteStatement,
+} from '../../../../core/nodeSqliteAdapter.js';
 import type {
   PGEvaluationReport,
   PGHead,
@@ -31,21 +35,11 @@ import type {
 import { graphExistsError } from './ProceduralGraphState.js';
 import { nextMonotonicIsoTimestamp } from '../../../../utils/nextMonotonicIsoTimestamp.js';
 
-/** better-sqlite3 / node:sqlite statement surface used by this backing. */
-interface AdaptedStatement {
-  run(...params: unknown[]): { changes: number; lastInsertRowid: number | bigint };
-  get(...params: unknown[]): unknown;
-  all(...params: unknown[]): unknown[];
-}
+/** Statement surface this backing uses, from the shared SQLite driver. */
+type AdaptedStatement = SqliteStatement;
 
-/** Subset of the adapted database API this backing is allowed to call. */
-interface AdaptedDatabase {
-  exec(sql: string): void;
-  prepare(sql: string): AdaptedStatement;
-  pragma(source: string, options?: { simple?: boolean }): unknown;
-  transaction<T extends (...args: never[]) => unknown>(fn: T): T;
-  close(): void;
-}
+/** Subset of the database API this backing is allowed to call. */
+type AdaptedDatabase = SqliteDatabase;
 
 interface HeadRow {
   graph_id: string;

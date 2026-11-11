@@ -4,8 +4,8 @@
  * Checks the documented gotchas (CLAUDE.md) before they turn into confusing
  * runtime failures, each with pass/warn/fail + a fix hint:
  *
- *   1. Node version >= 18 (package.json `engines`)
- *   2. better-sqlite3 loadability + ABI (NODE_MODULE_VERSION mismatch)
+ *   1. Node version >= 22.16.0 (package.json `engines`)
+ *   2. SQLite driver: `node:sqlite` loads and its SQLite build has FTS5
  *   3. Workers built: dist/workers/levenshteinWorker.* present (tsup, not tsc)
  *   4. Storage file sanity (MEMORY_FILE_PATH parent dir + JSONL/SQLite probe)
  *   5. Env-var lint (strict-literal 'true' flags, numeric vars)
@@ -67,82 +67,122 @@ export interface DoctorReport {
 // ==================== Check 1: Node version ====================
 
 /**
- * Minimum Node major version — mirrors package.json `"engines": { "node":
- * ">=18.0.0" }`. Kept as a constant (rather than parsing package.json at
- * runtime) so the check works identically from the bundled CLI and `tsx`.
+ * Minimum Node major version — the major of package.json
+ * `"engines": { "node": ">=22.16.0" }`.
  */
-export const MIN_NODE_MAJOR = 18;
+export const MIN_NODE_MAJOR = 22;
 
 /**
- * Check that the Node major version meets {@link MIN_NODE_MAJOR}.
+ * Minimum Node version — mirrors package.json `"engines": { "node": ">=22.16.0" }`.
  *
- * @param version - The Node version string, for example `v20.1.0`. The default is `process.version`.
+ * Kept as a constant (rather than parsing package.json at runtime) so the check
+ * works identically from the bundled CLI and `tsx`. The minor matters: FTS5
+ * arrived in `node:sqlite` in 22.16.0, so 22.12–22.15 load the module and then
+ * fail to create `SQLiteStorage`'s virtual table.
+ */
+export const MIN_NODE_VERSION = '22.16.0';
+
+/**
+ * Check that the running Node version meets {@link MIN_NODE_VERSION}.
+ *
+ * @param version - The Node version string, for example `v22.16.0`. The default is `process.version`.
  * @returns `pass` or `fail`, or `warn` when the string has no leading major number.
  */
 export function checkNodeVersion(version: string = process.version): DoctorCheckResult {
   const name = 'node-version';
-  const match = /^v?(\d+)/.exec(version);
+  const match = /^v?(\d+)\.(\d+)\.(\d+)/.exec(version);
   if (!match) {
     return { name, status: 'warn', message: `Unrecognized Node version string: "${version}"` };
   }
-  const major = parseInt(match[1], 10);
-  if (major >= MIN_NODE_MAJOR) {
-    return { name, status: 'pass', message: `Node ${version} satisfies engines >=${MIN_NODE_MAJOR}.0.0` };
+  const actual = [Number(match[1]), Number(match[2]), Number(match[3])] as const;
+  const [wantMajor, wantMinor, wantPatch] = MIN_NODE_VERSION.split('.').map(Number) as [
+    number,
+    number,
+    number,
+  ];
+  const newer =
+    actual[0] > wantMajor
+    || (actual[0] === wantMajor && actual[1] > wantMinor)
+    || (actual[0] === wantMajor && actual[1] === wantMinor && actual[2] >= wantPatch);
+  if (newer) {
+    return { name, status: 'pass', message: `Node ${version} satisfies engines >=${MIN_NODE_VERSION}` };
   }
   return {
     name,
     status: 'fail',
-    message: `Node ${version} is below the required >=${MIN_NODE_MAJOR}.0.0 (package.json engines)`,
-    hint: `Install Node >= ${MIN_NODE_MAJOR} (e.g. via nvm: nvm install ${MIN_NODE_MAJOR})`,
+    message: `Node ${version} is below the required >=${MIN_NODE_VERSION} (package.json engines)`,
+    hint: `Install Node >= ${MIN_NODE_VERSION} (e.g. via nvm: nvm install ${MIN_NODE_VERSION})`,
   };
 }
 
-// ==================== Check 2: better-sqlite3 ====================
+// ==================== Check 2: SQLite driver ====================
 
 /**
- * Check that the `better-sqlite3` native addon loads.
+ * Check that the SQLite driver (`node:sqlite`) loads and its SQLite build has FTS5.
  *
- * A `NODE_MODULE_VERSION` error gives `fail` (ABI mismatch).
- * A missing module gives `warn`, because the JSONL backend still works.
- * Any other load error gives `fail`.
+ * The driver is built into Node, so "not installed" is not a state any more.
+ * What can still be wrong: the runtime has no `node:sqlite` at all (Bun without
+ * Node compatibility, or a Node older than 22.5), or its SQLite predates FTS5
+ * (Node 22.13–22.15). Both give `fail` for the SQLite backend; JSONL still works.
  *
  * @param requireFn - The require function to use. Tests inject a stub. The default is a `createRequire` for this module.
  * @returns The check result. The function does not throw.
  */
-export function checkBetterSqlite3(
+export function checkSqliteDriver(
   requireFn?: (id: string) => unknown,
 ): DoctorCheckResult {
-  const name = 'better-sqlite3';
+  const name = 'sqlite-driver';
   const req = requireFn ?? createRequire(import.meta.url);
+  let mod: { DatabaseSync?: new (path: string) => { exec(sql: string): void; close(): void } };
   try {
-    req('better-sqlite3');
-    return { name, status: 'pass', message: 'better-sqlite3 loads (native addon ABI matches this Node)' };
+    mod = req('node:sqlite') as typeof mod;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    const code = (error as NodeJS.ErrnoException).code;
-    if (message.includes('NODE_MODULE_VERSION')) {
+    return {
+      name,
+      status: 'fail',
+      message: `node:sqlite is unavailable — the SQLite backend cannot run (JSONL still works): ${message}`,
+      hint: `Use Node >= ${MIN_NODE_VERSION}, which includes node:sqlite with FTS5`,
+    };
+  }
+  const DatabaseSync = mod.DatabaseSync;
+  if (typeof DatabaseSync !== 'function') {
+    return {
+      name,
+      status: 'fail',
+      message: 'node:sqlite loaded but exports no DatabaseSync — the SQLite backend cannot run',
+      hint: `Use Node >= ${MIN_NODE_VERSION}`,
+    };
+  }
+  try {
+    const db = new DatabaseSync(':memory:');
+    try {
+      db.exec('CREATE VIRTUAL TABLE fts_probe USING fts5(body)');
+    } finally {
+      db.close();
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/no such module: fts5/i.test(message)) {
       return {
         name,
         status: 'fail',
-        message: 'better-sqlite3 ABI mismatch — the prebuilt binary was compiled for a different Node version',
-        hint: 'Run: npm rebuild better-sqlite3',
-      };
-    }
-    if (code === 'MODULE_NOT_FOUND' || code === 'ERR_MODULE_NOT_FOUND') {
-      return {
-        name,
-        status: 'warn',
-        message: 'better-sqlite3 is not installed — the SQLite backend is unavailable (JSONL still works)',
-        hint: 'Run: npm install (check node-gyp prerequisites if the native build fails)',
+        message: `This Node's SQLite has no FTS5 module (this is Node ${process.version}); SQLiteStorage needs it`,
+        hint: `Use Node >= ${MIN_NODE_VERSION} (FTS5 arrived in node:sqlite in 22.16.0)`,
       };
     }
     return {
       name,
       status: 'fail',
-      message: `better-sqlite3 failed to load: ${message}`,
-      hint: 'Run: npm rebuild better-sqlite3 (and check node-gyp prerequisites)',
+      message: `node:sqlite opened an in-memory database but failed a probe: ${message}`,
+      hint: `Use Node >= ${MIN_NODE_VERSION}`,
     };
   }
+  return {
+    name,
+    status: 'pass',
+    message: 'node:sqlite loads and its SQLite build has FTS5',
+  };
 }
 
 // ==================== Check 3: Workers built ====================
@@ -431,7 +471,7 @@ export async function runDoctorChecks(
 ): Promise<DoctorReport> {
   const checks: DoctorCheckResult[] = [
     checkNodeVersion(),
-    checkBetterSqlite3(),
+    checkSqliteDriver(),
     checkWorkersBuilt(),
     await checkStorageFile(env),
     checkEnvVarLint(env),
@@ -454,7 +494,7 @@ export async function runDoctorChecks(
 export function registerDoctorCommand(program: Command): void {
   program
     .command('doctor')
-    .description('Preflight checks for documented gotchas: node version, better-sqlite3 ABI, workers build, storage file, env lint, embedding provider')
+    .description('Preflight checks for documented gotchas: node version, sqlite driver, workers build, storage file, env lint, embedding provider')
     .option('--json', 'Emit machine-readable JSON report')
     .action(async (opts: { json?: boolean }) => {
       const options = getOptions(program);

@@ -4,8 +4,7 @@ import { defineConfig } from 'tsup';
  * Library entries (S7): the root plus one entry per module barrel, matching
  * the package.json `exports` subpaths (`./core`, `./search`, …, `./sqlite`).
  * Subpath consumers only load the module family they ask for — e.g.
- * `@danielsimonjr/memoryjs/search` never evaluates the SQLite backend, so the
- * better-sqlite3 native addon is never required.
+ * `@danielsimonjr/memoryjs/search` never evaluates the SQLite backend.
  */
 const libraryEntry = {
   index: 'src/index.ts',
@@ -25,7 +24,6 @@ const libraryShared = {
   outDir: 'dist',
   target: 'node22' as const,
   shims: true,
-  external: ['better-sqlite3'],
 };
 
 export default defineConfig([
@@ -67,7 +65,6 @@ export default defineConfig([
     outDir: 'dist/cli',
     target: 'node22',
     shims: true,
-    external: ['better-sqlite3'],
     banner: {
       js: '#!/usr/bin/env node',
     },

@@ -1,12 +1,14 @@
 /**
  * SQLite Storage
  *
- * Handles storage operations for the knowledge graph using better-sqlite3 (native SQLite).
- * Implements IGraphStorage interface for storage abstraction.
+ * Handles storage operations for the knowledge graph using Node's built-in
+ * `node:sqlite` through the narrow better-sqlite3-shaped facade in
+ * `./nodeSqliteAdapter.js`. Implements the IGraphStorage interface for storage
+ * abstraction.
  *
  * Benefits over sql.js (WASM):
- * - 3-10x faster than WASM-based SQLite
- * - Native FTS5 full-text search support
+ * - Ships inside Node: no native addon to build, no ABI to mismatch
+ * - SQLite's own FTS5 full-text search
  * - ACID transactions with proper durability
  * - Concurrent read access support
  * - No memory overhead from WASM runtime
@@ -21,64 +23,51 @@
  */
 
 import { borrowGraphView, deepCopyPlain } from '../utils/graphCopy.js';
-import { createRequire } from 'node:module';
-import { createNodeSqliteDatabaseCtor, isNodeSqliteAvailable } from './nodeSqliteAdapter.js';
+import {
+  createNodeSqliteDatabaseCtor,
+  isNodeSqliteAvailable,
+  type SqliteDatabase,
+  type SqliteStatement,
+} from './nodeSqliteAdapter.js';
 import { chmodSync, statSync } from 'node:fs';
-import type Database from 'better-sqlite3';
-import type { Database as DatabaseType, Statement } from 'better-sqlite3';
 
 /**
- * Lazy loader for the `better-sqlite3` native addon.
- *
- * The addon is loaded on first `SQLiteStorage` instantiation rather than at
- * module evaluation, so importing this module (transitively, via the core
- * barrel / root package entry) does NOT load the native binding. JSONL-only
- * consumers therefore never pay the addon load — and never hit its
- * ABI-mismatch failure mode (`NODE_MODULE_VERSION`). `createRequire` resolves
- * in both the ESM and CJS builds (tsup shims `import.meta.url` for CJS).
+ * The database handle type `SQLiteStorage` holds. Since Sprint 9 the only
+ * driver is `node:sqlite`, behind the narrow better-sqlite3-shaped facade in
+ * `./nodeSqliteAdapter.js`, so the shape is ours rather than a third-party
+ * type package's.
  */
-export type DatabaseCtor = typeof Database;
+type DatabaseType = SqliteDatabase;
+
+/** The prepared-statement type of that driver. */
+type Statement = SqliteStatement;
+
+/**
+ * Resolve the SQLite driver constructor.
+ *
+ * `node:sqlite` is the only driver since Sprint 9 removed the native
+ * `better-sqlite3` addon. `MEMORY_SQLITE_DRIVER` is still accepted so an
+ * operator (or the CI step that re-runs the suite on the node driver) does not
+ * have to change its environment; `node` is the only value it can select.
+ *
+ * The constructor is resolved lazily, on first use, and cached: importing this
+ * module (transitively, via the core barrel or the root package entry) does not
+ * load `node:sqlite`. `createRequire` resolves in both the ESM and CJS builds
+ * (tsup shims `import.meta.url` for CJS).
+ */
+export type DatabaseCtor = new (path: string, options?: { readonly?: boolean }) => DatabaseType;
 let cachedDatabaseCtor: DatabaseCtor | undefined;
 
-/**
- * Resolve a SQLite driver, preferring the native `better-sqlite3` addon and
- * falling back to Node's built-in `node:sqlite`.
- *
- * The fallback is not a convenience. `better-sqlite3` obtains its binary from an
- * `install` script, so any installer that does not run install scripts leaves the
- * addon absent and every call fails with "Could not locate the bindings file".
- * The Claude Code plugin installer is exactly such an installer, which made the
- * deployed memory-mcp plugin completely unusable. `node:sqlite` needs no addon
- * and reads the same on-disk format.
- *
- * `MEMORY_SQLITE_DRIVER=node` forces the fallback. That exists so the SQLite test
- * suite can be run against BOTH drivers — a fallback nothing exercises is a
- * fallback that only appears to work.
- *
- * If neither driver is available the ORIGINAL better-sqlite3 error is rethrown,
- * because that error names the missing bindings and is what a reader needs.
- */
 function loadDatabaseCtor(): DatabaseCtor {
   if (cachedDatabaseCtor !== undefined) return cachedDatabaseCtor;
 
-  if (process.env.MEMORY_SQLITE_DRIVER === 'node') {
-    cachedDatabaseCtor = createNodeSqliteDatabaseCtor() as unknown as DatabaseCtor;
-    return cachedDatabaseCtor;
-  }
-
-  const require = createRequire(import.meta.url);
-  try {
-    cachedDatabaseCtor = require('better-sqlite3') as DatabaseCtor;
-  } catch (nativeError) {
-    if (!isNodeSqliteAvailable()) throw nativeError;
-    logger.warn(
-      'better-sqlite3 native addon unavailable; falling back to node:sqlite. ' +
-        'This is expected in environments that do not run npm install scripts ' +
-        '(e.g. the Claude Code plugin installer).',
-      { error: nativeError instanceof Error ? nativeError.message : String(nativeError) }
+  if (!isNodeSqliteAvailable()) {
+    throw new Error(
+      `This runtime has no node:sqlite module, which SQLiteStorage needs. ` +
+        `node:sqlite is built into Node 22.16.0 and later (this is Node ${process.version}).`,
     );
-    cachedDatabaseCtor = createNodeSqliteDatabaseCtor() as unknown as DatabaseCtor;
   }
+  cachedDatabaseCtor = createNodeSqliteDatabaseCtor() as unknown as DatabaseCtor;
   return cachedDatabaseCtor;
 }
 
@@ -88,9 +77,7 @@ export function __resetDatabaseCtorForTests(): void {
 }
 
 /**
- * Resolve the same SQLite driver constructor used by `SQLiteStorage`
- * (`better-sqlite3`, then `node:sqlite`; `MEMORY_SQLITE_DRIVER=node` forces
- * the fallback).
+ * Resolve the same SQLite driver constructor used by `SQLiteStorage`.
  *
  * Exported so a separate procedural-graph backing can honor the same driver
  * selection without duplicating fallback logic (A12).
@@ -122,7 +109,7 @@ export function explainMissingFts5(error: unknown): unknown {
   return new Error(
     `This SQLite build has no FTS5 module, which SQLiteStorage needs. ` +
       `node:sqlite in Node older than 22.16.0 has none (this is Node ${process.version}). ` +
-      `Use Node 22.16.0 or later, or install better-sqlite3 and leave MEMORY_SQLITE_DRIVER unset.`,
+      `Use Node 22.16.0 or later.`,
     { cause: error }
   );
 }
@@ -193,7 +180,7 @@ interface AppendDescriptor<T> {
 /**
  * SQLiteStorage manages persistence of the knowledge graph using native SQLite.
  *
- * Uses better-sqlite3 for native SQLite bindings with full FTS5 support,
+ * Uses `node:sqlite` (Node 22.16+) with full FTS5 support,
  * referential integrity, and proper ACID transactions.
  *
  * @example
@@ -291,7 +278,7 @@ export class SQLiteStorage implements IGraphStorage {
 
   /**
    * Pending changes counter for batching disk writes.
-   * Note: better-sqlite3 writes to disk immediately, but we track for API compatibility.
+   * Note: SQLite writes to disk immediately, but we track for API compatibility.
    */
   private pendingChanges: number = 0;
 
@@ -324,7 +311,7 @@ export class SQLiteStorage implements IGraphStorage {
 
   /**
    * Per-connection prepared-statement caches (S3: hoisted `prepare()`).
-   * better-sqlite3 does not auto-cache statements, so hot paths were
+   * The driver does not auto-cache statements, so hot paths were
    * paying a re-compile per call. Keyed weakly by connection so pooled
    * readers get their own statements and everything is dropped
    * automatically when a connection handle is discarded (e.g.
@@ -1517,7 +1504,7 @@ export class SQLiteStorage implements IGraphStorage {
       }
 
       // Apply to cache, then write all rows in one transaction. On
-      // transaction failure better-sqlite3 rolls the rows back; the cache
+      // transaction failure SQLite rolls the rows back; the cache
       // is restored from previousValues via the merged state being
       // recomputed on next load — in practice the transaction only fails
       // on I/O errors, matching the pre-change saveGraph failure mode.
@@ -2194,12 +2181,12 @@ export class SQLiteStorage implements IGraphStorage {
   }
 
   /**
-   * Force persistence to disk (no-op for better-sqlite3 as it writes immediately).
+   * Force persistence to disk (SQLite writes immediately; this checkpoints WAL).
    *
    * @returns Promise resolving when persistence is complete
    */
   async flush(): Promise<void> {
-    // better-sqlite3 writes to disk immediately, but we run a checkpoint for WAL mode
+    // SQLite writes to disk immediately, but we run a checkpoint for WAL mode
     if (this.db) {
       this.db.pragma('wal_checkpoint(TRUNCATE)');
     }
