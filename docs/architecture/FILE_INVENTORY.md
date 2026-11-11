@@ -902,7 +902,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/performance/baselineHelper.test.ts` | tests | test | 21 |
 | `tests/unit/scripts/clean-dist.edges.test.ts` | tests | test | 114 |
 | `tests/unit/scripts/clean-dist.test.ts` | tests | test | 22 |
-| `tests/unit/scripts/publish-version-guard.test.ts` | tests | test | 74 |
+| `tests/unit/scripts/publish-version-guard.test.ts` | tests | test | 98 |
 | `tests/unit/search/BasicSearch.test.ts` | tests | test | 458 |
 | `tests/unit/search/BloomFilter.test.ts` | tests | test | 175 |
 | `tests/unit/search/BM25Search.test.ts` | tests | test | 338 |

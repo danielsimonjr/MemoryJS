@@ -6052,7 +6052,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 74
+      "loc": 98
     },
     {
       "file": "tests/unit/search/BasicSearch.test.ts",
