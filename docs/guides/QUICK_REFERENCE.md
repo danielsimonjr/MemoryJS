@@ -7,7 +7,7 @@ and the examples run under the `tests/examples/` gate. Full documentation: [READ
 
 ## Setup
 
-Requirements: Node.js 22.12.0 or later at runtime; Bun 1.4.2 or later for development. Install with `bun add @danielsimonjr/memoryjs`.
+Requirements: Node.js 22.16.0 or later at runtime; Bun 1.4.2 or later for development. Install with `bun add @danielsimonjr/memoryjs`.
 
 - `new ManagerContext('./memory.jsonl')` (JSONL, default) or `new ManagerContext({ storagePath, storageType: 'sqlite' })`.
 - Subpaths: `/sqlite`, `/core`, `/search`, `/agent`, `/features`, `/utils`, `/types`, `/adapters`, `/security`.

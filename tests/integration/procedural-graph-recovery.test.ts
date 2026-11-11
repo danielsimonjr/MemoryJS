@@ -17,7 +17,6 @@ import { graphDigest } from '../../src/agent/procedural/graph/canonical.js';
 import {
   __resetDatabaseCtorForTests,
 } from '../../src/core/SQLiteStorage.js';
-import { isNodeSqliteAvailable } from '../../src/core/nodeSqliteAdapter.js';
 import type { PGHead, PGSnapshot } from '../../src/types/proceduralGraph.js';
 import {
   makeAtomicFailureRound,
@@ -123,7 +122,7 @@ describe('procedural graph recovery (SQLite default driver)', () => {
   });
 });
 
-describe.skipIf(!isNodeSqliteAvailable())('procedural graph recovery (SQLite node driver)', () => {
+describe.skipIf(typeof Bun !== 'undefined')('procedural graph recovery (SQLite node driver)', () => {
   beforeAll(() => {
     process.env.MEMORY_SQLITE_DRIVER = 'node';
     __resetDatabaseCtorForTests();

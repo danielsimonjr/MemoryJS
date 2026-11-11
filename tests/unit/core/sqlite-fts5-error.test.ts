@@ -17,7 +17,6 @@ import {
   explainMissingFts5,
   __resetDatabaseCtorForTests,
 } from '../../../src/core/SQLiteStorage.js';
-import { isNodeSqliteAvailable } from '../../../src/core/nodeSqliteAdapter.js';
 
 // Connections that the fake driver opened and closed.
 const connections = vi.hoisted(() => ({ opened: 0, closed: 0 }));
@@ -78,7 +77,7 @@ describe('explainMissingFts5', () => {
   });
 });
 
-describe.skipIf(!isNodeSqliteAvailable())('the format of the error that node:sqlite raises', () => {
+describe.skipIf(typeof Bun !== 'undefined')('the format of the error that node:sqlite raises', () => {
   it('is "no such module: <name>", the text that explainMissingFts5 matches', () => {
     // The real driver, not the mock above: this pins the text that SQLite raises.
     const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite') as {
@@ -95,7 +94,7 @@ describe.skipIf(!isNodeSqliteAvailable())('the format of the error that node:sql
   });
 });
 
-describe.skipIf(!isNodeSqliteAvailable())('SQLiteStorage on a SQLite build with no FTS5', () => {
+describe.skipIf(typeof Bun !== 'undefined')('SQLiteStorage on a SQLite build with no FTS5', () => {
   const folders: string[] = [];
 
   afterEach(() => {

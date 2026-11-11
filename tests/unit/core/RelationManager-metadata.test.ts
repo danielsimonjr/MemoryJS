@@ -13,11 +13,10 @@ import { RelationManager } from '../../../src/core/RelationManager.js';
 import { EntityManager } from '../../../src/core/EntityManager.js';
 import { GraphStorage } from '../../../src/core/GraphStorage.js';
 import { SQLiteStorage } from '../../../src/core/SQLiteStorage.js';
-import { isNodeSqliteAvailable } from '../../../src/core/nodeSqliteAdapter.js';
 import type { GraphStorage as GraphStorageType } from '../../../src/core/GraphStorage.js';
 
-/** The SQLite backend is testable whenever its driver (`node:sqlite`) exists. */
-const sqliteDriverAvailable = isNodeSqliteAvailable();
+/** Node lane always runs this; Bun has no `node:sqlite`. */
+const skipSqlite = typeof Bun !== 'undefined';
 
 const proceduralGraphMetadata = {
   proceduralGraph: {
@@ -85,7 +84,7 @@ describe('RelationManager metadata (procedural graph)', () => {
     expect(relation?.metadata).toEqual(proceduralGraphMetadata);
   });
 
-  it.skipIf(!sqliteDriverAvailable)(
+  it.skipIf(skipSqlite)(
     'round-trips metadata.proceduralGraph through SQLiteStorage',
     async () => {
       const dir = makeTempDir();

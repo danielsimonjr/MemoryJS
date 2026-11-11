@@ -17,7 +17,6 @@ import {
   resolveSQLiteDatabaseCtor,
   __resetDatabaseCtorForTests,
 } from '../../../src/core/SQLiteStorage.js';
-import { isNodeSqliteAvailable } from '../../../src/core/nodeSqliteAdapter.js';
 
 describe('resolveSQLiteDatabaseCtor', () => {
   const tempDirs: string[] = [];
@@ -57,7 +56,7 @@ describe('resolveSQLiteDatabaseCtor', () => {
     db.close();
   });
 
-  it.skipIf(!isNodeSqliteAvailable())(
+  it.skipIf(typeof Bun !== 'undefined')(
     'resolves the node:sqlite adapter, with or without MEMORY_SQLITE_DRIVER',
     () => {
       for (const driver of [undefined, 'node', 'anything-else']) {
@@ -75,7 +74,7 @@ describe('resolveSQLiteDatabaseCtor', () => {
     },
   );
 
-  it.skipIf(!isNodeSqliteAvailable())('caches the constructor until it is reset', () => {
+  it.skipIf(typeof Bun !== 'undefined')('caches the constructor until it is reset', () => {
     __resetDatabaseCtorForTests();
     expect(resolveSQLiteDatabaseCtor()).toBe(resolveSQLiteDatabaseCtor());
     const first = resolveSQLiteDatabaseCtor();

@@ -12,7 +12,6 @@ import { SqliteProceduralGraphBacking } from '../../../../../../src/agent/proced
 import {
   __resetDatabaseCtorForTests,
 } from '../../../../../../src/core/SQLiteStorage.js';
-import { isNodeSqliteAvailable } from '../../../../../../src/core/nodeSqliteAdapter.js';
 import {
   makeAtomicFailureRound,
   makeCommit,
@@ -56,7 +55,7 @@ describe('SqliteProceduralGraphBacking (default driver)', () => {
   });
 });
 
-describe.skipIf(!isNodeSqliteAvailable())('SqliteProceduralGraphBacking (node driver)', () => {
+describe.skipIf(typeof Bun !== 'undefined')('SqliteProceduralGraphBacking (node driver)', () => {
   beforeAll(() => {
     process.env.MEMORY_SQLITE_DRIVER = 'node';
     __resetDatabaseCtorForTests();

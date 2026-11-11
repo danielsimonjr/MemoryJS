@@ -155,16 +155,64 @@ describe.skipIf(typeof Bun !== 'undefined')('node:sqlite adapter edge parity (be
   it('raises better-sqlite3\'s RangeError for a bigint outside the int64 range', () => {
     const db = open(join(dir, 'g.db'));
     db.exec('CREATE TABLE t (v INTEGER)');
+    const stmt = db.prepare('INSERT INTO t VALUES (?)');
+    expect(stmt.run(9223372036854775807n).changes).toBe(1);
+    expect(stmt.run(-9223372036854775808n).changes).toBe(1);
     let thrown: unknown;
     try {
-      db.prepare('INSERT INTO t VALUES (?)').run(18446744073709551616n);
+      stmt.run(9223372036854775808n);
     } catch (error) {
       thrown = error;
     }
     // better-sqlite3 13.0.3: RangeError "The bound string, buffer, or bigint
-    // is too big". The adapter leaks node:sqlite's
-    // TypeError "BigInt value is too large to bind." (ERR_INVALID_ARG_VALUE).
+    // is too big". Inclusive int64 bounds bind; one past the max does not.
     expect(thrown).toBeInstanceOf(RangeError);
     expect((thrown as RangeError).message).toBe('The bound string, buffer, or bigint is too big');
+    thrown = undefined;
+    try {
+      stmt.run(18446744073709551616n);
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(RangeError);
+  });
+
+  it('opens :memory: and file: URIs without the missing-directory TypeError', () => {
+    const memory = open(':memory:');
+    memory.exec('CREATE TABLE t (v INTEGER)');
+    expect(memory.prepare('INSERT INTO t VALUES (1)').run().changes).toBe(1);
+
+    const uri = open(`file:${join(dir, 'uri.db')}`);
+    uri.exec('CREATE TABLE t (v INTEGER)');
+    expect(uri.prepare('INSERT INTO t VALUES (1)').run().changes).toBe(1);
+  });
+
+  it('zeros run() counters for INSERT … RETURNING, which columns() reports as a reader', () => {
+    const db = open(join(dir, 'returning.db'));
+    db.exec('CREATE TABLE t (id INTEGER PRIMARY KEY, v INTEGER)');
+    const returning = db.prepare('INSERT INTO t (v) VALUES (?) RETURNING id, v');
+    // node:sqlite's columns() is non-empty for RETURNING, matching better-sqlite3's
+    // reader classification: the insert commits, run() still reports zeros.
+    expect(returning.run(7)).toEqual({ changes: 0, lastInsertRowid: 0 });
+    expect(db.prepare('SELECT v FROM t').get()).toEqual({ v: 7 });
+    expect(returning.get(8)).toEqual({ id: 2, v: 8 });
+  });
+
+  it('does not change savepoint depth when BEGIN itself fails', () => {
+    const db = open(join(dir, 'begin-fail.db'));
+    db.exec('CREATE TABLE t (v INTEGER)');
+    const outer = db.transaction(() => {
+      // A nested BEGIN (not a SAVEPOINT) is what a stale depth counter would
+      // issue. After a failed exclusive begin on a read-only connection, a
+      // later nested transaction must still be a SAVEPOINT, not a BEGIN.
+      const inner = db.transaction(() => 'ok');
+      return inner();
+    });
+    expect(outer()).toBe('ok');
+
+    const closed = open(join(dir, 'begin-fail-closed.db'));
+    const tx = closed.transaction(() => 1);
+    closed.close();
+    expect(() => tx()).toThrow(TypeError);
   });
 });

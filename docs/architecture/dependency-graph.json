@@ -19886,9 +19886,21 @@
         "externalDependencies": [],
         "nodeDependencies": [
           {
+            "module": "fs",
+            "imports": [
+              "existsSync"
+            ]
+          },
+          {
             "module": "module",
             "imports": [
               "createRequire"
+            ]
+          },
+          {
+            "module": "path",
+            "imports": [
+              "dirname"
             ]
           }
         ],
@@ -30502,7 +30514,7 @@
   "statistics": {
     "totalTypeScriptFiles": 415,
     "totalModules": 12,
-    "totalLinesOfCode": 134771,
+    "totalLinesOfCode": 134844,
     "totalExports": 2907,
     "totalClasses": 308,
     "totalInterfaces": 847,

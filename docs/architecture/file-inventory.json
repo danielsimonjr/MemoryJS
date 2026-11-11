@@ -1866,7 +1866,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 614
+      "loc": 634
     },
     {
       "file": "src/core/ObservationManager.ts",
@@ -3224,7 +3224,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 232
+      "loc": 231
     },
     {
       "file": "tests/integration/search/project-scope-isolation.test.ts",
@@ -4358,7 +4358,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 122
+      "loc": 121
     },
     {
       "file": "tests/unit/agent/procedural/graph/canonical-compare.test.ts",
@@ -5436,7 +5436,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 171
+      "loc": 219
     },
     {
       "file": "tests/unit/core/node-sqlite-probe.test.ts",
@@ -5534,7 +5534,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 116
+      "loc": 115
     },
     {
       "file": "tests/unit/core/RelationManager.test.ts",
@@ -5618,7 +5618,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 86
+      "loc": 85
     },
     {
       "file": "tests/unit/core/sqlite-embeddings-content-hash.test.ts",
@@ -5639,7 +5639,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 142
+      "loc": 141
     },
     {
       "file": "tests/unit/core/sqlite-lazy-load.test.ts",

@@ -30,7 +30,7 @@ Complete guide to setting up a MemoryJS development environment.
 | Tool | Version | Purpose |
 |------|---------|---------|
 | Bun | 1.4.2+ | Dev toolchain: package manager and script driver (`bun.lock`) |
-| Node.js | 22.12.0+ | Production runtime for the published package / native addons |
+| Node.js | 22.16.0+ | Production runtime for the published package (`node:sqlite` / FTS5) |
 | Git | 2.x+ | Version control |
 
 ### Optional
@@ -45,7 +45,7 @@ Complete guide to setting up a MemoryJS development environment.
 
 ```bash
 bun --version    # Should be 1.4.2 or higher
-node --version   # Should be 22.12.0 or higher
+node --version   # Should be 22.16.0 or higher
 git --version    # Should be 2.x or higher
 ```
 

@@ -304,7 +304,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/core/ManagerContext.ts` | src | reachable | 777 |
 | `src/core/mmap/FsReadMmapBackend.ts` | src | reachable | 239 |
 | `src/core/mmap/IMmapBackend.ts` | src | reachable | 169 |
-| `src/core/nodeSqliteAdapter.ts` | src | reachable | 614 |
+| `src/core/nodeSqliteAdapter.ts` | src | reachable | 634 |
 | `src/core/ObservationManager.ts` | src | reachable | 1009 |
 | `src/core/ObservationStore.ts` | src | reachable | 196 |
 | `src/core/PostgreSQLStorage.ts` | src | reachable | 743 |
@@ -498,7 +498,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/integration/operation-progress.test.ts` | tests | test | 270 |
 | `tests/integration/procedural-graph-guidance.test.ts` | tests | test | 57 |
 | `tests/integration/procedural-graph-iomanager-roundtrip.test.ts` | tests | test | 81 |
-| `tests/integration/procedural-graph-recovery.test.ts` | tests | test | 232 |
+| `tests/integration/procedural-graph-recovery.test.ts` | tests | test | 231 |
 | `tests/integration/search/project-scope-isolation.test.ts` | tests | test | 87 |
 | `tests/integration/smart-search.test.ts` | tests | test | 287 |
 | `tests/integration/storage-dedup-safety.test.ts` | tests | test | 1251 |
@@ -660,7 +660,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/procedural/graph/backing/backingContract.ts` | tests | test | 383 |
 | `tests/unit/agent/procedural/graph/backing/jsonl.test.ts` | tests | test | 118 |
 | `tests/unit/agent/procedural/graph/backing/memory.test.ts` | tests | test | 55 |
-| `tests/unit/agent/procedural/graph/backing/sqlite.test.ts` | tests | test | 122 |
+| `tests/unit/agent/procedural/graph/backing/sqlite.test.ts` | tests | test | 121 |
 | `tests/unit/agent/procedural/graph/canonical-compare.test.ts` | tests | test | 92 |
 | `tests/unit/agent/procedural/graph/canonical.test.ts` | tests | test | 214 |
 | `tests/unit/agent/procedural/graph/CompletionProvider.test.ts` | tests | test | 114 |
@@ -814,7 +814,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/mmap/IMmapBackend.test.ts` | tests | test | 198 |
 | `tests/unit/core/mmap/mmap-review-fixes.test.ts` | tests | test | 272 |
 | `tests/unit/core/mutation-isolation.test.ts` | tests | test | 108 |
-| `tests/unit/core/node-sqlite-adapter-edge-parity.test.ts` | tests | test | 159 |
+| `tests/unit/core/node-sqlite-adapter-edge-parity.test.ts` | tests | test | 219 |
 | `tests/unit/core/node-sqlite-probe.test.ts` | tests | test | 189 |
 | `tests/unit/core/nodeSqliteAdapter.test.ts` | tests | test | 297 |
 | `tests/unit/core/observation-validate-hook.test.ts` | tests | test | 128 |
@@ -828,7 +828,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/recursa-record-persistence.test.ts` | tests | test | 98 |
 | `tests/unit/core/RefIndex.test.ts` | tests | test | 620 |
 | `tests/unit/core/relation-manager-temporal.test.ts` | tests | test | 157 |
-| `tests/unit/core/RelationManager-metadata.test.ts` | tests | test | 116 |
+| `tests/unit/core/RelationManager-metadata.test.ts` | tests | test | 115 |
 | `tests/unit/core/RelationManager.test.ts` | tests | test | 357 |
 | `tests/unit/core/rename-entity.test.ts` | tests | test | 364 |
 | `tests/unit/core/segments/assertValidSegmentId.test.ts` | tests | test | 69 |
@@ -840,10 +840,10 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/sqlite-content-hash-migration.test.ts` | tests | test | 57 |
 | `tests/unit/core/sqlite-driver-inventory.test.ts` | tests | test | 129 |
 | `tests/unit/core/sqlite-driver-parity.test.ts` | tests | test | 123 |
-| `tests/unit/core/sqlite-driver-resolver.test.ts` | tests | test | 86 |
+| `tests/unit/core/sqlite-driver-resolver.test.ts` | tests | test | 85 |
 | `tests/unit/core/sqlite-embeddings-content-hash.test.ts` | tests | test | 182 |
 | `tests/unit/core/sqlite-events.test.ts` | tests | test | 470 |
-| `tests/unit/core/sqlite-fts5-error.test.ts` | tests | test | 142 |
+| `tests/unit/core/sqlite-fts5-error.test.ts` | tests | test | 141 |
 | `tests/unit/core/sqlite-lazy-load.test.ts` | tests | test | 70 |
 | `tests/unit/core/sqlite-on-disk-compat.test.ts` | tests | test | 227 |
 | `tests/unit/core/SQLiteStorage.autoIndexDeprecation.test.ts` | tests | test | 112 |

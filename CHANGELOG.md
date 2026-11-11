@@ -7,9 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Breaking changes
+### Changed — BREAKING
 
-- **Node 22.16.0 or later is required** (`engines.node` is now `>=22.16.0`, previously `>=22.12.0`). The SQLite backend runs on Node's built-in `node:sqlite` instead of the native `better-sqlite3` addon, and FTS5 — which `SQLiteStorage` needs for its full-text index — only arrived in `node:sqlite` in Node 22.16.0. Node 22.13–22.15 load the module and then fail to create the index with `no such module: fts5`.
+- **Node 22.16.0 or later is required** (`engines.node` is now `>=22.16.0`, previously `>=22.12.0`). The SQLite backend runs on Node's built-in `node:sqlite` instead of the native `better-sqlite3` addon, and FTS5 — which `SQLiteStorage` needs for its full-text index — only arrived in `node:sqlite` in Node 22.16.0. Node 22.13–22.15 load the module and then fail to create the index with `no such module: fts5`. README, DEVELOPMENT_SETUP, and QUICK_REFERENCE state the same floor.
 - `better-sqlite3` is no longer a dependency. There is no native addon to install, compile, or rebuild, so `NODE_MODULE_VERSION` ABI mismatches cannot happen and installs no longer need a C++ toolchain. `MEMORY_SQLITE_DRIVER` is still accepted; it selects the same driver.
 
 ### Fixed

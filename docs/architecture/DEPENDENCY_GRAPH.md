@@ -5087,7 +5087,9 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 **Node.js Built-in Dependencies:**
 | Module | Import |
 |--------|--------|
+| `fs` | `existsSync` |
 | `module` | `createRequire` |
+| `path` | `dirname` |
 
 **Exports:**
 - Classes: `SqliteError`
@@ -7859,7 +7861,7 @@ graph TD
 |----------|-------|
 | Total TypeScript Files | 415 |
 | Total Modules | 12 |
-| Total Lines of Code | 134771 |
+| Total Lines of Code | 134844 |
 | Total Exports | 2907 |
 | Total Re-exports | 1716 |
 | Total Classes | 308 |

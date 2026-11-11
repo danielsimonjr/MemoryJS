@@ -9,7 +9,7 @@ Entities, relations and observations are stored on JSONL, SQLite or (optionally)
 (BM25, TF-IDF, fuzzy, semantic, hybrid, temporal, LLM-planned), graph algorithms, bitemporal versioning, RBAC, an
 Agent Memory System, and the experimental Recursa skill and learning harness.
 
-Runtime: Node.js 22.12.0 or later. Development: Bun 1.4.2 or later.
+Runtime: Node.js 22.16.0 or later. Development: Bun 1.4.2 or later.
 The CLI is `memory` (or `memoryjs`): `bunx --package @danielsimonjr/memoryjs memory --help`.
 
 > Powers [@danielsimonjr/memory-mcp](https://www.npmjs.com/package/@danielsimonjr/memory-mcp), a Model Context
@@ -52,7 +52,7 @@ npm and pnpm consumers can install the same package from the npm registry. Subpa
 small; SQLite registration and generated shared chunks are retained as side effects: `/sqlite`, `/core`, `/search`, `/agent`, `/features`, `/utils`, `/types`,
 `/adapters` and `/security` are available next to the root entry point.
 
-Requirements: Node.js 22.12.0 or later at runtime; Bun 1.4.2 or later for development (`bun.lock` is authoritative).
+Requirements: Node.js 22.16.0 or later at runtime; Bun 1.4.2 or later for development (`bun.lock` is authoritative).
 
 Optional peer dependencies:
 

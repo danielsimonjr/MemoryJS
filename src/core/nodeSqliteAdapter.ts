@@ -202,6 +202,18 @@ const NO_RETURN_DATA = 'This statement does not return data. Use run() instead';
 const MISSING_DB_DIR = 'Cannot open database because the directory does not exist';
 
 /**
+ * True when `path` is a filesystem database whose parent directory is gone.
+ *
+ * `:memory:` and `file:` URIs are not checked: they are not filesystem paths,
+ * and `SQLiteStorage` never opens them. `dirname('.')` / empty is the cwd.
+ */
+function missingParentDirectory(path: string): boolean {
+  if (path === ':memory:' || path.startsWith('file:')) return false;
+  const parent = dirname(path);
+  return parent.length > 0 && parent !== '.' && !existsSync(parent);
+}
+
+/**
  * Convert an error thrown by `node:sqlite` into the `SqliteError` shape callers
  * expect. A non-SQLite error (bad bind value, closed handle) is normalised to
  * the message and class better-sqlite3 raised, because callers already branch on
@@ -433,11 +445,14 @@ export function createNodeSqliteDatabaseCtor(): new (
     #closed = false;
 
     constructor(path: string, options?: SqliteOpenOptions) {
-      if (path !== ':memory:' && !path.startsWith('file:')) {
-        const parent = dirname(path);
-        if (parent.length > 0 && parent !== '.' && !existsSync(parent)) {
-          throw new TypeError(MISSING_DB_DIR);
-        }
+      // `:memory:` and `file:` URIs are not filesystem paths: `dirname` of a
+      // URI is not the parent directory SQLite will create the file in, and
+      // `SQLiteStorage` never opens either form. Skip the pre-check for them.
+      // A missing parent is TypeError (better-sqlite3), not SQLITE_CANTOPEN.
+      // Recheck after a failed open so a parent deleted between existsSync and
+      // DatabaseSync still matches that TypeError rather than leaking CANTOPEN.
+      if (missingParentDirectory(path)) {
+        throw new TypeError(MISSING_DB_DIR);
       }
       const readOnly = options?.readonly === true || options?.readOnly === true;
       // `node:sqlite` rejects an explicit `undefined` options argument, so pass
@@ -446,6 +461,9 @@ export function createNodeSqliteDatabaseCtor(): new (
       try {
         db = readOnly ? new DatabaseSync(path, { readOnly: true }) : new DatabaseSync(path);
       } catch (error) {
+        if (missingParentDirectory(path)) {
+          throw new TypeError(MISSING_DB_DIR);
+        }
         throw normalizeError(error);
       }
       this.#db = db;
@@ -488,8 +506,10 @@ export function createNodeSqliteDatabaseCtor(): new (
               lastInsertRowid: number | bigint;
             };
             if (returnsData) {
-              // better-sqlite3 still runs the statement but always reports zero
-              // counters for reader SQL instead of the connection-wide totals.
+              // `columns().length > 0` is also true for `INSERT … RETURNING`,
+              // which better-sqlite3 treats as a reader: the write still
+              // happens, but `run()` reports zero counters, not the insert's
+              // `changes` / `lastInsertRowid`.
               return { changes: 0, lastInsertRowid: 0 };
             }
             // better-sqlite3 reports `changes` and `lastInsertRowid` as numbers;
