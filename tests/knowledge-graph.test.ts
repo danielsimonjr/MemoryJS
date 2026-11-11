@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { promises as fs } from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import os from 'os';
 import { KnowledgeGraphManager, Entity, Relation } from '../src/index.js';
 
 describe('KnowledgeGraphManager', () => {
@@ -9,11 +9,9 @@ describe('KnowledgeGraphManager', () => {
   let testFilePath: string;
 
   beforeEach(async () => {
-    // Create a temporary test file path
-    testFilePath = path.join(
-      path.dirname(fileURLToPath(import.meta.url)),
-      `test-memory-${Date.now()}.jsonl`
-    );
+    // Create the temp file outside the repo: `schema.inventory.test.ts` walks `tests/`
+    // concurrently, and a `.jsonl` appearing there makes its `statSync` race (ENOENT).
+    testFilePath = path.join(os.tmpdir(), `memoryjs-knowledge-graph-${Date.now()}.jsonl`);
     manager = new KnowledgeGraphManager(testFilePath);
   });
 
