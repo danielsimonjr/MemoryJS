@@ -352,7 +352,9 @@ async function readResolved(ctx: RunContext, rel: string): Promise<AmrReadResult
     const refused = confine(ctx, realRoot, real);
     if (refused) return refused;
     const rs = await fs.lstat(real, { bigint: true }); // lstat: a symlink swapped in at `real` must not match.
-    if (!rs.isFile() || rs.dev !== hs.dev || rs.ino !== hs.ino) return { ok: false, reason: 'outside-root' };
+    // Node 22 on Windows reports a bigint lstat dev of 0n; compare dev only when both stats report one.
+    const devDiffers = rs.dev !== 0n && hs.dev !== 0n && rs.dev !== hs.dev;
+    if (!rs.isFile() || devDiffers || rs.ino !== hs.ino) return { ok: false, reason: 'outside-root' };
     const cap = ctx.o.maxFileBytes + 1;
     const buf = Buffer.alloc(Math.min(cap, Number(hs.size) + 1));
     let n = 0;

@@ -321,7 +321,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/core/TransactionManager.ts` | src | reachable | 763 |
 | `src/core/TransitionLedger.ts` | src | reachable | 428 |
 | `src/features/amr/AmrCodec.ts` | src | reachable | 523 |
-| `src/features/amr/AmrReader.ts` | src | reachable | 673 |
+| `src/features/amr/AmrReader.ts` | src | reachable | 675 |
 | `src/features/amr/index.ts` | src | reachable | 23 |
 | `src/features/AnalyticsManager.ts` | src | reachable | 247 |
 | `src/features/ArchiveManager.ts` | src | reachable | 421 |
