@@ -7,16 +7,16 @@
  */
 
 import { promises as fs } from 'fs';
-import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'path';
+import { basename, dirname, join, relative, resolve, sep } from 'path';
 import { renameOver } from '../../utils/durableWriteFile.js';
 import { ValidationError } from '../../utils/errors.js';
 import { validateFilePath } from '../../utils/entityUtils.js';
+import { isSpecial, pathExists, strictlyInside } from '../../utils/confinedPath.js';
+
+export { pathExists };
 
 /** Why {@link resolveConfinedTreeDir} refused a directory. */
 export type TreeDirRefusal = 'path-traversal' | 'outside-root' | 'special-filesystem' | 'symlink-escape' | 'is-root';
-
-/** Pseudo filesystems a skill tree is never written to or read from. */
-const SPECIAL_ROOTS = ['/proc', '/sys', '/dev'];
 
 /**
  * Throw the refusal as a `ValidationError` whose `errors` carry `dir:<reason>`.
@@ -26,29 +26,6 @@ const SPECIAL_ROOTS = ['/proc', '/sys', '/dev'];
  */
 function refuse(reason: TreeDirRefusal, dir: string): never {
   throw new ValidationError(`Skill tree directory refused (${reason}): ${dir.slice(0, 300)}`, [`dir:${reason}`]);
-}
-
-/**
- * Whether `p` is a special filesystem path (`/proc`, `/sys`, `/dev` or below).
- *
- * @param p - Absolute path.
- * @returns True for a special path.
- */
-function isSpecial(p: string): boolean {
-  const n = p.replace(/\\/g, '/').replace(/^[A-Za-z]:/, ''); // Windows: drive prefix and backslashes
-  return SPECIAL_ROOTS.some((r) => n === r || n.startsWith(r + '/'));
-}
-
-/**
- * Whether `child` lies strictly below `parent` (both absolute).
- *
- * @param parent - Parent directory.
- * @param child - Candidate path.
- * @returns True when `child` is inside and not equal to `parent`.
- */
-function strictlyInside(parent: string, child: string): boolean {
-  const rel = relative(parent, child);
-  return rel !== '' && rel !== '..' && !rel.startsWith(`..${sep}`) && !isAbsolute(rel);
 }
 
 /**
@@ -124,16 +101,6 @@ export async function removeBestEffort(path: string): Promise<void> {
     await fs.rm(path, { recursive: true, force: true });
   } catch {
     // Best-effort cleanup: a leftover is swept on the next publish/import.
-  }
-}
-
-/** Whether `p` exists (without following a final symlink). */
-export async function pathExists(p: string): Promise<boolean> {
-  try {
-    await fs.lstat(p);
-    return true;
-  } catch {
-    return false;
   }
 }
 

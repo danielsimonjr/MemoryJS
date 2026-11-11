@@ -6,6 +6,8 @@ release where applicable.
 
 ## In progress
 
+- [ ] **AMR phase 2: confined reader, `loadAmrContext`, `checkAmr` (read-only).** Filed 2026-11-11 15:05. Stacked on phase 1 (PR 330).
+
 - [ ] **JSON import drops entities with optional fields (pre-existing).** Filed 2026-11-11 14:40 from the AMR phase 1 review. `EntitySchema` is `.strict()` and lacks `ttl`, `confidence`, `projectId`, `validFrom`, `version` and `observationMeta`, so `importGraph('json')` skips those entities with `errors: []`. Also `deleteObservations` leaves the orphan `observationMeta` entry. Fix the schema class, not one field; report every skipped entity.
 
 - [ ] **AMR phase 1: `observationMeta[].meta` field and `AmrCodec`.** Filed 2026-11-11 12:45. See `docs/roadmap/AGENT_MEMORY_REPO_PLAN.md` section 5.
