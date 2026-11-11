@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **npm publish workflow** (`.github/workflows/publish.yml`): on `v*` tag push or `workflow_dispatch` with a required `tag` input (for releases whose tag predates the workflow, e.g. v5.0.0). Checks out the tagged commit, runs `scripts/publish-version-guard.mjs` so the tag minus `v` equals `package.json` version, then `npm publish --provenance --access public` after `prepublishOnly` (clean, build, `test:ci`). Uses repository secret `NPM` and fails clearly when it is missing. Bun 1.4.2 install with frozen `bun.lock`; Node 22.16 for publish (engines floor).
+
 ## [5.0.0] - 2026-11-11
 
 Major release: zero runtime `dependencies`, Node `>=22.16.0`, and SQLite on `node:sqlite` (dependency-reduction sprints 1–9 and repo-tools clones dedup #324).

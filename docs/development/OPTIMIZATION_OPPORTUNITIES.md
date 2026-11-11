@@ -125,8 +125,8 @@ worker pool is no longer silently disabled in production bundles.
 - **Label:** NEEDS-DESIGN (Med for the adapter gap). **Fix:** ship a reference auth middleware wiring `APIKeyStore.validate()` into `RestRouter`, or a loud doc warning; make revoke/issue persist or document the requirement.
 
 ### Sec10. Supply-chain / CI gaps (audit itself is clean)
-- **Evidence:** `npm audit` = 0 vulnerabilities; no `postinstall`/`preinstall`/`prepare` scripts; `files` whitelist ships only `dist`/README/LICENSE — all VERIFIED-SAFE. Gaps: (A) CI and the **publish** job use `npm install`, not `npm ci`, with a stale comment claiming the lockfile is gitignored (it is tracked) — the published artifact isn't pinned to the reviewed lockfile; (B) the publish job has `id-token: write` but runs bare `npm publish` with no `--provenance` / `publishConfig.provenance`; (C) no `npm audit --audit-level=high` gate and no `tools:check-duplicates` gate in CI despite both being cheap.
-- **Label:** Low-Med. **Fix:** `npm ci` in both jobs; add `--provenance`; add audit + duplicate gates next to the existing typecheck/lint/test/build steps.
+- **Evidence:** `npm audit` = 0 vulnerabilities; no `postinstall`/`preinstall`/`prepare` scripts; `files` whitelist ships only `dist`/README/LICENSE — all VERIFIED-SAFE. **Partial fix (2026-11-11):** `.github/workflows/publish.yml` installs with `bun install --frozen-lockfile` and publishes with `--provenance`. Remaining gaps: (A) TypeScript CI has no root `npm ci` (Bun lockfile is authoritative — acceptable); (B) no `npm audit --audit-level=high` gate and no `tools:check-duplicates` gate in the main CI job despite both being cheap.
+- **Label:** Low-Med. **Fix:** add audit + duplicate gates next to the existing typecheck/lint/test/build steps in CI.
 
 ---
 

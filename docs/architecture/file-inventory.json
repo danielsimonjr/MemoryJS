@@ -1,11 +1,11 @@
 {
-  "totalFiles": 1057,
+  "totalFiles": 1058,
   "byDisposition": {
     "reachable": 412,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 609,
+    "test": 610,
     "tool": 10,
     "config": 2,
     "bench": 5,
@@ -15,7 +15,7 @@
     "benchmarks": 5,
     "examples": 15,
     "src": 416,
-    "tests": 609,
+    "tests": 610,
     "tools": 10,
     "config": 2
   },
@@ -6046,6 +6046,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 22
+    },
+    {
+      "file": "tests/unit/scripts/publish-version-guard.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 74
     },
     {
       "file": "tests/unit/search/BasicSearch.test.ts",
