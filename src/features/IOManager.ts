@@ -821,6 +821,31 @@ export class IOManager {
     return lines.join('\n');
   }
 
+  /**
+   * Walk the graph once for the XML exporters, handing each entity and relation to a writer.
+   *
+   * Ids are escaped before they reach the writers so both formats agree on identity; the edge id
+   * counters are the writers' own (`e0`/`e1` style for GraphML, plain numbers for GEXF). Element
+   * names and per-format keys stay with the callers.
+   *
+   * @param graph - Graph to walk.
+   * @param writeNode - Receives the escaped node id and the entity, in `graph.entities` order.
+   * @param writeEdge - Receives the escaped endpoints and the relation, in `graph.relations` order.
+   * @returns Nothing; the writers push into the caller's line buffer.
+   */
+  private mapGraphXml(
+    graph: ReadonlyKnowledgeGraph,
+    writeNode: (entity: Entity, id: string) => void,
+    writeEdge: (relation: Relation, from: string, to: string) => void,
+  ): void {
+    for (const entity of graph.entities) {
+      writeNode(entity, escapeXml(entity.name));
+    }
+    for (const relation of graph.relations) {
+      writeEdge(relation, escapeXml(relation.from), escapeXml(relation.to));
+    }
+  }
+
   private exportAsGraphML(graph: ReadonlyKnowledgeGraph): string {
     const lines: string[] = [];
 
@@ -837,29 +862,28 @@ export class IOManager {
     lines.push('  <key id="e2" for="edge" attr.name="lastModified" attr.type="string"/>');
     lines.push('  <graph id="G" edgedefault="directed">');
 
-    for (const entity of graph.entities) {
-      const nodeId = escapeXml(entity.name);
-      lines.push(`    <node id="${nodeId}">`);
-      lines.push(`      <data key="d0">${escapeXml(entity.entityType)}</data>`);
-      lines.push(`      <data key="d1">${escapeXml(entity.observations.join('; '))}</data>`);
-      if (entity.createdAt) lines.push(`      <data key="d2">${escapeXml(entity.createdAt)}</data>`);
-      if (entity.lastModified) lines.push(`      <data key="d3">${escapeXml(entity.lastModified)}</data>`);
-      if (entity.tags?.length) lines.push(`      <data key="d4">${escapeXml(entity.tags.join('; '))}</data>`);
-      if (entity.importance !== undefined) lines.push(`      <data key="d5">${entity.importance}</data>`);
-      lines.push('    </node>');
-    }
-
     let edgeId = 0;
-    for (const relation of graph.relations) {
-      const sourceId = escapeXml(relation.from);
-      const targetId = escapeXml(relation.to);
-      lines.push(`    <edge id="e${edgeId}" source="${sourceId}" target="${targetId}">`);
-      lines.push(`      <data key="e0">${escapeXml(relation.relationType)}</data>`);
-      if (relation.createdAt) lines.push(`      <data key="e1">${escapeXml(relation.createdAt)}</data>`);
-      if (relation.lastModified) lines.push(`      <data key="e2">${escapeXml(relation.lastModified)}</data>`);
-      lines.push('    </edge>');
-      edgeId++;
-    }
+    this.mapGraphXml(
+      graph,
+      (entity, nodeId) => {
+        lines.push(`    <node id="${nodeId}">`);
+        lines.push(`      <data key="d0">${escapeXml(entity.entityType)}</data>`);
+        lines.push(`      <data key="d1">${escapeXml(entity.observations.join('; '))}</data>`);
+        if (entity.createdAt) lines.push(`      <data key="d2">${escapeXml(entity.createdAt)}</data>`);
+        if (entity.lastModified) lines.push(`      <data key="d3">${escapeXml(entity.lastModified)}</data>`);
+        if (entity.tags?.length) lines.push(`      <data key="d4">${escapeXml(entity.tags.join('; '))}</data>`);
+        if (entity.importance !== undefined) lines.push(`      <data key="d5">${entity.importance}</data>`);
+        lines.push('    </node>');
+      },
+      (relation, sourceId, targetId) => {
+        lines.push(`    <edge id="e${edgeId}" source="${sourceId}" target="${targetId}">`);
+        lines.push(`      <data key="e0">${escapeXml(relation.relationType)}</data>`);
+        if (relation.createdAt) lines.push(`      <data key="e1">${escapeXml(relation.createdAt)}</data>`);
+        if (relation.lastModified) lines.push(`      <data key="e2">${escapeXml(relation.lastModified)}</data>`);
+        lines.push('    </edge>');
+        edgeId++;
+      },
+    );
 
     lines.push('  </graph>');
     lines.push('</graphml>');
@@ -879,31 +903,29 @@ export class IOManager {
     lines.push('      <attribute id="0" title="entityType" type="string"/>');
     lines.push('      <attribute id="1" title="observations" type="string"/>');
     lines.push('    </attributes>');
-    lines.push('    <nodes>');
 
-    for (const entity of graph.entities) {
-      const nodeId = escapeXml(entity.name);
-      lines.push(`      <node id="${nodeId}" label="${nodeId}">`);
-      lines.push('        <attvalues>');
-      lines.push(`          <attvalue for="0" value="${escapeXml(entity.entityType)}"/>`);
-      lines.push(`          <attvalue for="1" value="${escapeXml(entity.observations.join('; '))}"/>`);
-      lines.push('        </attvalues>');
-      lines.push('      </node>');
-    }
-
-    lines.push('    </nodes>');
-    lines.push('    <edges>');
-
+    const nodeLines: string[] = [];
+    const edgeLines: string[] = [];
     let edgeId = 0;
-    for (const relation of graph.relations) {
-      const sourceId = escapeXml(relation.from);
-      const targetId = escapeXml(relation.to);
-      const label = escapeXml(relation.relationType);
-      lines.push(`      <edge id="${edgeId}" source="${sourceId}" target="${targetId}" label="${label}"/>`);
-      edgeId++;
-    }
+    this.mapGraphXml(
+      graph,
+      (entity, nodeId) => {
+        nodeLines.push(`      <node id="${nodeId}" label="${nodeId}">`);
+        nodeLines.push('        <attvalues>');
+        nodeLines.push(`          <attvalue for="0" value="${escapeXml(entity.entityType)}"/>`);
+        nodeLines.push(`          <attvalue for="1" value="${escapeXml(entity.observations.join('; '))}"/>`);
+        nodeLines.push('        </attvalues>');
+        nodeLines.push('      </node>');
+      },
+      (relation, sourceId, targetId) => {
+        const label = escapeXml(relation.relationType);
+        edgeLines.push(`      <edge id="${edgeId}" source="${sourceId}" target="${targetId}" label="${label}"/>`);
+        edgeId++;
+      },
+    );
 
-    lines.push('    </edges>');
+    lines.push('    <nodes>', ...nodeLines, '    </nodes>');
+    lines.push('    <edges>', ...edgeLines, '    </edges>');
     lines.push('  </graph>');
     lines.push('</gexf>');
     return lines.join('\n');
