@@ -1,11 +1,11 @@
 {
-  "totalFiles": 1058,
+  "totalFiles": 1062,
   "byDisposition": {
-    "reachable": 412,
+    "reachable": 414,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 610,
+    "test": 612,
     "tool": 10,
     "config": 2,
     "bench": 5,
@@ -14,8 +14,8 @@
   "byArea": {
     "benchmarks": 5,
     "examples": 15,
-    "src": 416,
-    "tests": 610,
+    "src": 418,
+    "tests": 612,
     "tools": 10,
     "config": 2
   },
@@ -1974,6 +1974,20 @@
       "loc": 428
     },
     {
+      "file": "src/features/amr/AmrCodec.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 522
+    },
+    {
+      "file": "src/features/amr/index.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 7
+    },
+    {
       "file": "src/features/AnalyticsManager.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
@@ -2048,7 +2062,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 106
+      "loc": 122
     },
     {
       "file": "src/features/IOManager.ts",
@@ -2685,7 +2699,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 2586
+      "loc": 2588
     },
     {
       "file": "src/utils/AsyncMutex.ts",
@@ -2965,7 +2979,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 812
+      "loc": 814
     },
     {
       "file": "src/utils/SchemaValidator.ts",
@@ -5801,6 +5815,20 @@
       "area": "tests",
       "disposition": "test",
       "loc": 198
+    },
+    {
+      "file": "tests/unit/features/amr/AmrCodec.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 560
+    },
+    {
+      "file": "tests/unit/features/amr/observationMetaMeta.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 80
     },
     {
       "file": "tests/unit/features/AnalyticsManager.test.ts",

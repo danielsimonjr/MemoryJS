@@ -1,9 +1,9 @@
 {
   "metadata": {
     "name": "@danielsimonjr/memoryjs",
-    "totalFiles": 416,
+    "totalFiles": 418,
     "totalModules": 12,
-    "totalExports": 2922
+    "totalExports": 2940
   },
   "entryPoints": [
     {
@@ -21271,6 +21271,59 @@
           "TagManager"
         ]
       },
+      "src/features/amr/AmrCodec.ts": {
+        "description": "Agent Memory Repo (AMR) codec. It reads and writes entry metadata, escapes entry text,",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../utils/errors.js",
+            "imports": [
+              "ValidationError"
+            ]
+          }
+        ],
+        "exports": [
+          "parseEntryText",
+          "formatEntryText",
+          "extractLinks",
+          "parseAmrDocument",
+          "renderAmrDocument",
+          "setEntry"
+        ],
+        "interfaces": [
+          "AmrEntry",
+          "AmrLine",
+          "AmrDocument",
+          "ParsedEntryText"
+        ],
+        "functions": [
+          "parseEntryText",
+          "formatEntryText",
+          "extractLinks",
+          "parseAmrDocument",
+          "renderAmrDocument",
+          "setEntry"
+        ]
+      },
+      "src/features/amr/index.ts": {
+        "description": "Barrel for the Agent Memory Repo codec.",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./AmrCodec.js",
+            "imports": [
+              "*"
+            ],
+            "reExport": true
+          }
+        ],
+        "exports": [],
+        "reExported": [
+          "* from ./AmrCodec.js"
+        ]
+      },
       "src/features/index.ts": {
         "description": "Features Module Barrel Export",
         "externalDependencies": [],
@@ -21431,6 +21484,24 @@
             "reExport": true
           },
           {
+            "file": "./amr/index.js",
+            "imports": [
+              "parseEntryText",
+              "formatEntryText",
+              "extractLinks",
+              "parseAmrDocument",
+              "renderAmrDocument",
+              "setEntry",
+              "AmrEol",
+              "AmrLineKind",
+              "AmrEntry",
+              "AmrLine",
+              "AmrDocument",
+              "ParsedEntryText"
+            ],
+            "reExport": true
+          },
+          {
             "file": "./ContradictionDetector.js",
             "imports": [
               "Contradiction"
@@ -21507,6 +21578,18 @@
           "ObservableDataModelAdapterOptions",
           "GraphProjection",
           "JSONValue",
+          "parseEntryText",
+          "formatEntryText",
+          "extractLinks",
+          "parseAmrDocument",
+          "renderAmrDocument",
+          "setEntry",
+          "AmrEol",
+          "AmrLineKind",
+          "AmrEntry",
+          "AmrLine",
+          "AmrDocument",
+          "ParsedEntryText",
           "Contradiction",
           "SemanticForgetResult",
           "SemanticForgetOptions"
@@ -21570,6 +21653,18 @@
           "ObservableDataModelAdapterOptions",
           "GraphProjection",
           "JSONValue",
+          "parseEntryText",
+          "formatEntryText",
+          "extractLinks",
+          "parseAmrDocument",
+          "renderAmrDocument",
+          "setEntry",
+          "AmrEol",
+          "AmrLineKind",
+          "AmrEntry",
+          "AmrLine",
+          "AmrDocument",
+          "ParsedEntryText",
           "Contradiction",
           "SemanticForgetResult",
           "SemanticForgetOptions"
@@ -30464,6 +30559,8 @@
           "src/features/SemanticForget.ts",
           "src/features/StreamingExporter.ts",
           "src/features/TagManager.ts",
+          "src/features/amr/AmrCodec.ts",
+          "src/features/amr/index.ts",
           "src/features/index.ts"
         ]
       },
@@ -30650,28 +30747,28 @@
       "src/sqlite.ts",
       "src/workers/levenshteinWorker.ts"
     ],
-    "reachableCount": 416,
+    "reachableCount": 418,
     "dormantCount": 0,
     "orphaned": [],
     "testOnly": []
   },
   "statistics": {
-    "totalTypeScriptFiles": 416,
+    "totalTypeScriptFiles": 418,
     "totalModules": 12,
-    "totalLinesOfCode": 135369,
-    "totalExports": 2922,
+    "totalLinesOfCode": 135918,
+    "totalExports": 2940,
     "totalClasses": 308,
-    "totalInterfaces": 852,
-    "totalFunctions": 696,
+    "totalInterfaces": 856,
+    "totalFunctions": 702,
     "totalTypeGuards": 49,
     "totalEnums": 4,
     "totalConstants": 197,
-    "totalReExports": 1718,
+    "totalReExports": 1731,
     "totalTypeOnlyImports": 882,
     "runtimeCircularDeps": 0,
     "typeOnlyCircularDeps": 16,
     "entryRoots": 4,
-    "reachableFiles": 416,
+    "reachableFiles": 418,
     "dormantFiles": 0,
     "orphanedFiles": 0,
     "testOnlyFiles": 0,

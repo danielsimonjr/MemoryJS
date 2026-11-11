@@ -204,6 +204,8 @@ export interface Entity {
      * `ingest-<ingestId>` manifest entity written by `IOManager.ingest()`.
      */
     sourceRef?: string;
+    /** Open provenance keys, for example Agent Memory Repo `source`; values keep document order. */
+    meta?: Record<string, string[]>;
   }>;
 }
 

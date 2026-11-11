@@ -40,7 +40,7 @@ The codebase is organized into the following modules:
 - **agent**: 178 files
 - **cli**: 34 files
 - **core**: 36 files
-- **features**: 18 files
+- **features**: 20 files
 - **entry**: 1 file
 - **search**: 63 files
 - **security**: 5 files
@@ -61,7 +61,7 @@ Seeded build/entry roots (package `exports`, `bin` targets, tsup entries, script
 - `src/sqlite.ts`
 - `src/workers/levenshteinWorker.ts`
 
-Reachable from a root: **416** of 416 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
+Reachable from a root: **418** of 418 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
 
 ---
 
@@ -5525,6 +5525,32 @@ Reachable from a root: **416** of 416 files. Dormant: **0** (0 orphaned, 0 test-
 
 ---
 
+### `src/features/amr/AmrCodec.ts` - Agent Memory Repo (AMR) codec. It reads and writes entry metadata, escapes entry text,
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../utils/errors.js` | `ValidationError` | Import |
+
+**Exports:**
+- Interfaces: `AmrEntry`, `AmrLine`, `AmrDocument`, `ParsedEntryText`
+- Types: `AmrEol`, `AmrLineKind`
+- Functions: `parseEntryText`, `formatEntryText`, `extractLinks`, `parseAmrDocument`, `renderAmrDocument`, `setEntry`
+
+---
+
+### `src/features/amr/index.ts` - Barrel for the Agent Memory Repo codec.
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `./AmrCodec.js` | `*` | Re-export |
+
+**Exports:**
+- Re-exports: `* from ./AmrCodec.js`
+
+---
+
 ### `src/features/index.ts` - Features Module Barrel Export
 
 **Internal Dependencies:**
@@ -5546,11 +5572,12 @@ Reachable from a root: **416** of 416 files. Dormant: **0** (0 orphaned, 0 test-
 | `./ContradictionDetector.js` | `ContradictionDetector` | Re-export |
 | `./SemanticForget.js` | `SemanticForget` | Re-export |
 | `./ObservableDataModelAdapter.js` | `createObservableDataModelFromGraph, ReadOnlyMemoryGraphDataError, ObservableDataModelShape, ObservableDataModelAdapterOptions, GraphProjection, JSONValue` | Re-export |
+| `./amr/index.js` | `parseEntryText, formatEntryText, extractLinks, parseAmrDocument, renderAmrDocument, setEntry, AmrEol, AmrLineKind, AmrEntry, AmrLine, AmrDocument, ParsedEntryText` | Re-export |
 | `./ContradictionDetector.js` | `Contradiction` | Re-export (type-only) |
 | `./SemanticForget.js` | `SemanticForgetResult, SemanticForgetOptions` | Re-export (type-only) |
 
 **Exports:**
-- Re-exports: `TagManager`, `IOManager`, `ExportFormat`, `ImportFormat`, `MergeStrategy`, `BackupMetadata`, `BackupInfo`, `IngestInput`, `IngestOptions`, `IngestResult`, `IngestProduced`, `SplitOptions`, `SplitResult`, `VisualizeOptions`, `PiiRedactionOption`, `AnalyticsManager`, `CompressionManager`, `ArchiveManager`, `ArchiveCriteria`, `ArchiveOptions`, `ArchiveResult`, `StreamingExporter`, `StreamResult`, `StreamingExportOptions`, `AutoLinker`, `AutoLinkOptions`, `AutoLinkResult`, `FactExtractor`, `ExtractedFact`, `FactExtractionOptions`, `FactExtractionResult`, `ObservationNormalizer`, `NormalizationOptions`, `NormalizationResult`, `KeywordExtractor`, `ScoredKeyword`, `AuditLog`, `AuditEntry`, `AuditOperation`, `AuditFilter`, `AuditStats`, `GovernanceManager`, `GovernanceTransaction`, `GovernanceError`, `GovernanceManagerOptions`, `GovernancePolicy`, `GovernanceOperationOptions`, `FreshnessManager`, `FreshnessManagerConfig`, `FreshnessReport`, `ContradictionDetector`, `SemanticForget`, `createObservableDataModelFromGraph`, `ReadOnlyMemoryGraphDataError`, `ObservableDataModelShape`, `ObservableDataModelAdapterOptions`, `GraphProjection`, `JSONValue`, `Contradiction`, `SemanticForgetResult`, `SemanticForgetOptions`
+- Re-exports: `TagManager`, `IOManager`, `ExportFormat`, `ImportFormat`, `MergeStrategy`, `BackupMetadata`, `BackupInfo`, `IngestInput`, `IngestOptions`, `IngestResult`, `IngestProduced`, `SplitOptions`, `SplitResult`, `VisualizeOptions`, `PiiRedactionOption`, `AnalyticsManager`, `CompressionManager`, `ArchiveManager`, `ArchiveCriteria`, `ArchiveOptions`, `ArchiveResult`, `StreamingExporter`, `StreamResult`, `StreamingExportOptions`, `AutoLinker`, `AutoLinkOptions`, `AutoLinkResult`, `FactExtractor`, `ExtractedFact`, `FactExtractionOptions`, `FactExtractionResult`, `ObservationNormalizer`, `NormalizationOptions`, `NormalizationResult`, `KeywordExtractor`, `ScoredKeyword`, `AuditLog`, `AuditEntry`, `AuditOperation`, `AuditFilter`, `AuditStats`, `GovernanceManager`, `GovernanceTransaction`, `GovernanceError`, `GovernanceManagerOptions`, `GovernancePolicy`, `GovernanceOperationOptions`, `FreshnessManager`, `FreshnessManagerConfig`, `FreshnessReport`, `ContradictionDetector`, `SemanticForget`, `createObservableDataModelFromGraph`, `ReadOnlyMemoryGraphDataError`, `ObservableDataModelShape`, `ObservableDataModelAdapterOptions`, `GraphProjection`, `JSONValue`, `parseEntryText`, `formatEntryText`, `extractLinks`, `parseAmrDocument`, `renderAmrDocument`, `setEntry`, `AmrEol`, `AmrLineKind`, `AmrEntry`, `AmrLine`, `AmrDocument`, `ParsedEntryText`, `Contradiction`, `SemanticForgetResult`, `SemanticForgetOptions`
 
 ---
 
@@ -7606,7 +7633,7 @@ Reachable from a root: **416** of 416 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/utils/index` | 37 files | 27 files |
 | `src/core/EntityManager` | 12 files | 49 files |
 | `src/search/index` | 51 files | 1 file |
-| `src/utils/errors` | 0 files | 42 files |
+| `src/utils/errors` | 0 files | 43 files |
 | `src/utils/logger` | 0 files | 39 files |
 | `src/agent/AgentMemoryManager` | 33 files | 3 files |
 | `src/types/learning` | 2 files | 34 files |
@@ -7738,7 +7765,7 @@ graph TD
         N51[FactExtractor]
         N52[FreshnessManager]
         N53[GovernanceManager]
-        N54[...8 more]
+        N54[...10 more]
     end
 
     subgraph Entry
@@ -7887,21 +7914,21 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 416 |
+| Total TypeScript Files | 418 |
 | Total Modules | 12 |
-| Total Lines of Code | 135369 |
-| Total Exports | 2922 |
-| Total Re-exports | 1718 |
+| Total Lines of Code | 135918 |
+| Total Exports | 2940 |
+| Total Re-exports | 1731 |
 | Total Classes | 308 |
-| Total Interfaces | 852 |
-| Total Functions | 696 |
+| Total Interfaces | 856 |
+| Total Functions | 702 |
 | Total Type Guards | 49 |
 | Total Enums | 4 |
 | Type-only Imports | 882 |
 | Runtime Circular Deps | 0 |
 | Type-only Circular Deps | 16 |
 | Entry/Build Roots | 4 |
-| Reachable Files | 416 |
+| Reachable Files | 418 |
 | Dormant Files (orphaned / test-only) | 0 (0 / 0) |
 
 ---
