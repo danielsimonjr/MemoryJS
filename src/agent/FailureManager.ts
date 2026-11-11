@@ -40,7 +40,7 @@ import {
 } from '../types/agent-memory.js';
 import type { BlamedComponent, BlamedComponentKind } from '../types/agent-memory.js';
 import type { EntityManager } from '../core/EntityManager.js';
-import { patchVersionedRecord } from './versionedRecordUpdate.js';
+import { patchVersionedRecord } from './versionedWriteFailure.js';
 import { loadProjectedRecords, matchesDefined } from './recordQuery.js';
 import { validateNonEmpty } from '../utils/index.js';
 import {
