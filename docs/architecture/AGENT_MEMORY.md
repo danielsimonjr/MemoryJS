@@ -1334,5 +1334,5 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 
 | Claim | Value | Source |
 |---|---|---|
-| totalSourceFiles | 1068 | repo-tools map |
+| totalSourceFiles | 1069 | repo-tools map |
 | totalModules | 7 | repo-tools map |
