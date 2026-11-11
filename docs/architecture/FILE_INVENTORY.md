@@ -1055,7 +1055,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/utils/textSimilarity.test.ts` | tests | test | 147 |
 | `tests/unit/utils/textSimilarity.tokenSets.test.ts` | tests | test | 95 |
 | `tests/unit/utils/threadPool.challenger.test.ts` | tests | test | 33 |
-| `tests/unit/utils/threadPool.parity.test.ts` | tests | test | 272 |
+| `tests/unit/utils/threadPool.parity.test.ts` | tests | test | 279 |
 | `tests/unit/utils/threadPool.test.ts` | tests | test | 512 |
 | `tests/unit/utils/timing.test.ts` | tests | test | 192 |
 | `tests/unit/utils/tokenEstimate.test.ts` | tests | test | 40 |
