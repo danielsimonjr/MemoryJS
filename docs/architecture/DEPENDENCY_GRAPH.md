@@ -5525,7 +5525,7 @@ Reachable from a root: **418** of 418 files. Dormant: **0** (0 orphaned, 0 test-
 
 ---
 
-### `src/features/amr/AmrCodec.ts` - Agent Memory Repo (AMR) codec. It reads and writes entry metadata, escapes entry text,
+### `src/features/amr/AmrCodec.ts` - Agent Memory Repo (AMR) codec. The codec reads and writes entry metadata, escapes entry text,
 
 **Internal Dependencies:**
 | File | Imports | Type |
@@ -7916,7 +7916,7 @@ graph TD
 |----------|-------|
 | Total TypeScript Files | 418 |
 | Total Modules | 12 |
-| Total Lines of Code | 135918 |
+| Total Lines of Code | 135919 |
 | Total Exports | 2940 |
 | Total Re-exports | 1731 |
 | Total Classes | 308 |

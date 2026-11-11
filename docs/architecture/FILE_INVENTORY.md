@@ -320,7 +320,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/core/StorageFactory.ts` | src | reachable | 158 |
 | `src/core/TransactionManager.ts` | src | reachable | 763 |
 | `src/core/TransitionLedger.ts` | src | reachable | 428 |
-| `src/features/amr/AmrCodec.ts` | src | reachable | 522 |
+| `src/features/amr/AmrCodec.ts` | src | reachable | 523 |
 | `src/features/amr/index.ts` | src | reachable | 7 |
 | `src/features/AnalyticsManager.ts` | src | reachable | 247 |
 | `src/features/ArchiveManager.ts` | src | reachable | 421 |

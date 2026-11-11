@@ -14264,7 +14264,7 @@ modules:
       classes:
         - TagManager
     src/features/amr/AmrCodec.ts:
-      description: Agent Memory Repo (AMR) codec. It reads and writes entry metadata, escapes entry text,
+      description: Agent Memory Repo (AMR) codec. The codec reads and writes entry metadata, escapes entry text,
       externalDependencies: []
       nodeDependencies: []
       internalDependencies:
@@ -21659,7 +21659,7 @@ reachability:
 statistics:
   totalTypeScriptFiles: 418
   totalModules: 12
-  totalLinesOfCode: 135918
+  totalLinesOfCode: 135919
   totalExports: 2940
   totalClasses: 308
   totalInterfaces: 856
