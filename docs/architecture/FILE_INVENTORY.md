@@ -9,7 +9,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 1057
+**Total files**: 1058
 
 ## Disposition counts
 
@@ -19,12 +19,12 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 609 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 610 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 5 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 15 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **1057** | |
+| **Total** | **1058** | |
 
 ## Per-area counts
 
@@ -34,7 +34,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `config` | 2 |
 | `examples` | 15 |
 | `src` | 416 |
-| `tests` | 609 |
+| `tests` | 610 |
 | `tools` | 10 |
 
 ## All files
@@ -902,6 +902,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/performance/baselineHelper.test.ts` | tests | test | 21 |
 | `tests/unit/scripts/clean-dist.edges.test.ts` | tests | test | 114 |
 | `tests/unit/scripts/clean-dist.test.ts` | tests | test | 22 |
+| `tests/unit/scripts/publish-version-guard.test.ts` | tests | test | 98 |
 | `tests/unit/search/BasicSearch.test.ts` | tests | test | 458 |
 | `tests/unit/search/BloomFilter.test.ts` | tests | test | 175 |
 | `tests/unit/search/BM25Search.test.ts` | tests | test | 338 |

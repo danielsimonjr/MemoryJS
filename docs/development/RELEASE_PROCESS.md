@@ -1,8 +1,9 @@
 # Release Process
 
-**Last reviewed**: 2026-07-24. Current `package.json` is at v2.9.0. Tags
-v1.11.0–v1.14.0 are pushed; npm publish is gated on token refresh in
-`~/.npmrc`. Process below remains accurate.
+**Last reviewed**: 2026-11-11. Current `package.json` is at v5.0.0. Tags through
+v5.0.0 are on GitHub; npm publish is automated by `.github/workflows/publish.yml`
+(repository secret `NPM`, npm provenance). Use `workflow_dispatch` when the tag
+predates the workflow file.
 
 Guide to releasing new versions of MemoryJS.
 
@@ -219,20 +220,28 @@ npm whoami
 
 ### Publishing
 
+**Preferred:** GitHub Actions after the release tag exists and `package.json`
+version matches the tag (without the leading `v`).
+
+1. Ensure `CHANGELOG.md` and the GitHub release notes are final for that version.
+2. Ensure repository secret **`NPM`** holds a valid npm automation token.
+3. **Tag push:** pushing `v*` runs `.github/workflows/publish.yml` on the tagged
+   commit automatically.
+4. **Manual dispatch (tag already on GitHub, workflow added later):** Actions →
+   **Publish** → **Run workflow**, set **`tag`** to the release (e.g. `v5.0.0`).
+   The job checks out that tag, runs the version guard, then `npm publish
+   --provenance --access public` (which runs `prepublishOnly`: clean, build,
+   `test:ci`).
+
+Local dry-run (does not upload):
+
 ```bash
-# Ensure clean build
-rm -rf dist/
-npm run build
-
-# Dry run (preview what will be published)
-npm publish --dry-run
-
-# Publish (public package)
-npm publish --access public
-
-# Publish with tag (for pre-releases)
-npm publish --tag beta --access public
+bun run clean && bun run build && bun run test:ci
+npm publish --dry-run --access public
 ```
+
+Pre-release dist-tags still use `npm publish --tag beta --access public` when
+run locally with credentials; the CI workflow publishes the default `latest` tag.
 
 ### Package Contents
 
@@ -325,48 +334,25 @@ No migration needed for this release.
 
 ### Automating with GitHub Actions
 
-```yaml
-# .github/workflows/release.yml
-name: Release
+The canonical workflow is [`.github/workflows/publish.yml`](../../.github/workflows/publish.yml).
 
-on:
-  push:
-    tags:
-      - 'v*'
+- **Triggers:** `push` on `v*` tags; `workflow_dispatch` with required input `tag`.
+- **Install:** `bun install --frozen-lockfile` (Bun 1.4.2, same pin as CI).
+- **Runtime:** Node **22.16** for publish (`engines.node` floor).
+- **Guard:** `node scripts/publish-version-guard.mjs` — tag version must equal
+  `package.json` `version`.
+- **Gate:** `prepublishOnly` via `npm publish` (not a second full CI matrix).
+- **Registry:** `npm publish --provenance --access public` with `NODE_AUTH_TOKEN`
+  from secret **`NPM`** (job fails with a clear error if the secret is empty).
 
-jobs:
-  release:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
+Example dispatch to publish an existing tag from `master`:
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-          registry-url: 'https://registry.npmjs.org'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build
-        run: npm run build
-
-      - name: Test
-        run: npm test
-
-      - name: Publish to npm
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```bash
+gh workflow run publish.yml --ref master -f tag=v5.0.0
 ```
+
+GitHub Releases remain a separate manual (or future) step; this workflow does not
+create release assets.
 
 ---
 
