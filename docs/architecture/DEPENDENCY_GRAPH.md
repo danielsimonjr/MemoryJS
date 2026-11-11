@@ -37,7 +37,7 @@ This document provides a comprehensive dependency graph of all files, components
 The codebase is organized into the following modules:
 
 - **adapters**: 11 files
-- **agent**: 177 files
+- **agent**: 178 files
 - **cli**: 34 files
 - **core**: 36 files
 - **features**: 18 files
@@ -61,7 +61,7 @@ Seeded build/entry roots (package `exports`, `bin` targets, tsup entries, script
 - `src/sqlite.ts`
 - `src/workers/levenshteinWorker.ts`
 
-Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
+Reachable from a root: **416** of 416 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
 
 ---
 
@@ -382,7 +382,7 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 | `../types/agent-memory.js` | `ReflectionEntity, ReflectionId, ReflectionRecord, ReflectionScope` | Import (type-only) |
 | `../types/agent-memory.js` | `isReflectionMemory, toIsoDateTime` | Import |
 | `../core/EntityManager.js` | `EntityManager` | Import (type-only) |
-| `./versionedWriteFailure.js` | `versionedWriteFailure` | Import |
+| `./versionedWriteFailure.js` | `patchVersionedRecord` | Import |
 | `./recordQuery.js` | `matchesDefined` | Import |
 | `../utils/index.js` | `validateNonEmpty, validateNonEmptyArray` | Import |
 
@@ -588,7 +588,7 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 | `./AccessTracker.js` | `AccessTracker` | Import |
 | `../features/FreshnessManager.js` | `FreshnessManager` | Import |
 | `../utils/textSimilarity.js` | `tokenizeToSet` | Import |
-| `../utils/halfLife.js` | `clampedHalfLifeScore, halfLifeFactor` | Import |
+| `../utils/halfLife.js` | `clampedHalfLifeScore` | Import |
 | `./connectivity.js` | `computeDegreeMap, normalizedDegree, DegreeMap` | Import |
 | `../core/storageCapabilities.js` | `hasDeltaPrimitives` | Import |
 | `../types/agent-memory.js` | `DecayResult, ForgetOptions, ForgetResult` | Re-export (type-only) |
@@ -820,7 +820,7 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 | `../types/agent-memory.js` | `BLAMED_COMPONENT_KINDS, isFailureMemory, isHeuristicMemory, toIsoDateTime` | Import |
 | `../types/agent-memory.js` | `BlamedComponent, BlamedComponentKind` | Import (type-only) |
 | `../core/EntityManager.js` | `EntityManager` | Import (type-only) |
-| `./versionedWriteFailure.js` | `versionedWriteFailure` | Import |
+| `./versionedWriteFailure.js` | `patchVersionedRecord` | Import |
 | `./recordQuery.js` | `loadProjectedRecords, matchesDefined` | Import |
 | `../utils/index.js` | `validateNonEmpty` | Import |
 | `./procedural/ProcedureStore.js` | `PROCEDURE_ENTITY_TYPE, PROCEDURE_STEP_ENTITY_TYPE` | Import |
@@ -1682,6 +1682,7 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 |------|---------|------|
 | `../../utils/schema.js` | `z` | Import |
 | `../../types/learning.js` | `CriterionResult, TaskRecord` | Import (type-only) |
+| `../learning/llmJson.js` | `ABORTED, describeError, raceAbort` | Import |
 | `../procedural/graph/CompletionProvider.js` | `PGCompletionProvider` | Import (type-only) |
 | `./DeterministicJudge.js` | `DeterministicJudge, RubricJudge` | Import |
 
@@ -1988,6 +1989,7 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 | `../../utils/errors.js` | `VersionConflictError` | Import |
 | `../../utils/envConfig.js` | `readEnvNumber` | Import |
 | `./knowledgeDigest.js` | `fitInOrder, shortId` | Import |
+| `./privateRecordEntity.js` | `privateRecordEntity` | Import |
 
 **Exports:**
 - Classes: `InstructionSetManager`
@@ -2009,14 +2011,12 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 | `../../core/TransactionManager.js` | `BatchTransaction` | Import |
 | `../../core/EntityManager.js` | `EntityManager` | Import |
 | `../../core/GraphStorage.js` | `GraphStorage` | Import (type-only) |
-| `../../utils/envConfig.js` | `readEnvNumber` | Import |
-| `../../utils/tokenEstimate.js` | `estimateTokensFromText` | Import |
-| `./InstructionSetManager.js` | `instructionItemsFor, InstructionSetManager` | Import |
-| `./knowledgeDigest.js` | `clone, diffSnapshots, digestOf, assertBudgetTokens, fitInOrder, KnowledgeDiff` | Import |
+| `./InstructionSetManager.js` | `InstructionSetManager` | Import (type-only) |
+| `./knowledgeDigest.js` | `clone, diffSnapshots, digestOf, KnowledgeDiff` | Import |
 | `./knowledgeRevision.js` | `safeApplyOp, planWrites, workFrom, PlannedWrite` | Import |
-| `./ScratchKnowledge.js` | `ScratchKnowledge, renderLoadedKnowledge, LoadItem` | Import |
+| `./ScratchKnowledge.js` | `ScratchKnowledge` | Import |
 | `../skills/skillRecordUtils.js` | `rankSkillsLexically` | Import |
-| `./knowledgeLoad.js` | `findSnapshot, latestSnapshotId, memoryRefsOf, payloadOf, resolveMaxSkills, selectSkills, skillIdsForTaskIds` | Import |
+| `./knowledgeLoad.js` | `findSnapshot, latestSnapshotId, memoryRefsOf, payloadOf, skillIdsForTaskIds, toLoadItems, packLoadedKnowledge, prepareLoad, loadSkillMatches` | Import |
 | `./knowledgeDigest.js` | `KnowledgeDiff, IdDelta` | Re-export (type-only) |
 
 **Exports:**
@@ -2032,22 +2032,20 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `../../types/skills.js` | `InstructionSetRecord, InstructionSetRole, RevisionOp, SkillId, SkillRecord` | Import (type-only) |
-| `../../types/agent-memory.js` | `FailureRecord` | Import (type-only) |
-| `../../utils/envConfig.js` | `readEnvNumber` | Import |
-| `../../utils/tokenEstimate.js` | `estimateTokensFromText` | Import |
-| `./InstructionSetManager.js` | `instructionItemsFor, renderInstructionItems, InstructionItem` | Import |
-| `./knowledgeDigest.js` | `assertBudgetTokens, clone, fitInOrder` | Import |
+| `../../types/skills.js` | `InstructionSetRecord, RevisionOp, SkillId, SkillRecord` | Import (type-only) |
+| `./knowledgeDigest.js` | `clone` | Import |
 | `./knowledgeRevision.js` | `safeApplyOp, workFrom` | Import |
 | `../skills/skillRecordUtils.js` | `rankSkillsLexically` | Import |
-| `./knowledgeLoad.js` | `resolveMaxSkills, selectSkills, skillIdsForTaskIds` | Import |
+| `./knowledgeLoad.js` | `skillIdsForTaskIds, toLoadItems, packLoadedKnowledge, prepareLoad, loadSkillMatches` | Import |
 | `./KnowledgeRepository.js` | `FailureLookupLike, LoadedKnowledge, LoadForContextOptions, SkillMatchLike` | Import (type-only) |
+| `./knowledgeLoad.js` | `renderLoadedKnowledge` | Re-export |
+| `./knowledgeLoad.js` | `LoadItem` | Re-export (type-only) |
 
 **Exports:**
 - Classes: `ScratchKnowledge`
 - Interfaces: `ScratchPayload`, `ScratchOptions`
-- Types: `LoadItem`, `ScratchApplyResult`, `SkillMatcher`
-- Functions: `renderLoadedKnowledge`
+- Types: `ScratchApplyResult`, `SkillMatcher`
+- Re-exports: `renderLoadedKnowledge`, `LoadItem`
 
 ---
 
@@ -2092,13 +2090,21 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `../../types/types.js` | `Entity` | Import (type-only) |
-| `../../types/skills.js` | `InstructionSetRecord, KnowledgeSnapshotEntity, KnowledgeSnapshotRecord, SkillId, SkillRecord` | Import (type-only) |
+| `../../types/agent-memory.js` | `FailureRecord` | Import (type-only) |
+| `../../types/skills.js` | `InstructionSetRecord, InstructionSetRole, KnowledgeSnapshotEntity, KnowledgeSnapshotRecord, SkillId, SkillRecord` | Import (type-only) |
 | `../../types/agent-memory.js` | `isFailureMemory, isHeuristicMemory, isInstructionSetEntity, isKnowledgeSnapshotEntity, isReflectionMemory, isSkillEntity` | Import |
+| `../../utils/tokenEstimate.js` | `estimateTokensFromText` | Import |
+| `../../utils/envConfig.js` | `readEnvNumber` | Import |
+| `./InstructionSetManager.js` | `instructionItemsFor, renderInstructionItems, InstructionItem` | Import |
+| `./knowledgeDigest.js` | `assertBudgetTokens, fitInOrder` | Import |
 | `./knowledgeDigest.js` | `compareIds` | Import |
+| `./KnowledgeRepository.js` | `LoadedKnowledge, LoadForContextOptions, SkillMatchLike` | Import (type-only) |
 
 **Exports:**
-- Functions: `skillIdsForTaskIds`, `resolveMaxSkills`, `selectSkills`, `findSnapshot`, `latestSnapshotId`, `payloadOf`, `memoryRefsOf`
-- Constants: `DEFAULT_MAX_SKILLS`, `MAX_TASK_SKILLS`
+- Interfaces: `LoadSetup`
+- Types: `LoadItem`
+- Functions: `skillIdsForTaskIds`, `resolveMaxSkills`, `renderLoadedKnowledge`, `toLoadItems`, `packLoadedKnowledge`, `selectSkills`, `findSnapshot`, `latestSnapshotId`, `payloadOf`, `memoryRefsOf`, `prepareLoad`, `loadSkillMatches`
+- Constants: `DEFAULT_MAX_SKILLS`, `MAX_TASK_SKILLS`, `DEFAULT_BUDGET_TOKENS`, `DEFAULT_LOAD_SECTIONS`
 
 ---
 
@@ -2118,11 +2124,25 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 | `./InstructionSetManager.js` | `buildInstructionSetEntity` | Import |
 | `../skills/skillRecordUtils.js` | `SKILL_KIND_VALUES, mintSkillId, skillDedupHash, skillObservations` | Import |
 | `./knowledgeDigest.js` | `canonicalKnowledgeJson, clone, compareIds, sha256Hex, shortId` | Import |
+| `./privateRecordEntity.js` | `privateRecordEntity` | Import |
 
 **Exports:**
 - Interfaces: `WorkState`
 - Types: `PlannedWrite`
 - Functions: `workFrom`, `safeApplyOp`, `applyOp`, `planWrites`
+
+---
+
+### `src/agent/knowledge/privateRecordEntity.ts` - The private-memory entity shell shared by every knowledge/learning record builder.
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../types/types.js` | `Entity` | Import (type-only) |
+
+**Exports:**
+- Interfaces: `PrivateRecordEntityFields`
+- Functions: `privateRecordEntity`
 
 ---
 
@@ -2345,7 +2365,7 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 
 **Exports:**
 - Interfaces: `LeafRunOptions`, `CappedAnswer`, `PersistedPlan`, `ValidationRun`, `LeafRun`
-- Functions: `capAnswer`, `feedbackFromCriteria`, `failedFeedback`, `summarize`, `accountantFrom`, `syncAccounting`, `serializeRun`, `taskRecordsJson`, `loadRun`
+- Functions: `capAnswer`, `feedbackFromCriteria`, `failedFeedback`, `summarize`, `accountantFrom`, `syncAccounting`, `serializeRun`, `taskRecordsJson`, `loadTasksByIds`, `loadRun`
 - Constants: `ANSWER_CAP_BYTES`, `EMPTY_METRICS`
 
 ---
@@ -2435,6 +2455,7 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 | `../../core/GraphStorage.js` | `GraphStorage` | Import (type-only) |
 | `../../utils/errors.js` | `VersionConflictError` | Import |
 | `../knowledge/knowledgeDigest.js` | `shortId` | Import |
+| `../knowledge/privateRecordEntity.js` | `privateRecordEntity` | Import |
 | `../WorkThreadManager.js` | `CHILD_OF_RELATION` | Import |
 | `./observationChunks.js` | `decodeChunks, encodeChunks, isTagged` | Import |
 
@@ -2563,7 +2584,7 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 | `./LearningTrace.js` | `LearningTrace` | Import (type-only) |
 | `./LearningAccountant.js` | `AccountantState` | Import (type-only) |
 | `./types.js` | `LeafPhase` | Import (type-only) |
-| `./LeafLearnerStore.js` | `loadRun, summarize` | Import |
+| `./LeafLearnerStore.js` | `loadRun, loadTasksByIds, summarize` | Import |
 
 **Exports:**
 - Interfaces: `SubsetRecord`, `SplitEvidence`, `ChildSummary`, `RecursiveOptions`, `MergeRecord`, `RecursiveState`, `LoadedRecursive`, `ChildResult`
@@ -3665,10 +3686,15 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../types/types.js` | `Entity` | Import (type-only) |
+| `../core/EntityManager.js` | `EntityManager` | Import (type-only) |
+| `../types/agent-memory.js` | `toIsoDateTime` | Import |
 | `../utils/errors.js` | `VersionConflictError, EntityNotFoundError` | Import |
 
 **Exports:**
-- Functions: `versionedWriteFailure`
+- Interfaces: `PatchVersionedRecordOptions`
+- Types: `VersionedPatchFailure`
+- Functions: `versionedWriteFailure`, `patchVersionedRecord`
 
 ---
 
@@ -3764,7 +3790,7 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 |------|---------|------|
 | `../parseArgs.js` | `Command` | Import |
 | `../../utils/searchCache.js` | `clearAllSearchCaches, cleanupAllCaches, getAllCacheStats` | Import |
-| `./helpers.js` | `getOptions, createLogger` | Import |
+| `./helpers.js` | `getOptions, createLogger, emitJson` | Import |
 | `../formatters.js` | `formatError` | Import |
 
 **Exports:**
@@ -3915,7 +3941,8 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 | `../formatters.js` | `formatError` | Import |
 
 **Exports:**
-- Functions: `getOptions`, `createContext`, `runAction`
+- Interfaces: `JsonCommandOption`, `JsonCommandSpec`
+- Functions: `getOptions`, `createContext`, `runAction`, `emitJson`, `addJsonCommand`
 
 ---
 
@@ -3925,7 +3952,7 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `../parseArgs.js` | `Command` | Import |
-| `./helpers.js` | `runAction, getOptions, createContext, createLogger` | Import |
+| `./helpers.js` | `getOptions, createContext, createLogger, addJsonCommand, emitJson` | Import |
 | `../formatters.js` | `formatError` | Import |
 
 **Exports:**
@@ -4060,7 +4087,7 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `../parseArgs.js` | `Command` | Import |
-| `./helpers.js` | `runAction` | Import |
+| `./helpers.js` | `addJsonCommand` | Import |
 
 **Exports:**
 - Functions: `registerObservationDedupCommands`
@@ -4095,7 +4122,7 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 | `../parseArgs.js` | `Command` | Import |
 | `../../search/RankedSearch.js` | `RankedSearch` | Import |
 | `../../core/GraphStorage.js` | `GraphStorage` | Import (type-only) |
-| `./helpers.js` | `getOptions, createContext, createLogger` | Import |
+| `./helpers.js` | `getOptions, createContext, createLogger, emitJson` | Import |
 | `../formatters.js` | `formatError` | Import |
 
 **Exports:**
@@ -4160,7 +4187,7 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `../parseArgs.js` | `Command` | Import |
-| `./helpers.js` | `runAction` | Import |
+| `./helpers.js` | `runAction, emitJson` | Import |
 
 **Exports:**
 - Functions: `registerSpellCommands`
@@ -5163,7 +5190,7 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 **Exports:**
 - Interfaces: `StorageCacheState`
 - Types: `StorageCacheOwner`
-- Functions: `bindStorageCacheState`, `relationKeyOf`, `upsertEntityInCache`, `upsertRelationInCache`, `removeEntitiesFromIndexes`, `entitiesByTypeFromIndexes`, `rebuildRelationIndexes`, `deleteNamesFromSnapshot`, `deleteRelationsFromSnapshot`
+- Functions: `bindStorageCacheState`, `relationKeyOf`, `upsertEntityInCache`, `upsertRelationInCache`, `removeEntitiesFromIndexes`, `entitiesByTypeFromIndexes`, `rebuildRelationIndexes`, `omitNamedEndpoints`, `deleteNamesFromSnapshot`, `deleteRelationsFromSnapshot`
 
 ---
 
@@ -5210,6 +5237,7 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 |------|---------|------|
 | `../types/index.js` | `Entity, LongRunningOperationOptions` | Import (type-only) |
 | `../core/GraphStorage.js` | `GraphStorage` | Import (type-only) |
+| `../core/storageCache.js` | `omitNamedEndpoints` | Import |
 | `../utils/index.js` | `compress, COMPRESSION_CONFIG, checkCancellation, createProgressReporter, createProgress` | Import |
 | `../utils/durableWriteFile.js` | `durableWriteFile` | Import |
 | `../core/EntityManager.js` | `fireGovernanceAudits, preflightGovernedGraphMutation, GovernanceHooks` | Import |
@@ -5583,7 +5611,7 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 | `../utils/index.js` | `isWithinDateRange, SEARCH_LIMITS, searchCaches` | Import |
 | `../utils/searchCache.js` | `getCacheOwnerId` | Import |
 | `./SearchFilterChain.js` | `SearchFilterChain, SearchFilters` | Import |
-| `./inducedSubgraph.js` | `collectInducedRelations` | Import |
+| `./inducedSubgraph.js` | `collectInducedRelations, inducedSubgraph` | Import |
 
 **Exports:**
 - Classes: `BasicSearch`
@@ -5625,7 +5653,7 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 | `../utils/errors.js` | `ValidationError` | Import |
 | `../utils/searchCache.js` | `cleanupExpiredEntries` | Import |
 | `./SearchFilterChain.js` | `SearchFilterChain, SearchFilters` | Import |
-| `./inducedSubgraph.js` | `collectInducedRelations` | Import |
+| `./inducedSubgraph.js` | `inducedSubgraph` | Import |
 
 **Exports:**
 - Classes: `BooleanSearch`
@@ -6500,10 +6528,10 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `../core/GraphStorage.js` | `GraphStorage` | Import (type-only) |
-| `../types/index.js` | `Relation` | Import (type-only) |
+| `../types/index.js` | `Entity, KnowledgeGraph, Relation` | Import (type-only) |
 
 **Exports:**
-- Functions: `collectInducedRelations`
+- Functions: `collectInducedRelations`, `inducedSubgraph`
 
 ---
 
@@ -7570,13 +7598,13 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports From | Exports To |
 |------|--------------|------------|
 | `src/core/ManagerContext` | 97 files | 10 files |
-| `src/types/types` | 1 file | 85 files |
+| `src/types/types` | 1 file | 87 files |
 | `src/types/index` | 13 files | 70 files |
 | `src/types/agent-memory` | 3 files | 73 files |
 | `src/agent/index` | 70 files | 1 file |
 | `src/core/GraphStorage` | 17 files | 47 files |
 | `src/utils/index` | 37 files | 27 files |
-| `src/core/EntityManager` | 12 files | 48 files |
+| `src/core/EntityManager` | 12 files | 49 files |
 | `src/search/index` | 51 files | 1 file |
 | `src/utils/errors` | 0 files | 42 files |
 | `src/utils/logger` | 0 files | 39 files |
@@ -7584,7 +7612,7 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/types/learning` | 2 files | 34 files |
 | `src/types/skills` | 1 file | 34 files |
 | `src/core/context/AgentMemoryFacade` | 32 files | 1 file |
-| `src/agent/knowledge/KnowledgeRepository` | 14 files | 18 files |
+| `src/agent/knowledge/KnowledgeRepository` | 12 files | 19 files |
 | `src/agent/learning/RecursiveLearner` | 23 files | 7 files |
 | `src/utils/textSimilarity` | 0 files | 30 files |
 | `src/agent/bootstrap/Bootstrapper` | 25 files | 3 files |
@@ -7598,10 +7626,10 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/agent/ContextWindowManager` | 18 files | 6 files |
 | `src/cli/formatters` | 4 files | 20 files |
 | `src/core/RelationManager` | 6 files | 18 files |
-| `src/utils/envConfig` | 1 file | 23 files |
+| `src/utils/envConfig` | 1 file | 22 files |
+| `src/agent/learning/LearningTrace` | 11 files | 11 files |
 | `src/core/context/AgentCognitionFacade` | 21 files | 1 file |
 | `src/search/SearchManager` | 17 files | 5 files |
-| `src/agent/learning/LearningTrace` | 10 files | 11 files |
 | `src/agent/skills/SkillManager` | 11 files | 10 files |
 | `src/search/RankedSearch` | 12 files | 9 files |
 | `src/utils/entityUtils` | 3 files | 18 files |
@@ -7615,10 +7643,10 @@ Reachable from a root: **415** of 415 files. Dormant: **0** (0 orphaned, 0 test-
 <a id="circular-dependency-analysis"></a>
 ## Circular Dependency Analysis
 
-**15 circular dependencies detected:**
+**16 circular dependencies detected:**
 
 - **Runtime cycles**: 0 (require attention)
-- **Type-only cycles**: 15 (safe, no runtime impact)
+- **Type-only cycles**: 16 (safe, no runtime impact)
 
 ### Type-Only Circular Dependencies
 
@@ -7629,12 +7657,12 @@ These cycles only involve type imports and are safe (erased at runtime):
 - src/core/TransactionManager.ts -> src/core/GraphStorage.ts -> src/core/TransactionManager.ts
 - src/features/IOManager.ts -> src/features/BackupManager.ts -> src/features/IOManager.ts
 - src/agent/EntropyFilter.ts -> src/agent/ConsolidationPipeline.ts -> src/agent/WorkingMemoryManager.ts -> src/agent/EntropyFilter.ts
+- src/agent/knowledge/KnowledgeRepository.ts -> src/agent/knowledge/ScratchKnowledge.ts -> src/agent/knowledge/knowledgeLoad.ts -> src/agent/knowledge/KnowledgeRepository.ts
 - src/agent/knowledge/KnowledgeRepository.ts -> src/agent/knowledge/ScratchKnowledge.ts -> src/agent/knowledge/KnowledgeRepository.ts
 - src/agent/procedural/graph/backing/IProceduralGraphBacking.ts -> src/agent/procedural/graph/backing/InMemoryProceduralGraphBacking.ts -> src/agent/procedural/graph/backing/LockedProceduralGraphBacking.ts -> src/agent/procedural/graph/backing/IProceduralGraphBacking.ts
 - src/agent/procedural/graph/backing/IProceduralGraphBacking.ts -> src/agent/procedural/graph/backing/InMemoryProceduralGraphBacking.ts -> src/agent/procedural/graph/backing/LockedProceduralGraphBacking.ts -> src/agent/procedural/graph/backing/ProceduralGraphState.ts -> src/agent/procedural/graph/backing/IProceduralGraphBacking.ts
 - src/agent/procedural/graph/backing/IProceduralGraphBacking.ts -> src/agent/procedural/graph/backing/SqliteProceduralGraphBacking.ts -> src/agent/procedural/graph/backing/IProceduralGraphBacking.ts
-- src/agent/procedural/graph/ProceduralGraphSession.ts -> src/agent/procedural/graph/ProceduralGuidance.ts -> src/agent/procedural/graph/ProceduralGraphSession.ts
-- ... and 5 more
+- ... and 6 more
 
 ---
 
@@ -7668,7 +7696,7 @@ graph TD
         N18[CollaborativeSynthesis]
         N19[ConflictResolver]
         N20[ConsolidationPipeline]
-        N21[...167 more]
+        N21[...168 more]
     end
 
     subgraph Cli
@@ -7859,21 +7887,21 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 415 |
+| Total TypeScript Files | 416 |
 | Total Modules | 12 |
-| Total Lines of Code | 134844 |
-| Total Exports | 2907 |
-| Total Re-exports | 1716 |
+| Total Lines of Code | 135351 |
+| Total Exports | 2922 |
+| Total Re-exports | 1718 |
 | Total Classes | 308 |
-| Total Interfaces | 847 |
-| Total Functions | 685 |
+| Total Interfaces | 852 |
+| Total Functions | 696 |
 | Total Type Guards | 49 |
 | Total Enums | 4 |
-| Type-only Imports | 876 |
+| Type-only Imports | 882 |
 | Runtime Circular Deps | 0 |
-| Type-only Circular Deps | 15 |
+| Type-only Circular Deps | 16 |
 | Entry/Build Roots | 4 |
-| Reachable Files | 415 |
+| Reachable Files | 416 |
 | Dormant Files (orphaned / test-only) | 0 (0 / 0) |
 
 ---

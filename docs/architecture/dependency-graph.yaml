@@ -1,8 +1,8 @@
 metadata:
   name: "@danielsimonjr/memoryjs"
-  totalFiles: 415
+  totalFiles: 416
   totalModules: 12
-  totalExports: 2907
+  totalExports: 2922
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -808,7 +808,7 @@ modules:
           typeOnly: true
         - file: ./versionedWriteFailure.js
           imports:
-            - versionedWriteFailure
+            - patchVersionedRecord
         - file: ./recordQuery.js
           imports:
             - matchesDefined
@@ -1271,7 +1271,6 @@ modules:
         - file: ../utils/halfLife.js
           imports:
             - clampedHalfLifeScore
-            - halfLifeFactor
         - file: ./connectivity.js
           imports:
             - computeDegreeMap
@@ -1713,7 +1712,7 @@ modules:
           typeOnly: true
         - file: ./versionedWriteFailure.js
           imports:
-            - versionedWriteFailure
+            - patchVersionedRecord
         - file: ./recordQuery.js
           imports:
             - loadProjectedRecords
@@ -3600,6 +3599,11 @@ modules:
             - CriterionResult
             - TaskRecord
           typeOnly: true
+        - file: ../learning/llmJson.js
+          imports:
+            - ABORTED
+            - describeError
+            - raceAbort
         - file: ../procedural/graph/CompletionProvider.js
           imports:
             - PGCompletionProvider
@@ -5577,6 +5581,9 @@ modules:
           imports:
             - fitInOrder
             - shortId
+        - file: ./privateRecordEntity.js
+          imports:
+            - privateRecordEntity
       exports:
         - instructionItemsFor
         - renderInstructionItems
@@ -5628,23 +5635,15 @@ modules:
           imports:
             - GraphStorage
           typeOnly: true
-        - file: ../../utils/envConfig.js
-          imports:
-            - readEnvNumber
-        - file: ../../utils/tokenEstimate.js
-          imports:
-            - estimateTokensFromText
         - file: ./InstructionSetManager.js
           imports:
-            - instructionItemsFor
             - InstructionSetManager
+          typeOnly: true
         - file: ./knowledgeDigest.js
           imports:
             - clone
             - diffSnapshots
             - digestOf
-            - assertBudgetTokens
-            - fitInOrder
             - KnowledgeDiff
         - file: ./knowledgeRevision.js
           imports:
@@ -5655,8 +5654,6 @@ modules:
         - file: ./ScratchKnowledge.js
           imports:
             - ScratchKnowledge
-            - renderLoadedKnowledge
-            - LoadItem
         - file: ../skills/skillRecordUtils.js
           imports:
             - rankSkillsLexically
@@ -5666,9 +5663,11 @@ modules:
             - latestSnapshotId
             - memoryRefsOf
             - payloadOf
-            - resolveMaxSkills
-            - selectSkills
             - skillIdsForTaskIds
+            - toLoadItems
+            - packLoadedKnowledge
+            - prepareLoad
+            - loadSkillMatches
         - file: ./knowledgeDigest.js
           imports:
             - KnowledgeDiff
@@ -5699,31 +5698,13 @@ modules:
         - file: ../../types/skills.js
           imports:
             - InstructionSetRecord
-            - InstructionSetRole
             - RevisionOp
             - SkillId
             - SkillRecord
           typeOnly: true
-        - file: ../../types/agent-memory.js
-          imports:
-            - FailureRecord
-          typeOnly: true
-        - file: ../../utils/envConfig.js
-          imports:
-            - readEnvNumber
-        - file: ../../utils/tokenEstimate.js
-          imports:
-            - estimateTokensFromText
-        - file: ./InstructionSetManager.js
-          imports:
-            - instructionItemsFor
-            - renderInstructionItems
-            - InstructionItem
         - file: ./knowledgeDigest.js
           imports:
-            - assertBudgetTokens
             - clone
-            - fitInOrder
         - file: ./knowledgeRevision.js
           imports:
             - safeApplyOp
@@ -5733,9 +5714,11 @@ modules:
             - rankSkillsLexically
         - file: ./knowledgeLoad.js
           imports:
-            - resolveMaxSkills
-            - selectSkills
             - skillIdsForTaskIds
+            - toLoadItems
+            - packLoadedKnowledge
+            - prepareLoad
+            - loadSkillMatches
         - file: ./KnowledgeRepository.js
           imports:
             - FailureLookupLike
@@ -5743,16 +5726,27 @@ modules:
             - LoadForContextOptions
             - SkillMatchLike
           typeOnly: true
+        - file: ./knowledgeLoad.js
+          imports:
+            - renderLoadedKnowledge
+          reExport: true
+        - file: ./knowledgeLoad.js
+          imports:
+            - LoadItem
+          reExport: true
+          typeOnly: true
       exports:
         - renderLoadedKnowledge
         - ScratchKnowledge
+        - LoadItem
+      reExported:
+        - renderLoadedKnowledge
+        - LoadItem
       classes:
         - ScratchKnowledge
       interfaces:
         - ScratchPayload
         - ScratchOptions
-      functions:
-        - renderLoadedKnowledge
     src/agent/knowledge/index.ts:
       description: "Recursa knowledge layer (RS-5): `InstructionSetManager`, the"
       externalDependencies: []
@@ -5934,9 +5928,14 @@ modules:
           imports:
             - Entity
           typeOnly: true
+        - file: ../../types/agent-memory.js
+          imports:
+            - FailureRecord
+          typeOnly: true
         - file: ../../types/skills.js
           imports:
             - InstructionSetRecord
+            - InstructionSetRole
             - KnowledgeSnapshotEntity
             - KnowledgeSnapshotRecord
             - SkillId
@@ -5950,30 +5949,67 @@ modules:
             - isKnowledgeSnapshotEntity
             - isReflectionMemory
             - isSkillEntity
+        - file: ../../utils/tokenEstimate.js
+          imports:
+            - estimateTokensFromText
+        - file: ../../utils/envConfig.js
+          imports:
+            - readEnvNumber
+        - file: ./InstructionSetManager.js
+          imports:
+            - instructionItemsFor
+            - renderInstructionItems
+            - InstructionItem
+        - file: ./knowledgeDigest.js
+          imports:
+            - assertBudgetTokens
+            - fitInOrder
         - file: ./knowledgeDigest.js
           imports:
             - compareIds
+        - file: ./KnowledgeRepository.js
+          imports:
+            - LoadedKnowledge
+            - LoadForContextOptions
+            - SkillMatchLike
+          typeOnly: true
       exports:
         - DEFAULT_MAX_SKILLS
         - MAX_TASK_SKILLS
+        - DEFAULT_BUDGET_TOKENS
+        - DEFAULT_LOAD_SECTIONS
         - skillIdsForTaskIds
         - resolveMaxSkills
+        - renderLoadedKnowledge
+        - toLoadItems
+        - packLoadedKnowledge
         - selectSkills
         - findSnapshot
         - latestSnapshotId
         - payloadOf
         - memoryRefsOf
+        - prepareLoad
+        - loadSkillMatches
+      interfaces:
+        - LoadSetup
       functions:
         - skillIdsForTaskIds
         - resolveMaxSkills
+        - renderLoadedKnowledge
+        - toLoadItems
+        - packLoadedKnowledge
         - selectSkills
         - findSnapshot
         - latestSnapshotId
         - payloadOf
         - memoryRefsOf
+        - prepareLoad
+        - loadSkillMatches
       constants:
         - DEFAULT_MAX_SKILLS
         - MAX_TASK_SKILLS
+        - DEFAULT_BUDGET_TOKENS
+        - DEFAULT_LOAD_SECTIONS
     src/agent/knowledge/knowledgeRevision.ts:
       description: "Revision machinery for `KnowledgeRepository` (Recursa RS-5/RS-6): applies"
       externalDependencies: []
@@ -6019,6 +6055,9 @@ modules:
             - compareIds
             - sha256Hex
             - shortId
+        - file: ./privateRecordEntity.js
+          imports:
+            - privateRecordEntity
       exports:
         - workFrom
         - safeApplyOp
@@ -6031,6 +6070,21 @@ modules:
         - safeApplyOp
         - applyOp
         - planWrites
+    src/agent/knowledge/privateRecordEntity.ts:
+      description: The private-memory entity shell shared by every knowledge/learning record builder.
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../../types/types.js
+          imports:
+            - Entity
+          typeOnly: true
+      exports:
+        - privateRecordEntity
+      interfaces:
+        - PrivateRecordEntityFields
+      functions:
+        - privateRecordEntity
     src/agent/knowledgeContext.ts:
       description: Wake-up layers from the Recursa knowledge repository (spec RS-27).
       externalDependencies: []
@@ -6614,6 +6668,7 @@ modules:
         - syncAccounting
         - serializeRun
         - taskRecordsJson
+        - loadTasksByIds
         - loadRun
       interfaces:
         - LeafRunOptions
@@ -6630,6 +6685,7 @@ modules:
         - syncAccounting
         - serializeRun
         - taskRecordsJson
+        - loadTasksByIds
         - loadRun
       constants:
         - ANSWER_CAP_BYTES
@@ -6871,6 +6927,9 @@ modules:
         - file: ../knowledge/knowledgeDigest.js
           imports:
             - shortId
+        - file: ../knowledge/privateRecordEntity.js
+          imports:
+            - privateRecordEntity
         - file: ../WorkThreadManager.js
           imports:
             - CHILD_OF_RELATION
@@ -7250,6 +7309,7 @@ modules:
         - file: ./LeafLearnerStore.js
           imports:
             - loadRun
+            - loadTasksByIds
             - summarize
       exports:
         - DEFAULT_MAX_DEPTH
@@ -10237,14 +10297,29 @@ modules:
       externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../types/types.js
+          imports:
+            - Entity
+          typeOnly: true
+        - file: ../core/EntityManager.js
+          imports:
+            - EntityManager
+          typeOnly: true
+        - file: ../types/agent-memory.js
+          imports:
+            - toIsoDateTime
         - file: ../utils/errors.js
           imports:
             - VersionConflictError
             - EntityNotFoundError
       exports:
         - versionedWriteFailure
+        - patchVersionedRecord
+      interfaces:
+        - PatchVersionedRecordOptions
       functions:
         - versionedWriteFailure
+        - patchVersionedRecord
     src/agent/workingMemoryGuard.ts:
       description: Working Memory Guard
       externalDependencies: []
@@ -10414,6 +10489,7 @@ modules:
           imports:
             - getOptions
             - createLogger
+            - emitJson
         - file: ../formatters.js
           imports:
             - formatError
@@ -10685,10 +10761,17 @@ modules:
         - getOptions
         - createContext
         - runAction
+        - emitJson
+        - addJsonCommand
+      interfaces:
+        - JsonCommandOption
+        - JsonCommandSpec
       functions:
         - getOptions
         - createContext
         - runAction
+        - emitJson
+        - addJsonCommand
     src/cli/commands/heuristic.ts:
       description: Heuristic CLI commands — `memory heuristic` (Phase 3B.8).
       externalDependencies: []
@@ -10699,10 +10782,11 @@ modules:
             - Command
         - file: ./helpers.js
           imports:
-            - runAction
             - getOptions
             - createContext
             - createLogger
+            - addJsonCommand
+            - emitJson
         - file: ../formatters.js
           imports:
             - formatError
@@ -10935,7 +11019,7 @@ modules:
             - Command
         - file: ./helpers.js
           imports:
-            - runAction
+            - addJsonCommand
       exports:
         - registerObservationDedupCommands
       functions:
@@ -10988,6 +11072,7 @@ modules:
             - getOptions
             - createContext
             - createLogger
+            - emitJson
         - file: ../formatters.js
           imports:
             - formatError
@@ -11081,6 +11166,7 @@ modules:
         - file: ./helpers.js
           imports:
             - runAction
+            - emitJson
       exports:
         - registerSpellCommands
       functions:
@@ -13516,6 +13602,7 @@ modules:
         - removeEntitiesFromIndexes
         - entitiesByTypeFromIndexes
         - rebuildRelationIndexes
+        - omitNamedEndpoints
         - deleteNamesFromSnapshot
         - deleteRelationsFromSnapshot
       interfaces:
@@ -13528,6 +13615,7 @@ modules:
         - removeEntitiesFromIndexes
         - entitiesByTypeFromIndexes
         - rebuildRelationIndexes
+        - omitNamedEndpoints
         - deleteNamesFromSnapshot
         - deleteRelationsFromSnapshot
     src/core/storageCapabilities.ts:
@@ -13590,6 +13678,9 @@ modules:
           imports:
             - GraphStorage
           typeOnly: true
+        - file: ../core/storageCache.js
+          imports:
+            - omitNamedEndpoints
         - file: ../utils/index.js
           imports:
             - compress
@@ -14539,6 +14630,7 @@ modules:
         - file: ./inducedSubgraph.js
           imports:
             - collectInducedRelations
+            - inducedSubgraph
       exports:
         - BasicSearch
       classes:
@@ -14611,7 +14703,7 @@ modules:
             - SearchFilters
         - file: ./inducedSubgraph.js
           imports:
-            - collectInducedRelations
+            - inducedSubgraph
       exports:
         - BooleanSearch
       classes:
@@ -16806,12 +16898,16 @@ modules:
           typeOnly: true
         - file: ../types/index.js
           imports:
+            - Entity
+            - KnowledgeGraph
             - Relation
           typeOnly: true
       exports:
         - collectInducedRelations
+        - inducedSubgraph
       functions:
         - collectInducedRelations
+        - inducedSubgraph
     src/search/tiered/BrotliColdTier.ts:
       description: BrotliColdTier — Brotli-compressed JSONL shard `IIndexTier<string, V>`
       externalDependencies: []
@@ -20990,6 +21086,10 @@ dependencyGraph:
         - src/agent/EntropyFilter.ts
       - - src/agent/knowledge/KnowledgeRepository.ts
         - src/agent/knowledge/ScratchKnowledge.ts
+        - src/agent/knowledge/knowledgeLoad.ts
+        - src/agent/knowledge/KnowledgeRepository.ts
+      - - src/agent/knowledge/KnowledgeRepository.ts
+        - src/agent/knowledge/ScratchKnowledge.ts
         - src/agent/knowledge/KnowledgeRepository.ts
       - - src/agent/procedural/graph/backing/IProceduralGraphBacking.ts
         - src/agent/procedural/graph/backing/InMemoryProceduralGraphBacking.ts
@@ -21022,9 +21122,9 @@ dependencyGraph:
       - - src/adapters/ApiKeyAuthMiddleware.ts
         - src/adapters/RestRouter.ts
         - src/adapters/ApiKeyAuthMiddleware.ts
-    total: 15
+    total: 16
     runtimeCount: 0
-    typeOnlyCount: 15
+    typeOnlyCount: 16
   layers:
     - name: Adapters
       files:
@@ -21131,6 +21231,7 @@ dependencyGraph:
         - src/agent/knowledge/knowledgeDigest.ts
         - src/agent/knowledge/knowledgeLoad.ts
         - src/agent/knowledge/knowledgeRevision.ts
+        - src/agent/knowledge/privateRecordEntity.ts
         - src/agent/knowledgeContext.ts
         - src/agent/learning/ChildKnowledgeOverlay.ts
         - src/agent/learning/Diagnoser.ts
@@ -21471,29 +21572,29 @@ reachability:
     - src/index.ts
     - src/sqlite.ts
     - src/workers/levenshteinWorker.ts
-  reachableCount: 415
+  reachableCount: 416
   dormantCount: 0
   orphaned: []
   testOnly: []
 statistics:
-  totalTypeScriptFiles: 415
+  totalTypeScriptFiles: 416
   totalModules: 12
-  totalLinesOfCode: 134844
-  totalExports: 2907
+  totalLinesOfCode: 135351
+  totalExports: 2922
   totalClasses: 308
-  totalInterfaces: 847
-  totalFunctions: 685
+  totalInterfaces: 852
+  totalFunctions: 696
   totalTypeGuards: 49
   totalEnums: 4
-  totalConstants: 195
-  totalReExports: 1716
-  totalTypeOnlyImports: 876
+  totalConstants: 197
+  totalReExports: 1718
+  totalTypeOnlyImports: 882
   runtimeCircularDeps: 0
-  typeOnlyCircularDeps: 15
+  typeOnlyCircularDeps: 16
   entryRoots: 4
-  reachableFiles: 415
+  reachableFiles: 416
   dormantFiles: 0
   orphanedFiles: 0
   testOnlyFiles: 0
   unusedFilesCount: 0
-  unusedExportsCount: 174
+  unusedExportsCount: 183

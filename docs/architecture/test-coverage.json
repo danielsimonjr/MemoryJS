@@ -1,19 +1,19 @@
 {
   "metadata": {
-    "totalSourceFiles": 414,
-    "totalTestFiles": 566,
-    "testedCount": 382,
-    "untestedCount": 32,
-    "coveragePercent": "92.3",
+    "totalSourceFiles": 416,
+    "totalTestFiles": 583,
+    "testedCount": 386,
+    "untestedCount": 30,
+    "coveragePercent": "92.8",
     "effectiveCoverage": {
       "policyLoaded": false,
-      "activeFiles": 414,
-      "testedActive": 382,
-      "activeUntested": 32,
+      "activeFiles": 416,
+      "testedActive": 386,
+      "activeUntested": 30,
       "excludedTotal": 0,
-      "percent": "92.3",
+      "percent": "92.8",
       "breakdown": {
-        "active_untested": 32
+        "active_untested": 30
       }
     }
   },
@@ -21,6 +21,7 @@
     "src/adapters/recursaToolBounds.ts",
     "src/agent/bootstrap/bootstrapShared.ts",
     "src/agent/harness/InteractionLogBlobs.ts",
+    "src/agent/knowledge/privateRecordEntity.ts",
     "src/agent/learning/ChildKnowledgeOverlay.ts",
     "src/agent/learning/LeafApply.ts",
     "src/agent/learning/LeafLearnerContext.ts",
@@ -35,18 +36,15 @@
     "src/agent/procedural/graph/backing/ProceduralGraphState.ts",
     "src/agent/versionedWriteFailure.ts",
     "src/cli/commands/entity.ts",
-    "src/cli/commands/helpers.ts",
     "src/cli/commands/io.ts",
     "src/cli/commands/relation.ts",
     "src/core/context/BootstrapFacade.ts",
     "src/core/context/envBounds.ts",
     "src/search/enDate/calendar.ts",
-    "src/search/enDate/components.ts",
     "src/search/enDate/constants.ts",
     "src/search/enDate/parsers.ts",
     "src/search/enDate/refiners.ts",
     "src/search/enDate/timezones.ts",
-    "src/search/enDate/types.ts",
     "src/search/tiered/MapFileTier.ts",
     "src/sqlite.ts",
     "src/utils/jsonlRecordFile.ts"
@@ -233,6 +231,7 @@
     "src/cli/commands/doctor.ts",
     "src/cli/commands/exclusion.ts",
     "src/cli/commands/graph.ts",
+    "src/cli/commands/helpers.ts",
     "src/cli/commands/heuristic.ts",
     "src/cli/commands/hierarchy.ts",
     "src/cli/commands/index.ts",
@@ -352,7 +351,9 @@
     "src/search/TemporalQueryParser.ts",
     "src/search/TemporalSearch.ts",
     "src/search/VectorStore.ts",
+    "src/search/enDate/components.ts",
     "src/search/enDate/parseEnDate.ts",
+    "src/search/enDate/types.ts",
     "src/search/ftsCandidates.ts",
     "src/search/hybridLayers.ts",
     "src/search/index.ts",
@@ -428,6 +429,7 @@
     "src/utils/sidecarPath.ts",
     "src/utils/taskScheduler.ts",
     "src/utils/textSimilarity.ts",
+    "src/utils/threadPool.ts",
     "src/utils/timing.ts",
     "src/utils/tokenEstimate.ts",
     "src/utils/unrefInterval.ts",
@@ -1307,7 +1309,9 @@
       "tests/unit/agent/knowledge/KnowledgeHardening.test.ts",
       "tests/unit/agent/knowledge/KnowledgeRepository.rollback.test.ts",
       "tests/unit/agent/knowledge/KnowledgeRepository.test.ts",
+      "tests/unit/agent/knowledge/knowledgeLoad.pack.test.ts",
       "tests/unit/agent/knowledgeContext.sections.test.ts",
+      "tests/unit/agent/privateRecordEntity.test.ts",
       "tests/unit/agent/skills/SkillWritePath.test.ts",
       "tests/unit/exports-barrels.recursa.test.ts",
       "tests/unit/exports-barrels.test.ts"
@@ -1323,6 +1327,7 @@
       "tests/unit/agent/knowledge/KnowledgeHardening.test.ts",
       "tests/unit/agent/knowledge/KnowledgeRepository.rollback.test.ts",
       "tests/unit/agent/knowledge/KnowledgeRepository.test.ts",
+      "tests/unit/agent/knowledge/knowledgeLoad.pack.test.ts",
       "tests/unit/agent/knowledgeContext.sections.test.ts",
       "tests/unit/agent/learning/Diagnoser.test.ts",
       "tests/unit/agent/learning/DiagnoserBatchDurability.challenger.test.ts",
@@ -1358,6 +1363,7 @@
       "tests/unit/agent/knowledge/KnowledgeRepository.rollback.test.ts",
       "tests/unit/agent/knowledge/KnowledgeRepository.test.ts",
       "tests/unit/agent/knowledge/knowledgeDigest.test.ts",
+      "tests/unit/agent/knowledge/knowledgeLoad.pack.test.ts",
       "tests/unit/agent/knowledgeContext.sections.test.ts",
       "tests/unit/agent/learning/Diagnoser.test.ts",
       "tests/unit/agent/learning/DiagnoserBatchDurability.challenger.test.ts",
@@ -1372,15 +1378,19 @@
       "tests/unit/exports-barrels.test.ts"
     ],
     "src/agent/knowledge/knowledgeLoad.ts": [
+      "tests/unit/agent/knowledge/knowledgeLoad.pack.test.ts",
+      "tests/unit/agent/learning/LeafValidationPlan.test.ts",
       "tests/unit/agent/learning/LearnedSkillLoadability.test.ts"
     ],
     "src/agent/knowledge/knowledgeRevision.ts": [
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts",
       "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/privateRecordEntity.test.ts",
       "tests/unit/exports-barrels.recursa.test.ts",
       "tests/unit/exports-barrels.test.ts"
     ],
+    "src/agent/knowledge/privateRecordEntity.ts": [],
     "src/agent/knowledgeContext.ts": [
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts",
@@ -1464,7 +1474,8 @@
       "tests/unit/exports-barrels.test.ts"
     ],
     "src/agent/learning/LeafLearnerStore.ts": [
-      "tests/unit/agent/learning/LeafLearnerBounds.test.ts"
+      "tests/unit/agent/learning/LeafLearnerBounds.test.ts",
+      "tests/unit/agent/learning/loadTasksByIds.test.ts"
     ],
     "src/agent/learning/LeafRound.ts": [],
     "src/agent/learning/LeafValidation.ts": [],
@@ -1497,6 +1508,8 @@
       "tests/unit/agent/learning/RecursiveLearner.test.ts",
       "tests/unit/agent/learning/RecursivePlanBudget.test.ts",
       "tests/unit/agent/learning/RecursiveWriteBudget.test.ts",
+      "tests/unit/agent/learning/loadTasksByIds.test.ts",
+      "tests/unit/agent/privateRecordEntity.test.ts",
       "tests/unit/exports-barrels.recursa.test.ts",
       "tests/unit/exports-barrels.test.ts"
     ],
@@ -1518,6 +1531,7 @@
       "tests/unit/agent/AgentMemoryManager.test.ts",
       "tests/unit/agent/learning/RecursiveCriteria.test.ts",
       "tests/unit/agent/learning/RecursiveLearner.test.ts",
+      "tests/unit/agent/learning/loadTasksByIds.test.ts",
       "tests/unit/core/ManagerContext.learningLoop.recursive.test.ts",
       "tests/unit/exports-barrels.recursa.test.ts",
       "tests/unit/exports-barrels.test.ts"
@@ -1568,7 +1582,8 @@
       "tests/unit/exports-barrels.test.ts"
     ],
     "src/agent/learning/llmJson.ts": [
-      "tests/unit/agent/learning/RevisionMergeRules.test.ts"
+      "tests/unit/agent/learning/RevisionMergeRules.test.ts",
+      "tests/unit/agent/learning/llmJson.raceAbort.test.ts"
     ],
     "src/agent/learning/observationChunks.ts": [
       "tests/unit/agent/learning/LeafLearnerBounds.test.ts",
@@ -2067,6 +2082,7 @@
       "tests/unit/features/IOManager.graphmlDataValue.test.ts",
       "tests/unit/features/IOManager.rdf-export.test.ts",
       "tests/unit/features/IOManager.test.ts",
+      "tests/unit/features/IOManager.xmlGoldens.test.ts",
       "tests/unit/features/ingest-provenance-modes.test.ts",
       "tests/unit/features/pii-redaction-export.test.ts"
     ],
@@ -2148,7 +2164,9 @@
     "src/cli/commands/graph.ts": [
       "tests/unit/cli/graph.test.ts"
     ],
-    "src/cli/commands/helpers.ts": [],
+    "src/cli/commands/helpers.ts": [
+      "tests/unit/cli/emitJson.test.ts"
+    ],
     "src/cli/commands/heuristic.ts": [
       "tests/unit/cli/heuristic.test.ts"
     ],
@@ -2221,6 +2239,7 @@
       "tests/unit/cli/commands.test.ts",
       "tests/unit/cli/diag.test.ts",
       "tests/unit/cli/doctor.test.ts",
+      "tests/unit/cli/emitJson.test.ts",
       "tests/unit/cli/index.test.ts",
       "tests/unit/cli/inspect.test.ts",
       "tests/unit/cli/parseArgsPinned.test.ts",
@@ -2269,6 +2288,7 @@
       "tests/unit/agent/WorldModel.test.ts",
       "tests/unit/agent/learning/LearningReflector.test.ts",
       "tests/unit/agent/learning/LearningTrace.test.ts",
+      "tests/unit/agent/learning/loadTasksByIds.test.ts",
       "tests/unit/agent/skills/SkillWritePath.test.ts",
       "tests/unit/core/ConcurrencyControl.test.ts",
       "tests/unit/core/EntityManager.legacyDelete.test.ts",
@@ -2378,6 +2398,7 @@
       "tests/unit/agent/WorldModel.test.ts",
       "tests/unit/agent/learning/LearningTrace.test.ts",
       "tests/unit/agent/learning/RecursiveWriteBudget.test.ts",
+      "tests/unit/agent/learning/loadTasksByIds.test.ts",
       "tests/unit/agent/skills/SkillIOConfinement.test.ts",
       "tests/unit/agent/skills/SkillPublisherConfinement.test.ts",
       "tests/unit/agent/skills/SkillWritePath.test.ts",
@@ -2436,6 +2457,7 @@
       "tests/unit/features/GovernanceManager.test.ts",
       "tests/unit/features/IOManager.rdf-export.test.ts",
       "tests/unit/features/IOManager.test.ts",
+      "tests/unit/features/IOManager.xmlGoldens.test.ts",
       "tests/unit/features/ObservableDataModelAdapter.test.ts",
       "tests/unit/features/pii-redaction-export.test.ts",
       "tests/unit/search/BM25Search.test.ts",
@@ -2646,6 +2668,7 @@
       "tests/unit/agent/SessionCheckpoint.test.ts",
       "tests/unit/agent/WorkThreadManager.test.ts",
       "tests/unit/agent/learning/LearningTrace.test.ts",
+      "tests/unit/agent/learning/loadTasksByIds.test.ts",
       "tests/unit/core/ManagerContext.test.ts",
       "tests/unit/core/RelationManager-metadata.test.ts",
       "tests/unit/core/RelationManager.test.ts",
@@ -2696,6 +2719,7 @@
       "tests/unit/core/sqlite-embeddings-content-hash.test.ts",
       "tests/unit/core/sqlite-events.test.ts",
       "tests/unit/core/sqlite-fts5-error.test.ts",
+      "tests/unit/core/sqlite-on-disk-compat.test.ts",
       "tests/unit/core/storage-write-ownership.test.ts",
       "tests/unit/core/storageCapabilities.test.ts",
       "tests/unit/core/write-path-delta.test.ts",
@@ -2900,12 +2924,17 @@
       "tests/unit/core/mmap/mmap-review-fixes.test.ts"
     ],
     "src/core/nodeSqliteAdapter.ts": [
-      "tests/integration/procedural-graph-recovery.test.ts",
-      "tests/unit/agent/procedural/graph/backing/sqlite.test.ts",
-      "tests/unit/core/RelationManager-metadata.test.ts",
+      "tests/unit/core/SQLiteStorage.autoIndexDeprecation.test.ts",
+      "tests/unit/core/SQLiteStorage.test.ts",
+      "tests/unit/core/entity-id.test.ts",
+      "tests/unit/core/node-sqlite-adapter-edge-parity.test.ts",
       "tests/unit/core/nodeSqliteAdapter.test.ts",
-      "tests/unit/core/sqlite-driver-resolver.test.ts",
-      "tests/unit/core/sqlite-fts5-error.test.ts"
+      "tests/unit/core/sqlite-append-replace.test.ts",
+      "tests/unit/core/sqlite-driver-parity.test.ts",
+      "tests/unit/core/sqlite-fts5-error.test.ts",
+      "tests/unit/core/sqlite-on-disk-compat.test.ts",
+      "tests/unit/search/PartialIndexAdvisor.test.ts",
+      "tests/unit/search/searchTwinsFts.test.ts"
     ],
     "src/core/segments/FileSegmentStorage.ts": [
       "tests/unit/core/segments/FileSegmentStorage.test.ts",
@@ -3055,6 +3084,7 @@
       "tests/unit/features/IOManager.graphmlDataValue.test.ts",
       "tests/unit/features/IOManager.rdf-export.test.ts",
       "tests/unit/features/IOManager.test.ts",
+      "tests/unit/features/IOManager.xmlGoldens.test.ts",
       "tests/unit/features/ingest-provenance-modes.test.ts",
       "tests/unit/features/pii-redaction-export.test.ts"
     ],
@@ -3703,16 +3733,21 @@
       "tests/unit/search/searchTwinsSemantic.test.ts"
     ],
     "src/search/enDate/calendar.ts": [],
-    "src/search/enDate/components.ts": [],
+    "src/search/enDate/components.ts": [
+      "tests/unit/search/enDate.similarFields.test.ts"
+    ],
     "src/search/enDate/constants.ts": [],
     "src/search/enDate/parseEnDate.ts": [
       "tests/unit/search/enDate.challenger.test.ts",
-      "tests/unit/search/enDate.parity.test.ts"
+      "tests/unit/search/enDate.parity.test.ts",
+      "tests/unit/search/enDate.timePatterns.test.ts"
     ],
     "src/search/enDate/parsers.ts": [],
     "src/search/enDate/refiners.ts": [],
     "src/search/enDate/timezones.ts": [],
-    "src/search/enDate/types.ts": [],
+    "src/search/enDate/types.ts": [
+      "tests/unit/search/enDate.similarFields.test.ts"
+    ],
     "src/search/ftsCandidates.ts": [
       "tests/unit/search/searchTwinsFts.test.ts"
     ],
@@ -3909,6 +3944,7 @@
       "tests/unit/agent/bootstrap/CorpusMapper.test.ts",
       "tests/unit/agent/bootstrap/PracticeTaskGenerator.test.ts",
       "tests/unit/agent/knowledge/KnowledgeHardening.test.ts",
+      "tests/unit/agent/knowledge/knowledgeLoad.pack.test.ts",
       "tests/unit/agent/learning/LeafApply.test.ts",
       "tests/unit/agent/learning/LearnedSkillLoadability.test.ts",
       "tests/unit/agent/learning/RecursiveLiveK.test.ts",
@@ -4319,6 +4355,7 @@
       "tests/unit/agent/learning/RecursivePlanBudget.test.ts",
       "tests/unit/agent/learning/RevisionValidator.test.ts",
       "tests/unit/agent/learning/SplitStrategies.test.ts",
+      "tests/unit/agent/learning/loadTasksByIds.test.ts",
       "tests/unit/core/EntityManager.legacyDelete.test.ts",
       "tests/unit/core/GraphEvents.test.ts",
       "tests/unit/core/HierarchyManager.test.ts",
@@ -5004,6 +5041,7 @@
       "tests/unit/agent/knowledge/KnowledgeRepository.rollback.test.ts",
       "tests/unit/agent/knowledge/KnowledgeRepository.test.ts",
       "tests/unit/agent/knowledge/knowledgeDigest.test.ts",
+      "tests/unit/agent/knowledge/knowledgeLoad.pack.test.ts",
       "tests/unit/agent/learning/Diagnoser.test.ts",
       "tests/unit/agent/learning/KnowledgeEditor.test.ts",
       "tests/unit/agent/learning/LeafApply.test.ts",
@@ -5270,6 +5308,8 @@
       "tests/unit/agent/learning/RecursiveLiveK.test.ts",
       "tests/unit/agent/learning/RecursiveWriteBudget.test.ts",
       "tests/unit/agent/learning/RevisionValidator.test.ts",
+      "tests/unit/agent/learning/loadTasksByIds.test.ts",
+      "tests/unit/agent/privateRecordEntity.test.ts",
       "tests/unit/agent/reconstruction/MemoryGraphBridge.test.ts",
       "tests/unit/agent/skills/SkillHardening.test.ts",
       "tests/unit/agent/skills/SkillManager.test.ts",
@@ -5313,6 +5353,7 @@
       "tests/unit/features/GovernanceManager.test.ts",
       "tests/unit/features/IOManager.rdf-export.test.ts",
       "tests/unit/features/IOManager.test.ts",
+      "tests/unit/features/IOManager.xmlGoldens.test.ts",
       "tests/unit/features/ObservableDataModelAdapter.test.ts",
       "tests/unit/features/ObservationNormalizer.test.ts",
       "tests/unit/features/StreamingExporter-frame-pins.test.ts",
@@ -5798,6 +5839,7 @@
       "tests/unit/utils/tokenEstimate.test.ts"
     ],
     "src/utils/halfLife.ts": [
+      "tests/unit/agent/DecayEngine.test.ts",
       "tests/unit/utils/halfLife.test.ts"
     ],
     "src/utils/ids.ts": [
@@ -5955,6 +5997,7 @@
     ],
     "src/utils/schema.ts": [
       "tests/unit/utils/schema.challenger.test.ts",
+      "tests/unit/utils/schema.failures.test.ts",
       "tests/unit/utils/schema.parity.test.ts",
       "tests/unit/utils/schemas.test.ts"
     ],
@@ -6059,6 +6102,11 @@
       "tests/unit/utils/textSimilarity.test.ts",
       "tests/unit/utils/textSimilarity.tokenSets.test.ts",
       "tests/unit/utils/tokenEstimate.test.ts"
+    ],
+    "src/utils/threadPool.ts": [
+      "tests/unit/utils/threadPool.challenger.test.ts",
+      "tests/unit/utils/threadPool.parity.test.ts",
+      "tests/unit/utils/threadPool.test.ts"
     ],
     "src/utils/timing.ts": [
       "tests/unit/utils/timing.test.ts"
@@ -6574,7 +6622,6 @@
       "src/agent/procedural/graph/backing/IProceduralGraphBacking.ts",
       "src/agent/procedural/graph/canonical.ts",
       "src/core/SQLiteStorage.ts",
-      "src/core/nodeSqliteAdapter.ts",
       "src/types/proceduralGraph.ts",
       "src/utils/durableWriteFile.ts"
     ],
@@ -7684,7 +7731,8 @@
       "src/types/agent-memory.ts",
       "src/agent/AccessTracker.ts",
       "src/types/types.ts",
-      "src/core/GraphStorage.ts"
+      "src/core/GraphStorage.ts",
+      "src/utils/halfLife.ts"
     ],
     "tests/unit/agent/DecayScheduler.test.ts": [
       "src/agent/DecayScheduler.ts",
@@ -8219,6 +8267,14 @@
       "src/agent/knowledge/knowledgeDigest.ts",
       "src/types/skills.ts"
     ],
+    "tests/unit/agent/knowledge/knowledgeLoad.pack.test.ts": [
+      "src/types/agent-memory.ts",
+      "src/types/skills.ts",
+      "src/agent/knowledge/InstructionSetManager.ts",
+      "src/agent/knowledge/knowledgeLoad.ts",
+      "src/agent/knowledge/KnowledgeRepository.ts",
+      "src/agent/knowledge/knowledgeDigest.ts"
+    ],
     "tests/unit/agent/knowledgeContext.sections.test.ts": [
       "src/agent/knowledge/InstructionSetManager.ts",
       "src/agent/knowledge/KnowledgeRepository.ts",
@@ -8315,6 +8371,7 @@
       "src/core/ManagerContext.ts",
       "src/core/context/AgentCognitionFacade.ts",
       "src/agent/knowledge/ScratchKnowledge.ts",
+      "src/agent/knowledge/knowledgeLoad.ts",
       "src/agent/learning/LeafLearner.ts",
       "src/agent/learning/LeafLearnerOptions.ts",
       "src/types/learning.ts"
@@ -8405,11 +8462,30 @@
       "src/agent/learning/SplitStrategies.ts",
       "src/types/learning.ts"
     ],
+    "tests/unit/agent/learning/llmJson.raceAbort.test.ts": [
+      "src/agent/learning/llmJson.ts"
+    ],
+    "tests/unit/agent/learning/loadTasksByIds.test.ts": [
+      "src/core/GraphStorage.ts",
+      "src/core/EntityManager.ts",
+      "src/core/RelationManager.ts",
+      "src/types/types.ts",
+      "src/types/learning.ts",
+      "src/agent/learning/LearningTrace.ts",
+      "src/agent/learning/LeafLearnerStore.ts",
+      "src/agent/learning/RecursiveLearnerState.ts"
+    ],
     "tests/unit/agent/memoryBackend-wiring.test.ts": [
       "src/core/ManagerContext.ts",
       "src/core/context/AgentCognitionFacade.ts",
       "src/agent/InMemoryBackend.ts",
       "src/agent/SQLiteBackend.ts"
+    ],
+    "tests/unit/agent/privateRecordEntity.test.ts": [
+      "src/types/types.ts",
+      "src/agent/learning/LearningTrace.ts",
+      "src/agent/knowledge/InstructionSetManager.ts",
+      "src/agent/knowledge/knowledgeRevision.ts"
     ],
     "tests/unit/agent/procedural/graph/CompletionProvider.test.ts": [
       "src/agent/procedural/graph/CompletionProvider.ts",
@@ -8484,8 +8560,7 @@
     ],
     "tests/unit/agent/procedural/graph/backing/sqlite.test.ts": [
       "src/agent/procedural/graph/backing/SqliteProceduralGraphBacking.ts",
-      "src/core/SQLiteStorage.ts",
-      "src/core/nodeSqliteAdapter.ts"
+      "src/core/SQLiteStorage.ts"
     ],
     "tests/unit/agent/procedural/graph/canonical-compare.test.ts": [
       "src/agent/procedural/graph/canonical.ts",
@@ -8664,6 +8739,10 @@
     "tests/unit/cli/doctor.test.ts": [
       "src/cli/parseArgs.ts",
       "src/cli/commands/doctor.ts"
+    ],
+    "tests/unit/cli/emitJson.test.ts": [
+      "src/cli/parseArgs.ts",
+      "src/cli/commands/helpers.ts"
     ],
     "tests/unit/cli/exclusion.test.ts": [
       "src/core/ManagerContext.ts",
@@ -9010,8 +9089,7 @@
       "src/core/RelationManager.ts",
       "src/core/EntityManager.ts",
       "src/core/GraphStorage.ts",
-      "src/core/SQLiteStorage.ts",
-      "src/core/nodeSqliteAdapter.ts"
+      "src/core/SQLiteStorage.ts"
     ],
     "tests/unit/core/RelationManager.test.ts": [
       "src/core/RelationManager.ts",
@@ -9020,11 +9098,13 @@
       "src/utils/errors.ts"
     ],
     "tests/unit/core/SQLiteStorage.autoIndexDeprecation.test.ts": [
+      "src/core/nodeSqliteAdapter.ts",
       "src/core/SQLiteStorage.ts",
       "src/utils/logger.ts"
     ],
     "tests/unit/core/SQLiteStorage.test.ts": [
-      "src/core/SQLiteStorage.ts"
+      "src/core/SQLiteStorage.ts",
+      "src/core/nodeSqliteAdapter.ts"
     ],
     "tests/unit/core/StorageFactory.test.ts": [
       "src/core/StorageFactory.ts",
@@ -9171,6 +9251,7 @@
       "src/utils/sidecarPath.ts"
     ],
     "tests/unit/core/entity-id.test.ts": [
+      "src/core/nodeSqliteAdapter.ts",
       "src/core/EntityManager.ts",
       "src/core/GraphStorage.ts",
       "src/core/SQLiteStorage.ts"
@@ -9268,6 +9349,10 @@
       "src/core/TransactionManager.ts",
       "src/types/types.ts"
     ],
+    "tests/unit/core/node-sqlite-adapter-edge-parity.test.ts": [
+      "src/core/nodeSqliteAdapter.ts"
+    ],
+    "tests/unit/core/node-sqlite-probe.test.ts": [],
     "tests/unit/core/nodeSqliteAdapter.test.ts": [
       "src/core/nodeSqliteAdapter.ts"
     ],
@@ -9370,6 +9455,7 @@
       "src/types/procedure.ts"
     ],
     "tests/unit/core/sqlite-append-replace.test.ts": [
+      "src/core/nodeSqliteAdapter.ts",
       "src/core/SQLiteStorage.ts",
       "src/utils/logger.ts",
       "src/types/index.ts",
@@ -9390,9 +9476,12 @@
     "tests/unit/core/sqlite-content-hash-migration.test.ts": [
       "src/core/SQLiteStorage.ts"
     ],
-    "tests/unit/core/sqlite-driver-resolver.test.ts": [
-      "src/core/SQLiteStorage.ts",
+    "tests/unit/core/sqlite-driver-inventory.test.ts": [],
+    "tests/unit/core/sqlite-driver-parity.test.ts": [
       "src/core/nodeSqliteAdapter.ts"
+    ],
+    "tests/unit/core/sqlite-driver-resolver.test.ts": [
+      "src/core/SQLiteStorage.ts"
     ],
     "tests/unit/core/sqlite-embeddings-content-hash.test.ts": [
       "src/core/SQLiteStorage.ts"
@@ -9417,6 +9506,10 @@
       "src/core/nodeSqliteAdapter.ts"
     ],
     "tests/unit/core/sqlite-lazy-load.test.ts": [],
+    "tests/unit/core/sqlite-on-disk-compat.test.ts": [
+      "src/core/nodeSqliteAdapter.ts",
+      "src/core/SQLiteStorage.ts"
+    ],
     "tests/unit/core/storage-write-ownership.test.ts": [
       "src/core/GraphStorage.ts",
       "src/core/SQLiteStorage.ts",
@@ -10244,6 +10337,12 @@
       "src/utils/compressionUtil.ts",
       "src/utils/constants.ts"
     ],
+    "tests/unit/features/IOManager.xmlGoldens.test.ts": [
+      "src/features/IOManager.ts",
+      "src/agent/skills/SkillPublisher.ts",
+      "src/core/GraphStorage.ts",
+      "src/types/types.ts"
+    ],
     "tests/unit/features/ObservableDataModelAdapter.test.ts": [
       "src/core/GraphStorage.ts",
       "src/features/ObservableDataModelAdapter.ts",
@@ -10748,7 +10847,8 @@
       "src/types/procedure.ts"
     ],
     "tests/unit/search/PartialIndexAdvisor.test.ts": [
-      "src/search/PartialIndexAdvisor.ts"
+      "src/search/PartialIndexAdvisor.ts",
+      "src/core/nodeSqliteAdapter.ts"
     ],
     "tests/unit/search/ProximitySearch.test.ts": [
       "src/search/ProximitySearch.ts",
@@ -11273,6 +11373,13 @@
       "src/search/enDate/parseEnDate.ts",
       "src/search/TemporalQueryParser.ts"
     ],
+    "tests/unit/search/enDate.similarFields.test.ts": [
+      "src/search/enDate/components.ts",
+      "src/search/enDate/types.ts"
+    ],
+    "tests/unit/search/enDate.timePatterns.test.ts": [
+      "src/search/enDate/parseEnDate.ts"
+    ],
     "tests/unit/search/hybridLayers.test.ts": [
       "src/search/hybridLayers.ts",
       "src/types/index.ts",
@@ -11321,6 +11428,7 @@
       "src/types/types.ts"
     ],
     "tests/unit/search/searchTwinsFts.test.ts": [
+      "src/core/nodeSqliteAdapter.ts",
       "src/core/SQLiteStorage.ts",
       "src/search/BM25Search.ts",
       "src/search/RankedSearch.ts",
@@ -11898,6 +12006,9 @@
     "tests/unit/utils/schema.challenger.test.ts": [
       "src/utils/schema.ts"
     ],
+    "tests/unit/utils/schema.failures.test.ts": [
+      "src/utils/schema.ts"
+    ],
     "tests/unit/utils/schema.inventory.test.ts": [],
     "tests/unit/utils/schema.parity.test.ts": [
       "src/utils/schema.ts",
@@ -12045,6 +12156,15 @@
       "src/utils/Diagnostics.ts",
       "src/utils/IIndexHealth.ts"
     ],
+    "tests/unit/utils/threadPool.challenger.test.ts": [
+      "src/utils/threadPool.ts"
+    ],
+    "tests/unit/utils/threadPool.parity.test.ts": [
+      "src/utils/threadPool.ts"
+    ],
+    "tests/unit/utils/threadPool.test.ts": [
+      "src/utils/threadPool.ts"
+    ],
     "tests/unit/utils/timing.test.ts": [
       "src/utils/timing.ts"
     ],
@@ -12145,6 +12265,10 @@
       "category": null
     },
     {
+      "file": "src/agent/knowledge/privateRecordEntity.ts",
+      "category": null
+    },
+    {
       "file": "src/agent/learning/ChildKnowledgeOverlay.ts",
       "category": null
     },
@@ -12201,10 +12325,6 @@
       "category": null
     },
     {
-      "file": "src/cli/commands/helpers.ts",
-      "category": null
-    },
-    {
       "file": "src/cli/commands/io.ts",
       "category": null
     },
@@ -12225,10 +12345,6 @@
       "category": null
     },
     {
-      "file": "src/search/enDate/components.ts",
-      "category": null
-    },
-    {
       "file": "src/search/enDate/constants.ts",
       "category": null
     },
@@ -12242,10 +12358,6 @@
     },
     {
       "file": "src/search/enDate/timezones.ts",
-      "category": null
-    },
-    {
-      "file": "src/search/enDate/types.ts",
       "category": null
     },
     {
