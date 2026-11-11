@@ -211,15 +211,50 @@ export function startOfWeekUtc(ref: Date): Date {
 }
 
 /**
+ * Copy the reference's date fields, using `write` for each one.
+ *
+ * @param components - Components to mutate
+ * @param target - Instant whose date fields are used
+ * @param write - `imply` (fills implied, never overwrites known) or `assign` (writes known)
+ */
+function copySimilarDateFields(
+  components: Components,
+  target: Date,
+  write: typeof imply | typeof assign,
+): Components {
+  write(components, 'day', target.getUTCDate());
+  write(components, 'month', target.getUTCMonth() + 1);
+  write(components, 'year', target.getUTCFullYear());
+  return components;
+}
+
+/**
+ * Copy the reference's time fields, using `write` for each one.
+ *
+ * @param components - Components to mutate
+ * @param target - Instant whose time fields are used
+ * @param write - `imply` (fills implied, never overwrites known) or `assign` (writes known)
+ */
+function copySimilarTimeFields(
+  components: Components,
+  target: Date,
+  write: typeof imply | typeof assign,
+): Components {
+  write(components, 'hour', target.getUTCHours());
+  write(components, 'minute', target.getUTCMinutes());
+  write(components, 'second', target.getUTCSeconds());
+  write(components, 'millisecond', target.getUTCMilliseconds());
+  write(components, 'meridiem', target.getUTCHours() < 12 ? MERIDIEM_AM : MERIDIEM_PM);
+  return components;
+}
+
+/**
  * Copy the reference's date fields into implied values.
  * @param components - Components to mutate
  * @param target - Instant whose date fields are used
  */
 export function implySimilarDate(components: Components, target: Date): Components {
-  imply(components, 'day', target.getUTCDate());
-  imply(components, 'month', target.getUTCMonth() + 1);
-  imply(components, 'year', target.getUTCFullYear());
-  return components;
+  return copySimilarDateFields(components, target, imply);
 }
 
 /**
@@ -228,10 +263,7 @@ export function implySimilarDate(components: Components, target: Date): Componen
  * @param target - Instant whose date fields are used
  */
 export function assignSimilarDate(components: Components, target: Date): Components {
-  assign(components, 'day', target.getUTCDate());
-  assign(components, 'month', target.getUTCMonth() + 1);
-  assign(components, 'year', target.getUTCFullYear());
-  return components;
+  return copySimilarDateFields(components, target, assign);
 }
 
 /**
@@ -240,12 +272,7 @@ export function assignSimilarDate(components: Components, target: Date): Compone
  * @param target - Instant whose time fields are used
  */
 export function implySimilarTime(components: Components, target: Date): Components {
-  imply(components, 'hour', target.getUTCHours());
-  imply(components, 'minute', target.getUTCMinutes());
-  imply(components, 'second', target.getUTCSeconds());
-  imply(components, 'millisecond', target.getUTCMilliseconds());
-  imply(components, 'meridiem', target.getUTCHours() < 12 ? MERIDIEM_AM : MERIDIEM_PM);
-  return components;
+  return copySimilarTimeFields(components, target, imply);
 }
 
 /**
@@ -254,12 +281,7 @@ export function implySimilarTime(components: Components, target: Date): Componen
  * @param target - Instant whose time fields are used
  */
 export function assignSimilarTime(components: Components, target: Date): Components {
-  assign(components, 'hour', target.getUTCHours());
-  assign(components, 'minute', target.getUTCMinutes());
-  assign(components, 'second', target.getUTCSeconds());
-  assign(components, 'millisecond', target.getUTCMilliseconds());
-  assign(components, 'meridiem', target.getUTCHours() < 12 ? MERIDIEM_AM : MERIDIEM_PM);
-  return components;
+  return copySimilarTimeFields(components, target, assign);
 }
 
 /**
