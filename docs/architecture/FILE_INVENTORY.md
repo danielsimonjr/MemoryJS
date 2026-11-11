@@ -838,7 +838,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/sqlite-append-replace.test.ts` | tests | test | 342 |
 | `tests/unit/core/sqlite-content-hash-migration.test.ts` | tests | test | 57 |
 | `tests/unit/core/sqlite-driver-inventory.test.ts` | tests | test | 129 |
-| `tests/unit/core/sqlite-driver-parity.test.ts` | tests | test | 120 |
+| `tests/unit/core/sqlite-driver-parity.test.ts` | tests | test | 123 |
 | `tests/unit/core/sqlite-driver-resolver.test.ts` | tests | test | 86 |
 | `tests/unit/core/sqlite-embeddings-content-hash.test.ts` | tests | test | 182 |
 | `tests/unit/core/sqlite-events.test.ts` | tests | test | 470 |
@@ -1030,7 +1030,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/utils/helpers/schemaParityCases.ts` | tests | test | 640 |
 | `tests/unit/utils/helpers/schemaParityFormat.ts` | tests | test | 99 |
 | `tests/unit/utils/helpers/schemaSyntheticCases.ts` | tests | test | 216 |
-| `tests/unit/utils/helpers/threadPoolParityCases.ts` | tests | test | 509 |
+| `tests/unit/utils/helpers/threadPoolParityCases.ts` | tests | test | 511 |
 | `tests/unit/utils/ids.test.ts` | tests | test | 35 |
 | `tests/unit/utils/indexBuckets.test.ts` | tests | test | 98 |
 | `tests/unit/utils/indexes.test.ts` | tests | test | 898 |

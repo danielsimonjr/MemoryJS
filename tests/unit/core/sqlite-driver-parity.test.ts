@@ -40,13 +40,15 @@ const NODE_LANE_ONLY =
 /**
  * Fields where `node:sqlite` is known to differ from `better-sqlite3`.
  *
- * `nulTextRead`: `node:sqlite` truncates a TEXT value at the first NUL when it
- * converts the column to a JS string. The bytes stored are identical (the corpus
- * pins that separately as `nulTextStoredHex`), so this is a read-side difference
- * only, and it cannot be reached through MemoryJS's own writes: entity names are
- * validated, and observations/tags/metadata are stored with `JSON.stringify`,
- * which escapes NUL as `\u0000` before it reaches SQLite. Pinned by the
- * `documented deviation` test below rather than hidden.
+ * `nulTextRead`: how a TEXT value containing a NUL byte reads back has changed
+ * across `node:sqlite` releases — Node 22.16, 22.23 and 24.10 truncate at the
+ * NUL, Node 24.22 returns the whole string the way better-sqlite3 does. The bytes
+ * stored are identical on every version (pinned separately as
+ * `nulTextStoredHex`), so this is a read-side difference only, and MemoryJS
+ * cannot reach it: entity names are validated, and observations/tags/metadata are
+ * written with `JSON.stringify`, which escapes NUL as `\u0000`. The
+ * `documented deviation` test below pins both accepted readings and the
+ * JSON-encoded path rather than asserting a version-specific one.
  */
 const KNOWN_DEVIATIONS: ReadonlySet<string> = new Set(['nulTextRead']);
 
@@ -90,21 +92,22 @@ describe.skipIf(typeof Bun !== 'undefined')('node:sqlite driver parity (better-s
     expect(Object.keys(corpus()).sort()).toEqual(Object.keys(fixture.record).sort());
   });
 
-  it('documents the one known deviation: a NUL byte truncates a TEXT read', () => {
+  it('documents the known deviation: how a NUL byte in TEXT reads back', () => {
     const actual = corpus();
-    // The stored bytes are identical on both drivers...
+    // The stored bytes are identical on every driver and every Node version...
     expect(actual.nulTextStoredHex).toEqual(fixture.record.nulTextStoredHex);
-    // ...but node:sqlite's TEXT-to-string conversion stops at the NUL.
-    expect(actual.nulTextRead).toEqual({
-      $type: 'object',
-      proto: 'Object',
-      value: { v: 'nul-in-' },
-    });
     expect(fixture.record.nulTextRead).toEqual({
       $type: 'object',
       proto: 'Object',
       value: { v: 'nul-in-\u0000-middle' },
     });
+    // ...but node:sqlite's TEXT-to-string conversion either stops at the NUL
+    // (Node 22.16/22.23/24.10) or returns it (Node 24.22, matching
+    // better-sqlite3). Both readings are accepted here because which one a
+    // runtime produces is not MemoryJS's contract to pin.
+    const truncated = { $type: 'object', proto: 'Object', value: { v: 'nul-in-' } };
+    const full = fixture.record.nulTextRead;
+    expect([truncated, full]).toContainEqual(actual.nulTextRead);
     // The path MemoryJS writes through escapes the NUL, so it round-trips.
     expect(actual.nulJsonEncodedRoundTrip).toEqual(fixture.record.nulJsonEncodedRoundTrip);
   });

@@ -52,12 +52,14 @@ export interface WorkerConfig {
  * Node's own type stripping plus a `.js` -> `.ts` resolve hook instead.
  */
 export function tsWorkerExecArgv(): string[] {
-  const here = fileURLToPath(new URL('.', import.meta.url));
+  // `--import` takes a module specifier. A Windows drive path (`D:\a\...`) is
+  // not one — the ESM loader rejects the `d:` protocol — so the loader must be a
+  // file:// URL on every platform.
   return [
     '--experimental-strip-types',
     '--no-warnings',
     '--import',
-    join(here, 'tsWorkerLoader.mjs'),
+    new URL('tsWorkerLoader.mjs', import.meta.url).href,
   ];
 }
 

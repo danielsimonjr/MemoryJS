@@ -5604,7 +5604,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 120
+      "loc": 123
     },
     {
       "file": "tests/unit/core/sqlite-driver-resolver.test.ts",
@@ -6948,7 +6948,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 509
+      "loc": 511
     },
     {
       "file": "tests/unit/utils/ids.test.ts",
