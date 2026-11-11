@@ -1054,6 +1054,8 @@ Same verification block as Sprint 6. `package.json` has no `@danielsimonjr/worke
 - [x] **Step 3: Run one timed insert/select of 1,000 rows on both constructors and paste the numbers in the PR. Do not fail CI on the ratio.**
 - [x] **Step 4: Remove `better-sqlite3` and `@types/better-sqlite3`. Run `bun install`, `bun run typecheck`, and `bunx vitest run tests/unit/core/SQLiteStorage.test.ts`. Expected: PASS.**
 
+**Outcome (as built, build review 2026-11-11).** Relay step 5 cherry-picked `tests/unit/core/node-sqlite-adapter-edge-parity.test.ts` from the challenger PR and fixed seven adapter gaps against better-sqlite3 13.0.3: savepoint depth after a failed `COMMIT`, idempotent `close()`, missing parent directory (`TypeError` before open), closed-handle calls through `transaction`, reader/writer statement enforcement, zeroed `run()` counters on readers, and int64 bind overflow. Finding 3 matches better-sqlite3's `TypeError` (not `SqliteError`), rebutting the challenger's initial `SQLITE_CANTOPEN` expectation.
+
 ### Task 21: Sprint 9 verification
 
 Same verification block as Sprint 6, plus:

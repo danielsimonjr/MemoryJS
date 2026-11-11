@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `src/core/nodeSqliteAdapter.ts` now matches seven better-sqlite3 13.0.3 behaviours the main parity corpus does not cover: savepoint depth after a failed `COMMIT`, idempotent `close()`, the missing-directory `TypeError`, closed-handle errors through `transaction`, reader/writer statement enforcement, zeroed `run()` counters on readers, and int64 bind overflow. Pinned in `tests/unit/core/node-sqlite-adapter-edge-parity.test.ts`.
 - The worker-thread tests load TypeScript through `tests/unit/utils/helpers/tsWorkerLoader.mjs` instead of `--import tsx`. tsx 4.23.1 registers its ESM hooks only on the main thread below Node 22.22.3, so the parity suite failed with `Unknown file extension ".ts"` on the Node 22.16 CI leg. The loader uses Node's own `--experimental-strip-types` plus a `.js` → `.ts` resolve hook, and the same tests pass on 22.16, 22.23 and 24.
 
 ### Fixed

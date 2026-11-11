@@ -10,9 +10,9 @@
  *
  * Covered gaps:
  * - `close()` on an already-closed database (better-sqlite3: silent no-op);
- * - a failed open (missing directory) — better-sqlite3 raises a `TypeError`,
- *   the adapter leaks Node's raw `Error` and never produces the
- *   `SQLITE_CANTOPEN` `SqliteError` its own mapping table defines;
+ * - a failed open (missing directory) — better-sqlite3 raises a `TypeError`
+ *   before SQLite is opened; the adapter used to leak Node's raw
+ *   `ERR_SQLITE_ERROR`;
  * - a transaction function invoked after `close()` — better-sqlite3 raises the
  *   same `TypeError` as every other closed-handle call, the adapter leaks the
  *   raw `ERR_INVALID_STATE` error;
@@ -62,23 +62,20 @@ describe.skipIf(typeof Bun !== 'undefined')('node:sqlite adapter edge parity (be
     expect(() => db.close()).not.toThrow();
   });
 
-  it('raises a SqliteError with SQLITE_CANTOPEN when the parent directory is missing', () => {
-    // better-sqlite3 13.0.3 raises `TypeError: Cannot open database because the
-    // directory does not exist` here; node:sqlite raises
-    // `Error: unable to open database file` with code `ERR_SQLITE_ERROR`.
-    // What callers must be able to rely on is the SqliteError shape the adapter
-    // itself documents (its SQLITE_CODES table maps 14 -> SQLITE_CANTOPEN);
-    // leaking the raw Node error breaks both `instanceof SqliteError` and
-    // `e.code === 'SQLITE_CANTOPEN'` branches.
+  it('raises better-sqlite3\'s TypeError when the parent directory is missing', () => {
+    // better-sqlite3 13.0.3: TypeError "Cannot open database because the
+    // directory does not exist" (no `code` property). node:sqlite instead
+    // opens through SQLite and surfaces `ERR_SQLITE_ERROR` / errcode 14.
     let thrown: unknown;
     try {
       open(join(dir, 'missing-dir', 'b.db'));
     } catch (error) {
       thrown = error;
     }
-    expect(thrown).toBeInstanceOf(SqliteError);
-    expect((thrown as SqliteError).code).toBe('SQLITE_CANTOPEN');
-    expect((thrown as SqliteError).errcode).toBe(14);
+    expect(thrown).toBeInstanceOf(TypeError);
+    expect((thrown as TypeError).message).toBe(
+      'Cannot open database because the directory does not exist',
+    );
   });
 
   it('raises the closed-connection TypeError when a transaction function is called after close()', () => {

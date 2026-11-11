@@ -46,7 +46,14 @@
  * - Errors — `node:sqlite` throws a plain `Error` with `code: 'ERR_SQLITE_ERROR'`
  *   and a numeric `errcode`. Callers match better-sqlite3's `SQLITE_*` codes
  *   (for example `SQLITE_CORRUPT_VTAB`), so errors are re-thrown as a
- *   `SqliteError` with the same `name`, `code`, and message.
+ *   `SqliteError` with the same `name`, `code`, and message. A missing parent
+ *   directory raises better-sqlite3's `TypeError` before SQLite is opened; every
+ *   other closed-handle call raises its `TypeError` too.
+ * - Statements — `get()`/`all()` on writer SQL and `run()` on reader SQL match
+ *   better-sqlite3's `TypeError` / zeroed counters; int64 bind overflow raises
+ *   its `RangeError`. A second `close()` is a silent no-op.
+ * - Transactions — savepoint depth drops once per nest, including after a failed
+ *   `COMMIT`, so nested transactions keep working.
  * - Construction — `{ readonly: true }` is better-sqlite3's option name;
  *   `node:sqlite` spells it `readOnly`.
  *
@@ -63,7 +70,9 @@
  * @module core/nodeSqliteAdapter
  */
 
+import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { dirname } from 'node:path';
 
 /** `require` shim: this package builds to ESM, where bare `require` is undefined. */
 const nodeRequire = createRequire(import.meta.url);
@@ -182,6 +191,16 @@ export class SqliteError extends Error {
 /** The text better-sqlite3 raises for a value it cannot bind. */
 const UNBINDABLE = 'SQLite3 can only bind numbers, strings, bigints, buffers, and null';
 
+/** Inclusive bounds for SQLite integer bindings (signed int64). */
+const INT64_MAX = 9223372036854775807n;
+const INT64_MIN = -9223372036854775808n;
+
+/** better-sqlite3's exact text for a `get()`/`all()` on a non-reader statement. */
+const NO_RETURN_DATA = 'This statement does not return data. Use run() instead';
+
+/** better-sqlite3's exact text when the database file's parent directory is absent. */
+const MISSING_DB_DIR = 'Cannot open database because the directory does not exist';
+
 /**
  * Convert an error thrown by `node:sqlite` into the `SqliteError` shape callers
  * expect. A non-SQLite error (bad bind value, closed handle) is normalised to
@@ -298,10 +317,15 @@ function bindParams(plan: ParameterPlan, params: readonly unknown[]): unknown[] 
 /** Map one bound value, translating `undefined` to NULL like better-sqlite3. */
 function bindValue(value: unknown): unknown {
   if (value === undefined) return null;
+  if (typeof value === 'bigint') {
+    if (value > INT64_MAX || value < INT64_MIN) {
+      throw new RangeError('The bound string, buffer, or bigint is too big');
+    }
+    return value;
+  }
   if (
     value === null
     || typeof value === 'number'
-    || typeof value === 'bigint'
     || typeof value === 'string'
     || value instanceof Uint8Array
   ) {
@@ -368,6 +392,7 @@ interface NodeSqliteConnection {
 /** Minimal shape of one `node:sqlite` statement. */
 interface NodeSqliteStatement {
   setReadBigInts(enabled: boolean): void;
+  columns(): unknown[];
   run(...params: unknown[]): { changes: number | bigint; lastInsertRowid: number | bigint };
   get(...params: unknown[]): unknown;
   all(...params: unknown[]): unknown[];
@@ -405,20 +430,38 @@ export function createNodeSqliteDatabaseCtor(): new (
     readonly #db: NodeSqliteConnection;
     /** Open transactions on this connection; drives `SAVEPOINT` nesting. */
     #depth = 0;
+    #closed = false;
 
     constructor(path: string, options?: SqliteOpenOptions) {
+      if (path !== ':memory:' && !path.startsWith('file:')) {
+        const parent = dirname(path);
+        if (parent.length > 0 && parent !== '.' && !existsSync(parent)) {
+          throw new TypeError(MISSING_DB_DIR);
+        }
+      }
       const readOnly = options?.readonly === true || options?.readOnly === true;
       // `node:sqlite` rejects an explicit `undefined` options argument, so pass
       // one only when a read-only open is requested.
-      this.#db = readOnly ? new DatabaseSync(path, { readOnly: true }) : new DatabaseSync(path);
+      let db: NodeSqliteConnection;
+      try {
+        db = readOnly ? new DatabaseSync(path, { readOnly: true }) : new DatabaseSync(path);
+      } catch (error) {
+        throw normalizeError(error);
+      }
+      this.#db = db;
     }
 
-    exec(sql: string): void {
+    /** Run SQL on the connection, mapping errors like every other database method. */
+    #exec(sql: string): void {
       try {
         this.#db.exec(sql);
       } catch (error) {
         throw normalizeError(error);
       }
+    }
+
+    exec(sql: string): void {
+      this.#exec(sql);
     }
 
     prepare(sql: string): SqliteStatement {
@@ -434,6 +477,7 @@ export function createNodeSqliteDatabaseCtor(): new (
       }
 
       const plan = parametersOf(sql);
+      const returnsData = stmt.columns().length > 0;
 
       return {
         run: (...params: unknown[]) => {
@@ -443,6 +487,11 @@ export function createNodeSqliteDatabaseCtor(): new (
               changes: number | bigint;
               lastInsertRowid: number | bigint;
             };
+            if (returnsData) {
+              // better-sqlite3 still runs the statement but always reports zero
+              // counters for reader SQL instead of the connection-wide totals.
+              return { changes: 0, lastInsertRowid: 0 };
+            }
             // better-sqlite3 reports `changes` and `lastInsertRowid` as numbers;
             // node:sqlite returns bigints once the statement reads bigints.
             // Normalise so callers comparing `changes === 1` still work.
@@ -458,6 +507,7 @@ export function createNodeSqliteDatabaseCtor(): new (
           }
         },
         get: (...params: unknown[]) => {
+          if (!returnsData) throw new TypeError(NO_RETURN_DATA);
           const args = bindParams(plan, params);
           try {
             return row<unknown>(invoke(stmt, 'get', args));
@@ -466,6 +516,7 @@ export function createNodeSqliteDatabaseCtor(): new (
           }
         },
         all: (...params: unknown[]) => {
+          if (!returnsData) throw new TypeError(NO_RETURN_DATA);
           const args = bindParams(plan, params);
           try {
             return (invoke(stmt, 'all', args) as unknown[]).map((value) => row<unknown>(value));
@@ -522,25 +573,25 @@ export function createNodeSqliteDatabaseCtor(): new (
       const run = (mode: 'BEGIN' | 'BEGIN IMMEDIATE' | 'BEGIN EXCLUSIVE', args: never[]): unknown => {
         const nested = this.#depth > 0;
         const savepoint = `memoryjs_tx_${this.#depth}`;
-        this.#db.exec(nested ? `SAVEPOINT ${savepoint}` : mode);
+        this.#exec(nested ? `SAVEPOINT ${savepoint}` : mode);
         this.#depth++;
         try {
           const result = fn(...args);
           if (result instanceof Promise) {
             throw new TypeError('Transaction function cannot return a promise');
           }
-          this.#depth--;
-          this.#db.exec(nested ? `RELEASE ${savepoint}` : 'COMMIT');
+          this.#exec(nested ? `RELEASE ${savepoint}` : 'COMMIT');
           return result;
         } catch (error) {
-          this.#depth--;
           try {
-            this.#db.exec(nested ? `ROLLBACK TO ${savepoint}; RELEASE ${savepoint}` : 'ROLLBACK');
+            this.#exec(nested ? `ROLLBACK TO ${savepoint}; RELEASE ${savepoint}` : 'ROLLBACK');
           } catch {
             // A failed ROLLBACK must not mask the original error, which is the
             // one that explains what actually went wrong.
           }
           throw normalizeError(error);
+        } finally {
+          this.#depth--;
         }
       };
 
@@ -554,6 +605,8 @@ export function createNodeSqliteDatabaseCtor(): new (
     }
 
     close(): void {
+      if (this.#closed) return;
+      this.#closed = true;
       this.#db.close();
     }
   };
