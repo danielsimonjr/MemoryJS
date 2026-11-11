@@ -121,7 +121,7 @@ A second PR is allowed **only** if GraphML/GEXF goldens plus PostgreSQL row mapp
 - Consumes: `export function raceAbort<T>(work: Promise<T>, signal?: AbortSignal): Promise<T | typeof ABORTED>`
 - Produces: judge uses the same function as Diagnoser / KnowledgeEditor / RevisionMerger
 
-- [ ] **Step 1: Write failing tests for abort racing (no signal, abort before settle, late resolve ignored, late reject ignored)**
+- [x] **Step 1: Write failing tests for abort racing (no signal, abort before settle, late resolve ignored, late reject ignored)**
 
 ```typescript
 import { describe, it, expect } from 'vitest';
@@ -142,15 +142,15 @@ describe('raceAbort', () => {
 });
 ```
 
-- [ ] **Step 2: Run `bunx vitest run tests/unit/agent/learning/llmJson.raceAbort.test.ts tests/unit/agent/evaluation/LLMRubricJudge.hardening.test.ts`**
+- [x] **Step 2: Run `bunx vitest run tests/unit/agent/learning/llmJson.raceAbort.test.ts tests/unit/agent/evaluation/LLMRubricJudge.hardening.test.ts`**
 
 Expected: new file PASS against existing `llmJson.raceAbort`; hardening still PASS.
 
-- [ ] **Step 3: Delete local `ABORTED` / `raceAbort` in `LLMRubricJudge.ts`; import `{ ABORTED, raceAbort, describeError as describe }` from `../learning/llmJson.js`.** Keep `out === ABORTED` and fallback note `aborted`.
+- [x] **Step 3: Delete local `ABORTED` / `raceAbort` in `LLMRubricJudge.ts`; import `{ ABORTED, raceAbort, describeError as describe }` from `../learning/llmJson.js`.** Keep `out === ABORTED` and fallback note `aborted`.
 
-- [ ] **Step 4: Re-run the same vitest command plus `tests/unit/agent/evaluation/LLMRubricJudge.test.ts`. Expected: PASS. `describeError` must keep `err instanceof Error ? err.message : String(err)`.**
+- [x] **Step 4: Re-run the same vitest command plus `tests/unit/agent/evaluation/LLMRubricJudge.test.ts`. Expected: PASS. `describeError` must keep `err instanceof Error ? err.message : String(err)`.**
 
-- [ ] **Step 5: Commit** `test: pin raceAbort then share it with LLMRubricJudge`
+- [x] **Step 5: Commit** `test: pin raceAbort then share it with LLMRubricJudge`
 
 **Risks:** `ABORTED` in `llmJson` is `unique symbol`; the local judge symbol was a plain `Symbol('aborted')`. Identity must stay `===` with the imported sentinel. Do not change `ConcurrencyLimiter`'s private `raceAbort` (different arity: `fn, item, index, signal`).
 
@@ -184,15 +184,15 @@ export function packLoadedKnowledge(
 
 `packLoadedKnowledge` must call `fitInOrder` + `renderLoadedKnowledge` and return `{ markdown, skillIds, instructionSetIds, failureIds, tokens }` with the same `flatMap` / `Set` rules as today.
 
-- [ ] **Step 1: Add a test that live and scratch markdown/ids/tokens stay equal for the same seed (already in LeafValidationPlan). Add one unit test on `packLoadedKnowledge` that a skill after the budget cut is omitted from `skillIds`.**
+- [x] **Step 1: Add a test that live and scratch markdown/ids/tokens stay equal for the same seed (already in LeafValidationPlan). Add one unit test on `packLoadedKnowledge` that a skill after the budget cut is omitted from `skillIds`.**
 
-- [ ] **Step 2: Run those tests — FAIL until the helper exists if the test imports it; otherwise they still PASS as characterization.**
+- [x] **Step 2: Run those tests — FAIL until the helper exists if the test imports it; otherwise they still PASS as characterization.**
 
-- [ ] **Step 3: Implement helper; both methods keep their skill-source differences (`this.skills.match` vs `this.matcher`).**
+- [x] **Step 3: Implement helper; both methods keep their skill-source differences (`this.skills.match` vs `this.matcher`).**
 
-- [ ] **Step 4: Run the three test files. Expected: PASS.**
+- [x] **Step 4: Run the three test files. Expected: PASS.**
 
-- [ ] **Step 5: Commit** `refactor: share packLoadedKnowledge between live and scratch K`
+- [x] **Step 5: Commit** `refactor: share packLoadedKnowledge between live and scratch K`
 
 **Risks:** `ScratchKnowledge.loadForContext` uses label `ScratchKnowledge.loadForContext` in `assertBudgetTokens`; live uses `loadForContext`. Keep those labels. Do not route scratch through `SkillManager.match`.
 
@@ -217,15 +217,15 @@ private fieldRelevance(
 `calculateTaskRelevance`: if `entity.taskId === taskDescription` return `1.0`; else `fieldRelevance(..., { name: 0.8, observation: 0.5 })`.
 `calculateQueryRelevance`: `fieldRelevance(..., { name: 1.0, entityType: 0.7, observation: 0.5 })`.
 
-- [ ] **Step 1: Characterization tests if missing: taskId exact 1.0; name substring 0.8 vs 1.0; entityType only counts for query.**
+- [x] **Step 1: Characterization tests if missing: taskId exact 1.0; name substring 0.8 vs 1.0; entityType only counts for query.**
 
-- [ ] **Step 2: Run tests (PASS on current code).**
+- [x] **Step 2: Run tests (PASS on current code).**
 
-- [ ] **Step 3: Extract `fieldRelevance` still going through `semanticOr`.**
+- [x] **Step 3: Extract `fieldRelevance` still going through `semanticOr`.**
 
-- [ ] **Step 4: Re-run. Expected: PASS, same numeric scores.**
+- [x] **Step 4: Re-run. Expected: PASS, same numeric scores.**
 
-- [ ] **Step 5: Commit** `refactor: share SalienceEngine fieldRelevance scoring`
+- [x] **Step 5: Commit** `refactor: share SalienceEngine fieldRelevance scoring`
 
 **Risks:** `useSemanticSimilarity` must still bypass substring scores via `semanticOr`.
 
@@ -259,7 +259,7 @@ Lexical spec: `base: 50`, words `[2,5] +20`, no operators +10, factual +15, aggr
 Semantic spec: `base: 45`, words `>=5 +25`, no operators +10, conceptual +30, comparative +20, high complexity +15.
 Leave `scoreSymbolicLayer` alone (different signals).
 
-- [ ] **Steps:** pin current scores for `"foo bar"`, `"what is X AND Y"`, conceptual vs factual fixtures → extract → re-run → commit `refactor: share QueryCostEstimator layer signal scoring`
+- [x] **Steps:** pin current scores for `"foo bar"`, `"what is X AND Y"`, conceptual vs factual fixtures → extract → re-run → commit `refactor: share QueryCostEstimator layer signal scoring`
 
 **Risks:** word split is `query.trim().split(/\s+/)`. Operators regex must stay `/\b(AND|OR|NOT)\b/` (not case-insensitive; current lexical/semantic use that exact pattern).
 
@@ -283,7 +283,7 @@ function failInvalidType(
 
 Must keep issue field order: `makeIssue({ code: 'invalid_type', expected, received?, input, message: '' })` then `issue.message = invalidTypeMessage(issue)` then `pushIssue(payload, issue, undefined)`.
 
-- [ ] **Steps:** run parity tests first (PASS) → extract → parity must still PASS against `schemaParity.json` → commit `refactor: share schema invalid_type failure`
+- [x] **Steps:** run parity tests first (PASS) → extract → parity must still PASS against `schemaParity.json` → commit `refactor: share schema invalid_type failure`
 
 **Risks:** Number's `received` is `'NaN'` or `String(value)` for infinities and omitted for non-numbers. Do not change that. This file is a Zod 4.6.7 parity port; issue order is user-visible.
 
@@ -297,7 +297,7 @@ Must keep issue field order: `makeIssue({ code: 'invalid_type', expected, receiv
 
 **Interfaces:** module-level `const DEFAULT_*` with the same literals now inside constructors. Constructors: assign deps, `this.config = { ...fillDefaults(config, DEFAULT_*), callbacks from config }`.
 
-- [ ] **Steps:** grep tests for default `4000` / `0.25` / `3600000` → hoist constants → re-run those tests → commit `refactor: hoist scheduler and salience default configs`
+- [x] **Steps:** grep tests for default `4000` / `0.25` / `3600000` → hoist constants → re-run those tests → commit `refactor: hoist scheduler and salience default configs`
 
 **Risks:** `fillDefaults` must still treat missing keys vs explicit `undefined` the same as today. Do not introduce a shared `Scheduler` base (N8 cycle methods are not the clone).
 
@@ -323,7 +323,7 @@ export async function loadTasksByIds(
 
 Error strings must remain `LeafLearner: trace "${traceId}" has no task records` / `lacks task ${id}` (and RecursiveLearner equivalents). Implement by interpolating `label`.
 
-- [ ] **Steps:** add tests that missing tasks json and missing id still throw those exact strings → extract → commit `refactor: share learning-trace task rehydrate`
+- [x] **Steps:** add tests that missing tasks json and missing id still throw those exact strings → extract → commit `refactor: share learning-trace task rehydrate`
 
 **Risks:** `loadRun` still validates `schema === 1`; `loadRecursive` still requires `kind === 'recursive' && schema === 2` **before** loading tasks.
 
@@ -352,7 +352,7 @@ export async function patchVersionedRecord<E extends Entity, R>(opts: {
 
 Callers still pass type guards `isReflectionMemory` / `isFailureMemory` and their already-archived / already-resolved results.
 
-- [ ] **Steps:** pin not-found, already-*, conflict, vanished, happy path → extract → commit `refactor: share versioned lifecycle record patch`
+- [x] **Steps:** pin not-found, already-*, conflict, vanished, happy path → extract → commit `refactor: share versioned lifecycle record patch`
 
 **Risks:** `versionedWriteFailure` must stay synchronous so microtask timing of callers does not change (see its module JSDoc). Do not swallow non-version errors.
 
@@ -379,7 +379,7 @@ private beginTraversal(startEntity: string, options: TraversalOptions): {
 
 `beginTraversal` returns `null` when `!hasEntity` (same empty maps). BFS keeps visit-on-enqueue + queue; DFS visit-on-pop + stack + `if (!parents.has(neighbor))`.
 
-- [ ] **Steps:** tests for missing start, parent maps on a diamond graph (BFS vs DFS parents differ), maxDepth → extract setup only → commit `refactor: share GraphTraversal walk setup`
+- [x] **Steps:** tests for missing start, parent maps on a diamond graph (BFS vs DFS parents differ), maxDepth → extract setup only → commit `refactor: share GraphTraversal walk setup`
 
 **Risks:** Hot path (centrality, shortest path). Share setup once per call, not a per-neighbor callback. BFS (`GraphTraversal.ts` 313–316) marks `visited` and sets `parent` on enqueue and uses an index cursor (`queueHead`), not `shift()`. DFS (351–367) marks `visited` on pop and sets `parent` only when `!parents.has(neighbor)`. A diamond test must fail if those two timings are swapped. Unifying into `mode: 'bfs'|'dfs'` is allowed only when that test passes unchanged. Do not change public `bfs` / `dfs` signatures.
 
@@ -403,7 +403,7 @@ private mapGraphXml(
 
 Or a generator of `{ entity, nodeId }` / `{ relation, edgeId, sourceId, targetId }` after `escapeXml`.
 
-- [ ] **Steps:** pin GraphML keys `d0`–`d5` and GEXF `attvalue for="0"` → extract walk → goldens PASS → commit `refactor: share IOManager XML node/edge walk`
+- [x] **Steps:** pin GraphML keys `d0`–`d5` and GEXF `attvalue for="0"` → extract walk → goldens PASS → commit `refactor: share IOManager XML node/edge walk`
 
 **Risks:** GraphML includes timestamps/tags/importance; GEXF does not. Escaping must stay `escapeXml`. Creator string `Memory MCP Server` stays GEXF-only.
 
@@ -429,7 +429,7 @@ private foldRuleResult(
 
 `validate` awaits `rule.validate`; `validateSync` throws if `result instanceof Promise` (and `void result.catch(() => {})` stays).
 
-- [ ] **Steps:** pin failFast, async-in-sync error message, warning vs error severity → extract fold → commit `refactor: share EntityValidator issue fold`
+- [x] **Steps:** pin failFast, async-in-sync error message, warning vs error severity → extract fold → commit `refactor: share EntityValidator issue fold`
 
 **Risks:** Do not `await` in `validateSync`. Promise detection must remain `instanceof Promise`.
 
@@ -452,7 +452,7 @@ One direct method. Do **not** take a `visit` callback: `add` / `mayContain` sit 
 `mode: 'or'`: `this.bits[byte] = (this.bits[byte] ?? 0) | mask`, then `add` does `this.inserted++`.
 `mode: 'test'`: return `false` when `((this.bits[byte] ?? 0) & mask) === 0`; after the loop return `true`.
 
-- [ ] **Steps:** pin add then mayContain true; missing item false; does not allocate → extract → commit `refactor: share BloomFilter hash-bit loop`
+- [x] **Steps:** pin add then mayContain true; missing item false; does not allocate → extract → commit `refactor: share BloomFilter hash-bit loop`
 
 **Risks:** `% this.bitCount`, `idx >>> 3`, `1 << (idx & 7)` must not change. `inserted++` only in `add`. A branch on `mode` inside the hash loop is the intended shape (one mode per call, predictable). Public `add` / `mayContain` / `clear` / `size` signatures stay.
 
@@ -476,7 +476,7 @@ function readOptional<T>(
 
 `rowToEntity` / `rowToRelation` still list their own columns. Helper only implements `if (row[column] != null) target[field] = map(row[column])`.
 
-- [ ] **Steps:** pin null vs missing vs extra JSON `extra` merge → extract → commit `refactor: share PostgreSQL optional column reads`
+- [x] **Steps:** pin null vs missing vs extra JSON `extra` merge → extract → commit `refactor: share PostgreSQL optional column reads`
 
 **Risks:** `rowToRelation` uses `String(row.from_name)` not `columnText` for required keys — keep that. `mergeExtensionFields` stays last.
 
@@ -499,7 +499,7 @@ export function emitJson(payload: unknown): void {
 
 `emitJson` alone will not drop N19. The pair is the two `register*` functions (`heuristic.ts` 23–120 vs `observationDedup.ts` 52–80). Containment is the repeated `.command().description().option().action(runAction → emitJson)` skeleton, not the 3-line logger. Also add an internal `addJsonCommand(parent, spec)` that performs `command` + `option` list + `runAction` + `emitJson`. Callers pass option specs as data (`flags`, `description`, `parse`). Heuristic `match` stays a manual try/catch (`heuristic.ts` 68–87) and must not go through `runAction`. If N19 is still reported after both extracts, the helper did not absorb the skeleton — enlarge it. Do not merge heuristic CRUD with Jaccard find into one command table (different managers and flags). `emitJson` and `addJsonCommand` stay off the package barrel.
 
-- [ ] **Steps:** add helpers test with a mock `console.log` → replace five local copies → commit `refactor: share CLI emitJson`
+- [x] **Steps:** add helpers test with a mock `console.log` → replace five local copies → commit `refactor: share CLI emitJson`
 
 **Risks:** `heuristic.ts` `match` action does not use `runAction` (manual try). Leave that control flow.
 
@@ -515,7 +515,7 @@ export function emitJson(payload: unknown): void {
 
 Empty `lastAccessedAt` still returns 0 before Date math (both already do).
 
-- [ ] **Steps:** pin TTL-expired faster decay vs `clampedHalfLifeScore` on the same timestamp → replace duplicated `ageHours`/`halfLifeFactor`/`clamp` → commit `refactor: DecayEngine.calculateDecayFactor uses clampedHalfLifeScore`
+- [x] **Steps:** pin TTL-expired faster decay vs `clampedHalfLifeScore` on the same timestamp → replace duplicated `ageHours`/`halfLifeFactor`/`clamp` → commit `refactor: DecayEngine.calculateDecayFactor uses clampedHalfLifeScore`
 
 **Risks:** `importanceModulation` false must ignore `importanceBoost`. TTL uses `createdAt ?? now`. Do not change `calculateDecayFactorStatic` (already one line to `clampedHalfLifeScore`).
 
@@ -541,7 +541,7 @@ export function inducedSubgraph(
 
 Implementation: `names = new Set(entities.map(e => e.name)); return { entities, relations: collectInducedRelations(storage, names, relationFilter) }`.
 
-- [ ] **Steps:** openNodes names that have a relation between them; boolean cache hit path must use the helper too → commit `refactor: share inducedSubgraph graph slice`
+- [x] **Steps:** openNodes names that have a relation between them; boolean cache hit path must use the helper too → commit `refactor: share inducedSubgraph graph slice`
 
 **Risks:** `openNodes` does not paginate. Boolean cache stores names not entities; rebuild entities from the live graph then call `inducedSubgraph`.
 
@@ -549,10 +549,10 @@ Implementation: `names = new Set(entities.map(e => e.name)); return { entities, 
 
 ### Task 17: Re-run clones and Architecture docs
 
-- [ ] **Step 1:** `npx -y @danielsimonjr/repo-tools@2.6.0 clones . --out ../clone-inventory` from repo root. Compare REPORT.md to the targets table. Delete `../clone-inventory` after.
-- [ ] **Step 2:** `npx --yes @danielsimonjr/repo-tools@2.3.0 check . --docs=docs/architecture` and `npx --yes @danielsimonjr/repo-tools@2.3.0 docs check src` must exit 0. New exports need JSDoc.
-- [ ] **Step 3:** `bun run typecheck && bun run lint && bun run test:ci && bun run build`
-- [ ] **Step 4:** Commit only if src still dirty after Task 16. Do not commit clone dumps.
+- [x] **Step 1:** `npx -y @danielsimonjr/repo-tools@2.6.0 clones . --out ../clone-inventory` from repo root. Compare REPORT.md to the targets table. Delete `../clone-inventory` after.
+- [x] **Step 2:** `npx --yes @danielsimonjr/repo-tools@2.3.0 check . --docs=docs/architecture` and `npx --yes @danielsimonjr/repo-tools@2.3.0 docs check src` must exit 0. New exports need JSDoc.
+- [x] **Step 3:** `bun run typecheck && bun run lint && bun run test:ci && bun run build`
+- [x] **Step 4:** Commit only if src still dirty after Task 16. Do not commit clone dumps.
 
 **Expected clones:** exact groups = 0; near pairs = 6 (N6, N18, N20, N23, N24, N25). A leftover REFACTOR pair means the helper did not absorb the shared loop — enlarge the helper, do not lower `minNodes`, and do not reclassify it as KEEP.
 
@@ -618,7 +618,7 @@ Date keys: `day` = `getUTCDate()`, `month` = `getUTCMonth() + 1`, `year` = `getU
 
 Exported names stay. `createRelativeFromReference` still calls `assignSimilarTime` / `implySimilarTime` by those names.
 
-- [ ] **Steps:** pin a case where the field is already `known` (imply leaves it, assign replaces it and deletes `implied`) for both date and time → extract → parity tests PASS → commit `refactor: share enDate similar-field copy`
+- [x] **Steps:** pin a case where the field is already `known` (imply leaves it, assign replaces it and deletes `implied`) for both date and time → extract → parity tests PASS → commit `refactor: share enDate similar-field copy`
 
 **Risks:** `imply` returns early when `known[key] !== undefined` and must not delete `implied`. `assign` writes `known` and `delete`s `implied`. Public exports stay. No behavior change in `createRelativeFromReference` (time-bearing durations still assign both, date-bearing still imply time).
 
@@ -640,7 +640,7 @@ function checkAndReturnTimePattern(result: ParsedResult, kind: 'bare' | 'range')
 `range` keeps `/^\d+-\d+$/` and `/[^\d:.](\d[\d.]+)\s*-\s*(\d[\d.]+)$/`, and rejects when either captured number parses `> 24`.
 Both share the `.` / cents check and the ending `> 24` check. Both return `result` unchanged when they accept.
 
-- [ ] **Steps:** add the reject cases (PASS on current wrappers) → extract → same tests PASS → commit `refactor: share EN time-pattern reject checks`
+- [x] **Steps:** add the reject cases (PASS on current wrappers) → extract → same tests PASS → commit `refactor: share EN time-pattern reject checks`
 
 **Risks:** The two regexes are not interchangeable. `extract` must still call the bare checker when there is no following match (`parsers.ts` 685–686) and the range checker after a following time is merged (695). Do not rename the chrono functions.
 
@@ -664,7 +664,7 @@ export function omitNamedEndpoints(
 
 `deleteNamesFromSnapshot` assigns the result back onto `cache` (same mutation as today). `archiveEntities` uses the result for `postArchiveGraph` and for the graph it saves. Do not skip governance preflight or the archive file write.
 
-- [ ] **Steps:** pin endpoint-either-side removal → replace both inline filters and the snapshot helper body → commit `refactor: share omitNamedEndpoints graph filter`
+- [x] **Steps:** pin endpoint-either-side removal → replace both inline filters and the snapshot helper body → commit `refactor: share omitNamedEndpoints graph filter`
 
 **Risks:** `deleteNamesFromSnapshot` currently mutates `cache.entities` / `cache.relations` in place. Callers that hold those array references must still observe the new arrays (assignment, not an in-place `splice`, matches today). Archive dry-run must not call this on the live graph.
 
@@ -698,6 +698,52 @@ function privateRecordEntity(
 
 `buildTraceEntity` keeps its public signature and its `as LearningTraceEntity` cast. Heuristic and reflection stay `as unknown as Entity` with `confidence: 0.5`. Skill keeps `contentHash` and `confidence: 1`. Do not export this helper from a barrel.
 
-- [ ] **Steps:** characterize one entity per kind (learning_trace, heuristic, reflection, skill, instruction_set) → extract → same objects → commit `refactor: share private memory entity shell`
+- [x] **Steps:** characterize one entity per kind (learning_trace, heuristic, reflection, skill, instruction_set) → extract → same objects → commit `refactor: share private memory entity shell`
 
 **Risks:** `createdAt` / `lastModified` for these literals are the `now` argument, not `toIsoDateTime(now)` (the nested records use `toIsoDateTime`). Do not swap them. `buildInstructionSetEntity` stays exported with the same signature and cast. `applyOp` validation strings stay in the switch.
+
+---
+
+## Implementation outcome
+
+Implemented on branch `cursor/clones-dedup-impl-d0b2` (from plan head `db9b7fc`), one PR to `master` (references plan PR #323).
+
+Every REFACTOR row landed with behavior-pinning tests first (each new test file passed against the pre-refactor code except where it imports a helper that did not exist yet, in which case the pinned public behavior passed and the helper-only cases failed only on the missing symbol):
+
+| Task | Row | Helper | Test file |
+|---|---|---|---|
+| 1 | E1/N1 | `raceAbort` imported from `llmJson` | `tests/unit/agent/learning/llmJson.raceAbort.test.ts` |
+| 2 | N4 | `toLoadItems`, `packLoadedKnowledge`, `prepareLoad`, `loadSkillMatches` | `tests/unit/agent/knowledge/knowledgeLoad.pack.test.ts` |
+| 3 | N3 | `SalienceEngine.fieldRelevance` | `tests/unit/agent/SalienceEngine.test.ts` |
+| 4 | N5 | `QueryCostEstimator.scoreLayerBySignals` | `tests/unit/search/QueryCostEstimator.test.ts` |
+| 5 | N7 | `failInvalidType`, `failInvalidValue` | `tests/unit/utils/schema.failures.test.ts` |
+| 6 | N8, N15 | `DEFAULT_*` module constants | existing constructor tests |
+| 7 | N9 | `loadTasksByIds` | `tests/unit/agent/learning/loadTasksByIds.test.ts` |
+| 8 | N10 | `patchVersionedRecord` (in `versionedWriteFailure.ts`) | existing archive/markResolved pins + microtask-turn pins |
+| 9 | N11 | `emptyTraversal`, `beginTraversal`, `visitNode`, `unvisitedNeighbors` | `tests/unit/core/GraphTraversal.test.ts` (diamond timing pins) |
+| 10 | N13 | `mapGraphXml` | `tests/unit/features/IOManager.xmlGoldens.test.ts` (byte-for-byte) |
+| 11 | N14 | `foldRuleResult` | `tests/unit/utils/EntityValidator.results.test.ts` |
+| 12 | N16 | `applyHashBits(item, mode)` (no per-call closure/array) | `tests/unit/search/BloomFilter.test.ts` (bit-layout pin) |
+| 13 | N17 | `readOptional`, `assignOptional`, `applyOptionalColumns` | `tests/unit/core/PostgreSQLStorage.test.ts` |
+| 14 | N19 | `emitJson`, `addJsonCommand` | `tests/unit/cli/emitJson.test.ts` |
+| 15 | N21 | `clampedHalfLifeScore` delegation | `tests/unit/agent/DecayEngine.test.ts` |
+| 16 | N22 | `inducedSubgraph` | `tests/unit/search/inducedSubgraph.test.ts` |
+| 18 | E2/N2 | `copySimilarDateFields`, `copySimilarTimeFields` | `tests/unit/search/enDate.similarFields.test.ts` |
+| 19 | N12 | `checkAndReturnTimePattern(result, kind)` | `tests/unit/search/enDate.timePatterns.test.ts` |
+| 20 | N26 | `omitNamedEndpoints` | `tests/unit/core/storageCache.test.ts` |
+| 21 | N27 | `privateRecordEntity` | `tests/unit/agent/privateRecordEntity.test.ts` |
+
+N4, N11 and N17 needed a second, larger extract: the first pass moved only the tail, and Task 17's gate still reported the pair. The helpers gained `prepareLoad` / `loadSkillMatches` (N4), `visitNode` + `unvisitedNeighbors` (N11), and the table-driven `applyOptionalColumns` (N17) before those rows dropped.
+
+### Clone counts
+
+`npx -y @danielsimonjr/repo-tools@2.6.0 clones . --out=<outside repo>`, `minNodes=50`, before = `de3f30cf` baseline, after = this branch:
+
+| Metric | Before | After |
+|---|---|---|
+| files | 415 | 416 (one new `@internal` module, `src/agent/knowledge/privateRecordEntity.ts`) |
+| units | 1849 | 1841 |
+| **exact groups** | **2** | **0** |
+| **near pairs** | **27** | **6** |
+
+The six remaining near pairs are exactly the KEEP set: N6 (`ExtractTimezoneAbbrRefiner.refine` / `MergeWeekdayComponentRefiner.refine`), N18 (`LearningTrace.flush` / `KeyedMutex.run`), N20 (`LeafLearnerDeps.editor.edit` / `makeRound`), N23 (`parseVerdicts` / `makeRound`), N24 (`createLeafLearnerDeps` / `makeRound`), N25 (`Bootstrapper.run` / `makeRound`). No REFACTOR row is left.
