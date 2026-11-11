@@ -509,7 +509,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/integration/transaction-isolation.test.ts` | tests | test | 230 |
 | `tests/integration/worker-pool-integration.test.ts` | tests | test | 237 |
 | `tests/integration/workflows.test.ts` | tests | test | 540 |
-| `tests/knowledge-graph.test.ts` | tests | test | 400 |
+| `tests/knowledge-graph.test.ts` | tests | test | 398 |
 | `tests/performance/baselineHelper.ts` | tests | test | 85 |
 | `tests/performance/benchmarks.test.ts` | tests | test | 495 |
 | `tests/performance/compression-benchmarks.test.ts` | tests | test | 308 |
