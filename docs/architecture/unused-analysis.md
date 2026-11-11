@@ -10,9 +10,9 @@
 - **Dormant files** (runtime code on disk, unreachable from any entry/build root): 0
   - **Orphaned (reachable from nothing — delete/wire candidates)**: 0
   - **Test-only (exercised by a test, ships nothing)**: 0
-- **Potentially unused exports**: 175
+- **Potentially unused exports**: 174
   - **Unreferenced anywhere (deletion candidates)**: 5
-  - **Referenced in-module (type contracts / helpers backing live exports)**: 170
+  - **Referenced in-module (type contracts / helpers backing live exports)**: 169
 
 Seeded reachability roots (4):
 
@@ -323,7 +323,6 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 ### `src/core/nodeSqliteAdapter.ts`
 
-- `SqliteError` (class) — 5 in-file refs
 - `SqliteOpenOptions` (interface) — 3 in-file refs
 - `SqliteRunResult` (interface) — 1 in-file ref
 - `SqliteTransactionFunction` (type) — 3 in-file refs
