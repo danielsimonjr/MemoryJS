@@ -81,7 +81,7 @@ function build(captured?: Captured[], written?: string[]): RecordingCommand {
   program
     .name('memory')
     .description('MemoryJS - Knowledge Graph CLI')
-    .version('5.0.0', '-v, --version', 'Output the current version');
+    .version('5.1.0', '-v, --version', 'Output the current version');
   program
     .option('-s, --storage <path>', 'Path to storage file', './memory.jsonl')
     .option('--output-format <type>', 'Console output format (json|table|csv)', 'json')
@@ -297,7 +297,7 @@ const parseOptions = [
 
 const fixture = {
   commanderVersion: '15.0.0',
-  program: { name: 'memory', version: '5.0.0' },
+  program: { name: 'memory', version: '5.1.0' },
   help: helpSnapshots(),
   invocations,
   errors,

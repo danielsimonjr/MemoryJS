@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.1.0] - 2026-11-12
+
 ### Fixed
 
 - **AMR writer checks the staged bytes** (`src/features/amr/{GitRunner,AmrWriter}.ts`, `@experimental`): after `git add`, `writeAmrFile`, `writeAmrFiles` and `commitAmrEdits` check each staged entry against the bytes that they scanned. A staged entry that is not stage 0 with mode `100644` or `100755` (a symlink or a gitlink, also with `core.symlinks=false`) refuses the commit with `stage-mismatch`. A staged blob that differs is read with `git cat-file`, size first, and scanned again with the same patterns; a secret there refuses the commit with `secret`. A refused new file that became a symlink is removed as a link. `GitRunner` allows exactly `ls-files -s -z -- <paths>`, `cat-file -s <oid>` and `cat-file blob <oid>`, and every call adds `--no-replace-objects`, so a replace ref cannot change the bytes that the rescan reads. The allow-list ignores inherited keys: `constructor`, `__proto__` or `toString` as a subcommand is refused. `writeAmrFiles` and `commitAmrEdits` load the secret patterns once per call; a bad patterns file gives `bad-patterns` with no path and stages nothing. Not covered: a process that writes the index between that check and `git commit`.
