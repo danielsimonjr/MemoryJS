@@ -57,9 +57,6 @@
     "src/adapters/RateLimiter.ts": [
       "DEFAULT_MAX_BUCKETS"
     ],
-    "src/adapters/recursaToolBounds.ts": [
-      "byteSize"
-    ],
     "src/agent/AgentEnvDefaults.ts": [
       "DEFAULT_COGNITIVE_LOAD_MAX",
       "DEFAULT_ENTROPY_THRESHOLD_BITS"
@@ -239,6 +236,9 @@
       "IngestMode",
       "IngestTokenUsage",
       "IngestValidationFeedback"
+    ],
+    "src/features/amr/GitRunner.ts": [
+      "StagedVerifier"
     ],
     "src/search/HybridSearchManager.ts": [
       "HybridExecutableLayer"

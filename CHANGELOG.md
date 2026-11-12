@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **AMR writer checks the staged bytes** (`src/features/amr/{GitRunner,AmrWriter}.ts`, `@experimental`): after `git add`, `writeAmrFile`, `writeAmrFiles` and `commitAmrEdits` check each staged entry against the bytes that they scanned. A file that was swapped for a symlink, a gitlink or an unmerged entry refuses the commit with `stage-mismatch`. A staged blob that differs is read with `git cat-file`, size first, and scanned again with the same patterns; a secret there refuses the commit with `secret`. A refused new file that became a symlink is removed as a link. `GitRunner` allows exactly `ls-files -s -z -- <paths>`, `cat-file -s <oid>` and `cat-file blob <oid>`. Not covered: a process that writes the index between that check and `git commit`.
+- **AMR check loop is no longer quadratic in one folder** (`src/features/amr/AmrWriter.ts`, `@experimental`): one write batch or one `commitAmrEdits` call reads each folder once and reuses the listing. On one host, `commitAmrEdits` with 5000 hand-edited files in one folder took 54.6 s before and 48.5 s after. The check loop took 14.4 s before and 7.2 s after. `git add` took 38 s in both runs and is not changed.
+
 ### Documentation
 
 - **Agent Memory Repo plan** (`docs/roadmap/AGENT_MEMORY_REPO_PLAN.md`): gap analysis and a six-phase plan to support the Agent Memory Repo spec (git repo of Markdown memory, `MEMORY.md` index, `[key: value]` metadata, `[[path]]` links). Chosen design: a pure line-model codec, a confined read-only loader and `amr check`, one-way export and import, and a guarded git helper. Three-way sync is deferred.

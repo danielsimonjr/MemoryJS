@@ -23,6 +23,9 @@
  *   - `add -- <path>...`, `restore --staged -- <path>...` and `rm --cached --quiet -- <path>...` (at least
  *     one path; every argument after `--` is a path).
  *   Grouped short options (`-Af`) and long-option prefixes (`--al`) are therefore refused.
+ *   - `ls-files -s -z -- <path>...` (at least one path), `cat-file -s <oid>` and `cat-file blob <oid>`, where
+ *     the oid is 40 or 64 lowercase hex digits and nothing else. Any other `cat-file` or `ls-files` form
+ *     (`-p`, `--textconv`, `--filters`, a ref, no `--`, an extra flag) is refused.
  * - A child that runs past `timeoutMs` is killed with its whole process tree (win32: `taskkill /pid <pid>
  *   /T /F`, `shell: false`; POSIX: the child is spawned detached and the negative pid is killed). `run`
  *   waits for the exit (at most `killGraceMs`) and rejects with code `timeout`. A spawn failure rejects
@@ -36,7 +39,10 @@
  *   Order: `not-root` first (realpath of `rev-parse --show-toplevel` vs realpath of root, case-insensitive
  *   on Windows), then `status --porcelain` (its exit code AND its output).
  * - `gitDir()` resolves the realpath of `rev-parse --absolute-git-dir` (a linked worktree has a `.git` FILE).
- * - `commitFiles(paths, message)` runs `add -- <paths>`, then `diff --cached --name-only -z`.
+ * - `stagedFiles(paths)` runs `ls-files -s -z -- <paths>` and returns `{ path, mode, oid, stage }` per entry.
+ * - `commitFiles(paths, message, verify?)` runs `add -- <paths>`, then `diff --cached --name-only -z`, then
+ *   `stagedFiles`. A staged entry that is not mode `100644`/`100755` at stage 0 (a symlink, a gitlink, an
+ *   unmerged path) gives `stage-mismatch`. The optional `verify(staged)` runs next; a throw stops the commit.
  *   Order: an empty staged set resolves `{ committed: false }` (a no-op); then every staged path must be in
  *   `paths` (a SUBSET check, `/`-separated repo-relative, so an unchanged path is allowed), else it rejects
  *   with `stage-mismatch` and commits nothing. Then `commit -m <commitPrefix + message>`; a non-zero exit
@@ -80,6 +86,11 @@
  *   `renameOver(tmp, target, { prune: false })` from `src/utils/durableWriteFile.ts` (EXDEV and any other
  *   failure gives `io-error`; only this call's temp file is removed) -> realpath the target; outside the
  *   root, remove the written file and return `outside-root` -> `runner.commitFiles([relPath], message)`.
+ * - Staged check: `commitFiles` hands the staged entries to a verify hook. An entry whose blob id equals the
+ *   hash of the scanned bytes passes with no read. Any other entry is read with `cat-file -s` (refused above the
+ *   same size limit as too-large), then `cat-file blob`, and scanned again with the first scan's patterns. A
+ *   hit gives `secret` with its hits. A staged refusal unstages the files and restores the tree as before.
+ *   The check does not cover a process that writes the index between the check and `git commit`.
  * - A failure before the rename changes no file. A failure after the rename (commit refused, no identity,
  *   a hook, a timeout) restores the previous bytes (or removes a new file and the folders this call
  *   created), runs `runner.unstage([relPath])`, and returns the failure reason. The tree is then as before
@@ -93,10 +104,10 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, readFileSync, rmSync, mkdirSync, existsSync, readdirSync, realpathSync, appendFileSync, symlinkSync, promises as fsPromises } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, rmSync, mkdirSync, existsSync, readdirSync, realpathSync, appendFileSync, symlinkSync, lstatSync, unlinkSync, promises as fsPromises } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { GitRunner, AmrGitError, AMR_GIT_DEFAULTS } from '../../../../src/features/amr/GitRunner.js';
+import { GitRunner, AmrGitError, AMR_GIT_DEFAULTS, type GitRunResult, type StagedFile } from '../../../../src/features/amr/GitRunner.js';
 import { DEFAULT_SECRET_PATTERNS, loadSecretPatterns, scanForSecrets } from '../../../../src/features/amr/SecretScanner.js';
 import { writeAmrFile, commitAmrEdits } from '../../../../src/features/amr/AmrWriter.js';
 import { checkAmr, AMR_READER_DEFAULTS } from '../../../../src/features/amr/AmrReader.js';
@@ -911,5 +922,231 @@ describe('commitAmrEdits', () => {
     const res = await run(root, env);
     expect(res).toEqual({ ok: false, reason: 'not-markdown', path: 'a.txt' });
     expect(rawGit(root, env, 'diff', '--cached', '--name-only').trim()).toBe('a.txt');
+  });
+});
+
+/** True when this host can create a file symlink. */
+function canSymlink(): boolean {
+  const dir = tmp('amr-probe-');
+  try {
+    symlinkSync(join(dir, 'target'), join(dir, 'link'), 'file');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** True when a path exists as a link or a file, without following a link. */
+function linkExists(p: string): boolean {
+  try {
+    lstatSync(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Runner that changes the worktree right before its first `add`, the window that the scan cannot see. */
+class RacingRunner extends GitRunner {
+  /** Subcommand pairs of every call, in order. */
+  readonly calls: string[] = [];
+  private readonly race: () => void;
+  private fired = false;
+
+  constructor(root: string, env: Record<string, string>, race: () => void) {
+    super(root, { env });
+    this.race = race;
+  }
+
+  override run(args: readonly string[]): Promise<GitRunResult> {
+    this.calls.push(args.slice(0, 2).join(' '));
+    if (args[0] === 'add' && !this.fired) {
+      this.fired = true;
+      this.race();
+    }
+    return super.run(args);
+  }
+}
+
+describe('staged-content check: the gap between the scan and git add', () => {
+  it('writeAmrFile refuses a secret appended after the scan and before git add', async () => {
+    const { root, env } = makeRepo();
+    const head = rawGit(root, env, 'rev-parse', 'HEAD');
+    const runner = new RacingRunner(root, env, () => appendFileSync(join(root, 'notes', 'a.md'), `- key ${fakeAws()}\n`));
+    const res = await writeAmrFile(root, 'notes/a.md', '- a\n', { runner, message: 'add a' });
+    expect(res).toEqual({ ok: false, reason: 'secret', hits: [{ line: 2, patternId: 'aws-access-key' }] });
+    expect(linkExists(join(root, 'notes'))).toBe(false);
+    expect(rawGit(root, env, 'diff', '--cached', '--name-only')).toBe('');
+    expect(rawGit(root, env, 'status', '--porcelain')).toBe('');
+    expect(rawGit(root, env, 'rev-parse', 'HEAD')).toBe(head);
+    expect(runner.calls).toContain('cat-file -s');
+  });
+
+  it('writeAmrFile refuses a file that grows past the size limit after the scan as too-large', async () => {
+    const { root, env } = makeRepo();
+    const head = rawGit(root, env, 'rev-parse', 'HEAD');
+    const runner = new RacingRunner(root, env, () =>
+      appendFileSync(join(root, 'notes', 'a.md'), 'a'.repeat(AMR_READER_DEFAULTS.maxFileBytes)),
+    );
+    const res = await writeAmrFile(root, 'notes/a.md', '- a\n', { runner, message: 'add a' });
+    expect(res).toEqual({ ok: false, reason: 'too-large' });
+    expect(rawGit(root, env, 'diff', '--cached', '--name-only')).toBe('');
+    expect(rawGit(root, env, 'rev-parse', 'HEAD')).toBe(head);
+  });
+
+  it('writeAmrFile refuses a new file swapped for a symlink before git add and removes the link', async (t) => {
+    if (!canSymlink()) return t.skip();
+    const { root, env } = makeRepo();
+    rawGit(root, env, 'config', 'core.symlinks', 'true');
+    const outside = join(tmp('amr-out-'), 'outside.md');
+    writeFileSync(outside, '- outside\n');
+    const runner = new RacingRunner(root, env, () => {
+      unlinkSync(join(root, 'notes', 'a.md'));
+      symlinkSync(outside, join(root, 'notes', 'a.md'), 'file');
+    });
+    const res = await writeAmrFile(root, 'notes/a.md', '- a\n', { runner, message: 'add a' });
+    expect(res).toMatchObject({ ok: false, reason: 'stage-mismatch' });
+    expect(readFileSync(outside, 'utf8')).toBe('- outside\n');
+    expect(linkExists(join(root, 'notes', 'a.md'))).toBe(false);
+    expect(rawGit(root, env, 'diff', '--cached', '--name-only')).toBe('');
+    expect(rawGit(root, env, 'status', '--porcelain')).toBe('');
+  });
+
+  it('writeAmrFile restores the previous bytes of an existing file after a secret is appended before git add', async () => {
+    const { root, env } = makeRepo();
+    const runner = new RacingRunner(root, env, () => appendFileSync(join(root, 'MEMORY.md'), `- key ${fakeAws()}\n`));
+    const res = await writeAmrFile(root, 'MEMORY.md', '# Memory\n\n- fact\n- more\n', { runner, message: 'x' });
+    expect(res).toMatchObject({ ok: false, reason: 'secret' });
+    expect(readFileSync(join(root, 'MEMORY.md'), 'utf8')).toBe('# Memory\n\n- fact\n');
+    expect(rawGit(root, env, 'diff', '--cached', '--name-only')).toBe('');
+    expect(rawGit(root, env, 'status', '--porcelain')).toBe('');
+  });
+
+  it('writeAmrFile needs no cat-file call when the staged bytes equal the scanned bytes', async () => {
+    const { root, env } = makeRepo();
+    const runner = new RacingRunner(root, env, () => undefined);
+    const res = await writeAmrFile(root, 'a.md', '- a\n', { runner, message: 'a' });
+    expect(res).toMatchObject({ ok: true, committed: true });
+    expect(runner.calls.some((c) => c.startsWith('cat-file'))).toBe(false);
+  });
+
+  it('commitAmrEdits refuses a secret appended after the scan and stages nothing', async () => {
+    const { root, env } = makeRepo();
+    writeFileSync(join(root, 'b.md'), '- b\n');
+    const runner = new RacingRunner(root, env, () => appendFileSync(join(root, 'b.md'), `- key ${fakeAws()}\n`));
+    const res = await commitAmrEdits(root, { runner, message: 'x' });
+    expect(res).toMatchObject({ ok: false, reason: 'secret', path: 'b.md' });
+    expect(rawGit(root, env, 'diff', '--cached', '--name-only')).toBe('');
+    expect(rawGit(root, env, 'log', '--format=%s', '-1').trim()).toBe('init');
+  });
+
+  it('commitAmrEdits refuses a file swapped for a symlink after the scan and stages nothing', async (t) => {
+    if (!canSymlink()) return t.skip();
+    const { root, env } = makeRepo();
+    rawGit(root, env, 'config', 'core.symlinks', 'true');
+    const outside = join(tmp('amr-out-'), 'outside.md');
+    writeFileSync(outside, '- outside\n');
+    writeFileSync(join(root, 'c.md'), '- c\n');
+    const runner = new RacingRunner(root, env, () => {
+      unlinkSync(join(root, 'c.md'));
+      symlinkSync(outside, join(root, 'c.md'), 'file');
+    });
+    const res = await commitAmrEdits(root, { runner, message: 'x' });
+    expect(res).toMatchObject({ ok: false, reason: 'stage-mismatch' });
+    expect(readFileSync(outside, 'utf8')).toBe('- outside\n');
+    expect(rawGit(root, env, 'diff', '--cached', '--name-only')).toBe('');
+    expect(rawGit(root, env, 'log', '--format=%s', '-1').trim()).toBe('init');
+  });
+
+  it('commitAmrEdits commits a CRLF file that core.autocrlf stores as LF, through the blob rescan', async () => {
+    const { root, env } = makeRepo();
+    rawGit(root, env, 'config', 'core.autocrlf', 'true');
+    writeFileSync(join(root, 'crlf.md'), '- a\r\n- b\r\n');
+    const runner = new RacingRunner(root, env, () => undefined);
+    const res = await commitAmrEdits(root, { runner, message: 'crlf' });
+    expect(res).toMatchObject({ ok: true, committed: true });
+    expect(runner.calls).toEqual(expect.arrayContaining(['cat-file -s', 'cat-file blob']));
+    expect(rawGit(root, env, 'show', 'HEAD:crlf.md')).toBe('- a\n- b\n');
+  });
+});
+
+describe('GitRunner staged-content commands', () => {
+  const OID = 'a'.repeat(40);
+
+  it.each([
+    ['cat-file -p', ['cat-file', '-p', OID]],
+    ['cat-file --textconv', ['cat-file', '--textconv', 'blob', OID]],
+    ['cat-file --filters', ['cat-file', '--filters', OID]],
+    ['cat-file blob with a ref', ['cat-file', 'blob', 'HEAD:x']],
+    ['cat-file -s with a ref', ['cat-file', '-s', 'HEAD']],
+    ['cat-file -s with an uppercase oid', ['cat-file', '-s', OID.toUpperCase()]],
+    ['cat-file -s with a 41-digit oid', ['cat-file', '-s', 'a'.repeat(41)]],
+    ['cat-file blob with an extra argument', ['cat-file', 'blob', OID, OID]],
+    ['ls-files without --', ['ls-files', '-s', '-z', 'a.md']],
+    ['ls-files without -s', ['ls-files', '-z', '--', 'a.md']],
+    ['ls-files without -z', ['ls-files', '-s', '--', 'a.md']],
+    ['ls-files with no path', ['ls-files', '-s', '-z', '--']],
+    ['ls-files with an extra flag', ['ls-files', '-s', '-z', '--debug', '--', 'a.md']],
+    ['ls-files with -o', ['ls-files', '-o', '-s', '-z', '--', 'a.md']],
+  ])('refuses %s before any spawn', async (_name, args) => {
+    // A missing binary would give `spawn`. The `refused` code shows that nothing was spawned.
+    const runner = new GitRunner(tmp('amr-g-'), { gitBinary: join(tmp('amr-nogit-'), 'no-such-git') });
+    await expect(runner.run(args)).rejects.toMatchObject({ code: 'refused' });
+  });
+
+  it('runs the exact forms: ls-files, cat-file -s and cat-file blob', async () => {
+    const { root, env } = makeRepo();
+    writeFileSync(join(root, 'a.md'), '- a\n');
+    rawGit(root, env, 'add', '--', 'a.md');
+    const runner = new GitRunner(root, { env });
+    const ls = await runner.run(['ls-files', '-s', '-z', '--', 'a.md']);
+    expect(ls.code).toBe(0);
+    const oid = ls.stdout.split('\t')[0].split(' ')[1] ?? '';
+    expect(oid).toMatch(/^[0-9a-f]{40}$/);
+    expect(await runner.run(['cat-file', '-s', oid])).toMatchObject({ code: 0, stdout: '4\n' });
+    expect(await runner.run(['cat-file', 'blob', oid])).toMatchObject({ code: 0, stdout: '- a\n' });
+  });
+
+  it('commitFiles hands the staged entries to the verify hook before the commit', async () => {
+    const { root, env } = makeRepo();
+    writeFileSync(join(root, 'a.md'), '- a\n');
+    const seen: StagedFile[][] = [];
+    const res = await new GitRunner(root, { env }).commitFiles(['a.md'], 'x', async (staged) => {
+      seen.push(staged);
+    });
+    expect(res.committed).toBe(true);
+    expect(seen).toEqual([[{ path: 'a.md', mode: '100644', stage: 0, oid: expect.stringMatching(/^[0-9a-f]{40}$/) }]]);
+  });
+
+  it('a verify hook that throws stops the commit and leaves the paths staged', async () => {
+    const { root, env } = makeRepo();
+    writeFileSync(join(root, 'a.md'), '- a\n');
+    const head = rawGit(root, env, 'rev-parse', 'HEAD');
+    await expect(
+      new GitRunner(root, { env }).commitFiles(['a.md'], 'x', async () => {
+        throw new Error('refused by hook');
+      }),
+    ).rejects.toThrow('refused by hook');
+    expect(rawGit(root, env, 'rev-parse', 'HEAD')).toBe(head);
+    expect(rawGit(root, env, 'diff', '--cached', '--name-only').trim()).toBe('a.md');
+  });
+
+  it('commitFiles refuses a staged symlink as stage-mismatch and commits nothing', async (t) => {
+    if (!canSymlink()) return t.skip();
+    const { root, env } = makeRepo();
+    rawGit(root, env, 'config', 'core.symlinks', 'true');
+    symlinkSync('MEMORY.md', join(root, 'link.md'), 'file');
+    await expect(new GitRunner(root, { env }).commitFiles(['link.md'], 'x')).rejects.toMatchObject({ code: 'stage-mismatch' });
+    expect(rawGit(root, env, 'log', '--format=%s', '-1').trim()).toBe('init');
+  });
+
+  it('commitFiles refuses a staged gitlink (nested repository) as stage-mismatch', async () => {
+    const { root, env } = makeRepo();
+    const sub = join(root, 'sub');
+    mkdirSync(sub);
+    rawGit(sub, env, 'init', '-q');
+    rawGit(sub, env, 'commit', '-q', '--allow-empty', '-m', 'sub');
+    await expect(new GitRunner(root, { env }).commitFiles(['sub'], 'x')).rejects.toMatchObject({ code: 'stage-mismatch' });
+    expect(rawGit(root, env, 'log', '--format=%s', '-1').trim()).toBe('init');
   });
 });

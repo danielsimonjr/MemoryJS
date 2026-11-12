@@ -3,18 +3,18 @@
  * and commits only that file. A failure after the write restores the previous state.
  *
  * Order: path rules, size, secret scan, root check, clean tree, confinement, folders, temp file,
- * rename, commit. One call at a time runs for each repository root in this process.
+ * rename, add, staged check, commit. One call at a time runs for each repository root in this process.
  *
  * @module features/amr/AmrWriter
  * @experimental
  */
 import { promises as fs } from 'node:fs';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { foldPathCase, samePath, strictlyInside } from '../../utils/confinedPath.js';
 import { renameOver } from '../../utils/durableWriteFile.js';
 import { AMR_READER_DEFAULTS, MARKDOWN_SUFFIX, checkAmrLink } from './AmrReader.js';
-import { AmrGitError, type GitRunner } from './GitRunner.js';
+import { AmrGitError, type GitRunner, type StagedFile } from './GitRunner.js';
 import { loadSecretPatterns, scanForSecrets, type SecretHit, type SecretPattern } from './SecretScanner.js';
 
 /** Why a write is refused or fails. */
@@ -88,15 +88,39 @@ interface Plan {
   realRoot: string;
 }
 
+/** Exact entry names of each folder that one planning pass has read, keyed by the folder path. */
+type DirNames = Map<string, Set<string>>;
+
+/**
+ * Tell whether a folder has an entry with this exact name (no case folding). With a cache, the first call
+ * for a folder reads it into a set, and later calls of the same pass reuse the set. Without a cache, each
+ * call reads the folder.
+ * @param dir - Folder path.
+ * @param name - Exact entry name.
+ * @param cache - Listings of the pass, or undefined for one call.
+ * @returns True when the folder has the entry.
+ */
+async function hasEntry(dir: string, name: string, cache: DirNames | undefined): Promise<boolean> {
+  if (cache === undefined) return (await fs.readdir(dir)).includes(name);
+  let names = cache.get(dir);
+  if (names === undefined) {
+    names = new Set(await fs.readdir(dir));
+    cache.set(dir, names);
+  }
+  return names.has(name);
+}
+
 /**
  * Confine the target before any folder is made. Each existing segment must have exactly the
  * on-disk spelling (no case variant, no 8.3 short name). The deepest existing ancestor must be
- * inside the real root, and no segment may be an ignored name.
+ * inside the real root, and no segment may be an ignored name. The folder listings come from `dirs`.
+ * All planning of a batch runs before its first rename, so no listing in `dirs` goes stale.
  * @param root - Memory root.
  * @param relPath - Checked path with `/`.
+ * @param dirs - Folder listings of the pass, or undefined for one call.
  * @returns The plan, or the refusal reason.
  */
-async function planTarget(root: string, relPath: string): Promise<Plan | { reason: AmrWriteReason }> {
+async function planTarget(root: string, relPath: string, dirs: DirNames | undefined): Promise<Plan | { reason: AmrWriteReason }> {
   const top = resolve(root);
   const realRoot = await fs.realpath(top);
   const segments = relPath.split('/');
@@ -105,7 +129,7 @@ async function planTarget(root: string, relPath: string): Promise<Plan | { reaso
   for (const s of segments) {
     const here = join(parent, s);
     if ((await lstatOrNull(here)) === null) break;
-    if (!(await fs.readdir(parent)).includes(s)) return { reason: 'invalid-path' };
+    if (!(await hasEntry(parent, s, dirs))) return { reason: 'invalid-path' };
     parent = here;
   }
   const target = join(top, ...segments);
@@ -137,8 +161,19 @@ async function planTarget(root: string, relPath: string): Promise<Plan | { reaso
  * @returns The refusal reason, or null when the writer accepts the place.
  */
 export async function checkAmrWritePath(root: string, relPath: string): Promise<AmrWriteReason | null> {
+  return checkWritePathWith(root, relPath, undefined);
+}
+
+/**
+ * {@link checkAmrWritePath} with the folder listings of one pass.
+ * @param root - Memory root.
+ * @param relPath - Repo-relative path with `/`.
+ * @param dirs - Folder listings of the pass, or undefined for one call.
+ * @returns The refusal reason, or null when the writer accepts the place.
+ */
+async function checkWritePathWith(root: string, relPath: string, dirs: DirNames | undefined): Promise<AmrWriteReason | null> {
   try {
-    const plan = await planTarget(root, relPath);
+    const plan = await planTarget(root, relPath, dirs);
     return 'reason' in plan ? plan.reason : null;
   } catch {
     return 'io-error';
@@ -244,8 +279,11 @@ async function restoreTouched(runner: GitRunner, gitDir: string, touched: Touche
       if (t.prev !== null) {
         await replaceWith(gitDir, t.target, t.prev, t.realParent);
       } else {
+        // A file that was swapped for a symlink before `git add` is removed as a link: unlink does not follow it.
         const st = await lstatOrNull(t.target);
-        if (st !== null && st.isFile() && samePath(await fs.realpath(dirname(t.target)), t.realParent)) await fs.unlink(t.target);
+        if (st !== null && (st.isFile() || st.isSymbolicLink()) && samePath(await fs.realpath(dirname(t.target)), t.realParent)) {
+          await fs.unlink(t.target);
+        }
       }
       await removeCreated(t.created);
     } catch {
@@ -346,6 +384,77 @@ export function checkFileText(
   return null;
 }
 
+/** Git blob ids of the bytes that the writer scanned, under both object formats. */
+interface ScannedHash {
+  /** Blob id under sha1: 40 hex digits. */
+  sha1: string;
+  /** Blob id under sha256: 64 hex digits. */
+  sha256: string;
+}
+
+/**
+ * Hash bytes the way git hashes a blob, for both object formats.
+ * @param bytes - Bytes that the writer scanned.
+ * @returns The two blob ids.
+ */
+function scannedHash(bytes: Buffer): ScannedHash {
+  const blob = (algo: 'sha1' | 'sha256'): string => createHash(algo).update(`blob ${bytes.length}\0`).update(bytes).digest('hex');
+  return { sha1: blob('sha1'), sha256: blob('sha256') };
+}
+
+/** A staged file that the writer refuses after `git add`. The caller unstages it. */
+class StagedRefusal extends Error {
+  /** Reason of the refusal. */
+  readonly reason: AmrWriteReason;
+  /** Repo-relative path of the file. */
+  readonly path: string;
+  /** Secret hits, for a `secret` refusal. */
+  readonly hits: SecretHit[] | undefined;
+
+  /**
+   * Make a refusal of one staged file.
+   * @param reason - Reason of the refusal.
+   * @param path - Repo-relative path.
+   * @param hits - Secret hits, when there are some.
+   */
+  constructor(reason: AmrWriteReason, path: string, hits?: SecretHit[]) {
+    super(reason);
+    this.name = 'StagedRefusal';
+    this.reason = reason;
+    this.path = path;
+    this.hits = hits;
+  }
+}
+
+/**
+ * Check the staged entries of one commit against the bytes that the writer scanned. An entry whose blob
+ * id equals the scanned bytes is verified with no read. Any other entry is read by `git cat-file`: its
+ * size first (against the same limit as the first scan), then its text, which goes through
+ * {@link checkFileText} as the first scan did.
+ * @param runner - Git runner that reads the blob.
+ * @param scanned - Scanned hashes by repo-relative path.
+ * @param message - Commit message, scanned again with the path as the first scan did.
+ * @param patternsOpt - Secret patterns of the first scan, or undefined for the configured ones.
+ * @param staged - Staged entries of the commit.
+ * @returns Nothing. It throws {@link StagedRefusal} for a file that must not be committed.
+ */
+async function verifyStaged(
+  runner: GitRunner,
+  scanned: ReadonlyMap<string, ScannedHash>,
+  message: string,
+  patternsOpt: readonly SecretPattern[] | undefined,
+  staged: StagedFile[],
+): Promise<void> {
+  for (const f of staged) {
+    const hash = scanned.get(f.path);
+    if (hash === undefined) throw new StagedRefusal('stage-mismatch', f.path);
+    if ((f.oid.length === 64 ? hash.sha256 : hash.sha1) === f.oid) continue;
+    if ((await runner.blobSize(f.oid)) > sizeLimitOf(f.path)) throw new StagedRefusal('too-large', f.path);
+    const refused = checkFileText(f.path, await runner.blobText(f.oid), message, patternsOpt);
+    if (refused !== null) throw new StagedRefusal(refused.reason, f.path, refused.hits);
+  }
+}
+
 /** One file of a batch write. */
 export interface AmrFileText {
   /** Repo-relative path with `/`. It must end in `.md`. */
@@ -366,7 +475,8 @@ export type AmrBatchResult =
 /**
  * Write several AMR files and commit them together, with one commit. The guards are those of
  * {@link writeAmrFile}. Every file is checked and planned before the first rename. A failure after a
- * rename restores every file this call touched and unstages them. The restore checks the folder of
+ * rename restores every file this call touched and unstages them. After `git add`, each staged entry is
+ * checked against the scanned bytes, as {@link commitAmrEdits} does. The restore checks the folder of
  * each file again before the restore writes or removes anything.
  * @param root - Memory root (the repository top). The root must be the runner root.
  * @param files - Files to write. An empty list writes nothing and commits nothing.
@@ -416,10 +526,11 @@ async function writeBatchLocked(
   if (gitDir === null) return { ok: false, reason: 'git-failed' };
 
   const plans: Array<{ file: AmrFileText; plan: Plan }> = [];
+  const dirs: DirNames = new Map();
   for (const file of files) {
     let plan: Plan | { reason: AmrWriteReason };
     try {
-      plan = await planTarget(root, file.path);
+      plan = await planTarget(root, file.path, dirs);
     } catch {
       return { ok: false, reason: 'io-error', path: file.path };
     }
@@ -428,10 +539,11 @@ async function writeBatchLocked(
   }
 
   const touched: Touched[] = [];
-  const fail = async (reason: AmrWriteReason, path?: string): Promise<AmrBatchResult> => {
+  const fail = async (reason: AmrWriteReason, path?: string, hits?: SecretHit[]): Promise<AmrBatchResult> => {
     const left = await restoreTouched(opts.runner, gitDir, touched);
     const res: AmrBatchResult = { ok: false, reason };
     if (path !== undefined) res.path = path;
+    if (hits !== undefined) res.hits = hits;
     if (left.length > 0) {
       res.reason = 'outside-root';
       res.left = left;
@@ -454,13 +566,15 @@ async function writeBatchLocked(
     }
   }
 
+  const scanned = new Map<string, ScannedHash>();
+  for (const f of files) scanned.set(f.path, scannedHash(Buffer.from(f.text, 'utf8')));
   try {
-    const res = await opts.runner.commitFiles(
-      files.map((f) => f.path),
-      opts.message,
+    const res = await opts.runner.commitFiles(files.map((f) => f.path), opts.message, (staged) =>
+      verifyStaged(opts.runner, scanned, opts.message, opts.patterns, staged),
     );
     return res.committed ? { ok: true, committed: true, sha: res.sha } : { ok: true, committed: false };
   } catch (e) {
+    if (e instanceof StagedRefusal) return fail(e.reason, e.path, e.hits);
     return fail(e instanceof AmrGitError && e.code === 'stage-mismatch' ? 'stage-mismatch' : 'git-failed');
   }
 }
@@ -481,8 +595,11 @@ const UNSAFE_STATUS = new Set(['D', 'R', 'C', 'U']);
  * untracked) must pass the guards of {@link writeAmrFiles}. One bad path refuses the whole commit and
  * stages nothing. A deletion, a rename, a copy or an unmerged path refuses too. A file with a staged
  * change and a later worktree change refuses with `not-clean`. A failed commit unstages the files, so a
- * change staged before the call is not staged after the call. The secret scan reads each file before
- * `git add` reads the file again, so a change by another process between the two reads is not scanned.
+ * change staged before the call is not staged after the call. After `git add`, each staged entry is
+ * checked against the bytes that were scanned. An entry with the same blob id passes. Any other entry
+ * is read again with `git cat-file`, its size first, and scanned again. A symlink, a gitlink or a secret
+ * in the staged text refuses the commit, and the files are unstaged. Not covered: a process that writes
+ * the index between that check and `git commit`.
  * An empty changed set is a no-op. The root must be the repository top.
  * @param root - Memory root (the repository top).
  * @param opts - Runner and commit message.
@@ -526,21 +643,28 @@ function parsePorcelain(out: string): Array<{ path: string; x: string; y: string
  * @param message - Commit message.
  * @returns The refusal, or null when the file may be committed.
  */
-async function checkEditedFile(root: string, rel: string, message: string): Promise<AmrFileRefusal | null> {
+async function checkEditedFile(
+  root: string,
+  rel: string,
+  message: string,
+  dirs: DirNames,
+  scanned: Map<string, ScannedHash>,
+): Promise<AmrFileRefusal | null> {
   if (!checkAmrLink(rel).ok) return { ok: false, reason: 'invalid-path' };
   if (!MARKDOWN_SUFFIX.test(rel)) return { ok: false, reason: 'not-markdown' };
-  const place = await checkAmrWritePath(root, rel);
+  const place = await checkWritePathWith(root, rel, dirs);
   if (place !== null) return { ok: false, reason: place };
   const file = join(resolve(root), ...rel.split('/'));
-  let text: string;
+  let bytes: Buffer;
   try {
     // The size check comes before the read, so a huge file is never read into memory.
     if ((await fs.stat(file)).size > sizeLimitOf(rel)) return { ok: false, reason: 'too-large' };
-    text = await fs.readFile(file, 'utf8');
+    bytes = await fs.readFile(file);
   } catch {
     return { ok: false, reason: 'io-error' };
   }
-  return checkFileText(rel, text, message, undefined);
+  scanned.set(rel, scannedHash(bytes));
+  return checkFileText(rel, bytes.toString('utf8'), message, undefined);
 }
 
 /**
@@ -573,16 +697,23 @@ async function commitEditsLocked(root: string, realRoot: string, opts: AmrEditOp
     if (e.x !== ' ' && e.x !== '?' && e.y !== ' ') return { ok: false, reason: 'not-clean', path: e.path };
   }
   const paths = entries.map((e) => e.path);
+  const dirs: DirNames = new Map();
+  const scanned = new Map<string, ScannedHash>();
   for (const rel of paths) {
-    const refused = await checkEditedFile(root, rel, opts.message);
+    const refused = await checkEditedFile(root, rel, opts.message, dirs, scanned);
     if (refused !== null) return { ...refused, path: rel };
   }
 
   try {
-    const res = await opts.runner.commitFiles(paths, opts.message);
+    const res = await opts.runner.commitFiles(paths, opts.message, (staged) =>
+      verifyStaged(opts.runner, scanned, opts.message, undefined, staged),
+    );
     return res.committed ? { ok: true, committed: true, sha: res.sha } : { ok: true, committed: false };
   } catch (e) {
     await opts.runner.unstage(paths);
+    if (e instanceof StagedRefusal) {
+      return e.hits !== undefined ? { ok: false, reason: e.reason, path: e.path, hits: e.hits } : { ok: false, reason: e.reason, path: e.path };
+    }
     return { ok: false, reason: e instanceof AmrGitError && e.code === 'stage-mismatch' ? 'stage-mismatch' : 'git-failed' };
   }
 }
