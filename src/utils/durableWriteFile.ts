@@ -119,8 +119,12 @@ export async function durableWriteFile(
  * interference with backoff, refuses to replace a symbolic link after
  * interference, and otherwise throws with the temp file left in place.
  * Never writes into `target`.
+ * @param tmpPath - Synced temp file.
+ * @param target - Final file.
+ * @param opts - `prune: false` keeps every other `<target>.tmp.*` file after the last failed try.
+ *   Use it when the temp file is not in the target folder. The default is `true`.
  */
-export async function renameOver(tmpPath: string, target: string): Promise<void> {
+export async function renameOver(tmpPath: string, target: string, opts: { prune?: boolean } = {}): Promise<void> {
   for (let attempt = 0; ; attempt++) {
     try {
       await fs.rename(tmpPath, target);
@@ -129,7 +133,7 @@ export async function renameOver(tmpPath: string, target: string): Promise<void>
       if (!isWindowsRenameInterference(error)) throw error;
       await refuseSymlinkTarget(target, error);
       if (attempt >= RENAME_RETRY_DELAYS_MS.length) {
-        await pruneEarlierFailedTmps(tmpPath, target);
+        if (opts.prune !== false) await pruneEarlierFailedTmps(tmpPath, target);
         throw new DurableReplaceError(target, tmpPath, error);
       }
       await delay(RENAME_RETRY_DELAYS_MS[attempt]!);

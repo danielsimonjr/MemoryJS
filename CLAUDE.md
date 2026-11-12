@@ -326,6 +326,7 @@ Query logging: `MEMORY_QUERY_LOGGING` (false), `MEMORY_QUERY_LOG_FILE`, `MEMORY_
 |----------|--------|---------|
 | `MEMORY_GOVERNANCE_ENABLED` | `'true'` (strict literal match) | unset = manual-only | When `'true'`, `ManagerContext` wires `ctx.governanceManager`'s policy + audit log into `EntityManager` mutations (Sec1 enforcement chokepoint): denied ops throw `GovernanceError`, allowed ops append committed audit entries. Unset = `ctx.governanceManager` still usable manually via `withTransaction`, but plain `EntityManager` writes bypass governance (zero overhead). Read once at first `entityManager` access. |
 | `MEMORY_AUDIT_LOG_FILE` | Path for audit JSONL | `<basename>-audit.jsonl` sidecar next to the storage file |
+| `MEMORY_AMR_SECRET_PATTERNS_FILE` | Path to a JSON array of `{ id, source, flags? }` | unset = built-in patterns. Replaces the AMR secret-scan patterns. An unreadable or invalid file fails loudly; the built-in patterns are not used then. |
 | `MEMORY_FRESHNESS_TTL_DEFAULT_HOURS` | Number | `168`. Listed by `memory diag` only; **not read** by `FreshnessManager` (its half-life is the `FreshnessManagerConfig` constructor option, default 168) |
 
 ### Search & observation-write toggles

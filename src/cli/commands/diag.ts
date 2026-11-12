@@ -61,6 +61,7 @@ export const ENV_VAR_CATALOG: Array<{ name: string; defaultValue: string; descri
   { name: 'MEMORY_GOVERNANCE_ENABLED', defaultValue: 'false', description: 'Enable governance policy enforcement' },
   { name: 'MEMORY_AUDIT_LOG_FILE', defaultValue: '(unset)', description: 'Path for audit JSONL trail' },
   { name: 'MEMORY_FRESHNESS_TTL_DEFAULT_HOURS', defaultValue: '168', description: 'Default freshness TTL (hours)' },
+  { name: 'MEMORY_AMR_SECRET_PATTERNS_FILE', defaultValue: '(built-in patterns)', description: 'JSON file that replaces the AMR secret-scan patterns' },
   // Agent role + advanced
   { name: 'MEMORY_AGENT_ROLE', defaultValue: '(unset)', description: 'researcher | planner | executor | reviewer | coordinator' },
   { name: 'MEMORY_ENTROPY_FILTER_ENABLED', defaultValue: 'false', description: 'Enable low-entropy observation filter' },
