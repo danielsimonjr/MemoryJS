@@ -701,3 +701,45 @@ export async function checkAmr(root: string, opts: AmrCheckOptions = {}): Promis
   });
   return { files: walked.length, issues: unique };
 }
+
+/**
+ * List every Markdown file below a memory root, with no file budget. The walk skips the ignored
+ * names and symbolic links, and reports each path that the reader refuses and each folder that it
+ * cannot list to `onSkip`. The `.md` suffix matches in any case. It never reads file text.
+ * @param root - Memory root (absolute).
+ * @param opts - Partial reader options; only `ignore` applies.
+ * @param onSkip - Optional; receives each skipped path and the reason.
+ * @returns Repo-relative paths with `/`, sorted by code point.
+ * @throws Error when the root itself cannot be listed.
+ */
+export async function walkAmrMarkdown(
+  root: string,
+  opts: Partial<AmrReaderOptions> = {},
+  onSkip?: (path: string, reason: string) => void,
+): Promise<string[]> {
+  const ignored = new Set(resolveOptions(opts).ignore.map((n) => n.toLowerCase()));
+  const out: string[] = [];
+  const visit = async (dir: string): Promise<void> => {
+    let entries;
+    try {
+      entries = await fs.readdir(join(root, ...dir.split('/').filter((s) => s !== '')), { withFileTypes: true });
+    } catch (e) {
+      if (dir === '') throw e;
+      const f = fsFailure(e);
+      onSkip?.(dir, f.reason === 'unreadable' ? f.code : f.reason);
+      return;
+    }
+    for (const ent of entries) {
+      if (ent.isSymbolicLink() || ignored.has(ent.name.toLowerCase())) continue;
+      const rel = dir === '' ? ent.name : `${dir}/${ent.name}`;
+      if (ent.isDirectory()) await visit(rel);
+      else if (ent.isFile() && /\.md$/i.test(ent.name)) {
+        const reason = checkAmrPath(rel);
+        if (reason === null) out.push(rel);
+        else onSkip?.(rel, reason);
+      }
+    }
+  };
+  await visit('');
+  return out.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+}

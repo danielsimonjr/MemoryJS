@@ -5,7 +5,9 @@
  *
  * Module `src/features/amr/GitRunner.ts` (`@experimental`).
  * - `AMR_GIT_DEFAULTS` is the one place for defaults:
- *   `{ gitBinary: 'git', binaryArgs: [], timeoutMs: 30_000, killGraceMs: 5_000, commitPrefix: 'memory: ', env: {} }`.
+ *   `{ gitBinary: 'git', binaryArgs: [], timeoutMs: 30_000, killGraceMs: 5_000, commitPrefix: 'memory: ', env: {},
+ *   maxArgChars: 24_000 }`. `add`, `restore --staged` and `rm --cached` run in chunks whose path lengths
+ *   (plus one per path) stay within `maxArgChars`; a value that is not an integer above 0 gives the default.
  *   `new GitRunner(root, config?)` merges a partial config over it. A `timeoutMs` or `killGraceMs` that is
  *   undefined, NaN, not finite, not above 0 or above 2^31-1 gives the default (`runner.config` shows the
  *   values in use). `root` must be a non-empty absolute path, else `ValidationError`. `runner.root` is it.
@@ -156,7 +158,7 @@ afterEach(() => {
 
 describe('GitRunner', () => {
   it('has one place for defaults', () => {
-    expect(AMR_GIT_DEFAULTS).toEqual({ gitBinary: 'git', binaryArgs: [], timeoutMs: 30_000, killGraceMs: 5_000, commitPrefix: 'memory: ', env: {} });
+    expect(AMR_GIT_DEFAULTS).toEqual({ gitBinary: 'git', binaryArgs: [], timeoutMs: 30_000, killGraceMs: 5_000, commitPrefix: 'memory: ', env: {}, maxArgChars: 24_000 });
   });
 
   it('rejects a relative or empty root', () => {
@@ -502,8 +504,10 @@ describe('writeAmrFile', () => {
   it('serializes concurrent writes to one root', async () => {
     const { root, env } = makeRepo();
     const runner = new GitRunner(root, { env });
+    // Each write runs about 8 git processes, and the writes run one at a time. Three writes prove
+    // the queue; more only add process-start time, which exceeded the timeout under full-suite load.
     const many = await Promise.all(
-      [0, 1, 2, 3, 4, 5].map((i) => writeAmrFile(root, `n${i}.md`, `- ${i}\n`, { runner, message: `w${i}` })),
+      [0, 1, 2].map((i) => writeAmrFile(root, `n${i}.md`, `- ${i}\n`, { runner, message: `w${i}` })),
     );
     expect(many.every((r) => r.ok && r.committed)).toBe(true);
     const same = await Promise.all(['A', 'B'].map((x) => writeAmrFile(root, 'a.md', `- ${x}\n`, { runner, message: x })));

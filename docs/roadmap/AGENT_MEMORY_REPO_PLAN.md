@@ -142,24 +142,43 @@ The write guards come before the first write, so the scanner runs on every write
 
 ### Phase 4: one-way export and import (dry-run by default)
 
-- Write the front matter parser: it reads scalars and flow lists from the raw front matter string of the codec. It adds no YAML dependency.
-- Write `exportAmr(graph, root, opts)`:
-  - Filter with a type allow-list from config, skip `isLatest: false`, skip archived and private entities, and skip observations that are not valid now. Report each count.
-  - Create new files. Edit existing files in place through the line model, and change only the bullets that changed.
-  - Delete no file. Refuse a file that does not parse.
-  - Build `## Index` from per-type hub notes and the top N by importance. N and a token cap come from config.
-- Write `importAmr(root, opts)`:
-  - Apply each entity through `EntityManager` and `ObservationManager`, each in its own try and catch, with one report entry per entity.
-  - The default mode is `add-only`. The `reconcile` mode lets the file win and replaces `observationMeta` for each synced entity.
-  - Enforce the 5000-character observation cap and the reserved names, and report each failure.
-  - Report dangling links and create nothing for them. Do not use `mergeImportedGraph`.
-  - Default to one graph per repo. An optional `namespace` prefixes names and sets `projectId`.
+- Front matter (`AmrFrontMatter.ts`): `parseFrontMatter` reads `key: value` scalars and `key: [a, b]` lists from the raw front matter string. A double-quoted value decodes `\"` and `\\`. A single-quoted value is taken as is. Blank and `#` lines are skipped. Any other line gives one warning with its line number. A repeated key keeps its last value and gives a warning. A key that is not an `Object.prototype` name and matches `^[A-Za-z][\w-]*$` is accepted.
+- `renderFrontMatter` quotes a value that holds `:`, `#`, `,`, `[`, `]`, `"`, `'`, `\\`, edge whitespace, or that is empty. A value with a line separator or a control character throws `ValidationError`. The caller drops that value with a warning.
+- Batch writer: `writeAmrFiles` checks every file, then the root, then the clean tree, then every target. It makes one commit. A refusal before the first rename writes nothing and names the refused file. A failure after a rename restores every file that the call touched. `writeAmrFile` is a batch of one file, so `writeAmrFile` and `writeAmrFiles` use one write and restore path. Before each restore write or unlink, the folder of the file must still have its recorded real path. When the folder moved, the writer touches nothing for that file and lists the file in `left`. The git runner stages and unstages paths in chunks of at most `maxArgChars` characters (default 24000).
+- Name of a file: the front matter `name`, else the path without `.md`. With a namespace, the name is `<namespace>/<that>`. Import and export use this one rule. The export looks up a graph entity by the name that the file-name rule gives for its file: the NFC name, with the namespace in front. The front matter `name` holds that name without the namespace. A name that front matter cannot hold takes the name of its slug path.
+- Path of a new entity: a plain ASCII name of lower-case letters, digits, `_`, `-` and `/` gives `<name>.md`. Any other name gives `<slug(type)>/<slug(name)>.md`. A taken path gets `-2`, `-3`, and so on. A segment is at most 100 characters. The reserved segments are the Windows device names (`com0` to `com9` and `lpt0` to `lpt9` included) and `node_modules`. A type slug `_hubs` becomes `_hubs-entity`.
+- Export (`exportAmr`):
+  - Skip order: type, `isLatest: false`, archived, private. Then each observation: outside its validity window, or a secret hit. Each skip is counted.
+  - An entity with a file edits that file. Each file is parsed first. A file that does not parse is refused.
+  - A matched bullet is rewritten only when a graph metadata key is missing from it or has another value. A key that only the file holds stays. The `added` key is compared only when the observation has `recordedAt`.
+  - A new bullet goes after the last top-level list item and its block. A new relation goes at the end of `## Relations`.
+  - A relation to a skipped entity is not written. A relation type or a target that the bullet format cannot hold is dropped with a warning.
+  - Every read uses the confined reader. A file that cannot be read is refused. It is never treated as missing.
+  - The writer checks (`checkFileText` and the read-only `checkAmrWritePath`) run on every entity, hub and index file in both modes. One refused file does not stop the other files.
+  - No bullet is removed. Stale bullets are counted.
+  - `MEMORY.md` gets one `## Index` section. Hub notes `_hubs/<type>.md` list each type. The top N entities by importance follow, within a size cap. The document parser finds the index section, so fences, the BOM and the line ends are kept. A hub is generated from the exported list, so the list must hold every entity of each exported type.
+  - `dryRun` (the default) writes nothing and returns the same report as a real run.
+- Import (`importAmr`):
+  - Each entity runs in its own try and catch, and each file gets one report entry. A duplicate name is an error entry.
+  - Mode `add-only` (the default) creates a missing entity and adds only missing observations. Mode `reconcile` lets the file win. Relations that this file created are removed when the file no longer holds them. Reconcile keeps each observation that the export does not write (outside its validity window, secret-bearing, too long) and the graph-only metadata of a matched observation. Add-only keeps the metadata of the observations that it adds.
+  - A file that cannot be read or parsed is one error entry. The entity schema and the relation schema run in both modes. Relations are created in chunks of 1000. A link to a file with an error is still held.
+  - Relations are created in a second pass, after all entities exist. A link to no file is a dangling link and creates nothing. Links to `MEMORY` and `_hubs/` are ignored.
+  - An observation above 5000 characters is an error for its entity.
+  - The module uses `EntityManager`, `ObservationManager` and `RelationManager`. It never uses `mergeImportedGraph`.
+  - An optional `namespace` prefixes names and sets `projectId`.
 - Tests:
   - A file with prose, a heading, a fenced block and two bullets: change one observation and add one, and the diff touches exactly two lines.
   - An AutoLinker edge survives when its `[[link]]` is removed.
   - An ingested observation with a newline exports as one line and is kept on re-import.
 
-### Phase 5: CLI, tool adapter and docs
+### Phase 5: declutter and simplify the AMR code
+
+- Run `repo-tools clones .` over the Phase 1 to 4 code in `src/features/amr/` and `src/utils/confinedPath.ts`.
+- Read both bodies of each reported pair. Merge each real duplicate into one function, tests first. Record each declined pair and its reason.
+- Run the code simplifier on the same files. Keep every public signature and every test result.
+- Gates: the same as Phase 6. Record the clone counts before and after in the five-axis line of `todo.md`.
+
+### Phase 6: CLI, tool adapter and docs
 
 - Add the CLI group `memory amr context|check|export|import|commit` and register it in `src/cli/commands/index.ts`.
 - Write `createAmrTools(ctx, deps)` in `src/adapters/`, modelled on `RecursaToolAdapter`.

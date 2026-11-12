@@ -1,8 +1,8 @@
 metadata:
   name: "@danielsimonjr/memoryjs"
-  totalFiles: 423
+  totalFiles: 425
   totalModules: 12
-  totalExports: 3023
+  totalExports: 3085
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -14281,11 +14281,13 @@ modules:
         - parseAmrDocument
         - renderAmrDocument
         - setEntry
+        - setEntries
       interfaces:
         - AmrEntry
         - AmrLine
         - AmrDocument
         - ParsedEntryText
+        - AmrEntryEdit
       functions:
         - parseEntryText
         - formatEntryText
@@ -14293,6 +14295,23 @@ modules:
         - parseAmrDocument
         - renderAmrDocument
         - setEntry
+        - setEntries
+    src/features/amr/AmrFrontMatter.ts:
+      description: "Front matter reader and writer for the Agent Memory Repo (AMR). It handles a small subset of YAML:"
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../../utils/errors.js
+          imports:
+            - ValidationError
+      exports:
+        - parseFrontMatter
+        - renderFrontMatter
+      interfaces:
+        - FrontMatterParse
+      functions:
+        - parseFrontMatter
+        - renderFrontMatter
     src/features/amr/AmrReader.ts:
       description: "Read-only reader for an Agent Memory Repo (AMR): link checks, confined file reads, the context"
       externalDependencies: []
@@ -14332,6 +14351,7 @@ modules:
         - loadAmrContext
         - findCaseDuplicates
         - checkAmr
+        - walkAmrMarkdown
       interfaces:
         - AmrReaderOptions
         - AmrContext
@@ -14344,8 +14364,90 @@ modules:
         - loadAmrContext
         - findCaseDuplicates
         - checkAmr
+        - walkAmrMarkdown
       constants:
         - AMR_READER_DEFAULTS
+    src/features/amr/AmrSync.ts:
+      description: One-way sync between the graph and an Agent Memory Repo (AMR). `exportAmr` writes graph entities to
+      externalDependencies: []
+      nodeDependencies:
+        - module: fs
+          imports:
+            - promises
+      internalDependencies:
+        - file: ../../core/ManagerContext.js
+          imports:
+            - ManagerContext
+          typeOnly: true
+        - file: ../../types/types.js
+          imports:
+            - Entity
+            - Relation
+          typeOnly: true
+        - file: ../../utils/errors.js
+          imports:
+            - ValidationError
+        - file: ../../utils/schemas.js
+          imports:
+            - CreateEntitySchema
+            - CreateRelationSchema
+            - UpdateEntitySchema
+        - file: ./AmrCodec.js
+          imports:
+            - extractLinks
+            - formatEntryText
+            - parseAmrDocument
+            - renderAmrDocument
+            - setEntries
+            - AmrDocument
+            - AmrEntryEdit
+            - AmrLine
+        - file: ./AmrFrontMatter.js
+          imports:
+            - parseFrontMatter
+            - renderFrontMatter
+            - FrontMatterValues
+        - file: ./AmrReader.js
+          imports:
+            - checkAmrLink
+            - readAmrFile
+            - walkAmrMarkdown
+        - file: ./AmrWriter.js
+          imports:
+            - checkAmrWritePath
+            - checkFileText
+            - writeAmrFiles
+            - AmrFileText
+        - file: ./GitRunner.js
+          imports:
+            - GitRunner
+          typeOnly: true
+        - file: ./SecretScanner.js
+          imports:
+            - loadSecretPatterns
+            - scanForSecrets
+            - SecretPattern
+      exports:
+        - AMR_SYNC_DEFAULTS
+        - normalizeObservation
+        - amrPathForEntity
+        - exportAmr
+        - importAmr
+      interfaces:
+        - AmrSyncOptions
+        - AmrSyncDefaults
+        - AmrFileReport
+        - AmrExportReport
+        - AmrImportEntity
+        - AmrImportReport
+        - AmrImportOptions
+      functions:
+        - normalizeObservation
+        - amrPathForEntity
+        - exportAmr
+        - importAmr
+      constants:
+        - AMR_SYNC_DEFAULTS
     src/features/amr/AmrWriter.ts:
       description: Confined writer for the Agent Memory Repo (AMR). It writes one `.md` file, checks it for secrets,
       externalDependencies: []
@@ -14386,11 +14488,18 @@ modules:
             - SecretHit
             - SecretPattern
       exports:
+        - checkAmrWritePath
         - writeAmrFile
+        - checkFileText
+        - writeAmrFiles
       interfaces:
         - AmrWriteOptions
+        - AmrFileText
       functions:
+        - checkAmrWritePath
         - writeAmrFile
+        - checkFileText
+        - writeAmrFiles
     src/features/amr/GitRunner.ts:
       description: Git runner for the Agent Memory Repo (AMR) writer. It runs only an exact allow-list of git
       externalDependencies: []
@@ -14463,6 +14572,7 @@ modules:
             - loadAmrContext
             - findCaseDuplicates
             - checkAmr
+            - walkAmrMarkdown
             - AmrCheckOptions
             - AmrReaderOptions
             - AmrLinkCheck
@@ -14496,9 +14606,38 @@ modules:
         - file: ./AmrWriter.js
           imports:
             - writeAmrFile
+            - writeAmrFiles
+            - checkAmrWritePath
+            - checkFileText
+            - AmrFileRefusal
             - AmrWriteOptions
             - AmrWriteResult
             - AmrWriteReason
+            - AmrFileText
+            - AmrBatchResult
+          reExport: true
+        - file: ./AmrFrontMatter.js
+          imports:
+            - parseFrontMatter
+            - renderFrontMatter
+            - FrontMatterValues
+            - FrontMatterParse
+          reExport: true
+        - file: ./AmrSync.js
+          imports:
+            - AMR_SYNC_DEFAULTS
+            - amrPathForEntity
+            - exportAmr
+            - importAmr
+            - normalizeObservation
+            - AmrSyncDefaults
+            - AmrSyncMode
+            - AmrSyncOptions
+            - AmrFileReport
+            - AmrExportReport
+            - AmrImportEntity
+            - AmrImportOptions
+            - AmrImportReport
           reExport: true
       exports:
         - AMR_READER_DEFAULTS
@@ -14507,6 +14646,7 @@ modules:
         - loadAmrContext
         - findCaseDuplicates
         - checkAmr
+        - walkAmrMarkdown
         - AmrCheckOptions
         - AmrReaderOptions
         - AmrLinkCheck
@@ -14531,9 +14671,32 @@ modules:
         - SecretPattern
         - SecretHit
         - writeAmrFile
+        - writeAmrFiles
+        - checkAmrWritePath
+        - checkFileText
+        - AmrFileRefusal
         - AmrWriteOptions
         - AmrWriteResult
         - AmrWriteReason
+        - AmrFileText
+        - AmrBatchResult
+        - parseFrontMatter
+        - renderFrontMatter
+        - FrontMatterValues
+        - FrontMatterParse
+        - AMR_SYNC_DEFAULTS
+        - amrPathForEntity
+        - exportAmr
+        - importAmr
+        - normalizeObservation
+        - AmrSyncDefaults
+        - AmrSyncMode
+        - AmrSyncOptions
+        - AmrFileReport
+        - AmrExportReport
+        - AmrImportEntity
+        - AmrImportOptions
+        - AmrImportReport
       reExported:
         - "* from ./AmrCodec.js"
         - AMR_READER_DEFAULTS
@@ -14542,6 +14705,7 @@ modules:
         - loadAmrContext
         - findCaseDuplicates
         - checkAmr
+        - walkAmrMarkdown
         - AmrCheckOptions
         - AmrReaderOptions
         - AmrLinkCheck
@@ -14566,9 +14730,32 @@ modules:
         - SecretPattern
         - SecretHit
         - writeAmrFile
+        - writeAmrFiles
+        - checkAmrWritePath
+        - checkFileText
+        - AmrFileRefusal
         - AmrWriteOptions
         - AmrWriteResult
         - AmrWriteReason
+        - AmrFileText
+        - AmrBatchResult
+        - parseFrontMatter
+        - renderFrontMatter
+        - FrontMatterValues
+        - FrontMatterParse
+        - AMR_SYNC_DEFAULTS
+        - amrPathForEntity
+        - exportAmr
+        - importAmr
+        - normalizeObservation
+        - AmrSyncDefaults
+        - AmrSyncMode
+        - AmrSyncOptions
+        - AmrFileReport
+        - AmrExportReport
+        - AmrImportEntity
+        - AmrImportOptions
+        - AmrImportReport
     src/features/index.ts:
       description: Features Module Barrel Export
       externalDependencies: []
@@ -14688,6 +14875,8 @@ modules:
             - parseAmrDocument
             - renderAmrDocument
             - setEntry
+            - setEntries
+            - AmrEntryEdit
             - AmrEol
             - AmrLineKind
             - AmrEntry
@@ -14724,9 +14913,33 @@ modules:
             - SecretPattern
             - SecretHit
             - writeAmrFile
+            - writeAmrFiles
+            - checkAmrWritePath
+            - checkFileText
+            - AmrFileRefusal
             - AmrWriteOptions
             - AmrWriteResult
             - AmrWriteReason
+            - AmrFileText
+            - AmrBatchResult
+            - parseFrontMatter
+            - renderFrontMatter
+            - FrontMatterValues
+            - FrontMatterParse
+            - AMR_SYNC_DEFAULTS
+            - amrPathForEntity
+            - exportAmr
+            - importAmr
+            - normalizeObservation
+            - AmrSyncDefaults
+            - AmrSyncMode
+            - AmrSyncOptions
+            - AmrFileReport
+            - AmrExportReport
+            - AmrImportEntity
+            - AmrImportOptions
+            - AmrImportReport
+            - walkAmrMarkdown
           reExport: true
         - file: ./ContradictionDetector.js
           imports:
@@ -14804,6 +15017,8 @@ modules:
         - parseAmrDocument
         - renderAmrDocument
         - setEntry
+        - setEntries
+        - AmrEntryEdit
         - AmrEol
         - AmrLineKind
         - AmrEntry
@@ -14840,9 +15055,33 @@ modules:
         - SecretPattern
         - SecretHit
         - writeAmrFile
+        - writeAmrFiles
+        - checkAmrWritePath
+        - checkFileText
+        - AmrFileRefusal
         - AmrWriteOptions
         - AmrWriteResult
         - AmrWriteReason
+        - AmrFileText
+        - AmrBatchResult
+        - parseFrontMatter
+        - renderFrontMatter
+        - FrontMatterValues
+        - FrontMatterParse
+        - AMR_SYNC_DEFAULTS
+        - amrPathForEntity
+        - exportAmr
+        - importAmr
+        - normalizeObservation
+        - AmrSyncDefaults
+        - AmrSyncMode
+        - AmrSyncOptions
+        - AmrFileReport
+        - AmrExportReport
+        - AmrImportEntity
+        - AmrImportOptions
+        - AmrImportReport
+        - walkAmrMarkdown
         - Contradiction
         - SemanticForgetResult
         - SemanticForgetOptions
@@ -14911,6 +15150,8 @@ modules:
         - parseAmrDocument
         - renderAmrDocument
         - setEntry
+        - setEntries
+        - AmrEntryEdit
         - AmrEol
         - AmrLineKind
         - AmrEntry
@@ -14947,9 +15188,33 @@ modules:
         - SecretPattern
         - SecretHit
         - writeAmrFile
+        - writeAmrFiles
+        - checkAmrWritePath
+        - checkFileText
+        - AmrFileRefusal
         - AmrWriteOptions
         - AmrWriteResult
         - AmrWriteReason
+        - AmrFileText
+        - AmrBatchResult
+        - parseFrontMatter
+        - renderFrontMatter
+        - FrontMatterValues
+        - FrontMatterParse
+        - AMR_SYNC_DEFAULTS
+        - amrPathForEntity
+        - exportAmr
+        - importAmr
+        - normalizeObservation
+        - AmrSyncDefaults
+        - AmrSyncMode
+        - AmrSyncOptions
+        - AmrFileReport
+        - AmrExportReport
+        - AmrImportEntity
+        - AmrImportOptions
+        - AmrImportReport
+        - walkAmrMarkdown
         - Contradiction
         - SemanticForgetResult
         - SemanticForgetOptions
@@ -21878,7 +22143,9 @@ dependencyGraph:
         - src/features/StreamingExporter.ts
         - src/features/TagManager.ts
         - src/features/amr/AmrCodec.ts
+        - src/features/amr/AmrFrontMatter.ts
         - src/features/amr/AmrReader.ts
+        - src/features/amr/AmrSync.ts
         - src/features/amr/AmrWriter.ts
         - src/features/amr/GitRunner.ts
         - src/features/amr/SecretScanner.ts
@@ -22044,27 +22311,27 @@ reachability:
     - src/index.ts
     - src/sqlite.ts
     - src/workers/levenshteinWorker.ts
-  reachableCount: 423
+  reachableCount: 425
   dormantCount: 0
   orphaned: []
   testOnly: []
 statistics:
-  totalTypeScriptFiles: 423
+  totalTypeScriptFiles: 425
   totalModules: 12
-  totalLinesOfCode: 137542
-  totalExports: 3023
+  totalLinesOfCode: 139486
+  totalExports: 3085
   totalClasses: 310
-  totalInterfaces: 866
-  totalFunctions: 713
+  totalInterfaces: 876
+  totalFunctions: 724
   totalTypeGuards: 50
   totalEnums: 4
-  totalConstants: 200
-  totalReExports: 1797
-  totalTypeOnlyImports: 882
+  totalConstants: 201
+  totalReExports: 1847
+  totalTypeOnlyImports: 885
   runtimeCircularDeps: 0
   typeOnlyCircularDeps: 16
   entryRoots: 4
-  reachableFiles: 423
+  reachableFiles: 425
   dormantFiles: 0
   orphanedFiles: 0
   testOnlyFiles: 0
