@@ -759,6 +759,7 @@ Full example: [`examples/14-procedural-graph.ts`](examples/14-procedural-graph.t
 | `MCPToolObserverAdapter` | Observes MCP tool calls through `ToolCallObserver`. |
 | `LangChainMemoryAdapter` | LangChain-style memory adapter. |
 | `createRecursaTools()` | The 14-tool Recursa adapter above. |
+| `createAmrTools()` | The five `amr.*` tools over one fixed memory root. Writes need `allowWrite`. |
 
 The `memory` binary covers the graph, search, import and export, maintenance, audit and diagnostics; `memory --help`
 lists every command, and `--storage <path>` comes before the command. [`examples/16-cli.sh`](examples/16-cli.sh) runs more of them after `bun run build`:
@@ -787,6 +788,20 @@ memory audit verify
 ```
 
 Full example: [`examples/16-cli.sh`](examples/16-cli.sh)
+
+### Agent Memory Repo (AMR)
+
+The `memory amr` group reads and writes a folder of Markdown memory files. The group has five commands:
+
+- `memory amr context <root>` prints a bounded context block. It reads only.
+- `memory amr check <root>` reports broken links, metadata problems, case duplicates and secrets. It exits 1 on any issue.
+- `memory amr export <root>` writes graph entities as files. It is a dry run until you add `--apply`.
+- `memory amr import <root>` reads files into the graph. It is a dry run until you add `--apply`.
+- `memory amr commit <root> --message <m>` commits your hand edits in one commit. It refuses the whole commit on any bad path, deletion, rename, secret or staged change that was edited again.
+
+`--apply` on export writes the files and commits them in one commit. The root must be the top of a git repository, and the tree must be clean.
+
+`createAmrTools(ctx, { root, allowWrite })` gives the same operations as five tools: `amr.context`, `amr.check`, `amr.export`, `amr.import` and `amr.commit`. The root comes only from `root`. A tool argument cannot name a root or a path. Writes need `allowWrite: true`.
 
 ## API Reference
 

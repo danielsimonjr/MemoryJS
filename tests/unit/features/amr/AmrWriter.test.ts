@@ -93,12 +93,12 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, readFileSync, rmSync, mkdirSync, existsSync, readdirSync, realpathSync, appendFileSync, promises as fsPromises } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, rmSync, mkdirSync, existsSync, readdirSync, realpathSync, appendFileSync, symlinkSync, promises as fsPromises } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { GitRunner, AmrGitError, AMR_GIT_DEFAULTS } from '../../../../src/features/amr/GitRunner.js';
 import { DEFAULT_SECRET_PATTERNS, loadSecretPatterns, scanForSecrets } from '../../../../src/features/amr/SecretScanner.js';
-import { writeAmrFile } from '../../../../src/features/amr/AmrWriter.js';
+import { writeAmrFile, commitAmrEdits } from '../../../../src/features/amr/AmrWriter.js';
 import { checkAmr, AMR_READER_DEFAULTS } from '../../../../src/features/amr/AmrReader.js';
 import { ValidationError } from '../../../../src/utils/errors.js';
 
@@ -204,6 +204,11 @@ describe('GitRunner', () => {
     [['rm', '--cached', '--', 'x.md']],
     [['rm', '--cached', '--quiet', '-r', 'x.md']],
     [['rev-parse', '--verify', 'HEAD', '--short']],
+    [['status', '--porcelain', '--untracked-files=no']],
+    [['status', '--porcelain', '--untracked-files']],
+    [['status', '--porcelain', '--untracked-files=normal']],
+    [['status', '--porcelain', '-z', '--untracked-files=all', '--ignored']],
+    [['status', '--porcelain', '--', 'x.md']],
   ])('refuses %j and spawns nothing', async (args) => {
     const { root, env } = makeRepo();
     const r = new GitRunner(root, { env, gitBinary: join(root, 'no-such-binary') });
@@ -277,6 +282,16 @@ describe('GitRunner', () => {
     const r = new GitRunner(root, { env });
     expect((await r.run(['rm', '--cached', '--quiet', '--', 'MEMORY.md'])).code).toBe(0);
     expect(r.root).toBe(root);
+  });
+
+  it('allows status --porcelain -z --untracked-files=all and lists a file in a new folder', async () => {
+    const { root, env } = makeRepo();
+    mkdirSync(join(root, 'notes'));
+    writeFileSync(join(root, 'notes', 'a.md'), '- a\n');
+    const r = new GitRunner(root, { env });
+    const out = await r.run(['status', '--porcelain', '-z', '--untracked-files=all']);
+    expect(out.code).toBe(0);
+    expect(out.stdout).toBe('?? notes/a.md\0');
   });
 
   it('reports a spawn failure as spawn', async () => {
@@ -669,5 +684,232 @@ describe('checkAmr secret issues', () => {
       if (saved === undefined) delete process.env.MEMORY_AMR_SECRET_PATTERNS_FILE;
       else process.env.MEMORY_AMR_SECRET_PATTERNS_FILE = saved;
     }
+  });
+});
+
+describe('commitAmrEdits', () => {
+  it('commits a hand-edited .md file with one commit and a clean tree', async () => {
+    const { root, env } = makeRepo();
+    writeFileSync(join(root, 'MEMORY.md'), '# Memory\n\n- fact\n- more\n');
+    const res = await commitAmrEdits(root, { runner: new GitRunner(root, { env }), message: 'edit memory' });
+    expect(res).toMatchObject({ ok: true, committed: true });
+    expect(rawGit(root, env, 'log', '--format=%s', '-1').trim()).toBe('memory: edit memory');
+    expect(rawGit(root, env, 'status', '--porcelain')).toBe('');
+  });
+
+  it('commits a new .md file in a new folder', async () => {
+    const { root, env } = makeRepo();
+    mkdirSync(join(root, 'notes', 'deep'), { recursive: true });
+    writeFileSync(join(root, 'notes', 'deep', 'a.md'), '- a\n');
+    const res = await commitAmrEdits(root, { runner: new GitRunner(root, { env }), message: 'add note' });
+    expect(res).toMatchObject({ ok: true, committed: true });
+    expect(rawGit(root, env, 'show', '--name-only', '--format=', 'HEAD').trim()).toBe('notes/deep/a.md');
+  });
+
+  it('refuses a changed .txt and stages nothing', async () => {
+    const { root, env } = makeRepo();
+    writeFileSync(join(root, 'MEMORY.md'), '# Memory\n\n- fact\n- more\n');
+    writeFileSync(join(root, 'note.txt'), 'plain\n');
+    const res = await commitAmrEdits(root, { runner: new GitRunner(root, { env }), message: 'x' });
+    expect(res).toEqual({ ok: false, reason: 'not-markdown', path: 'note.txt' });
+    expect(rawGit(root, env, 'diff', '--cached', '--name-only').trim()).toBe('');
+    expect(rawGit(root, env, 'log', '--format=%s', '-1').trim()).toBe('init');
+  });
+
+  it('refuses a file that holds a secret and stages nothing', async () => {
+    const { root, env } = makeRepo();
+    writeFileSync(join(root, 'MEMORY.md'), `# Memory\n\n- key ${fakeAws()}\n`);
+    const res = await commitAmrEdits(root, { runner: new GitRunner(root, { env }), message: 'x' });
+    expect(res).toMatchObject({ ok: false, reason: 'secret', path: 'MEMORY.md' });
+    expect(rawGit(root, env, 'diff', '--cached', '--name-only').trim()).toBe('');
+  });
+
+  it('refuses a secret in the commit message', async () => {
+    const { root, env } = makeRepo();
+    writeFileSync(join(root, 'MEMORY.md'), '# Memory\n\n- fact\n- more\n');
+    const res = await commitAmrEdits(root, { runner: new GitRunner(root, { env }), message: `token ${fakeGh()}` });
+    expect(res).toMatchObject({ ok: false, reason: 'secret' });
+    expect(rawGit(root, env, 'diff', '--cached', '--name-only').trim()).toBe('');
+  });
+
+  it('refuses a deletion and stages nothing', async () => {
+    const { root, env } = makeRepo();
+    writeFileSync(join(root, 'old.md'), '- old\n');
+    rawGit(root, env, 'add', 'old.md');
+    rawGit(root, env, 'commit', '-q', '-m', 'add old');
+    rmSync(join(root, 'old.md'));
+    const res = await commitAmrEdits(root, { runner: new GitRunner(root, { env }), message: 'x' });
+    expect(res).toMatchObject({ ok: false, reason: 'invalid-path', path: 'old.md' });
+    expect(rawGit(root, env, 'diff', '--cached', '--name-only').trim()).toBe('');
+  });
+
+  it('refuses a rename and stages nothing', async () => {
+    const { root, env } = makeRepo();
+    writeFileSync(join(root, 'old.md'), '- old\n');
+    rawGit(root, env, 'add', 'old.md');
+    rawGit(root, env, 'commit', '-q', '-m', 'add old');
+    rawGit(root, env, 'mv', 'old.md', 'new.md');
+    const res = await commitAmrEdits(root, { runner: new GitRunner(root, { env }), message: 'x' });
+    expect(res).toMatchObject({ ok: false, reason: 'invalid-path', path: 'new.md' });
+    expect(rawGit(root, env, 'diff', '--cached', '--name-status').trim()).toMatch(/^R\d*\told\.md\tnew\.md$/);
+    expect(rawGit(root, env, 'log', '--format=%s', '-1').trim()).toBe('add old');
+  });
+
+  it('refuses a root that is a subfolder of the repository', async () => {
+    const { root, env } = makeRepo();
+    const sub = join(root, 'sub');
+    mkdirSync(sub);
+    writeFileSync(join(sub, 'a.md'), '- a\n');
+    const res = await commitAmrEdits(sub, { runner: new GitRunner(sub, { env }), message: 'x' });
+    expect(res).toMatchObject({ ok: false, reason: 'not-root' });
+    expect(rawGit(root, env, 'diff', '--cached', '--name-only').trim()).toBe('');
+  });
+
+  it('is a no-op on a clean tree', async () => {
+    const { root, env } = makeRepo();
+    const res = await commitAmrEdits(root, { runner: new GitRunner(root, { env }), message: 'x' });
+    expect(res).toEqual({ ok: true, committed: false });
+    expect(rawGit(root, env, 'log', '--format=%s', '-1').trim()).toBe('init');
+  });
+
+  /** Install a pre-commit hook that always fails. */
+  function failingHook(root: string, env: Record<string, string>): void {
+    const hooks = tmp('amr-hooks-');
+    writeFileSync(join(hooks, 'pre-commit'), '#!/bin/sh\nexit 1\n', { mode: 0o755 });
+    rawGit(root, env, 'config', 'core.hooksPath', hooks);
+  }
+
+  const head = (root: string, env: Record<string, string>) => rawGit(root, env, 'rev-parse', 'HEAD').trim();
+  const run = (root: string, env: Record<string, string>, message = 'x') =>
+    commitAmrEdits(root, { runner: new GitRunner(root, { env }), message });
+
+  it('refuses a staged change that is edited again (MM) and keeps the staged text', async () => {
+    const { root, env } = makeRepo();
+    writeFileSync(join(root, 'MEMORY.md'), '# Memory\n\n- X staged\n');
+    rawGit(root, env, 'add', 'MEMORY.md');
+    writeFileSync(join(root, 'MEMORY.md'), '# Memory\n\n- Y worktree\n');
+    const before = head(root, env);
+    const res = await run(root, env);
+    expect(res).toEqual({ ok: false, reason: 'not-clean', path: 'MEMORY.md' });
+    expect(rawGit(root, env, 'diff', '--cached')).toContain('+- X staged');
+    expect(head(root, env)).toBe(before);
+  });
+
+  it('refuses a staged new file that is edited again (AM) and keeps it staged', async () => {
+    const { root, env } = makeRepo();
+    writeFileSync(join(root, 'new.md'), '- one\n');
+    rawGit(root, env, 'add', 'new.md');
+    writeFileSync(join(root, 'new.md'), '- two\n');
+    const res = await run(root, env);
+    expect(res).toEqual({ ok: false, reason: 'not-clean', path: 'new.md' });
+    expect(rawGit(root, env, 'diff', '--cached', '--name-only').trim()).toBe('new.md');
+  });
+
+  it('still commits a staged .md with no later edit (M )', async () => {
+    const { root, env } = makeRepo();
+    writeFileSync(join(root, 'MEMORY.md'), '# Memory\n\n- staged only\n');
+    rawGit(root, env, 'add', 'MEMORY.md');
+    const res = await run(root, env, 'staged');
+    expect(res).toMatchObject({ ok: true, committed: true });
+    expect(rawGit(root, env, 'status', '--porcelain')).toBe('');
+  });
+
+  it('refuses a both-added merge conflict (AA) and commits no conflict markers', async () => {
+    const { root, env } = makeRepo();
+    const main = rawGit(root, env, 'rev-parse', '--abbrev-ref', 'HEAD').trim();
+    rawGit(root, env, 'checkout', '-q', '-b', 'side');
+    writeFileSync(join(root, 'c.md'), '- side\n');
+    rawGit(root, env, 'add', 'c.md');
+    rawGit(root, env, 'commit', '-q', '-m', 'side');
+    rawGit(root, env, 'checkout', '-q', main);
+    writeFileSync(join(root, 'c.md'), '- main\n');
+    rawGit(root, env, 'add', 'c.md');
+    rawGit(root, env, 'commit', '-q', '-m', 'main');
+    expect(() => rawGit(root, env, 'merge', '-q', 'side')).toThrow();
+    const before = head(root, env);
+    const res = await run(root, env);
+    expect(res).toMatchObject({ ok: false, reason: 'not-clean', path: 'c.md' });
+    expect(head(root, env)).toBe(before);
+  });
+
+  it('a failing commit hook with an unstaged edit gives git-failed and leaves the index at HEAD', async () => {
+    const { root, env } = makeRepo();
+    failingHook(root, env);
+    writeFileSync(join(root, 'MEMORY.md'), '# Memory\n\n- edit\n');
+    const res = await run(root, env);
+    expect(res).toMatchObject({ ok: false, reason: 'git-failed' });
+    expect(rawGit(root, env, 'diff', '--cached', '--name-only').trim()).toBe('');
+  });
+
+  it('a failing commit hook with a staged-only edit keeps the worktree text (the stage bit is lost)', async () => {
+    const { root, env } = makeRepo();
+    failingHook(root, env);
+    writeFileSync(join(root, 'MEMORY.md'), '# Memory\n\n- staged\n');
+    rawGit(root, env, 'add', 'MEMORY.md');
+    const res = await run(root, env);
+    expect(res).toMatchObject({ ok: false, reason: 'git-failed' });
+    expect(readFileSync(join(root, 'MEMORY.md'), 'utf8')).toBe('# Memory\n\n- staged\n');
+  });
+
+  it('refuses an untracked .md above the file size limit as too-large without reading it', async () => {
+    const { root, env } = makeRepo();
+    writeFileSync(join(root, 'big.md'), Buffer.alloc(AMR_READER_DEFAULTS.maxFileBytes + 1, 0x61));
+    const spy = vi.spyOn(fsPromises, 'readFile');
+    try {
+      const res = await run(root, env);
+      expect(res).toEqual({ ok: false, reason: 'too-large', path: 'big.md' });
+      expect(spy.mock.calls.some((c) => String(c[0]).endsWith('big.md'))).toBe(false);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('refuses a MEMORY.md above the index size limit as too-large', async () => {
+    const { root, env } = makeRepo();
+    writeFileSync(join(root, 'MEMORY.md'), Buffer.alloc(AMR_READER_DEFAULTS.maxIndexBytes + 1, 0x61));
+    const res = await run(root, env);
+    expect(res).toEqual({ ok: false, reason: 'too-large', path: 'MEMORY.md' });
+  });
+
+  it.each([['UPPER.MD'], ['with space.md'], ['naïve-é.md']])('commits %s', async (name) => {
+    const { root, env } = makeRepo();
+    writeFileSync(join(root, name), '- x\n');
+    const res = await run(root, env);
+    expect(res).toMatchObject({ ok: true, committed: true });
+    expect(rawGit(root, env, 'status', '--porcelain')).toBe('');
+  });
+
+  it('refuses a symlinked .md as outside-root and stages nothing', async (t) => {
+    const { root, env } = makeRepo();
+    rawGit(root, env, 'config', 'core.symlinks', 'true');
+    const outside = join(tmp('amr-out-'), 'outside.md');
+    writeFileSync(outside, '- outside\n');
+    try {
+      symlinkSync(outside, join(root, 'link.md'), 'file');
+    } catch {
+      t.skip();
+      return;
+    }
+    const res = await run(root, env);
+    expect(res).toMatchObject({ ok: false, reason: 'outside-root', path: 'link.md' });
+    expect(rawGit(root, env, 'diff', '--cached', '--name-only').trim()).toBe('');
+  });
+
+  it.skipIf(process.platform === 'win32').each([['q"uote.md'], ['new\nline.md']])('refuses %j as invalid-path', async (name) => {
+    const { root, env } = makeRepo();
+    writeFileSync(join(root, name), '- x\n');
+    const res = await run(root, env);
+    expect(res).toMatchObject({ ok: false, reason: 'invalid-path' });
+    expect(rawGit(root, env, 'diff', '--cached', '--name-only').trim()).toBe('');
+  });
+
+  it('refuses a pre-staged non-.md as not-markdown and leaves the index untouched', async () => {
+    const { root, env } = makeRepo();
+    writeFileSync(join(root, 'a.txt'), 'plain\n');
+    rawGit(root, env, 'add', 'a.txt');
+    writeFileSync(join(root, 'MEMORY.md'), '# Memory\n\n- more\n');
+    const res = await run(root, env);
+    expect(res).toEqual({ ok: false, reason: 'not-markdown', path: 'a.txt' });
+    expect(rawGit(root, env, 'diff', '--cached', '--name-only').trim()).toBe('a.txt');
   });
 });

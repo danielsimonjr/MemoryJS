@@ -53,6 +53,7 @@ export type AmrLinkReason =
   | 'empty-segment'
   | 'control'
   | 'colon'
+  | 'windows-char'
   | 'edge-space-or-dot'
   | 'reserved-name'
   | 'git-dir'
@@ -228,6 +229,8 @@ function checkAmrPath(path: string): AmrLinkReason | null {
   if (/^[/\\]/.test(path) || /^[A-Za-z]:/.test(path)) return 'absolute';
   if (path.includes('\\')) return 'backslash';
   if (path.includes(':')) return 'colon';
+  // Windows cannot create a file with these characters, so a repo that holds one breaks a checkout there.
+  if (/["<>|?*]/.test(path)) return 'windows-char';
   const segments = path.split('/');
   if (segments.includes('..')) return 'traversal';
   if (segments.includes('.')) return 'dot-segment';

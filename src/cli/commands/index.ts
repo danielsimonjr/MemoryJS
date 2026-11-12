@@ -31,6 +31,7 @@ import { registerCacheCommands } from './cache.js';
 import { registerReindexCommand } from './reindex.js';
 import { registerAuditCommands } from './audit.js';
 import { registerDoctorCommand } from './doctor.js';
+import { registerAmrCommands } from './amr.js';
 
 /**
  * Register every CLI command group on the program.
@@ -62,4 +63,5 @@ export function registerCommands(program: Command): void {
   registerReindexCommand(program);
   registerAuditCommands(program);
   registerDoctorCommand(program);
+  registerAmrCommands(program);
 }

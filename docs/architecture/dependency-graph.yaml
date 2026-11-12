@@ -1,8 +1,8 @@
 metadata:
   name: "@danielsimonjr/memoryjs"
-  totalFiles: 425
+  totalFiles: 427
   totalModules: 12
-  totalExports: 3090
+  totalExports: 3108
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -18,6 +18,63 @@ entryPoints:
     description: Levenshtein Worker
 modules:
   adapters:
+    src/adapters/AmrToolAdapter.ts:
+      description: "AmrToolAdapter: the `amr.*` tool surface over one fixed Agent Memory Repo (AMR) root. A harness"
+      externalDependencies: []
+      nodeDependencies:
+        - module: path
+          imports:
+            - path
+      internalDependencies:
+        - file: ../utils/schema.js
+          imports:
+            - z
+        - file: ../utils/errors.js
+          imports:
+            - ValidationError
+        - file: ../core/ManagerContext.js
+          imports:
+            - ManagerContext
+          typeOnly: true
+        - file: ../features/amr/AmrReader.js
+          imports:
+            - AMR_READER_DEFAULTS
+            - checkAmr
+            - loadAmrContext
+            - AmrReaderOptions
+        - file: ../features/amr/AmrSync.js
+          imports:
+            - exportAmr
+            - importAmr
+            - AmrSyncMode
+            - AmrSyncOptions
+        - file: ../features/amr/GitRunner.js
+          imports:
+            - GitRunner
+        - file: ../features/amr/AmrWriter.js
+          imports:
+            - commitAmrEdits
+            - AMR_COMMIT_MESSAGE_MAX_CHARS
+        - file: ./recursaToolBounds.js
+          imports:
+            - boundResult
+            - DEFAULT_MAX_BYTES
+        - file: ./recursaToolSupport.js
+          imports:
+            - ToolFailure
+            - defineTool
+            - definedOnly
+            - makeToolSet
+            - RecursaToolResult
+            - ToolDescriptor
+            - ToolEntry
+            - ToolSet
+      exports:
+        - createAmrTools
+      interfaces:
+        - AmrToolDeps
+      functions:
+        - createAmrTools
     src/adapters/ApiKeyAuthMiddleware.ts:
       description: API-Key Auth Middleware (Sec9)
       externalDependencies: []
@@ -114,9 +171,6 @@ modules:
           imports:
             - dirname
       internalDependencies:
-        - file: ../utils/schema.js
-          imports:
-            - z
         - file: ../core/ManagerContext.js
           imports:
             - ManagerContext
@@ -170,17 +224,18 @@ modules:
         - file: ./recursaToolBounds.js
           imports:
             - boundResult
+            - DEFAULT_MAX_BYTES
         - file: ./recursaToolSupport.js
           imports:
             - ToolFailure
+            - defineTool
             - definedOnly
-            - fail
-            - failureOf
-            - issuesOf
-            - jsonSchemaOf
+            - makeToolSet
             - publishTargetOf
-            - reservedKeyPath
             - RecursaToolResult
+            - ToolDescriptor
+            - ToolEntry
+            - ToolSet
         - file: ./recursaToolSchemas.js
           imports:
             - evalRunSchema
@@ -196,8 +251,6 @@ modules:
       exports:
         - createRecursaTools
       interfaces:
-        - RecursaToolDescriptor
-        - RecursaToolSet
         - RecursaToolDeps
       functions:
         - createRecursaTools
@@ -299,6 +352,14 @@ modules:
             - RecursaToolDescriptor
             - RecursaToolResult
           reExport: true
+        - file: ./AmrToolAdapter.js
+          imports:
+            - createAmrTools
+            - AmrToolSet
+            - AmrToolDeps
+            - AmrToolDescriptor
+            - AmrToolResult
+          reExport: true
         - file: ./LangChainMemoryAdapter.js
           imports:
             - LangChainMemoryAdapter
@@ -331,6 +392,11 @@ modules:
         - RecursaToolDeps
         - RecursaToolDescriptor
         - RecursaToolResult
+        - createAmrTools
+        - AmrToolSet
+        - AmrToolDeps
+        - AmrToolDescriptor
+        - AmrToolResult
         - LangChainMemoryAdapter
       reExported:
         - RestRouter
@@ -360,6 +426,11 @@ modules:
         - RecursaToolDeps
         - RecursaToolDescriptor
         - RecursaToolResult
+        - createAmrTools
+        - AmrToolSet
+        - AmrToolDeps
+        - AmrToolDescriptor
+        - AmrToolResult
         - LangChainMemoryAdapter
     src/adapters/pagination.ts:
       description: pagination — offset/limit + next-cursor helpers for REST handlers.
@@ -382,11 +453,14 @@ modules:
       nodeDependencies: []
       internalDependencies: []
       exports:
+        - DEFAULT_MAX_BYTES
         - byteSize
         - boundResult
       functions:
         - byteSize
         - boundResult
+      constants:
+        - DEFAULT_MAX_BYTES
     src/adapters/recursaToolSchemas.ts:
       description: Argument schemas of the Recursa tool adapter (spec section 3.8). Each schema validates the
       externalDependencies: []
@@ -421,7 +495,7 @@ modules:
         - logSelectSchema
         - evalRunSchema
     src/adapters/recursaToolSupport.ts:
-      description: "Shared plumbing of the Recursa tool adapter: the stable failure codes, the mapping of thrown"
+      description: "Shared plumbing of the tool adapters: the tool entry types, the shared tool-set shell, the stable"
       externalDependencies: []
       nodeDependencies:
         - module: path
@@ -440,6 +514,8 @@ modules:
           imports:
             - resolveConfinedTreeDir
       exports:
+        - defineTool
+        - makeToolSet
         - messageOf
         - fail
         - failureOf
@@ -451,7 +527,14 @@ modules:
         - ToolFailure
       classes:
         - ToolFailure
+      interfaces:
+        - ToolDescriptor
+        - ToolSet
+        - ToolEntry
+        - ToolSpec
       functions:
+        - defineTool
+        - makeToolSet
         - messageOf
         - fail
         - failureOf
@@ -10427,6 +10510,46 @@ modules:
         - ansi
       constants:
         - ansi
+    src/cli/commands/amr.ts:
+      description: "`memory amr` CLI group: the Agent Memory Repo (AMR) commands `context`, `check`, `export`,"
+      externalDependencies: []
+      nodeDependencies:
+        - module: path
+          imports:
+            - path
+      internalDependencies:
+        - file: ../parseArgs.js
+          imports:
+            - Command
+        - file: ./helpers.js
+          imports:
+            - runAction
+            - emitJson
+        - file: ../../utils/errors.js
+          imports:
+            - ValidationError
+        - file: ../../features/amr/AmrReader.js
+          imports:
+            - loadAmrContext
+            - checkAmr
+            - AmrReaderOptions
+        - file: ../../features/amr/AmrSync.js
+          imports:
+            - exportAmr
+            - importAmr
+            - AmrSyncMode
+            - AmrSyncOptions
+        - file: ../../features/amr/GitRunner.js
+          imports:
+            - GitRunner
+        - file: ../../features/amr/AmrWriter.js
+          imports:
+            - commitAmrEdits
+            - AMR_COMMIT_MESSAGE_MAX_CHARS
+      exports:
+        - registerAmrCommands
+      functions:
+        - registerAmrCommands
     src/cli/commands/audit.ts:
       description: Audit CLI Commands — `memory audit` (R4a queryable provenance).
       externalDependencies: []
@@ -10896,6 +11019,9 @@ modules:
         - file: ./doctor.js
           imports:
             - registerDoctorCommand
+        - file: ./amr.js
+          imports:
+            - registerAmrCommands
       exports:
         - registerCommands
       functions:
@@ -14504,18 +14630,24 @@ modules:
             - SecretHit
             - SecretPattern
       exports:
+        - AMR_COMMIT_MESSAGE_MAX_CHARS
         - checkAmrWritePath
         - writeAmrFile
         - checkFileText
         - writeAmrFiles
+        - commitAmrEdits
       interfaces:
         - AmrWriteOptions
         - AmrFileText
+        - AmrEditOptions
       functions:
         - checkAmrWritePath
         - writeAmrFile
         - checkFileText
         - writeAmrFiles
+        - commitAmrEdits
+      constants:
+        - AMR_COMMIT_MESSAGE_MAX_CHARS
     src/features/amr/GitRunner.ts:
       description: Git runner for the Agent Memory Repo (AMR) writer. It runs only an exact allow-list of git
       externalDependencies: []
@@ -14626,6 +14758,8 @@ modules:
           imports:
             - writeAmrFile
             - writeAmrFiles
+            - commitAmrEdits
+            - AMR_COMMIT_MESSAGE_MAX_CHARS
             - checkAmrWritePath
             - checkFileText
             - AmrFileRefusal
@@ -14634,6 +14768,7 @@ modules:
             - AmrWriteReason
             - AmrFileText
             - AmrBatchResult
+            - AmrEditOptions
           reExport: true
         - file: ./AmrFrontMatter.js
           imports:
@@ -14691,6 +14826,8 @@ modules:
         - SecretHit
         - writeAmrFile
         - writeAmrFiles
+        - commitAmrEdits
+        - AMR_COMMIT_MESSAGE_MAX_CHARS
         - checkAmrWritePath
         - checkFileText
         - AmrFileRefusal
@@ -14699,6 +14836,7 @@ modules:
         - AmrWriteReason
         - AmrFileText
         - AmrBatchResult
+        - AmrEditOptions
         - parseFrontMatter
         - renderFrontMatter
         - FrontMatterValues
@@ -14750,6 +14888,8 @@ modules:
         - SecretHit
         - writeAmrFile
         - writeAmrFiles
+        - commitAmrEdits
+        - AMR_COMMIT_MESSAGE_MAX_CHARS
         - checkAmrWritePath
         - checkFileText
         - AmrFileRefusal
@@ -14758,6 +14898,7 @@ modules:
         - AmrWriteReason
         - AmrFileText
         - AmrBatchResult
+        - AmrEditOptions
         - parseFrontMatter
         - renderFrontMatter
         - FrontMatterValues
@@ -14933,6 +15074,8 @@ modules:
             - SecretHit
             - writeAmrFile
             - writeAmrFiles
+            - commitAmrEdits
+            - AMR_COMMIT_MESSAGE_MAX_CHARS
             - checkAmrWritePath
             - checkFileText
             - AmrFileRefusal
@@ -14941,6 +15084,7 @@ modules:
             - AmrWriteReason
             - AmrFileText
             - AmrBatchResult
+            - AmrEditOptions
             - parseFrontMatter
             - renderFrontMatter
             - FrontMatterValues
@@ -15075,6 +15219,8 @@ modules:
         - SecretHit
         - writeAmrFile
         - writeAmrFiles
+        - commitAmrEdits
+        - AMR_COMMIT_MESSAGE_MAX_CHARS
         - checkAmrWritePath
         - checkFileText
         - AmrFileRefusal
@@ -15083,6 +15229,7 @@ modules:
         - AmrWriteReason
         - AmrFileText
         - AmrBatchResult
+        - AmrEditOptions
         - parseFrontMatter
         - renderFrontMatter
         - FrontMatterValues
@@ -15208,6 +15355,8 @@ modules:
         - SecretHit
         - writeAmrFile
         - writeAmrFiles
+        - commitAmrEdits
+        - AMR_COMMIT_MESSAGE_MAX_CHARS
         - checkAmrWritePath
         - checkFileText
         - AmrFileRefusal
@@ -15216,6 +15365,7 @@ modules:
         - AmrWriteReason
         - AmrFileText
         - AmrBatchResult
+        - AmrEditOptions
         - parseFrontMatter
         - renderFrontMatter
         - FrontMatterValues
@@ -21881,6 +22031,7 @@ dependencyGraph:
   layers:
     - name: Adapters
       files:
+        - src/adapters/AmrToolAdapter.ts
         - src/adapters/ApiKeyAuthMiddleware.ts
         - src/adapters/LangChainMemoryAdapter.ts
         - src/adapters/MCPToolObserverAdapter.ts
@@ -22075,6 +22226,7 @@ dependencyGraph:
     - name: Cli
       files:
         - src/cli/ansi.ts
+        - src/cli/commands/amr.ts
         - src/cli/commands/audit.ts
         - src/cli/commands/cache.ts
         - src/cli/commands/check.ts
@@ -22334,29 +22486,29 @@ reachability:
     - src/index.ts
     - src/sqlite.ts
     - src/workers/levenshteinWorker.ts
-  reachableCount: 425
+  reachableCount: 427
   dormantCount: 0
   orphaned: []
   testOnly: []
 statistics:
-  totalTypeScriptFiles: 425
+  totalTypeScriptFiles: 427
   totalModules: 12
-  totalLinesOfCode: 139480
-  totalExports: 3090
+  totalLinesOfCode: 140054
+  totalExports: 3108
   totalClasses: 310
-  totalInterfaces: 876
-  totalFunctions: 728
+  totalInterfaces: 880
+  totalFunctions: 733
   totalTypeGuards: 52
   totalEnums: 4
-  totalConstants: 202
-  totalReExports: 1847
-  totalTypeOnlyImports: 885
+  totalConstants: 204
+  totalReExports: 1858
+  totalTypeOnlyImports: 886
   runtimeCircularDeps: 0
   typeOnlyCircularDeps: 16
   entryRoots: 4
-  reachableFiles: 425
+  reachableFiles: 427
   dormantFiles: 0
   orphanedFiles: 0
   testOnlyFiles: 0
   unusedFilesCount: 0
-  unusedExportsCount: 183
+  unusedExportsCount: 182

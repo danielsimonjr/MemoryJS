@@ -1,9 +1,10 @@
 /**
- * Shared plumbing of the Recursa tool adapter: the stable failure codes, the mapping of thrown
- * values to them, zod issue formatting, JSON-schema descriptors and publish-dir confinement.
+ * Shared plumbing of the tool adapters: the tool entry types, the shared tool-set shell, the stable
+ * failure codes, the mapping of thrown values to them, zod issue formatting, JSON-schema
+ * descriptors and publish-dir confinement.
  *
  * @module adapters/recursaToolSupport
- * @internal Used by `RecursaToolAdapter` only.
+ * @internal Used by `RecursaToolAdapter` and `AmrToolAdapter` only.
  */
 
 import { z } from '../utils/schema.js';
@@ -21,6 +22,93 @@ const MAX_MESSAGE_CHARS = 500;
 export type RecursaToolResult =
   | { ok: true; result: unknown }
   | { ok: false; error: { code: string; message: string } };
+
+/** Descriptor of one tool, in the shape an MCP `tools/list` entry needs. */
+export interface ToolDescriptor {
+  /** Tool name, `<surface>.<verb>`. */
+  name: string;
+  /** One-sentence description for the harness. */
+  description: string;
+  /** JSON-schema-like description of the arguments object. */
+  inputSchema: Record<string, unknown>;
+}
+
+/** The tool set a downstream server wraps. Stateless: `call` may run concurrently. */
+export interface ToolSet {
+  /** Descriptors of every tool, in the order of the surface. */
+  list(): ToolDescriptor[];
+  /**
+   * Run one tool on JSON arguments. Never throws.
+   *
+   * @param name - Tool name from `list()`.
+   * @param args - Arguments as received from the harness (validated here).
+   * @param signal - Optional abort signal; an aborted call returns `aborted`.
+   * @returns The result or the failure.
+   */
+  call(name: string, args: unknown, signal?: AbortSignal): Promise<RecursaToolResult>;
+}
+
+/** Internal tool entry: the zod schema validates the arguments before `run` sees them. */
+export interface ToolEntry {
+  name: string;
+  description: string;
+  schema: z.ZodType;
+  run(args: unknown, signal: AbortSignal | undefined): Promise<unknown>;
+}
+
+/** Typed definition of one tool, erased to {@link ToolEntry} by {@link defineTool}. */
+export interface ToolSpec<S extends z.ZodType> {
+  name: string;
+  description: string;
+  schema: S;
+  run(args: z.output<S>, signal: AbortSignal | undefined): Promise<unknown>;
+}
+
+/**
+ * Erase a typed tool definition to a {@link ToolEntry}. The schema is the only source of the
+ * argument type, so the cast is sound.
+ *
+ * @param spec - Typed tool definition.
+ * @returns The erased entry.
+ */
+export function defineTool<S extends z.ZodType>(spec: ToolSpec<S>): ToolEntry {
+  return spec as unknown as ToolEntry;
+}
+
+/**
+ * Build the tool-set shell over a list of tools. `call` looks up the tool, refuses an aborted
+ * signal, a reserved key and invalid arguments, runs the tool and passes its result to `finish`.
+ * Every thrown value becomes a failure result.
+ *
+ * @param tools - Tools of the surface, in order.
+ * @param finish - Maps the result of a tool before it is returned (for example, a byte bound).
+ * @returns The tool set.
+ */
+export function makeToolSet(tools: readonly ToolEntry[], finish: (tool: ToolEntry, result: unknown) => unknown): ToolSet {
+  const byName = new Map(tools.map((t) => [t.name, t] as const));
+  const descriptors: ToolDescriptor[] = tools.map((t) => ({
+    name: t.name,
+    description: t.description,
+    inputSchema: jsonSchemaOf(t.schema),
+  }));
+  return {
+    list: () => descriptors.map((d) => ({ ...d, inputSchema: { ...d.inputSchema } })),
+    async call(name: string, args: unknown, signal?: AbortSignal): Promise<RecursaToolResult> {
+      try {
+        const tool = byName.get(name);
+        if (!tool) return fail('unknown_tool', `Unknown tool: ${String(name).slice(0, 200)}`);
+        if (signal?.aborted) return fail('aborted', 'The call was aborted before it started.');
+        const reserved = reservedKeyPath(args);
+        if (reserved !== undefined) return fail('invalid_args', `${reserved.slice(0, 200)}: reserved key`);
+        const parsed = tool.schema.safeParse(args);
+        if (!parsed.success) return fail('invalid_args', issuesOf(parsed.error));
+        return { ok: true, result: finish(tool, await tool.run(parsed.data, signal)) };
+      } catch (err) {
+        return failureOf(err, signal);
+      }
+    },
+  };
+}
 
 /** Failure with a stable code, raised inside a tool and mapped to `ok: false` by `call`. */
 export class ToolFailure extends Error {
