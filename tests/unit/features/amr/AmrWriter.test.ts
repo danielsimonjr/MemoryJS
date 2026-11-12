@@ -106,7 +106,7 @@ const fakeGh = () => 'ghp' + '_' + 'a1'.repeat(18);
 
 let dirs: string[] = [];
 function tmp(prefix: string): string {
-  const d = realpathSync(mkdtempSync(join(tmpdir(), prefix)));
+  const d = realpathSync.native(mkdtempSync(join(tmpdir(), prefix)));
   dirs.push(d);
   return d;
 }
@@ -297,7 +297,7 @@ describe('GitRunner', () => {
     const wt = join(tmp('amr-wt-'), 'wt');
     rawGit(root, env, 'worktree', 'add', '-q', wt);
     const g = await new GitRunner(wt, { env }).gitDir();
-    expect(g).toBe(realpathSync(join(root, '.git', 'worktrees', 'wt')));
+    expect(g).toBe(realpathSync.native(join(root, '.git', 'worktrees', 'wt')));
   });
 
   it('commitFiles: nothing staged is a no-op', async () => {
