@@ -14604,6 +14604,7 @@ modules:
             - sep
         - module: crypto
           imports:
+            - createHash
             - randomUUID
       internalDependencies:
         - file: ../../utils/confinedPath.js
@@ -14623,6 +14624,7 @@ modules:
           imports:
             - AmrGitError
             - GitRunner
+            - StagedFile
         - file: ./SecretScanner.js
           imports:
             - loadSecretPatterns
@@ -14679,6 +14681,7 @@ modules:
       interfaces:
         - GitRunnerConfig
         - GitRunResult
+        - StagedFile
       constants:
         - AMR_GIT_DEFAULTS
     src/features/amr/SecretScanner.ts:
@@ -22493,10 +22496,10 @@ reachability:
 statistics:
   totalTypeScriptFiles: 427
   totalModules: 12
-  totalLinesOfCode: 140054
+  totalLinesOfCode: 140326
   totalExports: 3108
   totalClasses: 310
-  totalInterfaces: 880
+  totalInterfaces: 881
   totalFunctions: 733
   totalTypeGuards: 52
   totalEnums: 4
@@ -22511,4 +22514,4 @@ statistics:
   orphanedFiles: 0
   testOnlyFiles: 0
   unusedFilesCount: 0
-  unusedExportsCount: 182
+  unusedExportsCount: 183

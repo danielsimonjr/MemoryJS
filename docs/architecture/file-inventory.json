@@ -2013,21 +2013,21 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1491
+      "loc": 1518
     },
     {
       "file": "src/features/amr/AmrWriter.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 589
+      "loc": 739
     },
     {
       "file": "src/features/amr/GitRunner.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 384
+      "loc": 479
     },
     {
       "file": "src/features/amr/index.ts",
@@ -5919,14 +5919,14 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 1048
+      "loc": 1058
     },
     {
       "file": "tests/unit/features/amr/AmrWriter.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 916
+      "loc": 1344
     },
     {
       "file": "tests/unit/features/amr/observationMetaMeta.test.ts",

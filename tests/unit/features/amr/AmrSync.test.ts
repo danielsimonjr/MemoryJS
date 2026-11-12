@@ -754,6 +754,16 @@ describe('phase 4 review regressions', () => {
     expect((await ctx.relationManager.getRelations('a')).filter((r) => r.from === 'a').length).toBe(n);
   }, 60_000);
 
+  it('creates new entities in batches, one save per batch', async () => {
+    const root = tmp('amr-batch-');
+    for (let i = 0; i < 1001; i++) put(root, `t${i}.md`, '- t\n');
+    const ctx = newCtx();
+    const spy = vi.spyOn(ctx.entityManager, 'createEntities');
+    const rep = await importAmr(ctx, root, { dryRun: false });
+    expect(rep.entities.filter((e) => e.action === 'create')).toHaveLength(1001);
+    expect(spy).toHaveBeenCalledTimes(2);
+  }, 60_000);
+
   it('F12: reconcile keeps a relation whose target file has an error', async () => {
     const ctx = newCtx();
     const root = tmp('amr-f12-');

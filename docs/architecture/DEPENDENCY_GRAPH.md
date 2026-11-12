@@ -5670,7 +5670,7 @@ Reachable from a root: **427** of 427 files. Dormant: **0** (0 orphaned, 0 test-
 |--------|--------|
 | `fs` | `promises` |
 | `path` | `basename, dirname, join, relative, resolve, sep` |
-| `crypto` | `randomUUID` |
+| `crypto` | `createHash, randomUUID` |
 
 **Internal Dependencies:**
 | File | Imports | Type |
@@ -5678,7 +5678,7 @@ Reachable from a root: **427** of 427 files. Dormant: **0** (0 orphaned, 0 test-
 | `../../utils/confinedPath.js` | `foldPathCase, samePath, strictlyInside` | Import |
 | `../../utils/durableWriteFile.js` | `renameOver` | Import |
 | `./AmrReader.js` | `AMR_READER_DEFAULTS, MARKDOWN_SUFFIX, checkAmrLink` | Import |
-| `./GitRunner.js` | `AmrGitError, GitRunner` | Import |
+| `./GitRunner.js` | `AmrGitError, GitRunner, StagedFile` | Import |
 | `./SecretScanner.js` | `loadSecretPatterns, scanForSecrets, SecretHit, SecretPattern` | Import |
 
 **Exports:**
@@ -5706,8 +5706,8 @@ Reachable from a root: **427** of 427 files. Dormant: **0** (0 orphaned, 0 test-
 
 **Exports:**
 - Classes: `AmrGitError`, `GitRunner`
-- Interfaces: `GitRunnerConfig`, `GitRunResult`
-- Types: `AmrGitErrorCode`, `GitCleanCheck`, `GitCommitResult`
+- Interfaces: `GitRunnerConfig`, `GitRunResult`, `StagedFile`
+- Types: `AmrGitErrorCode`, `GitCleanCheck`, `GitCommitResult`, `StagedVerifier`
 - Constants: `AMR_GIT_DEFAULTS`
 
 ---
@@ -8127,11 +8127,11 @@ graph TD
 |----------|-------|
 | Total TypeScript Files | 427 |
 | Total Modules | 12 |
-| Total Lines of Code | 140054 |
+| Total Lines of Code | 140326 |
 | Total Exports | 3108 |
 | Total Re-exports | 1858 |
 | Total Classes | 310 |
-| Total Interfaces | 880 |
+| Total Interfaces | 881 |
 | Total Functions | 733 |
 | Total Type Guards | 52 |
 | Total Enums | 4 |

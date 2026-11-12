@@ -63,6 +63,9 @@ export const AMR_SYNC_DEFAULTS: AmrSyncDefaults = {
 const MAX_OBSERVATION_CHARS = 5000;
 /** Largest number of relations in one `createRelations` or `deleteRelations` call (the schema limit). */
 const RELATION_BATCH = 1000;
+
+/** Largest number of entities in one `createEntities` call (the schema limit). */
+const ENTITY_BATCH = 1000;
 /** Longest path segment that a slug or a plain name gives. */
 const MAX_SEGMENT_CHARS = 100;
 /**
@@ -1278,18 +1281,40 @@ export async function importAmr(ctx: ManagerContext, root: string, opts: AmrImpo
     desired.set(n.name, want);
   }
 
+  // New entities are created in batches after the loop: one save per batch, not one per file.
+  // Names are unique here: a second file with the same name is refused above.
+  const pending: { n: NoteFile; entity: Entity }[] = [];
+  const flush = async (): Promise<void> => {
+    const all = pending.splice(0);
+    for (let i = 0; i < all.length; i += ENTITY_BATCH) {
+      const chunk = all.slice(i, i + ENTITY_BATCH);
+      try {
+        await ctx.entityManager.createEntities(chunk.map((p) => p.entity));
+      } catch {
+        // Find the entity that fails: create the chunk one by one.
+        for (const { n, entity } of chunk) {
+          try {
+            await ctx.entityManager.createEntities([entity]);
+          } catch (e) {
+            results.set(n.file, { name: n.name, file: n.file, action: 'error', error: e instanceof Error ? e.message : String(e) });
+          }
+        }
+      }
+    }
+  };
   for (const n of notes) {
     if (n.tooLong) {
       results.set(n.file, { name: n.name, file: n.file, action: 'error', error: `observation longer than ${MAX_OBSERVATION_CHARS} characters` });
       continue;
     }
     try {
-      const action = await syncEntity(ctx, n, mode, dryRun, now, patterns, warnings);
+      const action = await syncEntity(ctx, n, mode, dryRun, now, patterns, warnings, pending);
       results.set(n.file, { name: n.name, file: n.file, action });
     } catch (e) {
       results.set(n.file, { name: n.name, file: n.file, action: 'error', error: e instanceof Error ? e.message : String(e) });
     }
   }
+  await flush();
 
   // `present`: entities that this run creates or keeps. A relation is created only between them.
   // A relation to a file with an error stays: the file still holds it.
@@ -1383,6 +1408,7 @@ function fileMeta(list: NoteObservation[]): ObservationMeta[] {
  * @param now - Clock for the export rule of reconcile.
  * @param patterns - Secret patterns for the export rule of reconcile.
  * @param warnings - Receives the warnings.
+ * @param pending - Receives a new entity when `dryRun` is false; the caller creates it.
  * @returns The action.
  * @throws ValidationError when the entity data fails the schema.
  */
@@ -1394,6 +1420,7 @@ async function syncEntity(
   now: Date,
   patterns: readonly SecretPattern[],
   warnings: string[],
+  pending: { n: NoteFile; entity: Entity }[],
 ): Promise<'create' | 'update' | 'unchanged'> {
   const existing = await ctx.entityManager.getEntity(n.name);
   if (existing === null) {
@@ -1409,7 +1436,7 @@ async function syncEntity(
     } as Entity;
     const check = CreateEntitySchema.safeParse(entity);
     if (!check.success) throw new ValidationError(invalidMessage('entity', check.error.issues), check.error.issues.map((i) => i.message));
-    if (!dryRun) await ctx.entityManager.createEntities([entity]);
+    if (!dryRun) pending.push({ n, entity });
     return 'create';
   }
 

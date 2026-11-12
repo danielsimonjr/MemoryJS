@@ -21779,6 +21779,7 @@
           {
             "module": "crypto",
             "imports": [
+              "createHash",
               "randomUUID"
             ]
           }
@@ -21810,7 +21811,8 @@
             "file": "./GitRunner.js",
             "imports": [
               "AmrGitError",
-              "GitRunner"
+              "GitRunner",
+              "StagedFile"
             ]
           },
           {
@@ -21896,7 +21898,8 @@
         ],
         "interfaces": [
           "GitRunnerConfig",
-          "GitRunResult"
+          "GitRunResult",
+          "StagedFile"
         ],
         "constants": [
           "AMR_GIT_DEFAULTS"
@@ -31836,10 +31839,10 @@
   "statistics": {
     "totalTypeScriptFiles": 427,
     "totalModules": 12,
-    "totalLinesOfCode": 140054,
+    "totalLinesOfCode": 140326,
     "totalExports": 3108,
     "totalClasses": 310,
-    "totalInterfaces": 880,
+    "totalInterfaces": 881,
     "totalFunctions": 733,
     "totalTypeGuards": 52,
     "totalEnums": 4,
@@ -31854,6 +31857,6 @@
     "orphanedFiles": 0,
     "testOnlyFiles": 0,
     "unusedFilesCount": 0,
-    "unusedExportsCount": 182
+    "unusedExportsCount": 183
   }
 }

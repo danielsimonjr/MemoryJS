@@ -10,9 +10,9 @@
 - **Dormant files** (runtime code on disk, unreachable from any entry/build root): 0
   - **Orphaned (reachable from nothing — delete/wire candidates)**: 0
   - **Test-only (exercised by a test, ships nothing)**: 0
-- **Potentially unused exports**: 182
+- **Potentially unused exports**: 183
   - **Unreferenced anywhere (deletion candidates)**: 5
-  - **Referenced in-module (type contracts / helpers backing live exports)**: 177
+  - **Referenced in-module (type contracts / helpers backing live exports)**: 178
 
 Seeded reachability roots (4):
 
@@ -355,6 +355,10 @@ support exports that ARE used, so they cannot be deleted in isolation.
 - `IngestValidationFeedback` (interface) — 2 in-file refs
 - `IOManagerOptions` (interface) — 1 in-file ref
 - `IngestMode` (type) — 3 in-file refs
+
+### `src/features/amr/GitRunner.ts`
+
+- `StagedVerifier` (type) — 1 in-file ref
 
 ### `src/search/HybridSearchManager.ts`
 

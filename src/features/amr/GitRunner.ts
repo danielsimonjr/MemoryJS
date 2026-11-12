@@ -1,8 +1,11 @@
 /**
  * Git runner for the Agent Memory Repo (AMR) writer. It runs only an exact allow-list of git
  * commands, with `shell: false`, a timeout, and no `GIT_*` variable from the host environment.
- * Every call adds `--literal-pathspecs`. A refused command spawns nothing. The `status` call lists
+ * Every call adds `--no-replace-objects` (a replace ref cannot change what `cat-file` reads) and
+ * `--literal-pathspecs`. A refused command spawns nothing. The `status` call lists
  * every untracked file (`--untracked-files=all`), so a new file in a new folder is seen as a file.
+ * The `ls-files -s` and `cat-file` calls read the staged entries that {@link GitRunner.commitFiles}
+ * checks before it commits.
  *
  * @module features/amr/GitRunner
  * @experimental
@@ -90,6 +93,30 @@ export type GitCleanCheck =
 /** Result of {@link GitRunner.commitFiles}. */
 export type GitCommitResult = { committed: false } | { committed: true; sha: string };
 
+/** One index entry of `git ls-files -s`. */
+export interface StagedFile {
+  /** Repo-relative path with `/`. */
+  path: string;
+  /** Git file mode, for example `100644`. */
+  mode: string;
+  /** Object id of the staged blob: 40 hex digits (sha1) or 64 (sha256). */
+  oid: string;
+  /** Index stage. `0` for a merged path. */
+  stage: number;
+}
+
+/**
+ * Hook of {@link GitRunner.commitFiles}. It runs after `git add` and before `git commit`, on the
+ * staged entries. A throw stops the commit. The paths stay staged, and the caller unstages them.
+ */
+export type StagedVerifier = (staged: StagedFile[]) => Promise<void>;
+
+/** Object id of a blob: 40 hex digits (sha1) or 64 (sha256). */
+const OID_RE = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
+
+/** One line of `git ls-files -s -z`: mode, object id, stage and path. */
+const LS_FILES_ENTRY_RE = /^([0-7]{6}) ([0-9a-f]+) ([0-3])\t([\s\S]*)$/;
+
 /** Allowed options of each allow-listed subcommand. */
 const ALLOWED_OPTIONS: Readonly<Record<string, readonly string[]>> = {
   status: ['--porcelain', '-z', '--untracked-files=all'],
@@ -99,18 +126,22 @@ const ALLOWED_OPTIONS: Readonly<Record<string, readonly string[]>> = {
 
 /**
  * Tell whether a git argument list is on the allow-list.
- * @param args - Arguments after `--literal-pathspecs`.
+ * @param args - Arguments after the fixed global options.
  * @returns True when the list is allowed.
  */
 function isAllowed(args: readonly string[]): boolean {
   const [sub, ...rest] = args;
   if (typeof sub !== 'string') return false;
-  const options = ALLOWED_OPTIONS[sub];
+  const options = Object.hasOwn(ALLOWED_OPTIONS, sub) ? ALLOWED_OPTIONS[sub] : undefined;
   if (options) return rest.every((a) => options.includes(a));
   if (sub === 'commit') return rest.length === 2 && rest[0] === '-m' && typeof rest[1] === 'string';
   if (sub === 'add') return rest.length >= 2 && rest[0] === '--';
   if (sub === 'restore') return rest.length >= 3 && rest[0] === '--staged' && rest[1] === '--';
   if (sub === 'rm') return rest.length >= 4 && rest[0] === '--cached' && rest[1] === '--quiet' && rest[2] === '--';
+  if (sub === 'ls-files') return rest.length >= 4 && rest[0] === '-s' && rest[1] === '-z' && rest[2] === '--';
+  if (sub === 'cat-file') {
+    return rest.length === 2 && (rest[0] === '-s' || rest[0] === 'blob') && typeof rest[1] === 'string' && OID_RE.test(rest[1]);
+  }
   return false;
 }
 
@@ -205,7 +236,7 @@ export class GitRunner {
    */
   run(args: readonly string[]): Promise<GitRunResult> {
     if (!isAllowed(args)) return Promise.reject(new AmrGitError('refused', 'git command is not allowed'));
-    const argv = [...this.config.binaryArgs, '--literal-pathspecs', ...args];
+    const argv = [...this.config.binaryArgs, '--no-replace-objects', '--literal-pathspecs', ...args];
     return new Promise<GitRunResult>((resolve, reject) => {
       let settled = false;
       const child = spawn(this.config.gitBinary, argv, {
@@ -311,17 +342,70 @@ export class GitRunner {
   }
 
   /**
+   * List the index entries of paths (`git ls-files -s`), split into chunks like `add`.
+   * @param paths - Repo-relative paths with `/`.
+   * @returns One entry per index entry that matches a path.
+   * @throws AmrGitError with code `git-failed` when git cannot answer or its output is not understood.
+   */
+  async stagedFiles(paths: string[]): Promise<StagedFile[]> {
+    const out: StagedFile[] = [];
+    for (const chunk of this.chunks(paths)) {
+      const res = await this.run(['ls-files', '-s', '-z', '--', ...chunk]);
+      if (res.code !== 0) throw new AmrGitError('git-failed', 'git ls-files failed');
+      for (const entry of res.stdout.split('\0')) {
+        if (entry === '') continue;
+        const [, mode, oid, stage, path] = LS_FILES_ENTRY_RE.exec(entry) ?? [];
+        if (mode === undefined || oid === undefined || stage === undefined || path === undefined || !OID_RE.test(oid)) {
+          throw new AmrGitError('git-failed', 'git ls-files output is not understood');
+        }
+        out.push({ path, mode, oid, stage: Number(stage) });
+      }
+    }
+    return out;
+  }
+
+  /**
+   * Read the size of a blob (`git cat-file -s`).
+   * @param oid - Object id, 40 or 64 hex digits.
+   * @returns The size in bytes.
+   * @throws AmrGitError with code `refused`, `git-failed`, `timeout` or `spawn`.
+   */
+  async blobSize(oid: string): Promise<number> {
+    const res = await this.run(['cat-file', '-s', oid]);
+    const size = Number(res.stdout.trim());
+    if (res.code !== 0 || !Number.isSafeInteger(size) || size < 0) throw new AmrGitError('git-failed', 'git cat-file -s failed');
+    return size;
+  }
+
+  /**
+   * Read the text of a blob (`git cat-file blob`), decoded as UTF-8. Check the size with
+   * {@link GitRunner.blobSize} first.
+   * @param oid - Object id, 40 or 64 hex digits.
+   * @returns The blob text.
+   * @throws AmrGitError with code `refused`, `git-failed`, `timeout` or `spawn`.
+   */
+  async blobText(oid: string): Promise<string> {
+    const res = await this.run(['cat-file', 'blob', oid]);
+    if (res.code !== 0) throw new AmrGitError('git-failed', 'git cat-file blob failed');
+    return res.stdout;
+  }
+
+  /**
    * Stage the paths, check the staged set, and commit it.
    * An empty staged set is a no-op. Every staged path must be in `paths`. A staged path outside
-   * `paths` refuses the commit. A failed commit leaves the paths staged: the caller unstages them.
+   * `paths` refuses the commit. Every staged entry must be stage 0, mode `100644` or `100755`, else
+   * the commit is refused with `stage-mismatch` (a symlink or a gitlink).
+   * Then `verify`, when given, gets the staged entries; a throw stops the commit. A failed commit or a
+   * refusal leaves the paths staged: the caller unstages them.
    * A commit that times out is checked after its process tree is dead. When HEAD moved and the
    * index is empty, the commit landed and this resolves with it.
    * @param paths - Repo-relative paths with `/`.
    * @param message - Commit message. The configured prefix is added in front.
+   * @param verify - Optional check of the staged entries, run after `add` and before `commit`.
    * @returns `{ committed: false }` for a no-op, or `{ committed: true, sha }`.
-   * @throws AmrGitError with code `stage-mismatch`, `timeout` or `git-failed`.
+   * @throws AmrGitError with code `stage-mismatch`, `timeout` or `git-failed`. Errors of `verify` pass through.
    */
-  async commitFiles(paths: string[], message: string): Promise<GitCommitResult> {
+  async commitFiles(paths: string[], message: string, verify?: StagedVerifier): Promise<GitCommitResult> {
     for (const chunk of this.chunks(paths)) {
       const add = await this.run(['add', '--', ...chunk]);
       if (add.code !== 0) throw new AmrGitError('git-failed', 'git add failed');
@@ -330,6 +414,17 @@ export class GitRunner {
     if (names.length === 0) return { committed: false };
     const allowed = new Set(paths);
     if (names.some((n) => !allowed.has(n))) throw new AmrGitError('stage-mismatch', 'staged set holds an unexpected path');
+    const staged = await this.stagedFiles(names);
+    const regular = new Set<string>();
+    for (const s of staged) {
+      // The stage check is a guard: callers refuse unmerged (U) paths before this call.
+      if (s.stage !== 0 || (s.mode !== '100644' && s.mode !== '100755') || regular.has(s.path)) {
+        throw new AmrGitError('stage-mismatch', 'staged entry is not a regular file');
+      }
+      regular.add(s.path);
+    }
+    if (names.some((n) => !regular.has(n))) throw new AmrGitError('stage-mismatch', 'staged entry is missing');
+    if (verify !== undefined) await verify(staged);
     const before = await this.head();
     let commit: GitRunResult;
     try {
