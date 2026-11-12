@@ -101,7 +101,9 @@ import {
   loadAmrContext,
   checkAmr,
   findCaseDuplicates,
+  walkAmrMarkdown,
 } from '../../../../src/features/amr/AmrReader.js';
+import { foldPathCase, samePath } from '../../../../src/utils/confinedPath.js';
 
 let root: string;
 let outside: string;
@@ -676,5 +678,34 @@ describe('review 2 fixes', () => {
       const r = await checkAmr(root, { maxIndexBytes: 100 });
       expect(r.issues.map((i) => i.code)).toEqual(['index-too-large']);
     });
+  });
+});
+
+describe('phase 5 declutter', () => {
+  it('checkAmr walks .md files in any case (FIX 1)', async () => {
+    await write('MEMORY.md', '# Memory\n');
+    await write('NOTES.MD', `- key ${'AKIA' + 'Q'.repeat(16)}\n- bad [[nowhere]]\n`);
+    await write('sub/Deep.Md', '- fine\n');
+    const r = await checkAmr(root);
+    expect(r.files).toBe(3);
+    expect(r.issues).toEqual([
+      { file: 'NOTES.MD', line: 1, code: 'secret', detail: 'aws-access-key' },
+      { file: 'NOTES.MD', line: 2, code: 'dangling-link', detail: '[[nowhere]]' },
+    ]);
+    expect(await walkAmrMarkdown(root)).toEqual(['MEMORY.md', 'NOTES.MD', 'sub/Deep.Md']);
+  });
+
+  it('foldPathCase and samePath fold case on win32 only (FIX 3)', () => {
+    const saved = Object.getOwnPropertyDescriptor(process, 'platform')!;
+    try {
+      Object.defineProperty(process, 'platform', { value: 'win32' });
+      expect(samePath('C:\\A\\b', 'c:\\a\\B')).toBe(true);
+      expect(foldPathCase('ABC')).toBe('abc');
+      Object.defineProperty(process, 'platform', { value: 'linux' });
+      expect(samePath('/A', '/a')).toBe(false);
+      expect(foldPathCase('ABC')).toBe('ABC');
+    } finally {
+      Object.defineProperty(process, 'platform', saved);
+    }
   });
 });

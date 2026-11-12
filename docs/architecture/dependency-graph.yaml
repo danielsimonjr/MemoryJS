@@ -2,7 +2,7 @@ metadata:
   name: "@danielsimonjr/memoryjs"
   totalFiles: 425
   totalModules: 12
-  totalExports: 3085
+  totalExports: 3090
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -14275,6 +14275,7 @@ modules:
           imports:
             - ValidationError
       exports:
+        - isValidKey
         - parseEntryText
         - formatEntryText
         - extractLinks
@@ -14289,6 +14290,7 @@ modules:
         - ParsedEntryText
         - AmrEntryEdit
       functions:
+        - isValidKey
         - parseEntryText
         - formatEntryText
         - extractLinks
@@ -14304,6 +14306,9 @@ modules:
         - file: ../../utils/errors.js
           imports:
             - ValidationError
+        - file: ./AmrCodec.js
+          imports:
+            - isValidKey
       exports:
         - parseFrontMatter
         - renderFrontMatter
@@ -14334,6 +14339,7 @@ modules:
             - ValidationError
         - file: ../../utils/confinedPath.js
           imports:
+            - foldPathCase
             - strictlyInside
         - file: ./AmrCodec.js
           imports:
@@ -14346,6 +14352,8 @@ modules:
             - SecretPattern
       exports:
         - AMR_READER_DEFAULTS
+        - MARKDOWN_SUFFIX
+        - isReservedName
         - checkAmrLink
         - readAmrFile
         - loadAmrContext
@@ -14359,6 +14367,7 @@ modules:
         - AmrCheckOptions
         - AmrCheckReport
       functions:
+        - isReservedName
         - checkAmrLink
         - readAmrFile
         - loadAmrContext
@@ -14367,6 +14376,7 @@ modules:
         - walkAmrMarkdown
       constants:
         - AMR_READER_DEFAULTS
+        - MARKDOWN_SUFFIX
     src/features/amr/AmrSync.ts:
       description: One-way sync between the graph and an Agent Memory Repo (AMR). `exportAmr` writes graph entities to
       externalDependencies: []
@@ -14409,7 +14419,10 @@ modules:
             - FrontMatterValues
         - file: ./AmrReader.js
           imports:
+            - AMR_READER_DEFAULTS
+            - MARKDOWN_SUFFIX
             - checkAmrLink
+            - isReservedName
             - readAmrFile
             - walkAmrMarkdown
         - file: ./AmrWriter.js
@@ -14469,6 +14482,8 @@ modules:
       internalDependencies:
         - file: ../../utils/confinedPath.js
           imports:
+            - foldPathCase
+            - samePath
             - strictlyInside
         - file: ../../utils/durableWriteFile.js
           imports:
@@ -14476,6 +14491,7 @@ modules:
         - file: ./AmrReader.js
           imports:
             - AMR_READER_DEFAULTS
+            - MARKDOWN_SUFFIX
             - checkAmrLink
         - file: ./GitRunner.js
           imports:
@@ -14515,6 +14531,9 @@ modules:
           imports:
             - isAbsolute
       internalDependencies:
+        - file: ../../utils/confinedPath.js
+          imports:
+            - samePath
         - file: ../../utils/errors.js
           imports:
             - ValidationError
@@ -19709,10 +19728,14 @@ modules:
       internalDependencies: []
       exports:
         - isSpecial
+        - foldPathCase
+        - samePath
         - strictlyInside
         - pathExists
       functions:
         - isSpecial
+        - foldPathCase
+        - samePath
         - strictlyInside
         - pathExists
     src/utils/constants.ts:
@@ -22318,14 +22341,14 @@ reachability:
 statistics:
   totalTypeScriptFiles: 425
   totalModules: 12
-  totalLinesOfCode: 139486
-  totalExports: 3085
+  totalLinesOfCode: 139480
+  totalExports: 3090
   totalClasses: 310
   totalInterfaces: 876
-  totalFunctions: 724
-  totalTypeGuards: 50
+  totalFunctions: 728
+  totalTypeGuards: 52
   totalEnums: 4
-  totalConstants: 201
+  totalConstants: 202
   totalReExports: 1847
   totalTypeOnlyImports: 885
   runtimeCircularDeps: 0

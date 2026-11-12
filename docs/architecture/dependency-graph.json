@@ -3,7 +3,7 @@
     "name": "@danielsimonjr/memoryjs",
     "totalFiles": 425,
     "totalModules": 12,
-    "totalExports": 3085
+    "totalExports": 3090
   },
   "entryPoints": [
     {
@@ -21290,6 +21290,7 @@
           }
         ],
         "exports": [
+          "isValidKey",
           "parseEntryText",
           "formatEntryText",
           "extractLinks",
@@ -21306,6 +21307,7 @@
           "AmrEntryEdit"
         ],
         "functions": [
+          "isValidKey",
           "parseEntryText",
           "formatEntryText",
           "extractLinks",
@@ -21324,6 +21326,12 @@
             "file": "../../utils/errors.js",
             "imports": [
               "ValidationError"
+            ]
+          },
+          {
+            "file": "./AmrCodec.js",
+            "imports": [
+              "isValidKey"
             ]
           }
         ],
@@ -21375,6 +21383,7 @@
           {
             "file": "../../utils/confinedPath.js",
             "imports": [
+              "foldPathCase",
               "strictlyInside"
             ]
           },
@@ -21396,6 +21405,8 @@
         ],
         "exports": [
           "AMR_READER_DEFAULTS",
+          "MARKDOWN_SUFFIX",
+          "isReservedName",
           "checkAmrLink",
           "readAmrFile",
           "loadAmrContext",
@@ -21411,6 +21422,7 @@
           "AmrCheckReport"
         ],
         "functions": [
+          "isReservedName",
           "checkAmrLink",
           "readAmrFile",
           "loadAmrContext",
@@ -21419,7 +21431,8 @@
           "walkAmrMarkdown"
         ],
         "constants": [
-          "AMR_READER_DEFAULTS"
+          "AMR_READER_DEFAULTS",
+          "MARKDOWN_SUFFIX"
         ]
       },
       "src/features/amr/AmrSync.ts": {
@@ -21487,7 +21500,10 @@
           {
             "file": "./AmrReader.js",
             "imports": [
+              "AMR_READER_DEFAULTS",
+              "MARKDOWN_SUFFIX",
               "checkAmrLink",
+              "isReservedName",
               "readAmrFile",
               "walkAmrMarkdown"
             ]
@@ -21575,6 +21591,8 @@
           {
             "file": "../../utils/confinedPath.js",
             "imports": [
+              "foldPathCase",
+              "samePath",
               "strictlyInside"
             ]
           },
@@ -21588,6 +21606,7 @@
             "file": "./AmrReader.js",
             "imports": [
               "AMR_READER_DEFAULTS",
+              "MARKDOWN_SUFFIX",
               "checkAmrLink"
             ]
           },
@@ -21650,6 +21669,12 @@
           }
         ],
         "internalDependencies": [
+          {
+            "file": "../../utils/confinedPath.js",
+            "imports": [
+              "samePath"
+            ]
+          },
           {
             "file": "../../utils/errors.js",
             "imports": [
@@ -28490,11 +28515,15 @@
         "internalDependencies": [],
         "exports": [
           "isSpecial",
+          "foldPathCase",
+          "samePath",
           "strictlyInside",
           "pathExists"
         ],
         "functions": [
           "isSpecial",
+          "foldPathCase",
+          "samePath",
           "strictlyInside",
           "pathExists"
         ]
@@ -31584,14 +31613,14 @@
   "statistics": {
     "totalTypeScriptFiles": 425,
     "totalModules": 12,
-    "totalLinesOfCode": 139486,
-    "totalExports": 3085,
+    "totalLinesOfCode": 139480,
+    "totalExports": 3090,
     "totalClasses": 310,
     "totalInterfaces": 876,
-    "totalFunctions": 724,
-    "totalTypeGuards": 50,
+    "totalFunctions": 728,
+    "totalTypeGuards": 52,
     "totalEnums": 4,
-    "totalConstants": 201,
+    "totalConstants": 202,
     "totalReExports": 1847,
     "totalTypeOnlyImports": 885,
     "runtimeCircularDeps": 0,

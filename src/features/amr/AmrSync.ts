@@ -13,7 +13,7 @@ import { ValidationError } from '../../utils/errors.js';
 import { CreateEntitySchema, CreateRelationSchema, UpdateEntitySchema } from '../../utils/schemas.js';
 import { extractLinks, formatEntryText, parseAmrDocument, renderAmrDocument, setEntries, type AmrDocument, type AmrEntryEdit, type AmrLine } from './AmrCodec.js';
 import { parseFrontMatter, renderFrontMatter, type FrontMatterValues } from './AmrFrontMatter.js';
-import { checkAmrLink, readAmrFile, walkAmrMarkdown } from './AmrReader.js';
+import { AMR_READER_DEFAULTS, MARKDOWN_SUFFIX, checkAmrLink, isReservedName, readAmrFile, walkAmrMarkdown } from './AmrReader.js';
 import { checkAmrWritePath, checkFileText, writeAmrFiles, type AmrFileText } from './AmrWriter.js';
 import type { GitRunner } from './GitRunner.js';
 import { loadSecretPatterns, scanForSecrets, type SecretPattern } from './SecretScanner.js';
@@ -33,7 +33,7 @@ export interface AmrSyncOptions {
   mode?: AmrSyncMode;
   /** True writes nothing. The report is the same as a real run. */
   dryRun?: boolean;
-  /** Namespace prefix of entity names, without the trailing slash. */
+  /** Namespace prefix of entity names, without the trailing slash. The sync normalises the namespace to NFC. */
   namespace?: string;
   /** Clock for validity checks and dates. Defaults to the current time. */
   now?: Date;
@@ -65,8 +65,13 @@ const MAX_OBSERVATION_CHARS = 5000;
 const RELATION_BATCH = 1000;
 /** Longest path segment that a slug or a plain name gives. */
 const MAX_SEGMENT_CHARS = 100;
-/** Segments that a path made from a name may not use: Windows device names and the reader's ignore list. */
-const RESERVED_NAME = /^(con|prn|aux|nul|com\d|lpt\d|node_modules)$/;
+/**
+ * Tell whether a segment of a path made from a name is reserved: a Windows device name or a name in the
+ * reader's ignore list.
+ * @param seg - Lower-case path segment.
+ * @returns True for a reserved segment.
+ */
+const isReservedSegment = (seg: string): boolean => isReservedName(seg) || AMR_READER_DEFAULTS.ignore.some((n) => n.toLowerCase() === seg);
 // The control characters are the subject of this pattern.
 // oxlint-disable-next-line no-control-regex
 const SEPARATOR_OR_SPACE = /[\s\x1c-\x1e\x85]+/g;
@@ -138,7 +143,7 @@ export interface AmrImportOptions {
   mode?: AmrSyncMode;
   /** True (default) changes nothing. */
   dryRun?: boolean;
-  /** Namespace prefix of entity names. */
+  /** Namespace prefix of entity names. The sync normalises the namespace to NFC. */
   namespace?: string;
   /** Clock for the validity checks of `reconcile`. Defaults to the current time. */
   now?: Date;
@@ -201,7 +206,7 @@ function byCodePoint(a: string, b: string): number {
  * @returns The NFC-normalised entity name.
  */
 function nameFor(fmName: string | undefined, rel: string, namespace: string | undefined): string {
-  const base = (fmName !== undefined && fmName !== '' ? fmName : rel.replace(/\.md$/i, '')).normalize('NFC');
+  const base = (fmName !== undefined && fmName !== '' ? fmName : rel.replace(MARKDOWN_SUFFIX, '')).normalize('NFC');
   return namespace ? `${namespace}/${base}` : base;
 }
 
@@ -234,7 +239,7 @@ function bareName(key: string, namespace: string | undefined): string {
  * @returns The target path without `.md`.
  */
 function normLink(link: string): string {
-  return link.split('|')[0].split('#')[0].trim().replace(/\.md$/i, '');
+  return link.split('|')[0].split('#')[0].trim().replace(MARKDOWN_SUFFIX, '');
 }
 
 /**
@@ -251,7 +256,7 @@ function slug(s: string): string {
     .slice(0, MAX_SEGMENT_CHARS)
     .replace(/-+$/, '');
   if (base === '') return 'entity';
-  return RESERVED_NAME.test(base) ? `${base}-entity` : base;
+  return isReservedSegment(base) ? `${base}-entity` : base;
 }
 
 /**
@@ -274,7 +279,7 @@ function isPlainName(name: string): boolean {
   if (!/^[a-z0-9_-]+(\/[a-z0-9_-]+)*$/.test(name)) return false;
   if (name === 'memory' || name === '_hubs' || name.startsWith('_hubs/')) return false;
   if (!checkAmrLink(name).ok) return false;
-  return name.split('/').every((seg) => seg.length <= MAX_SEGMENT_CHARS && !RESERVED_NAME.test(seg));
+  return name.split('/').every((seg) => seg.length <= MAX_SEGMENT_CHARS && !isReservedSegment(seg));
 }
 
 /**
@@ -295,7 +300,7 @@ function pathFor(bare: string, type: string): string {
  * @returns The path with `/` and `.md`.
  */
 export function amrPathForEntity(entity: Entity, namespace?: string): string {
-  return pathFor(bareName(entity.name.normalize('NFC'), namespace), entity.entityType);
+  return pathFor(bareName(entity.name.normalize('NFC'), namespace?.normalize('NFC')), entity.entityType);
 }
 
 /**
@@ -729,7 +734,7 @@ export async function exportAmr(list: Entity[], rels: Relation[], root: string, 
   if (!o.dryRun && opts.runner === undefined) {
     throw new ValidationError('A real export needs a git runner', ['runner']);
   }
-  const ns = opts.namespace;
+  const ns = opts.namespace?.normalize('NFC');
   const now = opts.now ?? new Date();
   const warnings: string[] = [];
   const warn = (w: string) => warnings.push(w);
@@ -810,14 +815,14 @@ export async function exportAmr(list: Entity[], rels: Relation[], root: string, 
       continue;
     }
     let path = base;
-    for (let n = 2; taken.has(path.toLowerCase()); n++) path = base.replace(/\.md$/, `-${n}.md`);
+    for (let n = 2; taken.has(path.toLowerCase()); n++) path = base.replace(MARKDOWN_SUFFIX, `-${n}.md`);
     taken.add(path.toLowerCase());
     assigned.set(k.key, { path });
   }
 
   const targetOf = (key: string): string => {
     const p = assigned.get(key)?.path ?? index.byName.get(key)?.path ?? pathFor(bareName(key, ns), 'note');
-    return p.replace(/\.md$/i, '');
+    return p.replace(MARKDOWN_SUFFIX, '');
   };
   const relsByFrom = new Map<string, Relation[]>();
   for (const r of rels) {
@@ -907,7 +912,7 @@ export async function exportAmr(list: Entity[], rels: Relation[], root: string, 
       warn(`${h.path}: hub not written (${h.refused})`);
       continue;
     }
-    hubLinks.push(h.path.replace(/\.md$/i, ''));
+    hubLinks.push(h.path.replace(MARKDOWN_SUFFIX, ''));
     if (h.text === null) continue;
     const reason = await precheck(h.path, h.text);
     if (reason !== null) {
@@ -1025,7 +1030,7 @@ async function hubFiles(
   for (const key of [...byHub.keys()].sort(byCodePoint)) {
     const hub = byHub.get(key)!;
     hub.items.sort((a, b) => byCodePoint(a.name, b.name));
-    const text = `# ${normalizeObservation(hub.heading)}\n\n${hub.items.map((i) => `- [[${i.path.replace(/\.md$/i, '')}]]\n`).join('')}`;
+    const text = `# ${normalizeObservation(hub.heading)}\n\n${hub.items.map((i) => `- [[${i.path.replace(MARKDOWN_SUFFIX, '')}]]\n`).join('')}`;
     const rel = `${hubsDir}/${onDisk.get(`${key}.md`) ?? `${key}.md`}`;
     const current = await readText(root, rel);
     if (!current.ok && !current.missing) out.push({ path: rel, text: null, refused: current.reason });
@@ -1060,7 +1065,7 @@ async function indexFile(
   const top = [...members]
     .sort((a, b) => b.importance - a.importance || byCodePoint(a.name, b.name))
     .slice(0, topN);
-  const bullets = [...hubLinks.map((h) => `- [[${h}]]`), ...top.map((m) => `- [[${m.path.replace(/\.md$/i, '')}]]`)];
+  const bullets = [...hubLinks.map((h) => `- [[${h}]]`), ...top.map((m) => `- [[${m.path.replace(MARKDOWN_SUFFIX, '')}]]`)];
   const body: string[] = [];
   let size = '## Index\n\n'.length + 1;
   for (const b of bullets) {
@@ -1198,6 +1203,7 @@ function invalidMessage(what: string, issues: ReadonlyArray<{ path: PropertyKey[
 export async function importAmr(ctx: ManagerContext, root: string, opts: AmrImportOptions = {}): Promise<AmrImportReport> {
   const mode: AmrSyncMode = opts.mode === 'reconcile' ? 'reconcile' : 'add-only';
   const dryRun = opts.dryRun ?? AMR_SYNC_DEFAULTS.dryRun;
+  const namespace = opts.namespace?.normalize('NFC');
   const now = opts.now ?? new Date();
   // Only reconcile needs the export rule; an add-only import does not depend on the pattern file.
   const patterns = mode === 'reconcile' ? loadSecretPatterns() : [];
@@ -1220,19 +1226,19 @@ export async function importAmr(ctx: ManagerContext, root: string, opts: AmrImpo
   // Every walked file names an entity, also a file with an error: a link to it is held, not dangling.
   const keyToName = new Map<string, string>();
   for (const file of files) {
-    const key = file.replace(/\.md$/i, '');
+    const key = file.replace(MARKDOWN_SUFFIX, '');
     const read = await readText(root, file);
     if (!read.ok) {
-      const name = nameFor(undefined, file, opts.namespace);
+      const name = nameFor(undefined, file, namespace);
       keyToName.set(key, name);
       results.set(file, { name, file, action: 'error', error: read.reason });
       continue;
     }
     let note: NoteFile;
     try {
-      note = readNote(file, read.text, opts.namespace, warnings);
+      note = readNote(file, read.text, namespace, warnings);
     } catch (e) {
-      const name = nameFor(undefined, file, opts.namespace);
+      const name = nameFor(undefined, file, namespace);
       keyToName.set(key, name);
       results.set(file, { name, file, action: 'error', error: e instanceof Error ? e.message : String(e) });
       continue;

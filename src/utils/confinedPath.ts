@@ -2,7 +2,7 @@
  * Shared path confinement helpers: pseudo-filesystem detection, strict containment and existence checks.
  *
  * @module utils/confinedPath
- * @internal Used by the skill tree and the AMR reader. Not re-exported from a barrel.
+ * @internal Used by the skill tree and the AMR code. Not re-exported from a barrel.
  */
 
 import { promises as fs } from 'fs';
@@ -20,6 +20,27 @@ const SPECIAL_ROOTS = ['/proc', '/sys', '/dev'];
 export function isSpecial(p: string): boolean {
   const n = p.replace(/\\/g, '/').replace(/^[A-Za-z]:/, ''); // Windows: drive prefix and backslashes
   return SPECIAL_ROOTS.some((r) => n === r || n.startsWith(r + '/'));
+}
+
+/**
+ * Fold the case of a path on win32 only, for a path compare.
+ *
+ * @param p - Path.
+ * @returns The path, lower case on win32.
+ */
+export function foldPathCase(p: string): string {
+  return process.platform === 'win32' ? p.toLowerCase() : p;
+}
+
+/**
+ * Whether two real paths name the same place. The compare folds case on win32 only.
+ *
+ * @param a - First path.
+ * @param b - Second path.
+ * @returns True when the two real paths are the same path.
+ */
+export function samePath(a: string, b: string): boolean {
+  return foldPathCase(a) === foldPathCase(b);
 }
 
 /**

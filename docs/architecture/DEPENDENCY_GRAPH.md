@@ -5536,7 +5536,7 @@ Reachable from a root: **425** of 425 files. Dormant: **0** (0 orphaned, 0 test-
 **Exports:**
 - Interfaces: `AmrEntry`, `AmrLine`, `AmrDocument`, `ParsedEntryText`, `AmrEntryEdit`
 - Types: `AmrEol`, `AmrLineKind`
-- Functions: `parseEntryText`, `formatEntryText`, `extractLinks`, `parseAmrDocument`, `renderAmrDocument`, `setEntry`, `setEntries`
+- Functions: `isValidKey`, `parseEntryText`, `formatEntryText`, `extractLinks`, `parseAmrDocument`, `renderAmrDocument`, `setEntry`, `setEntries`
 
 ---
 
@@ -5546,6 +5546,7 @@ Reachable from a root: **425** of 425 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `../../utils/errors.js` | `ValidationError` | Import |
+| `./AmrCodec.js` | `isValidKey` | Import |
 
 **Exports:**
 - Interfaces: `FrontMatterParse`
@@ -5567,15 +5568,15 @@ Reachable from a root: **425** of 425 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `../../utils/errors.js` | `ValidationError` | Import |
-| `../../utils/confinedPath.js` | `strictlyInside` | Import |
+| `../../utils/confinedPath.js` | `foldPathCase, strictlyInside` | Import |
 | `./AmrCodec.js` | `parseAmrDocument` | Import |
 | `./SecretScanner.js` | `loadSecretPatterns, scanForSecrets, validateSecretPatterns, SecretPattern` | Import |
 
 **Exports:**
 - Interfaces: `AmrReaderOptions`, `AmrContext`, `AmrIssue`, `AmrCheckOptions`, `AmrCheckReport`
 - Types: `AmrLinkReason`, `AmrLinkCheck`, `AmrReadResult`, `AmrIssueCode`
-- Functions: `checkAmrLink`, `readAmrFile`, `loadAmrContext`, `findCaseDuplicates`, `checkAmr`, `walkAmrMarkdown`
-- Constants: `AMR_READER_DEFAULTS`
+- Functions: `isReservedName`, `checkAmrLink`, `readAmrFile`, `loadAmrContext`, `findCaseDuplicates`, `checkAmr`, `walkAmrMarkdown`
+- Constants: `AMR_READER_DEFAULTS`, `MARKDOWN_SUFFIX`
 
 ---
 
@@ -5595,7 +5596,7 @@ Reachable from a root: **425** of 425 files. Dormant: **0** (0 orphaned, 0 test-
 | `../../utils/schemas.js` | `CreateEntitySchema, CreateRelationSchema, UpdateEntitySchema` | Import |
 | `./AmrCodec.js` | `extractLinks, formatEntryText, parseAmrDocument, renderAmrDocument, setEntries, AmrDocument, AmrEntryEdit, AmrLine` | Import |
 | `./AmrFrontMatter.js` | `parseFrontMatter, renderFrontMatter, FrontMatterValues` | Import |
-| `./AmrReader.js` | `checkAmrLink, readAmrFile, walkAmrMarkdown` | Import |
+| `./AmrReader.js` | `AMR_READER_DEFAULTS, MARKDOWN_SUFFIX, checkAmrLink, isReservedName, readAmrFile, walkAmrMarkdown` | Import |
 | `./AmrWriter.js` | `checkAmrWritePath, checkFileText, writeAmrFiles, AmrFileText` | Import |
 | `./GitRunner.js` | `GitRunner` | Import (type-only) |
 | `./SecretScanner.js` | `loadSecretPatterns, scanForSecrets, SecretPattern` | Import |
@@ -5620,9 +5621,9 @@ Reachable from a root: **425** of 425 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `../../utils/confinedPath.js` | `strictlyInside` | Import |
+| `../../utils/confinedPath.js` | `foldPathCase, samePath, strictlyInside` | Import |
 | `../../utils/durableWriteFile.js` | `renameOver` | Import |
-| `./AmrReader.js` | `AMR_READER_DEFAULTS, checkAmrLink` | Import |
+| `./AmrReader.js` | `AMR_READER_DEFAULTS, MARKDOWN_SUFFIX, checkAmrLink` | Import |
 | `./GitRunner.js` | `AmrGitError, GitRunner` | Import |
 | `./SecretScanner.js` | `loadSecretPatterns, scanForSecrets, SecretHit, SecretPattern` | Import |
 
@@ -5645,6 +5646,7 @@ Reachable from a root: **425** of 425 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
+| `../../utils/confinedPath.js` | `samePath` | Import |
 | `../../utils/errors.js` | `ValidationError` | Import |
 
 **Exports:**
@@ -7289,7 +7291,7 @@ Reachable from a root: **425** of 425 files. Dormant: **0** (0 orphaned, 0 test-
 | `path` | `isAbsolute, relative, sep` |
 
 **Exports:**
-- Functions: `isSpecial`, `strictlyInside`, `pathExists`
+- Functions: `isSpecial`, `foldPathCase`, `samePath`, `strictlyInside`, `pathExists`
 
 ---
 
@@ -8070,13 +8072,13 @@ graph TD
 |----------|-------|
 | Total TypeScript Files | 425 |
 | Total Modules | 12 |
-| Total Lines of Code | 139486 |
-| Total Exports | 3085 |
+| Total Lines of Code | 139480 |
+| Total Exports | 3090 |
 | Total Re-exports | 1847 |
 | Total Classes | 310 |
 | Total Interfaces | 876 |
-| Total Functions | 724 |
-| Total Type Guards | 50 |
+| Total Functions | 728 |
+| Total Type Guards | 52 |
 | Total Enums | 4 |
 | Type-only Imports | 885 |
 | Runtime Circular Deps | 0 |

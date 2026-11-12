@@ -9,7 +9,7 @@ import { randomBytes } from 'crypto';
 import { constants as fsConstants, promises as fs } from 'fs';
 import { join, relative, sep } from 'path';
 import { ValidationError } from '../../utils/errors.js';
-import { strictlyInside } from '../../utils/confinedPath.js';
+import { foldPathCase, strictlyInside } from '../../utils/confinedPath.js';
 import { parseAmrDocument } from './AmrCodec.js';
 import { loadSecretPatterns, scanForSecrets, validateSecretPatterns, type SecretPattern } from './SecretScanner.js';
 
@@ -159,6 +159,9 @@ const RESERVED_NAMES = new Set([
 // oxlint-disable-next-line no-control-regex -- the rule is to find control characters.
 const CONTROL = /[\u0000-\u001f\u007f-\u009f\u2028\u2029\u202a-\u202e\u2066-\u2069]/;
 
+/** The suffix of a Markdown file, in any case. */
+export const MARKDOWN_SUFFIX = /\.md$/i;
+
 const MEMORY_FILE = 'MEMORY.md';
 const TRUNCATED_LINE = '[truncated]\n';
 
@@ -178,15 +181,6 @@ function resolveOptions(opts: Partial<AmrReaderOptions> = {}): AmrReaderOptions 
   const ig: unknown = opts.ignore;
   if (Array.isArray(ig) && ig.every((n) => typeof n === 'string')) o.ignore = [...(ig as string[])];
   return o;
-}
-
-/**
- * Key for a path compare. Case folds on win32 only.
- * @param p - Absolute path.
- * @returns The compare key.
- */
-function pathKey(p: string): string {
-  return process.platform === 'win32' ? p.toLowerCase() : p;
 }
 
 /**
@@ -213,6 +207,16 @@ function isRealDate(value: string): boolean {
 }
 
 /**
+ * Tell whether a path segment is a Windows device name: its stem before the first `.` is a reserved
+ * name, in any case.
+ * @param segment - One path segment.
+ * @returns True for a reserved device name.
+ */
+export function isReservedName(segment: string): boolean {
+  return RESERVED_NAMES.has(segment.split('.')[0].toUpperCase());
+}
+
+/**
  * Check the segment rules of one repo-relative path. The first failing rule gives the reason.
  * The length rule is not here: {@link checkAmrLink} applies it to the raw link only.
  * @param path - Path text with `/`.
@@ -232,7 +236,7 @@ function checkAmrPath(path: string): AmrLinkReason | null {
     if (s.startsWith(' ') || s.endsWith(' ') || s.endsWith('.')) return 'edge-space-or-dot';
   }
   for (const s of segments) {
-    if (RESERVED_NAMES.has(s.split('.')[0].toUpperCase())) return 'reserved-name';
+    if (isReservedName(s)) return 'reserved-name';
   }
   for (const s of segments) {
     const lower = s.toLowerCase();
@@ -295,7 +299,7 @@ function makeContext(root: string, o: AmrReaderOptions): RunContext {
  * @returns The failure, or null when the path is allowed.
  */
 function confine(ctx: RunContext, realRoot: string, real: string): ReadFailure | null {
-  if (!strictlyInside(pathKey(realRoot), pathKey(real))) return { ok: false, reason: 'outside-root' };
+  if (!strictlyInside(foldPathCase(realRoot), foldPathCase(real))) return { ok: false, reason: 'outside-root' };
   const below = relative(realRoot, real).split(sep);
   if (below.some((s) => ctx.ignore.has(s.toLowerCase()))) return { ok: false, reason: 'excluded' };
   return null;
@@ -462,7 +466,7 @@ export async function loadAmrContext(root: string, opts: Partial<AmrReaderOption
 
   const warnings: string[] = [];
   const memoryReal = await resolveFile(ctx, MEMORY_FILE);
-  const visited = new Set<string>(memoryReal.ok ? [pathKey(memoryReal.real)] : []);
+  const visited = new Set<string>(memoryReal.ok ? [foldPathCase(memoryReal.real)] : []);
   const seenLinks = new Set<string>([MEMORY_FILE]);
   const admitted: Array<{ path: string; text: string }> = [{ path: MEMORY_FILE, text: memoryText }];
   const queue: Array<{ path: string; depth: number; text: string }> = [{ path: MEMORY_FILE, depth: 0, text: memoryText }];
@@ -496,7 +500,7 @@ export async function loadAmrContext(root: string, opts: Partial<AmrReaderOption
             continue;
           }
           done = true;
-          const key = pathKey(res.real);
+          const key = foldPathCase(res.real);
           if (visited.has(key)) break;
           visited.add(key);
           if (res.size > o.maxTotalBytes - total) {
@@ -597,7 +601,7 @@ async function walkMarkdown(root: string, o: AmrReaderOptions): Promise<{ files:
       }
       if (st.isSymbolicLink()) issues.push({ file: quote(rel), code: 'unsafe-target', detail: 'symlink' });
       else if (st.isDirectory()) await visit(join(dirAbs, name), rel);
-      else if (st.isFile() && name.endsWith('.md')) files.push(rel);
+      else if (st.isFile() && MARKDOWN_SUFFIX.test(name)) files.push(rel);
     }
   };
   await visit(root, '');
@@ -630,7 +634,7 @@ export async function checkAmr(root: string, opts: AmrCheckOptions = {}): Promis
   if (!memory.ok && memory.reason === 'missing') {
     issues.push({ file: MEMORY_FILE, code: 'missing-memory-md', detail: `${MEMORY_FILE} is missing` });
   }
-  const memoryKey = memory.ok ? pathKey(memory.real) : null;
+  const memoryKey = memory.ok ? foldPathCase(memory.real) : null;
 
   for (const rel of walked) {
     const r = await readResolved(ctx, rel);
@@ -644,7 +648,7 @@ export async function checkAmr(root: string, opts: AmrCheckOptions = {}): Promis
       continue;
     }
     const self = await resolveFile(ctx, rel);
-    if (memoryKey !== null && self.ok && pathKey(self.real) === memoryKey) {
+    if (memoryKey !== null && self.ok && foldPathCase(self.real) === memoryKey) {
       const bytes = Buffer.byteLength(r.text, 'utf8');
       if (bytes > o.maxIndexBytes) issues.push({ file: rel, code: 'index-too-large', detail: `${bytes} bytes` });
     }
@@ -733,7 +737,7 @@ export async function walkAmrMarkdown(
       if (ent.isSymbolicLink() || ignored.has(ent.name.toLowerCase())) continue;
       const rel = dir === '' ? ent.name : `${dir}/${ent.name}`;
       if (ent.isDirectory()) await visit(rel);
-      else if (ent.isFile() && /\.md$/i.test(ent.name)) {
+      else if (ent.isFile() && MARKDOWN_SUFFIX.test(ent.name)) {
         const reason = checkAmrPath(rel);
         if (reason === null) out.push(rel);
         else onSkip?.(rel, reason);

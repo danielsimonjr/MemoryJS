@@ -282,8 +282,8 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 | Claim | Value | Source |
 |---|---|---|
 | totalSourceFiles | 1086 | repo-tools map |
-| totalLinesOfCode | 326531 | repo-tools map |
-| totalExports | 4389 | repo-tools map |
+| totalLinesOfCode | 326613 | repo-tools map |
+| totalExports | 4394 | repo-tools map |
 | totalTypeOnlyImports | 1392 | repo-tools map |
 | totalModules | 7 | repo-tools map |
 | entryRoots | 12 | repo-tools map |

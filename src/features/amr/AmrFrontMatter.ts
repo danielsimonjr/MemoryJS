@@ -6,6 +6,7 @@
  * @experimental
  */
 import { ValidationError } from '../../utils/errors.js';
+import { isValidKey } from './AmrCodec.js';
 
 /** Values of a front matter block: scalars or lists of strings. */
 export type FrontMatterValues = Record<string, string | string[]>;
@@ -18,23 +19,12 @@ export interface FrontMatterParse {
   warnings: string[];
 }
 
-const KEY_PATTERN = /^[A-Za-z][\w-]*$/;
-const RESERVED_KEYS = new Set(Object.getOwnPropertyNames(Object.prototype));
 /** Characters that force double quotes when they appear in a value. */
 const QUOTE_TRIGGER = /[:#,[\]"'\\]/;
 /** C0 and C1 control characters, and the Unicode line and paragraph separators. */
 // The control characters are the subject of this pattern.
 // oxlint-disable-next-line no-control-regex
 const CONTROL = /[\x00-\x1f\x7f-\x9f\u2028\u2029]/;
-
-/**
- * Tell whether a metadata key is valid.
- * @param key - Key to test.
- * @returns True when the key matches the key pattern and is not an `Object.prototype` name.
- */
-function isKey(key: string): boolean {
-  return KEY_PATTERN.test(key) && !RESERVED_KEYS.has(key);
-}
 
 /**
  * Split a flow list body on commas that are outside double quotes.
@@ -98,7 +88,7 @@ export function parseFrontMatter(raw: string): FrontMatterParse {
     if (line.trim() === '' || line.trimStart().startsWith('#')) return;
     const colon = line.indexOf(':');
     const key = colon < 0 ? '' : line.slice(0, colon);
-    if (colon < 0 || !isKey(key)) {
+    if (colon < 0 || !isValidKey(key)) {
       warnings.push(`${at}: unsupported line skipped`);
       return;
     }
@@ -148,7 +138,7 @@ function writeScalar(v: string): string {
 export function renderFrontMatter(values: FrontMatterValues): string {
   let out = '';
   for (const key of Object.keys(values)) {
-    if (!isKey(key)) throw new ValidationError(`Invalid front matter key: ${key}`, [`key ${key} is invalid`]);
+    if (!isValidKey(key)) throw new ValidationError(`Invalid front matter key: ${key}`, [`key ${key} is invalid`]);
     const v = values[key];
     const parts = Array.isArray(v) ? v : [v];
     for (const p of parts) {
