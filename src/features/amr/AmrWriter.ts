@@ -11,9 +11,9 @@
 import { promises as fs } from 'node:fs';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { strictlyInside } from '../../utils/confinedPath.js';
+import { foldPathCase, samePath, strictlyInside } from '../../utils/confinedPath.js';
 import { renameOver } from '../../utils/durableWriteFile.js';
-import { AMR_READER_DEFAULTS, checkAmrLink } from './AmrReader.js';
+import { AMR_READER_DEFAULTS, MARKDOWN_SUFFIX, checkAmrLink } from './AmrReader.js';
 import { AmrGitError, type GitRunner } from './GitRunner.js';
 import { loadSecretPatterns, scanForSecrets, type SecretHit, type SecretPattern } from './SecretScanner.js';
 
@@ -54,32 +54,13 @@ const IGNORED = new Set(['.git', ...AMR_READER_DEFAULTS.ignore.map((n) => n.toLo
 const queues = new Map<string, Promise<unknown>>();
 
 /**
- * Compare two real paths. The compare folds case on win32 only.
- * @param a - First path.
- * @param b - Second path.
- * @returns True when both are the same path.
- */
-function samePath(a: string, b: string): boolean {
-  return foldCase(a) === foldCase(b);
-}
-
-/**
- * Fold case on win32 only, for a containment compare.
- * @param p - Path.
- * @returns The path, lower case on win32.
- */
-function foldCase(p: string): string {
-  return process.platform === 'win32' ? p.toLowerCase() : p;
-}
-
-/**
  * Tell whether a real path is the real root or inside it.
  * @param realRoot - Real path of the root.
  * @param real - Real path to test.
  * @returns True when the path is confined.
  */
 function confined(realRoot: string, real: string): boolean {
-  return samePath(real, realRoot) || strictlyInside(foldCase(realRoot), foldCase(real));
+  return samePath(real, realRoot) || strictlyInside(foldPathCase(realRoot), foldPathCase(real));
 }
 
 /**
@@ -336,7 +317,7 @@ export function checkFileText(
 ): AmrFileRefusal | null {
   if (!checkAmrLink(relPath).ok) return { ok: false, reason: 'invalid-path' };
   if (process.platform === 'win32' && relPath.split('/').some((s) => /~\d/.test(s))) return { ok: false, reason: 'invalid-path' };
-  if (!/\.md$/i.test(relPath)) return { ok: false, reason: 'not-markdown' };
+  if (!MARKDOWN_SUFFIX.test(relPath)) return { ok: false, reason: 'not-markdown' };
   const bytes = Buffer.byteLength(text, 'utf8');
   const limit = relPath.toLowerCase() === 'memory.md' ? AMR_READER_DEFAULTS.maxIndexBytes : AMR_READER_DEFAULTS.maxFileBytes;
   if (bytes > limit) return { ok: false, reason: 'too-large' };
@@ -390,7 +371,7 @@ export async function writeAmrFiles(root: string, files: AmrFileText[], opts: Am
   } catch {
     return { ok: false, reason: 'io-error' };
   }
-  return serialized(foldCase(realRoot), () => writeBatchLocked(root, realRoot, files, opts));
+  return serialized(foldPathCase(realRoot), () => writeBatchLocked(root, realRoot, files, opts));
 }
 
 /**
@@ -413,7 +394,7 @@ async function writeBatchLocked(
   }
   const seen = new Set<string>();
   for (const f of files) {
-    const k = foldCase(f.path);
+    const k = foldPathCase(f.path);
     if (seen.has(k)) return { ok: false, reason: 'invalid-path', path: f.path };
     seen.add(k);
   }

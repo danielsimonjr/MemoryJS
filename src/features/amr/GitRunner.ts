@@ -9,6 +9,7 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import { isAbsolute } from 'node:path';
+import { samePath } from '../../utils/confinedPath.js';
 import { ValidationError } from '../../utils/errors.js';
 
 /** Settings of a {@link GitRunner}. Every field has one default in {@link AMR_GIT_DEFAULTS}. */
@@ -123,16 +124,6 @@ function childEnv(extra: Record<string, string>): NodeJS.ProcessEnv {
     if (v !== undefined && !/^GIT_/i.test(k)) env[k] = v;
   }
   return { ...env, ...extra };
-}
-
-/**
- * Compare two real paths. The compare folds case on win32 only.
- * @param a - First real path.
- * @param b - Second real path.
- * @returns True when both name the same place.
- */
-function samePath(a: string, b: string): boolean {
-  return process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b;
 }
 
 /**

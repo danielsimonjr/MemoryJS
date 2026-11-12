@@ -1978,42 +1978,42 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 555
+      "loc": 556
     },
     {
       "file": "src/features/amr/AmrFrontMatter.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 166
+      "loc": 156
     },
     {
       "file": "src/features/amr/AmrReader.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 746
+      "loc": 750
     },
     {
       "file": "src/features/amr/AmrSync.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1485
+      "loc": 1491
     },
     {
       "file": "src/features/amr/AmrWriter.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 476
+      "loc": 457
     },
     {
       "file": "src/features/amr/GitRunner.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 392
+      "loc": 383
     },
     {
       "file": "src/features/amr/index.ts",
@@ -2804,7 +2804,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 51
+      "loc": 72
     },
     {
       "file": "src/utils/constants.ts",
@@ -5877,14 +5877,14 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 681
+      "loc": 712
     },
     {
       "file": "tests/unit/features/amr/AmrSync.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 991
+      "loc": 1048
     },
     {
       "file": "tests/unit/features/amr/AmrWriter.test.ts",

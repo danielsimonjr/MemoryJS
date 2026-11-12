@@ -110,11 +110,12 @@ function trimTrailingBlanks(s: string): string {
 
 /**
  * Tells whether a metadata key is valid: the key matches the key pattern and is not an
- * `Object.prototype` property name.
+ * `Object.prototype` property name. The front matter parser uses the same rule.
+ * @internal
  * @param key - Key to check.
  * @returns True when the key is valid.
  */
-function isValidKey(key: string): boolean {
+export function isValidKey(key: string): boolean {
   return KEY_PATTERN.test(key) && !RESERVED_KEYS.has(key);
 }
 

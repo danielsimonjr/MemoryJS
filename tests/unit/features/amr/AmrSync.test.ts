@@ -138,10 +138,11 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, readFileSync, rmSync, mkdirSync, existsSync, realpathSync, renameSync, rmdirSync, symlinkSync, unlinkSync, promises as fsPromises } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, readdirSync, rmSync, mkdirSync, existsSync, realpathSync, renameSync, rmdirSync, symlinkSync, unlinkSync, promises as fsPromises } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseFrontMatter, renderFrontMatter } from '../../../../src/features/amr/AmrFrontMatter.js';
+import { parseEntryText } from '../../../../src/features/amr/AmrCodec.js';
 import { AMR_SYNC_DEFAULTS, amrPathForEntity, exportAmr, importAmr, normalizeObservation } from '../../../../src/features/amr/AmrSync.js';
 import { writeAmrFiles } from '../../../../src/features/amr/AmrWriter.js';
 import { GitRunner } from '../../../../src/features/amr/GitRunner.js';
@@ -986,5 +987,61 @@ describe('phase 4 review regressions', () => {
     put(root, 'b.md', '- old\n- new\n- new\n');
     await importAmr(ctx, root, { dryRun: false });
     expect((await ctx.entityManager.getEntity('b'))?.observations).toEqual(['old', 'new']);
+  });
+});
+
+describe('phase 5 declutter', () => {
+  const NFD = 'cafe\u0301';
+  const NFC = NFD.normalize('NFC');
+  const mdFiles = (root: string): string[] => {
+    const out: string[] = [];
+    const walk = (rel: string) => {
+      for (const d of readdirSync(join(root, rel), { withFileTypes: true })) {
+        const r = rel === '' ? d.name : `${rel}/${d.name}`;
+        if (d.isDirectory()) {
+          if (d.name !== '.git' && d.name !== '_hubs') walk(r);
+        } else if (d.name.endsWith('.md') && r !== 'MEMORY.md') out.push(r);
+      }
+    };
+    walk('');
+    return out;
+  };
+
+  it('an NFD namespace round-trips without a second file (FIX 2)', async () => {
+    const { root, runner } = memRepo({ 'alice.md': '- likes tea\n' });
+    const ctx = newCtx();
+    await importAmr(ctx, root, { dryRun: false, namespace: NFD });
+    const rep = await exportAmr(await ctx.entityManager.listEntities(), [], root, { dryRun: false, runner, now: NOW, namespace: NFD });
+    expect(rep.files.map((f) => [f.path, f.action])).toEqual([['alice.md', 'unchanged']]);
+    expect(mdFiles(root)).toEqual(['alice.md']);
+  });
+
+  it('export with an NFD namespace matches an NFC graph name (FIX 2)', async () => {
+    const { root, runner } = memRepo({ 'alice.md': '- a\n' });
+    const rep = await exportAmr([ent({ name: `${NFC}/alice`, observations: ['a'] })], [], root, { dryRun: false, runner, now: NOW, namespace: NFD });
+    expect(fileOf(rep, 'alice.md')?.action).toBe('unchanged');
+    expect(mdFiles(root)).toEqual(['alice.md']);
+  });
+
+  it('amrPathForEntity normalises the namespace (FIX 2)', () => {
+    expect(amrPathForEntity(ent({ name: `${NFC}/alice` }), NFD)).toBe('alice.md');
+  });
+
+  it('front matter and entry metadata share one key rule (FIX 4)', () => {
+    const keys = ['a', 'A1', 'a-b', 'a_b', '9x', '', '__proto__', 'constructor', 'toString', 'hasOwnProperty'];
+    const want = [true, true, true, true, false, false, false, false, false, false];
+    const fm = keys.map((k) => Object.hasOwn(parseFrontMatter(`${k}: v\n`).values, k));
+    const meta = keys.map((k) => Object.hasOwn(parseEntryText(`x [${k}: v]`).meta ?? {}, k));
+    expect(fm).toEqual(want);
+    expect(meta).toEqual(want);
+  });
+
+  it('reserved device names and node_modules get the -entity suffix (FIX 5)', () => {
+    const reserved = ['con', 'prn', 'aux', 'nul', ...Array.from({ length: 10 }, (_, i) => `com${i}`), ...Array.from({ length: 10 }, (_, i) => `lpt${i}`), 'node_modules'];
+    for (const n of reserved) {
+      expect(amrPathForEntity(ent({ name: n }))).toBe(`note/${n}-entity.md`);
+      expect(amrPathForEntity(ent({ name: n.toUpperCase() }))).toBe(`note/${n}-entity.md`);
+    }
+    for (const n of ['com10', 'lpt', 'console', 'nulx', 'node_modules2']) expect(amrPathForEntity(ent({ name: n }))).toBe(`${n}.md`);
   });
 });

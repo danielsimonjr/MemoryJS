@@ -40,10 +40,13 @@ Major release: zero runtime `dependencies`, Node `>=22.16.0`, and SQLite on `nod
 
 ### Changed
 
+- **Agent Memory Repo declutter, phase 5** (`src/features/amr/`, `src/utils/confinedPath.ts`): one `.md` suffix rule (`MARKDOWN_SUFFIX`), one case-fold and path compare (`foldPathCase`, `samePath` in `confinedPath.ts`, three copies removed), one metadata key rule (`isValidKey`, shared by the codec and the front matter parser) and one reserved-name rule (`isReservedName`, owned by the reader). `repo-tools clones --min-nodes=12` over the AMR code: 2 exact groups and 2 near pairs before, 0 after.
 - Internal helpers now back the 21 `repo-tools clones` near-pair refactors from `docs/superpowers/plans/2026-11-10-clones-dedup-plan.md` (shared cores for `raceAbort`, chrono `imply`/`assign` similar-field writers, knowledge load packing, salience scoring, schedulers, graph traversal setup, I/O export loops, Bloom hash bits, relative date-merge refiners, and related paths). Behaviour is unchanged except where noted under Fixed; no new public exports.
 
 ### Fixed
 
+- `checkAmr` now reads `.MD` and `.Md` files. It used a case-sensitive `.md` test, so a secret or a dangling link in `NOTES.MD` went unreported, while the sync read and wrote that file.
+- `exportAmr`, `importAmr` and `amrPathForEntity` convert the namespace to NFC. An NFD namespace (as `importAmr` produced it) made a re-export add the namespace twice and write a second file.
 - `GraphTraversal.bfs` claims each neighbor on enqueue again when parallel edges (multiple relation types or `direction: 'both'`) return the same target twice from `getNeighborsWithRelations`, so `result.nodes` lists each entity once (regression from shared `unvisitedNeighbors`; pinned in `tests/unit/core/GraphTraversal.bfsDuplicates.test.ts`).
 - `src/core/nodeSqliteAdapter.ts` now matches seven better-sqlite3 13.0.3 behaviours the main parity corpus does not cover: savepoint depth after a failed `COMMIT`, idempotent `close()`, the missing-directory `TypeError`, closed-handle errors through `transaction`, reader/writer statement enforcement, zeroed `run()` counters on readers, and int64 bind overflow. Pinned in `tests/unit/core/node-sqlite-adapter-edge-parity.test.ts`.
 - The worker-thread tests load TypeScript through `tests/unit/utils/helpers/tsWorkerLoader.mjs` instead of `--import tsx`. tsx 4.23.1 registers its ESM hooks only on the main thread below Node 22.22.3, so the parity suite failed with `Unknown file extension ".ts"` on the Node 22.16 CI leg. The loader uses Node's own `--experimental-strip-types` plus a `.js` → `.ts` resolve hook, and the same tests pass on 22.16, 22.23 and 24.
