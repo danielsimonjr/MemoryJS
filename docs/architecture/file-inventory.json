@@ -2013,7 +2013,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1491
+      "loc": 1518
     },
     {
       "file": "src/features/amr/AmrWriter.ts",
@@ -5919,7 +5919,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 1048
+      "loc": 1058
     },
     {
       "file": "tests/unit/features/amr/AmrWriter.test.ts",
