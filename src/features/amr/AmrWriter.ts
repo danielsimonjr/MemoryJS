@@ -510,8 +510,15 @@ async function writeBatchLocked(
   files: AmrFileText[],
   opts: AmrWriteOptions,
 ): Promise<AmrBatchResult> {
+  // Load the patterns once, so the first scan and the staged rescan use the same set.
+  let patterns: readonly SecretPattern[];
+  try {
+    patterns = opts.patterns ?? loadSecretPatterns();
+  } catch {
+    return { ok: false, reason: 'bad-patterns' };
+  }
   for (const f of files) {
-    const refused = checkFileText(f.path, f.text, opts.message, opts.patterns);
+    const refused = checkFileText(f.path, f.text, opts.message, patterns);
     if (refused !== null) return { ...refused, path: f.path };
   }
   const seen = new Set<string>();
@@ -572,7 +579,7 @@ async function writeBatchLocked(
   for (const f of files) scanned.set(f.path, scannedHash(Buffer.from(f.text, 'utf8')));
   try {
     const res = await opts.runner.commitFiles(files.map((f) => f.path), opts.message, (staged) =>
-      verifyStaged(opts.runner, scanned, opts.message, opts.patterns, staged),
+      verifyStaged(opts.runner, scanned, opts.message, patterns, staged),
     );
     return res.committed ? { ok: true, committed: true, sha: res.sha } : { ok: true, committed: false };
   } catch (e) {

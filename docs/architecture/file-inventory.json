@@ -2020,7 +2020,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 732
+      "loc": 739
     },
     {
       "file": "src/features/amr/GitRunner.ts",
@@ -5926,7 +5926,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 1319
+      "loc": 1344
     },
     {
       "file": "tests/unit/features/amr/observationMetaMeta.test.ts",

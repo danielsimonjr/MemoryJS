@@ -111,7 +111,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { GitRunner, AmrGitError, AMR_GIT_DEFAULTS, type GitRunResult, type StagedFile } from '../../../../src/features/amr/GitRunner.js';
 import { DEFAULT_SECRET_PATTERNS, loadSecretPatterns, scanForSecrets } from '../../../../src/features/amr/SecretScanner.js';
-import { writeAmrFile, commitAmrEdits } from '../../../../src/features/amr/AmrWriter.js';
+import { writeAmrFile, writeAmrFiles, commitAmrEdits } from '../../../../src/features/amr/AmrWriter.js';
 import { checkAmr, AMR_READER_DEFAULTS } from '../../../../src/features/amr/AmrReader.js';
 import { ValidationError } from '../../../../src/utils/errors.js';
 
@@ -1134,6 +1134,31 @@ describe('staged-content check: the gap between the scan and git add', () => {
     syncBuiltinESMExports();
     try {
       const res = await commitAmrEdits(root, { runner: new GitRunner(root, { env }), message: 'x' });
+      expect(res).toMatchObject({ ok: true, committed: true });
+      expect(spy.mock.calls.filter((c) => c[0] === file)).toHaveLength(1);
+    } finally {
+      spy.mockRestore();
+      syncBuiltinESMExports();
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it('writeAmrFiles loads the secret patterns once per call', async () => {
+    const { root, env } = makeRepo();
+    const file = join(tmp('amr-pat-'), 'patterns.json');
+    writeFileSync(file, JSON.stringify([{ id: 'p', source: 'NEVERMATCH[0-9]{9}' }]));
+    vi.stubEnv('MEMORY_AMR_SECRET_PATTERNS_FILE', file);
+    const spy = vi.spyOn(nodeFs, 'readFileSync');
+    syncBuiltinESMExports();
+    try {
+      const res = await writeAmrFiles(
+        root,
+        [
+          { path: 'a.md', text: '- a\n' },
+          { path: 'b.md', text: '- b\n' },
+        ],
+        { runner: new GitRunner(root, { env }), message: 'x' },
+      );
       expect(res).toMatchObject({ ok: true, committed: true });
       expect(spy.mock.calls.filter((c) => c[0] === file)).toHaveLength(1);
     } finally {
