@@ -324,7 +324,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/core/TransitionLedger.ts` | src | reachable | 428 |
 | `src/features/amr/AmrCodec.ts` | src | reachable | 556 |
 | `src/features/amr/AmrFrontMatter.ts` | src | reachable | 156 |
-| `src/features/amr/AmrReader.ts` | src | reachable | 750 |
+| `src/features/amr/AmrReader.ts` | src | reachable | 753 |
 | `src/features/amr/AmrSync.ts` | src | reachable | 1491 |
 | `src/features/amr/AmrWriter.ts` | src | reachable | 589 |
 | `src/features/amr/GitRunner.ts` | src | reachable | 384 |
@@ -882,7 +882,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/exports-barrels.recursa.test.ts` | tests | test | 233 |
 | `tests/unit/exports-barrels.test.ts` | tests | test | 198 |
 | `tests/unit/features/amr/AmrCodec.test.ts` | tests | test | 560 |
-| `tests/unit/features/amr/AmrReader.test.ts` | tests | test | 712 |
+| `tests/unit/features/amr/AmrReader.test.ts` | tests | test | 718 |
 | `tests/unit/features/amr/AmrSync.test.ts` | tests | test | 1048 |
 | `tests/unit/features/amr/AmrWriter.test.ts` | tests | test | 916 |
 | `tests/unit/features/amr/observationMetaMeta.test.ts` | tests | test | 80 |
