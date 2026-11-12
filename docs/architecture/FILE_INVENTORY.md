@@ -9,22 +9,22 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 1072
+**Total files**: 1077
 
 ## Disposition counts
 
 | Disposition | Count | Meaning |
 | --- | --: | --- |
-| `reachable` | 421 | A `src/` file in the module graph, reachable from a root. |
+| `reachable` | 423 | A `src/` file in the module graph, reachable from a root. |
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 615 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 618 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 5 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 15 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **1072** | |
+| **Total** | **1077** | |
 
 ## Per-area counts
 
@@ -33,8 +33,8 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `benchmarks` | 5 |
 | `config` | 2 |
 | `examples` | 15 |
-| `src` | 425 |
-| `tests` | 615 |
+| `src` | 427 |
+| `tests` | 618 |
 | `tools` | 10 |
 
 ## All files
@@ -61,16 +61,17 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `examples/13-reconstructive-memory.ts` | examples | example | 64 |
 | `examples/14-procedural-graph.ts` | examples | example | 63 |
 | `examples/15-sqlite.ts` | examples | example | 61 |
+| `src/adapters/AmrToolAdapter.ts` | src | reachable | 161 |
 | `src/adapters/ApiKeyAuthMiddleware.ts` | src | reachable | 193 |
-| `src/adapters/index.ts` | src | reachable | 60 |
+| `src/adapters/index.ts` | src | reachable | 69 |
 | `src/adapters/LangChainMemoryAdapter.ts` | src | reachable | 194 |
 | `src/adapters/MCPToolObserverAdapter.ts` | src | reachable | 78 |
 | `src/adapters/pagination.ts` | src | reachable | 92 |
 | `src/adapters/RateLimiter.ts` | src | reachable | 206 |
-| `src/adapters/RecursaToolAdapter.ts` | src | reachable | 375 |
-| `src/adapters/recursaToolBounds.ts` | src | reachable | 109 |
+| `src/adapters/RecursaToolAdapter.ts` | src | reachable | 302 |
+| `src/adapters/recursaToolBounds.ts` | src | reachable | 141 |
 | `src/adapters/recursaToolSchemas.ts` | src | reachable | 143 |
-| `src/adapters/recursaToolSupport.ts` | src | reachable | 169 |
+| `src/adapters/recursaToolSupport.ts` | src | reachable | 257 |
 | `src/adapters/RestRouter.ts` | src | reachable | 751 |
 | `src/agent/AccessTracker.ts` | src | reachable | 479 |
 | `src/agent/AgentEnvDefaults.ts` | src | reachable | 112 |
@@ -251,6 +252,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/world/WorldModelManager.ts` | src | reachable | 128 |
 | `src/agent/world/WorldStateSnapshot.ts` | src | reachable | 125 |
 | `src/cli/ansi.ts` | src | reachable | 93 |
+| `src/cli/commands/amr.ts` | src | reachable | 212 |
 | `src/cli/commands/audit.ts` | src | reachable | 286 |
 | `src/cli/commands/cache.ts` | src | reachable | 72 |
 | `src/cli/commands/check.ts` | src | reachable | 172 |
@@ -263,7 +265,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/cli/commands/helpers.ts` | src | reachable | 135 |
 | `src/cli/commands/heuristic.ts` | src | reachable | 152 |
 | `src/cli/commands/hierarchy.ts` | src | reachable | 66 |
-| `src/cli/commands/index.ts` | src | reachable | 66 |
+| `src/cli/commands/index.ts` | src | reachable | 68 |
 | `src/cli/commands/inspect.ts` | src | reachable | 261 |
 | `src/cli/commands/io.ts` | src | reachable | 71 |
 | `src/cli/commands/maintenance.ts` | src | reachable | 188 |
@@ -324,9 +326,9 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/features/amr/AmrFrontMatter.ts` | src | reachable | 156 |
 | `src/features/amr/AmrReader.ts` | src | reachable | 750 |
 | `src/features/amr/AmrSync.ts` | src | reachable | 1491 |
-| `src/features/amr/AmrWriter.ts` | src | reachable | 457 |
-| `src/features/amr/GitRunner.ts` | src | reachable | 383 |
-| `src/features/amr/index.ts` | src | reachable | 62 |
+| `src/features/amr/AmrWriter.ts` | src | reachable | 589 |
+| `src/features/amr/GitRunner.ts` | src | reachable | 384 |
+| `src/features/amr/index.ts` | src | reachable | 65 |
 | `src/features/amr/SecretScanner.ts` | src | reachable | 133 |
 | `src/features/AnalyticsManager.ts` | src | reachable | 247 |
 | `src/features/ArchiveManager.ts` | src | reachable | 421 |
@@ -338,8 +340,8 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/features/FactExtractor.ts` | src | reachable | 353 |
 | `src/features/FreshnessManager.ts` | src | reachable | 307 |
 | `src/features/GovernanceManager.ts` | src | reachable | 717 |
-| `src/features/index.ts` | src | reachable | 181 |
-| `src/features/IOManager.ts` | src | reachable | 2168 |
+| `src/features/index.ts` | src | reachable | 184 |
+| `src/features/IOManager.ts` | src | reachable | 2169 |
 | `src/features/KeywordExtractor.ts` | src | reachable | 150 |
 | `src/features/ObservableDataModelAdapter.ts` | src | reachable | 360 |
 | `src/features/ObservationNormalizer.ts` | src | reachable | 266 |
@@ -540,6 +542,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/test-utils/inject-flush-failure.ts` | tests | test | 68 |
 | `tests/test-utils/microtask-ticks.ts` | tests | test | 47 |
 | `tests/test-utils/sqlite-files.ts` | tests | test | 34 |
+| `tests/unit/adapters/AmrToolAdapter.test.ts` | tests | test | 196 |
 | `tests/unit/adapters/ApiKeyAuthMiddleware.test.ts` | tests | test | 266 |
 | `tests/unit/adapters/LangChainMemoryAdapter.test.ts` | tests | test | 98 |
 | `tests/unit/adapters/MCPToolObserverAdapter.test.ts` | tests | test | 164 |
@@ -548,6 +551,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/adapters/RateLimiter.test.ts` | tests | test | 92 |
 | `tests/unit/adapters/RecursaToolAdapter.test.ts` | tests | test | 277 |
 | `tests/unit/adapters/RecursaToolAdapterSafety.test.ts` | tests | test | 209 |
+| `tests/unit/adapters/recursaToolBounds.test.ts` | tests | test | 39 |
 | `tests/unit/adapters/rest-input-security.test.ts` | tests | test | 89 |
 | `tests/unit/adapters/rest-tenancy.test.ts` | tests | test | 347 |
 | `tests/unit/adapters/rest-unscoped-warning.test.ts` | tests | test | 46 |
@@ -738,6 +742,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/WorkThreadManager.test.ts` | tests | test | 1209 |
 | `tests/unit/agent/WorldModel.test.ts` | tests | test | 176 |
 | `tests/unit/cli/actionFrame.test.ts` | tests | test | 446 |
+| `tests/unit/cli/amr.test.ts` | tests | test | 315 |
 | `tests/unit/cli/ansi.test.ts` | tests | test | 168 |
 | `tests/unit/cli/audit.test.ts` | tests | test | 420 |
 | `tests/unit/cli/cache-reindex.test.ts` | tests | test | 157 |
@@ -879,7 +884,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/features/amr/AmrCodec.test.ts` | tests | test | 560 |
 | `tests/unit/features/amr/AmrReader.test.ts` | tests | test | 712 |
 | `tests/unit/features/amr/AmrSync.test.ts` | tests | test | 1048 |
-| `tests/unit/features/amr/AmrWriter.test.ts` | tests | test | 674 |
+| `tests/unit/features/amr/AmrWriter.test.ts` | tests | test | 916 |
 | `tests/unit/features/amr/observationMetaMeta.test.ts` | tests | test | 80 |
 | `tests/unit/features/AnalyticsManager.test.ts` | tests | test | 400 |
 | `tests/unit/features/ArchiveManager.test.ts` | tests | test | 774 |

@@ -32,7 +32,6 @@
  *   harness feedback. The reference MCP server itself is downstream of this module.
  */
 
-import { z } from '../utils/schema.js';
 import type { ManagerContext } from '../core/ManagerContext.js';
 import type { LearningLoop, LearningLoopDeps } from '../core/context/LearningFacade.js';
 import type { InteractionLog } from '../agent/harness/InteractionLog.js';
@@ -46,17 +45,17 @@ import type { SkillId } from '../types/skills.js';
 import type { CriterionResult, SolveResult, TaskRecord } from '../types/learning.js';
 import { SkillPublisher } from '../agent/skills/SkillPublisher.js';
 import { dirname } from 'path';
-import { boundResult } from './recursaToolBounds.js';
+import { boundResult, DEFAULT_MAX_BYTES } from './recursaToolBounds.js';
 import {
   ToolFailure,
+  defineTool,
   definedOnly,
-  fail,
-  failureOf,
-  issuesOf,
-  jsonSchemaOf,
+  makeToolSet,
   publishTargetOf,
-  reservedKeyPath,
   type RecursaToolResult,
+  type ToolDescriptor,
+  type ToolEntry,
+  type ToolSet,
 } from './recursaToolSupport.js';
 import {
   evalRunSchema,
@@ -71,35 +70,14 @@ import {
   traceIdSchema,
 } from './recursaToolSchemas.js';
 
-/** Default byte budget of a bounded tool result. */
-const DEFAULT_MAX_BYTES = 64 * 1024;
 
 /** Descriptor of one tool, in the shape an MCP `tools/list` entry needs. */
-export interface RecursaToolDescriptor {
-  /** Tool name, `recursa.<area>.<verb>`. */
-  name: string;
-  /** One-sentence description for the harness. */
-  description: string;
-  /** JSON-schema-like description of the arguments object. */
-  inputSchema: Record<string, unknown>;
-}
+export type RecursaToolDescriptor = ToolDescriptor;
 
 export type { RecursaToolResult };
 
-/** The tool set a downstream server wraps. Stateless: `call` may run concurrently. */
-export interface RecursaToolSet {
-  /** Descriptors of every tool, in the section 3.8 order. */
-  list(): RecursaToolDescriptor[];
-  /**
-   * Run one tool on JSON arguments. Never throws.
-   *
-   * @param name - Tool name from `list()`.
-   * @param args - Arguments as received from the harness (validated here).
-   * @param signal - Optional abort signal; an aborted call returns `aborted`.
-   * @returns The result or the failure.
-   */
-  call(name: string, args: unknown, signal?: AbortSignal): Promise<RecursaToolResult>;
-}
+/** The tool set a downstream server wraps, in the section 3.8 order. Stateless: `call` may run concurrently. */
+export type RecursaToolSet = ToolSet;
 
 /** Dependencies of {@link createRecursaTools}. Every field is optional. */
 export interface RecursaToolDeps {
@@ -118,33 +96,6 @@ export interface RecursaToolDeps {
   publishDir?: string;
   /** Byte budget of a bounded result. Default 65536. */
   maxBytes?: number;
-}
-
-/** Internal tool entry: the zod schema validates arguments before `run` sees them. */
-interface ToolEntry {
-  name: string;
-  description: string;
-  schema: z.ZodType;
-  run(args: unknown, signal: AbortSignal | undefined): Promise<unknown>;
-}
-
-/** Typed definition of one tool, erased to {@link ToolEntry} by {@link defineTool}. */
-interface ToolSpec<S extends z.ZodType> {
-  name: string;
-  description: string;
-  schema: S;
-  run(args: z.output<S>, signal: AbortSignal | undefined): Promise<unknown>;
-}
-
-/**
- * Erase a typed tool definition to a {@link ToolEntry}. The schema is the only source of the
- * argument type, so the cast is sound.
- *
- * @param spec - Typed tool definition.
- * @returns The erased entry.
- */
-function defineTool<S extends z.ZodType>(spec: ToolSpec<S>): ToolEntry {
-  return spec as unknown as ToolEntry;
 }
 
 /** Solver used when no `deps.solver` is given: any call to it is a configuration error. */
@@ -345,30 +296,6 @@ export function createRecursaTools(ctx: ManagerContext, deps: RecursaToolDeps = 
     }),
   ];
 
-  const byName = new Map(tools.map((t) => [t.name, t] as const));
-  const descriptors: RecursaToolDescriptor[] = tools.map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: jsonSchemaOf(t.schema),
-  }));
-
-  return {
-    list: () => descriptors.map((d) => ({ ...d, inputSchema: { ...d.inputSchema } })),
-    async call(name: string, args: unknown, signal?: AbortSignal): Promise<RecursaToolResult> {
-      try {
-        const tool = byName.get(name);
-        if (!tool) return fail('unknown_tool', `Unknown tool: ${String(name).slice(0, 200)}`);
-        if (signal?.aborted) return fail('aborted', 'The call was aborted before it started.');
-        const reserved = reservedKeyPath(args);
-        if (reserved !== undefined) return fail('invalid_args', `${reserved.slice(0, 200)}: reserved key`);
-        const parsed = tool.schema.safeParse(args);
-        if (!parsed.success) return fail('invalid_args', issuesOf(parsed.error));
-        const result = await tool.run(parsed.data, signal);
-        if (tool.name === 'recursa.learn.next') return { ok: true, result };
-        return { ok: true, result: boundResult(result, maxBytes) };
-      } catch (err) {
-        return failureOf(err, signal);
-      }
-    },
-  };
+  // `recursa.learn.next` returns the StepRequest verbatim: truncation would break the protocol.
+  return makeToolSet(tools, (tool, result) => (tool.name === 'recursa.learn.next' ? result : boundResult(result, maxBytes)));
 }

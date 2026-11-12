@@ -1,7 +1,8 @@
 /**
  * Git runner for the Agent Memory Repo (AMR) writer. It runs only an exact allow-list of git
  * commands, with `shell: false`, a timeout, and no `GIT_*` variable from the host environment.
- * Every call adds `--literal-pathspecs`. A refused command spawns nothing.
+ * Every call adds `--literal-pathspecs`. A refused command spawns nothing. The `status` call lists
+ * every untracked file (`--untracked-files=all`), so a new file in a new folder is seen as a file.
  *
  * @module features/amr/GitRunner
  * @experimental
@@ -91,7 +92,7 @@ export type GitCommitResult = { committed: false } | { committed: true; sha: str
 
 /** Allowed options of each allow-listed subcommand. */
 const ALLOWED_OPTIONS: Readonly<Record<string, readonly string[]>> = {
-  status: ['--porcelain', '-z'],
+  status: ['--porcelain', '-z', '--untracked-files=all'],
   'rev-parse': ['--show-toplevel', '--absolute-git-dir', '--verify', '--quiet', 'HEAD'],
   diff: ['--cached', '--name-only', '-z'],
 };

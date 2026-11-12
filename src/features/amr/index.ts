@@ -34,6 +34,8 @@ export {
 export {
   writeAmrFile,
   writeAmrFiles,
+  commitAmrEdits,
+  AMR_COMMIT_MESSAGE_MAX_CHARS,
   checkAmrWritePath,
   checkFileText,
   type AmrFileRefusal,
@@ -42,6 +44,7 @@ export {
   type AmrWriteReason,
   type AmrFileText,
   type AmrBatchResult,
+  type AmrEditOptions,
 } from './AmrWriter.js';
 export { parseFrontMatter, renderFrontMatter, type FrontMatterValues, type FrontMatterParse } from './AmrFrontMatter.js';
 export {

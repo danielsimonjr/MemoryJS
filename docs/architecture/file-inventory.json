@@ -1,11 +1,11 @@
 {
-  "totalFiles": 1072,
+  "totalFiles": 1077,
   "byDisposition": {
-    "reachable": 421,
+    "reachable": 423,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 615,
+    "test": 618,
     "tool": 10,
     "config": 2,
     "bench": 5,
@@ -14,8 +14,8 @@
   "byArea": {
     "benchmarks": 5,
     "examples": 15,
-    "src": 425,
-    "tests": 615,
+    "src": 427,
+    "tests": 618,
     "tools": 10,
     "config": 2
   },
@@ -161,6 +161,13 @@
       "loc": 61
     },
     {
+      "file": "src/adapters/AmrToolAdapter.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 161
+    },
+    {
       "file": "src/adapters/ApiKeyAuthMiddleware.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
@@ -172,7 +179,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 60
+      "loc": 69
     },
     {
       "file": "src/adapters/LangChainMemoryAdapter.ts",
@@ -207,14 +214,14 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 375
+      "loc": 302
     },
     {
       "file": "src/adapters/recursaToolBounds.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 109
+      "loc": 141
     },
     {
       "file": "src/adapters/recursaToolSchemas.ts",
@@ -228,7 +235,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 169
+      "loc": 257
     },
     {
       "file": "src/adapters/RestRouter.ts",
@@ -1491,6 +1498,13 @@
       "loc": 93
     },
     {
+      "file": "src/cli/commands/amr.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 212
+    },
+    {
       "file": "src/cli/commands/audit.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
@@ -1579,7 +1593,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 66
+      "loc": 68
     },
     {
       "file": "src/cli/commands/inspect.ts",
@@ -2006,21 +2020,21 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 457
+      "loc": 589
     },
     {
       "file": "src/features/amr/GitRunner.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 383
+      "loc": 384
     },
     {
       "file": "src/features/amr/index.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 62
+      "loc": 65
     },
     {
       "file": "src/features/amr/SecretScanner.ts",
@@ -2104,14 +2118,14 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 181
+      "loc": 184
     },
     {
       "file": "src/features/IOManager.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 2168
+      "loc": 2169
     },
     {
       "file": "src/features/KeywordExtractor.ts",
@@ -3514,6 +3528,13 @@
       "loc": 34
     },
     {
+      "file": "tests/unit/adapters/AmrToolAdapter.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 196
+    },
+    {
       "file": "tests/unit/adapters/ApiKeyAuthMiddleware.test.ts",
       "package": "(root)",
       "area": "tests",
@@ -3568,6 +3589,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 209
+    },
+    {
+      "file": "tests/unit/adapters/recursaToolBounds.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 39
     },
     {
       "file": "tests/unit/adapters/rest-input-security.test.ts",
@@ -4900,6 +4928,13 @@
       "loc": 446
     },
     {
+      "file": "tests/unit/cli/amr.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 315
+    },
+    {
       "file": "tests/unit/cli/ansi.test.ts",
       "package": "(root)",
       "area": "tests",
@@ -5891,7 +5926,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 674
+      "loc": 916
     },
     {
       "file": "tests/unit/features/amr/observationMetaMeta.test.ts",

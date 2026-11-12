@@ -125,7 +125,8 @@ function stringifyForInlineScript(value: unknown): string {
 }
 
 /**
- * Output formats that the export operations support.
+ * Output formats that the export operations support. AMR is not an ExportFormat: it writes a folder
+ * of files; see `exportAmr`.
  */
 export type ExportFormat = 'json' | 'csv' | 'graphml' | 'gexf' | 'dot' | 'markdown' | 'mermaid' | 'turtle' | 'rdf-xml' | 'json-ld';
 /**

@@ -297,6 +297,18 @@ export async function writeAmrFile(
   return res.hits !== undefined ? { ok: false, reason: res.reason, hits: res.hits } : { ok: false, reason: res.reason };
 }
 
+/**
+ * Byte limit of one file, the limit that the reader uses.
+ * @param relPath - Repo-relative path with `/`.
+ * @returns The index limit for `MEMORY.md`, else the file limit.
+ */
+function sizeLimitOf(relPath: string): number {
+  return relPath.toLowerCase() === 'memory.md' ? AMR_READER_DEFAULTS.maxIndexBytes : AMR_READER_DEFAULTS.maxFileBytes;
+}
+
+/** Longest commit message of the AMR tool and CLI surfaces, in characters. */
+export const AMR_COMMIT_MESSAGE_MAX_CHARS = 500;
+
 /** A refusal of one file, before any write. */
 export type AmrFileRefusal = { ok: false; reason: AmrWriteReason; hits?: SecretHit[] };
 
@@ -318,9 +330,7 @@ export function checkFileText(
   if (!checkAmrLink(relPath).ok) return { ok: false, reason: 'invalid-path' };
   if (process.platform === 'win32' && relPath.split('/').some((s) => /~\d/.test(s))) return { ok: false, reason: 'invalid-path' };
   if (!MARKDOWN_SUFFIX.test(relPath)) return { ok: false, reason: 'not-markdown' };
-  const bytes = Buffer.byteLength(text, 'utf8');
-  const limit = relPath.toLowerCase() === 'memory.md' ? AMR_READER_DEFAULTS.maxIndexBytes : AMR_READER_DEFAULTS.maxFileBytes;
-  if (bytes > limit) return { ok: false, reason: 'too-large' };
+  if (Buffer.byteLength(text, 'utf8') > sizeLimitOf(relPath)) return { ok: false, reason: 'too-large' };
   let patterns: readonly SecretPattern[];
   try {
     patterns = patternsOpt ?? loadSecretPatterns();
@@ -452,5 +462,127 @@ async function writeBatchLocked(
     return res.committed ? { ok: true, committed: true, sha: res.sha } : { ok: true, committed: false };
   } catch (e) {
     return fail(e instanceof AmrGitError && e.code === 'stage-mismatch' ? 'stage-mismatch' : 'git-failed');
+  }
+}
+
+/** Options of {@link commitAmrEdits}. */
+export interface AmrEditOptions {
+  /** Runner for the repository. The runner root must be the repository top. */
+  runner: GitRunner;
+  /** Commit message. The runner adds its prefix. */
+  message: string;
+}
+
+/** Status letters that refuse a commit of hand edits: deletion, rename, copy and unmerged. */
+const UNSAFE_STATUS = new Set(['D', 'R', 'C', 'U']);
+
+/**
+ * Commit the hand edits of a repository in one commit. Every changed file (modified, added or
+ * untracked) must pass the guards of {@link writeAmrFiles}. One bad path refuses the whole commit and
+ * stages nothing. A deletion, a rename, a copy or an unmerged path refuses too. A file with a staged
+ * change and a later worktree change refuses with `not-clean`. A failed commit unstages the files, so a
+ * change staged before the call is not staged after the call. The secret scan reads each file before
+ * `git add` reads the file again, so a change by another process between the two reads is not scanned.
+ * An empty changed set is a no-op. The root must be the repository top.
+ * @param root - Memory root (the repository top).
+ * @param opts - Runner and commit message.
+ * @returns The commit result, or the refusal with the path of the first bad file.
+ */
+export async function commitAmrEdits(root: string, opts: AmrEditOptions): Promise<AmrBatchResult> {
+  let realRoot: string;
+  try {
+    realRoot = await fs.realpath(resolve(root));
+  } catch {
+    return { ok: false, reason: 'io-error' };
+  }
+  return serialized(foldPathCase(realRoot), () => commitEditsLocked(root, realRoot, opts));
+}
+
+/**
+ * Parse `git status --porcelain -z`. Each entry is `XY<space>path` and a NUL. A rename or copy has one
+ * more field, the old path, which the parser skips.
+ * @param out - Porcelain output.
+ * @returns The path and the two status letters of each entry.
+ */
+function parsePorcelain(out: string): Array<{ path: string; x: string; y: string }> {
+  const parts = out.split('\0');
+  const entries: Array<{ path: string; x: string; y: string }> = [];
+  for (let i = 0; i < parts.length; i++) {
+    const e = parts[i] ?? '';
+    if (e.length < 4) continue;
+    const x = e[0] ?? ' ';
+    const y = e[1] ?? ' ';
+    entries.push({ path: e.slice(3), x, y });
+    if (x === 'R' || x === 'C' || y === 'R' || y === 'C') i += 1;
+  }
+  return entries;
+}
+
+/**
+ * Check one changed file before any staging. The path rules come first, then the confinement, then
+ * the text (size, secrets and the message).
+ * @param root - Memory root.
+ * @param rel - Repo-relative path with `/`.
+ * @param message - Commit message.
+ * @returns The refusal, or null when the file may be committed.
+ */
+async function checkEditedFile(root: string, rel: string, message: string): Promise<AmrFileRefusal | null> {
+  if (!checkAmrLink(rel).ok) return { ok: false, reason: 'invalid-path' };
+  if (!MARKDOWN_SUFFIX.test(rel)) return { ok: false, reason: 'not-markdown' };
+  const place = await checkAmrWritePath(root, rel);
+  if (place !== null) return { ok: false, reason: place };
+  const file = join(resolve(root), ...rel.split('/'));
+  let text: string;
+  try {
+    // The size check comes before the read, so a huge file is never read into memory.
+    if ((await fs.stat(file)).size > sizeLimitOf(rel)) return { ok: false, reason: 'too-large' };
+    text = await fs.readFile(file, 'utf8');
+  } catch {
+    return { ok: false, reason: 'io-error' };
+  }
+  return checkFileText(rel, text, message, undefined);
+}
+
+/**
+ * Body of {@link commitAmrEdits}. The caller holds the queue of the root.
+ * @param root - Memory root.
+ * @param realRoot - Real path of the root.
+ * @param opts - Runner and message.
+ * @returns The batch result.
+ */
+async function commitEditsLocked(root: string, realRoot: string, opts: AmrEditOptions): Promise<AmrBatchResult> {
+  const runnerReal = await fs.realpath(opts.runner.root).catch(() => null);
+  if (runnerReal === null || !samePath(runnerReal, realRoot)) return { ok: false, reason: 'not-root' };
+  let entries: Array<{ path: string; x: string; y: string }>;
+  try {
+    const top = await opts.runner.run(['rev-parse', '--show-toplevel']);
+    if (top.code !== 0) return { ok: false, reason: 'not-root' };
+    if (!samePath(await fs.realpath(top.stdout.trim()), realRoot)) return { ok: false, reason: 'not-root' };
+    const status = await opts.runner.run(['status', '--porcelain', '-z', '--untracked-files=all']);
+    if (status.code !== 0) return { ok: false, reason: 'git-failed' };
+    entries = parsePorcelain(status.stdout);
+  } catch {
+    return { ok: false, reason: 'git-failed' };
+  }
+  if (entries.length === 0) return { ok: true, committed: false };
+
+  for (const e of entries) {
+    if (UNSAFE_STATUS.has(e.x) || UNSAFE_STATUS.has(e.y)) return { ok: false, reason: 'invalid-path', path: e.path };
+    // A staged side and a changed worktree side (MM, AM, AA): a failed commit unstages the file,
+    // and the staged text would be lost.
+    if (e.x !== ' ' && e.x !== '?' && e.y !== ' ') return { ok: false, reason: 'not-clean', path: e.path };
+  }
+  const paths = entries.map((e) => e.path);
+  for (const rel of paths) {
+    const refused = await checkEditedFile(root, rel, opts.message);
+    if (refused !== null) return { ...refused, path: rel };
+  }
+
+  try {
+    const res = await opts.runner.commitFiles(paths, opts.message);
+    return res.committed ? { ok: true, committed: true, sha: res.sha } : { ok: true, committed: false };
+  } catch (e) {
+    await opts.runner.unstage(paths);
+    return { ok: false, reason: e instanceof AmrGitError && e.code === 'stage-mismatch' ? 'stage-mismatch' : 'git-failed' };
   }
 }

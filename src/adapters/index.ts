@@ -55,5 +55,14 @@ export {
   type RecursaToolResult,
 } from './RecursaToolAdapter.js';
 
+// AMR tool surface (Agent Memory Repo), fixed root, JSON-in/JSON-out, writes behind allowWrite
+export {
+  createAmrTools,
+  type AmrToolSet,
+  type AmrToolDeps,
+  type AmrToolDescriptor,
+  type AmrToolResult,
+} from './AmrToolAdapter.js';
+
 // LangChain adapter (pre-existing)
 export { LangChainMemoryAdapter } from './LangChainMemoryAdapter.js';

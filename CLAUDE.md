@@ -57,7 +57,7 @@ repo-tools docs check src                      # Doc-comment gate (exits 1 on a 
 
 ```
 src/
-├── adapters/  # REST router, API-key auth middleware, rate limiter, LangChain/MCP observers, Recursa tool surface (RecursaToolAdapter)
+├── adapters/  # REST router, API-key auth middleware, rate limiter, LangChain/MCP observers, Recursa tool surface (RecursaToolAdapter), AMR tool surface (AmrToolAdapter)
 ├── agent/     # Agent Memory System (sessions, working memory, episodic, decay, artifacts, distillation, role profiles, entropy, consolidation scheduler, collaborative synthesis, failure distillation, cognitive load, visibility, MemoryEngine + ImportanceScorer)
 │   └──        # subfolders: bootstrap/ causal/ collaboration/ evaluation/ events/ harness/ knowledge/ learning/ procedural/ rbac/ reconstruction/ retrieval/ skills/ world/
 ├── cli/       # CLI commands (bin: `memory` / `memoryjs`)
@@ -151,7 +151,7 @@ ctx.bootstrapper(deps)  // Recursa RS-10..RS-13 bootstrapper factory: map corpus
 - **Parsing & logging**: `QueryParser` (query string parsing), `QueryLogger` (query performance logging)
 - **Infrastructure**: `TFIDFEventSync` (auto-sync), `OptimizedInvertedIndex`, `IncrementalIndexer`, `EmbeddingCache`, `SearchFilterChain`
 
-**CLI** (`src/cli/`): Command-line interface exposed as `memory` / `memoryjs` binaries (see `bin` in package.json). Built as separate ESM bundle by tsup. Commands split into `commands/{entity,relation,search,observation,tag,hierarchy,graph,io,maintenance}.ts` with shared `helpers.ts`.
+**CLI** (`src/cli/`): Command-line interface exposed as `memory` / `memoryjs` binaries (see `bin` in package.json). Built as separate ESM bundle by tsup. Commands split into `commands/{entity,relation,search,observation,tag,hierarchy,graph,io,maintenance,amr}.ts` with shared `helpers.ts`.
 
 **Agent Memory System** (`src/agent/`): Complete memory system for AI agents:
 - **Facade**: `AgentMemoryManager` - unified entry point for all agent memory operations
@@ -214,6 +214,7 @@ ctx.bootstrapper(deps)  // Recursa RS-10..RS-13 bootstrapper factory: map corpus
 - `AuditLog`: Immutable JSONL audit trail for all create/update/delete operations
 - `GovernanceManager`: `withTransaction` groups audit entries (not atomic; storage is not reverted on throw), `rollback(auditEntryId)`, `GovernancePolicy` (`canCreate`/`canUpdate`/`canDelete`) enforcement
 - `RecursaToolAdapter` (`src/adapters/`, Recursa §3.8, `@experimental`): `createRecursaTools(ctx, deps)` exposes the 14 harness tools (`recursa.knowledge.*`, `recursa.skills.publish|import`, `recursa.learn.*`, `recursa.log.append|select`, `recursa.eval.run`) as stateless JSON-in/JSON-out calls; `call` never throws and results are byte-bounded (`maxBytes`, default 64 KiB). Error codes: `invalid_args` (strict schemas; `__proto__`/`constructor`/`prototype` keys refused), `not_found`, `invalid_state`, `not_configured`, `solver_required`, `aborted`, `unknown_tool`, `internal_error`. Skills tools need `deps.publishDir` (relative `dir` only). Result types: `RecursaToolResult` / `RecursaToolDescriptor`.
+- `AmrToolAdapter` (`src/adapters/`, `@experimental`): `createAmrTools(ctx, deps)` exposes `amr.context|check|export|import|commit` over one fixed `deps.root`; writes need `deps.allowWrite`; `call` never throws and results are byte-bounded like `RecursaToolAdapter` (`maxBytes`, default 64 KiB). The CLI group is `memory amr ...` (`src/cli/commands/amr.ts`).
 
 ### Graph Algorithms (`src/core/GraphTraversal.ts`)
 
@@ -409,10 +410,10 @@ Stability tags sit in each source file's `@module` JSDoc header. The contract:
 | `@experimental` | Functional but the contract may evolve based on real-world feedback | Minor changes possible in a minor-version bump; document each change in CHANGELOG |
 | `@internal` | Implementation detail — do not import from outside the project | May change at any time without notice |
 
-**Current policy** (grep of `@module` headers, 373 files; re-count with `grep -rl "@experimental\|@internal" src`):
-- **Untagged** (221 files, the pre-Phase-0 surface and the newer untagged modules): implicitly `@public` and follow the project's SemVer contract. A full per-symbol tiering of those is deliberately deferred to a v2.0.0 cut.
-- **`@experimental`** (119 files): the Recursa and agent-subsystem modules, for example every module under `src/agent/{bootstrap,evaluation,harness,knowledge,reconstruction,skills}/`, most of `src/agent/learning/`, `src/agent/procedural/graph/`, and the `src/adapters/Recursa*` tool surface. Functional but the contract may still change; document each change in CHANGELOG.
-- **`@internal`** (24 files): helpers not re-exported from any barrel, for example `src/agent/learning/{LeafRound,RevisionReconcile,RevisionGeneralize,observationChunks,revisionMergeShared}.ts`. Do not import them from outside the project. A module that a barrel re-exports should be `@experimental` or `@public`, not `@internal`. Barrel-exported modules outside `src/agent` that still carry `@internal` (for example `src/core/sqlite-register.ts`, re-exported by `src/core/index.ts` because the guides import `SQLiteStorage` from the root) are pending retagging and should be treated as `@experimental` until then.
+**Current policy** (the tag inside each file's `@module` JSDoc block, 400 files; count only that block, because some files also carry method-level tags):
+- **Untagged** (237 files, the pre-Phase-0 surface and the newer untagged modules): implicitly `@public` and follow the project's SemVer contract. A full per-symbol tiering of those is deliberately deferred to a v2.0.0 cut.
+- **`@experimental`** (129 files): the Recursa and agent-subsystem modules, for example every module under `src/agent/{bootstrap,evaluation,harness,knowledge,reconstruction,skills}/`, most of `src/agent/learning/`, `src/agent/procedural/graph/`, and the `src/adapters/Recursa*` and `src/adapters/AmrToolAdapter.ts` tool surfaces. Functional but the contract may still change; document each change in CHANGELOG.
+- **`@internal`** (34 files): helpers not re-exported from any barrel, for example `src/agent/learning/{LeafRound,RevisionReconcile,RevisionGeneralize,observationChunks,revisionMergeShared}.ts`. Do not import them from outside the project. A module that a barrel re-exports should be `@experimental` or `@public`, not `@internal`. Barrel-exported modules outside `src/agent` that still carry `@internal` (for example `src/core/sqlite-register.ts`, re-exported by `src/core/index.ts` because the guides import `SQLiteStorage` from the root) are pending retagging and should be treated as `@experimental` until then.
 - Method-level `@internal` tags on private helpers are unrelated to module tiers and stay as they are.
 
 The Phase 0-4 tagged list (13 entries, the original tagged set) is historical; the counts above are the current source of truth.

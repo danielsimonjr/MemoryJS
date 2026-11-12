@@ -10,9 +10,9 @@
 - **Dormant files** (runtime code on disk, unreachable from any entry/build root): 0
   - **Orphaned (reachable from nothing — delete/wire candidates)**: 0
   - **Test-only (exercised by a test, ships nothing)**: 0
-- **Potentially unused exports**: 183
+- **Potentially unused exports**: 182
   - **Unreferenced anywhere (deletion candidates)**: 5
-  - **Referenced in-module (type contracts / helpers backing live exports)**: 178
+  - **Referenced in-module (type contracts / helpers backing live exports)**: 177
 
 Seeded reachability roots (4):
 
@@ -92,10 +92,6 @@ support exports that ARE used, so they cannot be deleted in isolation.
 ### `src/adapters/RestRouter.ts`
 
 - `RestLimits` (interface) — 3 in-file refs
-
-### `src/adapters/recursaToolBounds.ts`
-
-- `byteSize` (function) — 5 in-file refs
 
 ### `src/agent/AgentEnvDefaults.ts`
 

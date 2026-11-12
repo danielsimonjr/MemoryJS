@@ -181,6 +181,7 @@ The write guards come before the first write, so the scanner runs on every write
 ### Phase 6: CLI, tool adapter and docs
 
 - Add the CLI group `memory amr context|check|export|import|commit` and register it in `src/cli/commands/index.ts`.
+- `amr commit` is the guarded commit of hand edits. It commits the changed `.md` files in one commit. It refuses the whole commit, and stages nothing, on any bad path, deletion, rename, non-Markdown file, secret, or file with a staged change and a later worktree change. A failed commit unstages the files.
 - Write `createAmrTools(ctx, deps)` in `src/adapters/`, modelled on `RecursaToolAdapter`.
 - Gates: `bun run lint`, `bun run typecheck`, the full test suite, `tools:check-duplicates`, `tools:check-census`, `repo-tools check . --docs=docs/architecture` and `repo-tools docs check src`.
 - Update the README, `docs/architecture`, CHANGELOG and the `ExportFormat` notes.
