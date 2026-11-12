@@ -479,6 +479,16 @@ export function renderAmrDocument(doc: AmrDocument): string {
   return (doc.bom ? BOM : '') + doc.lines.map((l) => l.raw + l.eolAfter).join('');
 }
 
+/** One entry edit for {@link setEntries}. */
+export interface AmrEntryEdit {
+  /** Index of the bullet line in `doc.lines`. */
+  index: number;
+  /** New entry text without metadata. */
+  text: string;
+  /** New metadata. The result holds a copy. */
+  meta: Record<string, string[]>;
+}
+
 /**
  * Replaces the entry on one bullet line. The new entry keeps the indent characters, the marker,
  * the whitespace after the marker and the task prefix. The function removes the continuation
@@ -497,26 +507,48 @@ export function setEntry(
   text: string,
   meta: Record<string, string[]>
 ): AmrDocument {
+  return setEntries(doc, [{ index, text, meta }]);
+}
+
+/**
+ * Replaces the entries of several bullet lines in one pass, with the rules of {@link setEntry}.
+ * The result is parsed once, so the cost is linear in the document size.
+ * @param doc - Document to change. It is not modified.
+ * @param edits - Edits; each index names a bullet line of `doc`. A repeated index uses the last edit.
+ * @returns A new document.
+ * @throws ValidationError when the document is not parseable, an index is not a bullet,
+ *   or a text or metadata is invalid.
+ */
+export function setEntries(doc: AmrDocument, edits: readonly AmrEntryEdit[]): AmrDocument {
   if (!doc.parseable) {
     throw new ValidationError('Document is not parseable and cannot be edited', [
       'document is not parseable',
     ]);
   }
-  const line = doc.lines[index];
-  const bullet = line?.kind === 'bullet' ? BULLET_PATTERN.exec(line.raw) : null;
-  if (!bullet) {
-    throw new ValidationError(`Line ${index} is not a bullet`, [`line ${index} is not a bullet`]);
+  const byIndex = new Map<number, AmrEntryEdit>();
+  for (const e of edits) {
+    const line = doc.lines[e.index];
+    if (line?.kind !== 'bullet' || !BULLET_PATTERN.test(line.raw)) {
+      throw new ValidationError(`Line ${e.index} is not a bullet`, [`line ${e.index} is not a bullet`]);
+    }
+    byIndex.set(e.index, e);
   }
-  const taskPrefix = TASK_PATTERN.exec(bullet[4])?.[0] ?? '';
-  const raw = `${bullet[1]}${bullet[2]}${bullet[3]}${taskPrefix}${formatEntryText(text, meta)}`;
-
-  let end = index + 1;
-  while (end < doc.lines.length && doc.lines[end].kind === 'continuation') end++;
-  const eolAfter = end >= doc.lines.length ? doc.lines[end - 1].eolAfter : line.eolAfter;
-  const lines: AmrLine[] = [
-    ...doc.lines.slice(0, index),
-    { kind: 'bullet', raw, eolAfter },
-    ...doc.lines.slice(end),
-  ];
+  const lines: AmrLine[] = [];
+  for (let i = 0; i < doc.lines.length; i++) {
+    const edit = byIndex.get(i);
+    const line = doc.lines[i];
+    if (edit === undefined) {
+      lines.push(line);
+      continue;
+    }
+    const bullet = BULLET_PATTERN.exec(line.raw)!;
+    const taskPrefix = TASK_PATTERN.exec(bullet[4])?.[0] ?? '';
+    const raw = `${bullet[1]}${bullet[2]}${bullet[3]}${taskPrefix}${formatEntryText(edit.text, edit.meta)}`;
+    let end = i + 1;
+    while (end < doc.lines.length && doc.lines[end].kind === 'continuation') end++;
+    const eolAfter = end >= doc.lines.length ? doc.lines[end - 1].eolAfter : line.eolAfter;
+    lines.push({ kind: 'bullet', raw, eolAfter });
+    i = end - 1;
+  }
   return parseAmrDocument(renderAmrDocument({ ...doc, lines }));
 }

@@ -11,6 +11,7 @@ export {
   loadAmrContext,
   findCaseDuplicates,
   checkAmr,
+  walkAmrMarkdown,
   type AmrCheckOptions,
   type AmrReaderOptions,
   type AmrLinkCheck,
@@ -30,4 +31,31 @@ export {
   type SecretPattern,
   type SecretHit,
 } from './SecretScanner.js';
-export { writeAmrFile, type AmrWriteOptions, type AmrWriteResult, type AmrWriteReason } from './AmrWriter.js';
+export {
+  writeAmrFile,
+  writeAmrFiles,
+  checkAmrWritePath,
+  checkFileText,
+  type AmrFileRefusal,
+  type AmrWriteOptions,
+  type AmrWriteResult,
+  type AmrWriteReason,
+  type AmrFileText,
+  type AmrBatchResult,
+} from './AmrWriter.js';
+export { parseFrontMatter, renderFrontMatter, type FrontMatterValues, type FrontMatterParse } from './AmrFrontMatter.js';
+export {
+  AMR_SYNC_DEFAULTS,
+  amrPathForEntity,
+  exportAmr,
+  importAmr,
+  normalizeObservation,
+  type AmrSyncDefaults,
+  type AmrSyncMode,
+  type AmrSyncOptions,
+  type AmrFileReport,
+  type AmrExportReport,
+  type AmrImportEntity,
+  type AmrImportOptions,
+  type AmrImportReport,
+} from './AmrSync.js';

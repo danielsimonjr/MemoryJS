@@ -25,6 +25,8 @@ export interface GitRunnerConfig {
   commitPrefix: string;
   /** Environment variables added to the child after the `GIT_*` filter. */
   env: Record<string, string>;
+  /** Largest sum of path lengths in one `add`, `restore` or `rm` call. Longer lists run in chunks. */
+  maxArgChars: number;
 }
 
 /** The one place for every git runner default. */
@@ -35,6 +37,7 @@ export const AMR_GIT_DEFAULTS: GitRunnerConfig = {
   killGraceMs: 5_000,
   commitPrefix: 'memory: ',
   env: {},
+  maxArgChars: 24_000,
 };
 
 /** Largest delay that a Node timer accepts. A larger delay fires at once. */
@@ -195,6 +198,10 @@ export class GitRunner {
       killGraceMs: timerOr(config.killGraceMs, AMR_GIT_DEFAULTS.killGraceMs),
       commitPrefix: typeof config.commitPrefix === 'string' ? config.commitPrefix : AMR_GIT_DEFAULTS.commitPrefix,
       env: { ...AMR_GIT_DEFAULTS.env, ...(config.env ?? {}) },
+      maxArgChars:
+        typeof config.maxArgChars === 'number' && Number.isInteger(config.maxArgChars) && config.maxArgChars > 0
+          ? config.maxArgChars
+          : AMR_GIT_DEFAULTS.maxArgChars,
     };
   }
 
@@ -303,7 +310,9 @@ export class GitRunner {
   async unstage(paths: string[]): Promise<void> {
     try {
       const unborn = (await this.head()) === null;
-      await this.run(unborn ? ['rm', '--cached', '--quiet', '--', ...paths] : ['restore', '--staged', '--', ...paths]);
+      for (const chunk of this.chunks(paths)) {
+        await this.run(unborn ? ['rm', '--cached', '--quiet', '--', ...chunk] : ['restore', '--staged', '--', ...chunk]);
+      }
     } catch {
       // The caller checks the tree after this call.
     }
@@ -321,8 +330,10 @@ export class GitRunner {
    * @throws AmrGitError with code `stage-mismatch`, `timeout` or `git-failed`.
    */
   async commitFiles(paths: string[], message: string): Promise<GitCommitResult> {
-    const add = await this.run(['add', '--', ...paths]);
-    if (add.code !== 0) throw new AmrGitError('git-failed', 'git add failed');
+    for (const chunk of this.chunks(paths)) {
+      const add = await this.run(['add', '--', ...chunk]);
+      if (add.code !== 0) throw new AmrGitError('git-failed', 'git add failed');
+    }
     const names = await this.stagedNames();
     if (names.length === 0) return { committed: false };
     const allowed = new Set(paths);
@@ -341,6 +352,30 @@ export class GitRunner {
     const sha = await this.head();
     if (sha === null) throw new AmrGitError('git-failed', 'git rev-parse failed');
     return { committed: true, sha };
+  }
+
+  /**
+   * Split a path list into chunks. The path lengths of one chunk (plus one per path) stay within
+   * `maxArgChars`. A single longer path is a chunk of its own.
+   * @param paths - Repo-relative paths.
+   * @returns The chunks, in order.
+   */
+  private chunks(paths: string[]): string[][] {
+    const out: string[][] = [];
+    let cur: string[] = [];
+    let size = 0;
+    for (const p of paths) {
+      const len = p.length + 1;
+      if (cur.length > 0 && size + len > this.config.maxArgChars) {
+        out.push(cur);
+        cur = [];
+        size = 0;
+      }
+      cur.push(p);
+      size += len;
+    }
+    if (cur.length > 0) out.push(cur);
+    return out;
   }
 
   /**

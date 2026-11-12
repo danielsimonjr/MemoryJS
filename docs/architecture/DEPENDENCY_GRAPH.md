@@ -40,7 +40,7 @@ The codebase is organized into the following modules:
 - **agent**: 178 files
 - **cli**: 34 files
 - **core**: 36 files
-- **features**: 24 files
+- **features**: 26 files
 - **entry**: 1 file
 - **search**: 63 files
 - **security**: 5 files
@@ -61,7 +61,7 @@ Seeded build/entry roots (package `exports`, `bin` targets, tsup entries, script
 - `src/sqlite.ts`
 - `src/workers/levenshteinWorker.ts`
 
-Reachable from a root: **423** of 423 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
+Reachable from a root: **425** of 425 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
 
 ---
 
@@ -5534,9 +5534,23 @@ Reachable from a root: **423** of 423 files. Dormant: **0** (0 orphaned, 0 test-
 | `../../utils/errors.js` | `ValidationError` | Import |
 
 **Exports:**
-- Interfaces: `AmrEntry`, `AmrLine`, `AmrDocument`, `ParsedEntryText`
+- Interfaces: `AmrEntry`, `AmrLine`, `AmrDocument`, `ParsedEntryText`, `AmrEntryEdit`
 - Types: `AmrEol`, `AmrLineKind`
-- Functions: `parseEntryText`, `formatEntryText`, `extractLinks`, `parseAmrDocument`, `renderAmrDocument`, `setEntry`
+- Functions: `parseEntryText`, `formatEntryText`, `extractLinks`, `parseAmrDocument`, `renderAmrDocument`, `setEntry`, `setEntries`
+
+---
+
+### `src/features/amr/AmrFrontMatter.ts` - Front matter reader and writer for the Agent Memory Repo (AMR). It handles a small subset of YAML:
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../utils/errors.js` | `ValidationError` | Import |
+
+**Exports:**
+- Interfaces: `FrontMatterParse`
+- Types: `FrontMatterValues`
+- Functions: `parseFrontMatter`, `renderFrontMatter`
 
 ---
 
@@ -5560,8 +5574,37 @@ Reachable from a root: **423** of 423 files. Dormant: **0** (0 orphaned, 0 test-
 **Exports:**
 - Interfaces: `AmrReaderOptions`, `AmrContext`, `AmrIssue`, `AmrCheckOptions`, `AmrCheckReport`
 - Types: `AmrLinkReason`, `AmrLinkCheck`, `AmrReadResult`, `AmrIssueCode`
-- Functions: `checkAmrLink`, `readAmrFile`, `loadAmrContext`, `findCaseDuplicates`, `checkAmr`
+- Functions: `checkAmrLink`, `readAmrFile`, `loadAmrContext`, `findCaseDuplicates`, `checkAmr`, `walkAmrMarkdown`
 - Constants: `AMR_READER_DEFAULTS`
+
+---
+
+### `src/features/amr/AmrSync.ts` - One-way sync between the graph and an Agent Memory Repo (AMR). `exportAmr` writes graph entities to
+
+**Node.js Built-in Dependencies:**
+| Module | Import |
+|--------|--------|
+| `fs` | `promises` |
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../core/ManagerContext.js` | `ManagerContext` | Import (type-only) |
+| `../../types/types.js` | `Entity, Relation` | Import (type-only) |
+| `../../utils/errors.js` | `ValidationError` | Import |
+| `../../utils/schemas.js` | `CreateEntitySchema, CreateRelationSchema, UpdateEntitySchema` | Import |
+| `./AmrCodec.js` | `extractLinks, formatEntryText, parseAmrDocument, renderAmrDocument, setEntries, AmrDocument, AmrEntryEdit, AmrLine` | Import |
+| `./AmrFrontMatter.js` | `parseFrontMatter, renderFrontMatter, FrontMatterValues` | Import |
+| `./AmrReader.js` | `checkAmrLink, readAmrFile, walkAmrMarkdown` | Import |
+| `./AmrWriter.js` | `checkAmrWritePath, checkFileText, writeAmrFiles, AmrFileText` | Import |
+| `./GitRunner.js` | `GitRunner` | Import (type-only) |
+| `./SecretScanner.js` | `loadSecretPatterns, scanForSecrets, SecretPattern` | Import |
+
+**Exports:**
+- Interfaces: `AmrSyncOptions`, `AmrSyncDefaults`, `AmrFileReport`, `AmrExportReport`, `AmrImportEntity`, `AmrImportReport`, `AmrImportOptions`
+- Types: `AmrSyncMode`
+- Functions: `normalizeObservation`, `amrPathForEntity`, `exportAmr`, `importAmr`
+- Constants: `AMR_SYNC_DEFAULTS`
 
 ---
 
@@ -5584,9 +5627,9 @@ Reachable from a root: **423** of 423 files. Dormant: **0** (0 orphaned, 0 test-
 | `./SecretScanner.js` | `loadSecretPatterns, scanForSecrets, SecretHit, SecretPattern` | Import |
 
 **Exports:**
-- Interfaces: `AmrWriteOptions`
-- Types: `AmrWriteReason`, `AmrWriteResult`
-- Functions: `writeAmrFile`
+- Interfaces: `AmrWriteOptions`, `AmrFileText`
+- Types: `AmrWriteReason`, `AmrWriteResult`, `AmrFileRefusal`, `AmrBatchResult`
+- Functions: `checkAmrWritePath`, `writeAmrFile`, `checkFileText`, `writeAmrFiles`
 
 ---
 
@@ -5637,13 +5680,15 @@ Reachable from a root: **423** of 423 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `./AmrCodec.js` | `*` | Re-export |
-| `./AmrReader.js` | `AMR_READER_DEFAULTS, checkAmrLink, readAmrFile, loadAmrContext, findCaseDuplicates, checkAmr, AmrCheckOptions, AmrReaderOptions, AmrLinkCheck, AmrLinkReason, AmrReadResult, AmrContext, AmrIssue, AmrIssueCode, AmrCheckReport` | Re-export |
+| `./AmrReader.js` | `AMR_READER_DEFAULTS, checkAmrLink, readAmrFile, loadAmrContext, findCaseDuplicates, checkAmr, walkAmrMarkdown, AmrCheckOptions, AmrReaderOptions, AmrLinkCheck, AmrLinkReason, AmrReadResult, AmrContext, AmrIssue, AmrIssueCode, AmrCheckReport` | Re-export |
 | `./GitRunner.js` | `AMR_GIT_DEFAULTS, AmrGitError, GitRunner, GitRunnerConfig, GitRunResult, GitCleanCheck, GitCommitResult, AmrGitErrorCode` | Re-export |
 | `./SecretScanner.js` | `DEFAULT_SECRET_PATTERNS, loadSecretPatterns, scanForSecrets, validateSecretPatterns, SecretPattern, SecretHit` | Re-export |
-| `./AmrWriter.js` | `writeAmrFile, AmrWriteOptions, AmrWriteResult, AmrWriteReason` | Re-export |
+| `./AmrWriter.js` | `writeAmrFile, writeAmrFiles, checkAmrWritePath, checkFileText, AmrFileRefusal, AmrWriteOptions, AmrWriteResult, AmrWriteReason, AmrFileText, AmrBatchResult` | Re-export |
+| `./AmrFrontMatter.js` | `parseFrontMatter, renderFrontMatter, FrontMatterValues, FrontMatterParse` | Re-export |
+| `./AmrSync.js` | `AMR_SYNC_DEFAULTS, amrPathForEntity, exportAmr, importAmr, normalizeObservation, AmrSyncDefaults, AmrSyncMode, AmrSyncOptions, AmrFileReport, AmrExportReport, AmrImportEntity, AmrImportOptions, AmrImportReport` | Re-export |
 
 **Exports:**
-- Re-exports: `* from ./AmrCodec.js`, `AMR_READER_DEFAULTS`, `checkAmrLink`, `readAmrFile`, `loadAmrContext`, `findCaseDuplicates`, `checkAmr`, `AmrCheckOptions`, `AmrReaderOptions`, `AmrLinkCheck`, `AmrLinkReason`, `AmrReadResult`, `AmrContext`, `AmrIssue`, `AmrIssueCode`, `AmrCheckReport`, `AMR_GIT_DEFAULTS`, `AmrGitError`, `GitRunner`, `GitRunnerConfig`, `GitRunResult`, `GitCleanCheck`, `GitCommitResult`, `AmrGitErrorCode`, `DEFAULT_SECRET_PATTERNS`, `loadSecretPatterns`, `scanForSecrets`, `validateSecretPatterns`, `SecretPattern`, `SecretHit`, `writeAmrFile`, `AmrWriteOptions`, `AmrWriteResult`, `AmrWriteReason`
+- Re-exports: `* from ./AmrCodec.js`, `AMR_READER_DEFAULTS`, `checkAmrLink`, `readAmrFile`, `loadAmrContext`, `findCaseDuplicates`, `checkAmr`, `walkAmrMarkdown`, `AmrCheckOptions`, `AmrReaderOptions`, `AmrLinkCheck`, `AmrLinkReason`, `AmrReadResult`, `AmrContext`, `AmrIssue`, `AmrIssueCode`, `AmrCheckReport`, `AMR_GIT_DEFAULTS`, `AmrGitError`, `GitRunner`, `GitRunnerConfig`, `GitRunResult`, `GitCleanCheck`, `GitCommitResult`, `AmrGitErrorCode`, `DEFAULT_SECRET_PATTERNS`, `loadSecretPatterns`, `scanForSecrets`, `validateSecretPatterns`, `SecretPattern`, `SecretHit`, `writeAmrFile`, `writeAmrFiles`, `checkAmrWritePath`, `checkFileText`, `AmrFileRefusal`, `AmrWriteOptions`, `AmrWriteResult`, `AmrWriteReason`, `AmrFileText`, `AmrBatchResult`, `parseFrontMatter`, `renderFrontMatter`, `FrontMatterValues`, `FrontMatterParse`, `AMR_SYNC_DEFAULTS`, `amrPathForEntity`, `exportAmr`, `importAmr`, `normalizeObservation`, `AmrSyncDefaults`, `AmrSyncMode`, `AmrSyncOptions`, `AmrFileReport`, `AmrExportReport`, `AmrImportEntity`, `AmrImportOptions`, `AmrImportReport`
 
 ---
 
@@ -5668,12 +5713,12 @@ Reachable from a root: **423** of 423 files. Dormant: **0** (0 orphaned, 0 test-
 | `./ContradictionDetector.js` | `ContradictionDetector` | Re-export |
 | `./SemanticForget.js` | `SemanticForget` | Re-export |
 | `./ObservableDataModelAdapter.js` | `createObservableDataModelFromGraph, ReadOnlyMemoryGraphDataError, ObservableDataModelShape, ObservableDataModelAdapterOptions, GraphProjection, JSONValue` | Re-export |
-| `./amr/index.js` | `parseEntryText, formatEntryText, extractLinks, parseAmrDocument, renderAmrDocument, setEntry, AmrEol, AmrLineKind, AmrEntry, AmrLine, AmrDocument, ParsedEntryText, AMR_READER_DEFAULTS, checkAmrLink, readAmrFile, loadAmrContext, findCaseDuplicates, checkAmr, AmrCheckOptions, AmrReaderOptions, AmrLinkCheck, AmrLinkReason, AmrReadResult, AmrContext, AmrIssue, AmrIssueCode, AmrCheckReport, AMR_GIT_DEFAULTS, AmrGitError, GitRunner, GitRunnerConfig, GitRunResult, GitCleanCheck, GitCommitResult, AmrGitErrorCode, DEFAULT_SECRET_PATTERNS, loadSecretPatterns, scanForSecrets, validateSecretPatterns, SecretPattern, SecretHit, writeAmrFile, AmrWriteOptions, AmrWriteResult, AmrWriteReason` | Re-export |
+| `./amr/index.js` | `parseEntryText, formatEntryText, extractLinks, parseAmrDocument, renderAmrDocument, setEntry, setEntries, AmrEntryEdit, AmrEol, AmrLineKind, AmrEntry, AmrLine, AmrDocument, ParsedEntryText, AMR_READER_DEFAULTS, checkAmrLink, readAmrFile, loadAmrContext, findCaseDuplicates, checkAmr, AmrCheckOptions, AmrReaderOptions, AmrLinkCheck, AmrLinkReason, AmrReadResult, AmrContext, AmrIssue, AmrIssueCode, AmrCheckReport, AMR_GIT_DEFAULTS, AmrGitError, GitRunner, GitRunnerConfig, GitRunResult, GitCleanCheck, GitCommitResult, AmrGitErrorCode, DEFAULT_SECRET_PATTERNS, loadSecretPatterns, scanForSecrets, validateSecretPatterns, SecretPattern, SecretHit, writeAmrFile, writeAmrFiles, checkAmrWritePath, checkFileText, AmrFileRefusal, AmrWriteOptions, AmrWriteResult, AmrWriteReason, AmrFileText, AmrBatchResult, parseFrontMatter, renderFrontMatter, FrontMatterValues, FrontMatterParse, AMR_SYNC_DEFAULTS, amrPathForEntity, exportAmr, importAmr, normalizeObservation, AmrSyncDefaults, AmrSyncMode, AmrSyncOptions, AmrFileReport, AmrExportReport, AmrImportEntity, AmrImportOptions, AmrImportReport, walkAmrMarkdown` | Re-export |
 | `./ContradictionDetector.js` | `Contradiction` | Re-export (type-only) |
 | `./SemanticForget.js` | `SemanticForgetResult, SemanticForgetOptions` | Re-export (type-only) |
 
 **Exports:**
-- Re-exports: `TagManager`, `IOManager`, `ExportFormat`, `ImportFormat`, `MergeStrategy`, `BackupMetadata`, `BackupInfo`, `IngestInput`, `IngestOptions`, `IngestResult`, `IngestProduced`, `SplitOptions`, `SplitResult`, `VisualizeOptions`, `PiiRedactionOption`, `AnalyticsManager`, `CompressionManager`, `ArchiveManager`, `ArchiveCriteria`, `ArchiveOptions`, `ArchiveResult`, `StreamingExporter`, `StreamResult`, `StreamingExportOptions`, `AutoLinker`, `AutoLinkOptions`, `AutoLinkResult`, `FactExtractor`, `ExtractedFact`, `FactExtractionOptions`, `FactExtractionResult`, `ObservationNormalizer`, `NormalizationOptions`, `NormalizationResult`, `KeywordExtractor`, `ScoredKeyword`, `AuditLog`, `AuditEntry`, `AuditOperation`, `AuditFilter`, `AuditStats`, `GovernanceManager`, `GovernanceTransaction`, `GovernanceError`, `GovernanceManagerOptions`, `GovernancePolicy`, `GovernanceOperationOptions`, `FreshnessManager`, `FreshnessManagerConfig`, `FreshnessReport`, `ContradictionDetector`, `SemanticForget`, `createObservableDataModelFromGraph`, `ReadOnlyMemoryGraphDataError`, `ObservableDataModelShape`, `ObservableDataModelAdapterOptions`, `GraphProjection`, `JSONValue`, `parseEntryText`, `formatEntryText`, `extractLinks`, `parseAmrDocument`, `renderAmrDocument`, `setEntry`, `AmrEol`, `AmrLineKind`, `AmrEntry`, `AmrLine`, `AmrDocument`, `ParsedEntryText`, `AMR_READER_DEFAULTS`, `checkAmrLink`, `readAmrFile`, `loadAmrContext`, `findCaseDuplicates`, `checkAmr`, `AmrCheckOptions`, `AmrReaderOptions`, `AmrLinkCheck`, `AmrLinkReason`, `AmrReadResult`, `AmrContext`, `AmrIssue`, `AmrIssueCode`, `AmrCheckReport`, `AMR_GIT_DEFAULTS`, `AmrGitError`, `GitRunner`, `GitRunnerConfig`, `GitRunResult`, `GitCleanCheck`, `GitCommitResult`, `AmrGitErrorCode`, `DEFAULT_SECRET_PATTERNS`, `loadSecretPatterns`, `scanForSecrets`, `validateSecretPatterns`, `SecretPattern`, `SecretHit`, `writeAmrFile`, `AmrWriteOptions`, `AmrWriteResult`, `AmrWriteReason`, `Contradiction`, `SemanticForgetResult`, `SemanticForgetOptions`
+- Re-exports: `TagManager`, `IOManager`, `ExportFormat`, `ImportFormat`, `MergeStrategy`, `BackupMetadata`, `BackupInfo`, `IngestInput`, `IngestOptions`, `IngestResult`, `IngestProduced`, `SplitOptions`, `SplitResult`, `VisualizeOptions`, `PiiRedactionOption`, `AnalyticsManager`, `CompressionManager`, `ArchiveManager`, `ArchiveCriteria`, `ArchiveOptions`, `ArchiveResult`, `StreamingExporter`, `StreamResult`, `StreamingExportOptions`, `AutoLinker`, `AutoLinkOptions`, `AutoLinkResult`, `FactExtractor`, `ExtractedFact`, `FactExtractionOptions`, `FactExtractionResult`, `ObservationNormalizer`, `NormalizationOptions`, `NormalizationResult`, `KeywordExtractor`, `ScoredKeyword`, `AuditLog`, `AuditEntry`, `AuditOperation`, `AuditFilter`, `AuditStats`, `GovernanceManager`, `GovernanceTransaction`, `GovernanceError`, `GovernanceManagerOptions`, `GovernancePolicy`, `GovernanceOperationOptions`, `FreshnessManager`, `FreshnessManagerConfig`, `FreshnessReport`, `ContradictionDetector`, `SemanticForget`, `createObservableDataModelFromGraph`, `ReadOnlyMemoryGraphDataError`, `ObservableDataModelShape`, `ObservableDataModelAdapterOptions`, `GraphProjection`, `JSONValue`, `parseEntryText`, `formatEntryText`, `extractLinks`, `parseAmrDocument`, `renderAmrDocument`, `setEntry`, `setEntries`, `AmrEntryEdit`, `AmrEol`, `AmrLineKind`, `AmrEntry`, `AmrLine`, `AmrDocument`, `ParsedEntryText`, `AMR_READER_DEFAULTS`, `checkAmrLink`, `readAmrFile`, `loadAmrContext`, `findCaseDuplicates`, `checkAmr`, `AmrCheckOptions`, `AmrReaderOptions`, `AmrLinkCheck`, `AmrLinkReason`, `AmrReadResult`, `AmrContext`, `AmrIssue`, `AmrIssueCode`, `AmrCheckReport`, `AMR_GIT_DEFAULTS`, `AmrGitError`, `GitRunner`, `GitRunnerConfig`, `GitRunResult`, `GitCleanCheck`, `GitCommitResult`, `AmrGitErrorCode`, `DEFAULT_SECRET_PATTERNS`, `loadSecretPatterns`, `scanForSecrets`, `validateSecretPatterns`, `SecretPattern`, `SecretHit`, `writeAmrFile`, `writeAmrFiles`, `checkAmrWritePath`, `checkFileText`, `AmrFileRefusal`, `AmrWriteOptions`, `AmrWriteResult`, `AmrWriteReason`, `AmrFileText`, `AmrBatchResult`, `parseFrontMatter`, `renderFrontMatter`, `FrontMatterValues`, `FrontMatterParse`, `AMR_SYNC_DEFAULTS`, `amrPathForEntity`, `exportAmr`, `importAmr`, `normalizeObservation`, `AmrSyncDefaults`, `AmrSyncMode`, `AmrSyncOptions`, `AmrFileReport`, `AmrExportReport`, `AmrImportEntity`, `AmrImportOptions`, `AmrImportReport`, `walkAmrMarkdown`, `Contradiction`, `SemanticForgetResult`, `SemanticForgetOptions`
 
 ---
 
@@ -7733,8 +7778,8 @@ Reachable from a root: **423** of 423 files. Dormant: **0** (0 orphaned, 0 test-
 
 | File | Imports From | Exports To |
 |------|--------------|------------|
-| `src/core/ManagerContext` | 97 files | 10 files |
-| `src/types/types` | 1 file | 87 files |
+| `src/core/ManagerContext` | 97 files | 11 files |
+| `src/types/types` | 1 file | 88 files |
 | `src/types/index` | 13 files | 70 files |
 | `src/types/agent-memory` | 3 files | 73 files |
 | `src/agent/index` | 70 files | 1 file |
@@ -7742,7 +7787,7 @@ Reachable from a root: **423** of 423 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/utils/index` | 37 files | 27 files |
 | `src/core/EntityManager` | 12 files | 49 files |
 | `src/search/index` | 51 files | 1 file |
-| `src/utils/errors` | 0 files | 46 files |
+| `src/utils/errors` | 0 files | 48 files |
 | `src/utils/logger` | 0 files | 39 files |
 | `src/agent/AgentMemoryManager` | 33 files | 3 files |
 | `src/types/learning` | 2 files | 34 files |
@@ -7874,7 +7919,7 @@ graph TD
         N51[FactExtractor]
         N52[FreshnessManager]
         N53[GovernanceManager]
-        N54[...14 more]
+        N54[...16 more]
     end
 
     subgraph Entry
@@ -8023,21 +8068,21 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 423 |
+| Total TypeScript Files | 425 |
 | Total Modules | 12 |
-| Total Lines of Code | 137542 |
-| Total Exports | 3023 |
-| Total Re-exports | 1797 |
+| Total Lines of Code | 139486 |
+| Total Exports | 3085 |
+| Total Re-exports | 1847 |
 | Total Classes | 310 |
-| Total Interfaces | 866 |
-| Total Functions | 713 |
+| Total Interfaces | 876 |
+| Total Functions | 724 |
 | Total Type Guards | 50 |
 | Total Enums | 4 |
-| Type-only Imports | 882 |
+| Type-only Imports | 885 |
 | Runtime Circular Deps | 0 |
 | Type-only Circular Deps | 16 |
 | Entry/Build Roots | 4 |
-| Reachable Files | 423 |
+| Reachable Files | 425 |
 | Dormant Files (orphaned / test-only) | 0 (0 / 0) |
 
 ---

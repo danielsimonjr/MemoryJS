@@ -1,11 +1,11 @@
 {
-  "totalFiles": 1069,
+  "totalFiles": 1072,
   "byDisposition": {
-    "reachable": 419,
+    "reachable": 421,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 614,
+    "test": 615,
     "tool": 10,
     "config": 2,
     "bench": 5,
@@ -14,8 +14,8 @@
   "byArea": {
     "benchmarks": 5,
     "examples": 15,
-    "src": 423,
-    "tests": 614,
+    "src": 425,
+    "tests": 615,
     "tools": 10,
     "config": 2
   },
@@ -1978,35 +1978,49 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 523
+      "loc": 555
+    },
+    {
+      "file": "src/features/amr/AmrFrontMatter.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 166
     },
     {
       "file": "src/features/amr/AmrReader.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 704
+      "loc": 746
+    },
+    {
+      "file": "src/features/amr/AmrSync.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 1485
     },
     {
       "file": "src/features/amr/AmrWriter.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 346
+      "loc": 476
     },
     {
       "file": "src/features/amr/GitRunner.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 357
+      "loc": 392
     },
     {
       "file": "src/features/amr/index.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 34
+      "loc": 62
     },
     {
       "file": "src/features/amr/SecretScanner.ts",
@@ -2090,7 +2104,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 155
+      "loc": 181
     },
     {
       "file": "src/features/IOManager.ts",
@@ -5866,11 +5880,18 @@
       "loc": 681
     },
     {
+      "file": "tests/unit/features/amr/AmrSync.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 991
+    },
+    {
       "file": "tests/unit/features/amr/AmrWriter.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 670
+      "loc": 674
     },
     {
       "file": "tests/unit/features/amr/observationMetaMeta.test.ts",

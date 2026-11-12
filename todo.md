@@ -6,6 +6,9 @@ release where applicable.
 
 ## In progress
 
+- [ ] **AMR phase 6: CLI `memory amr ...`, `createAmrTools` adapter, docs.** Filed 2026-11-11 21:40. See `docs/roadmap/AGENT_MEMORY_REPO_PLAN.md` Phase 6.
+- [ ] **AMR phase 5: `repo-tools clones` and code simplifier over the phase 1-4 AMR code.** Filed 2026-11-11 21:40. See `docs/roadmap/AGENT_MEMORY_REPO_PLAN.md` Phase 5.
+- [x] **AMR phase 4: front matter parser, `exportAmr`, `importAmr` (dry-run by default).** Filed 2026-11-11 19:30. See `docs/roadmap/AGENT_MEMORY_REPO_PLAN.md` Phase 4.
 - [x] **AMR phase 3: `GitRunner`, secret scanner, confined writer.** Filed 2026-11-11 16:55. See `docs/roadmap/AGENT_MEMORY_REPO_PLAN.md` Phase 3.
 - [x] **AMR phase 2: confined reader, `loadAmrContext`, `checkAmr` (read-only).** Filed 2026-11-11 15:05. Stacked on phase 1 (PR 330).
 
