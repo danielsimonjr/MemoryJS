@@ -11,6 +11,7 @@ import { join, relative, sep } from 'path';
 import { ValidationError } from '../../utils/errors.js';
 import { strictlyInside } from '../../utils/confinedPath.js';
 import { parseAmrDocument } from './AmrCodec.js';
+import { loadSecretPatterns, scanForSecrets, validateSecretPatterns, type SecretPattern } from './SecretScanner.js';
 
 /** Limits for the reader. Every function takes a partial object over these defaults. */
 export interface AmrReaderOptions {
@@ -94,18 +95,32 @@ export type AmrIssueCode =
   | 'case-duplicate'
   | 'unparseable'
   | 'index-too-large'
-  | 'unreadable';
+  | 'unreadable'
+  | 'secret'
+  | 'bad-patterns';
 
 /** One problem that {@link checkAmr} found. */
 export interface AmrIssue {
   /** Repo-relative path with `/`. */
   file: string;
-  /** Physical line where the bullet starts, starting at 1. Absent when the issue has no line. */
+  /**
+   * Physical line where the bullet starts, starting at 1. Absent when the issue has no line.
+   * A `bad-patterns` issue has no file and uses line 0.
+   */
   line?: number;
   /** Issue code. */
   code: AmrIssueCode;
   /** Short reason or value. */
   detail: string;
+}
+
+/** Options of {@link checkAmr}: the reader options plus the secret patterns. */
+export interface AmrCheckOptions extends Partial<AmrReaderOptions> {
+  /**
+   * Secret patterns to scan with. Without it, `checkAmr` loads them from the environment
+   * (see `loadSecretPatterns`). A list that is not valid gives one `bad-patterns` issue.
+   */
+  patterns?: readonly SecretPattern[];
 }
 
 /** Result of {@link checkAmr}. */
@@ -592,16 +607,25 @@ async function walkMarkdown(root: string, o: AmrReaderOptions): Promise<{ files:
 /**
  * Check a whole memory repo and report every problem with its file and line.
  * `checkAmr` reads each walked file once. `checkAmr` resolves link targets without a read.
+ * It scans each walked file for secret patterns and reports the pattern id only.
  * @param root - Memory root (absolute).
- * @param opts - Partial reader options.
+ * @param opts - Partial reader options and the optional secret patterns.
  * @returns The walked file count and the sorted issues.
  */
-export async function checkAmr(root: string, opts: Partial<AmrReaderOptions> = {}): Promise<AmrCheckReport> {
+export async function checkAmr(root: string, opts: AmrCheckOptions = {}): Promise<AmrCheckReport> {
   const o = resolveOptions(opts);
   const ctx = makeContext(root, o);
   const walk = await walkMarkdown(root, o);
   const walked = walk.files;
   const issues: AmrIssue[] = [...walk.issues];
+  let patterns: readonly SecretPattern[] | null = null;
+  try {
+    patterns = opts.patterns !== undefined ? validateSecretPatterns(opts.patterns) : loadSecretPatterns();
+  } catch (e) {
+    const code = (e as { errors?: unknown }).errors;
+    const detail = Array.isArray(code) && typeof code[0] === 'string' ? code[0] : 'patterns:invalid';
+    issues.push({ file: '', line: 0, code: 'bad-patterns', detail });
+  }
   const memory = await resolveFile(ctx, MEMORY_FILE);
   if (!memory.ok && memory.reason === 'missing') {
     issues.push({ file: MEMORY_FILE, code: 'missing-memory-md', detail: `${MEMORY_FILE} is missing` });
@@ -623,6 +647,11 @@ export async function checkAmr(root: string, opts: Partial<AmrReaderOptions> = {
     if (memoryKey !== null && self.ok && pathKey(self.real) === memoryKey) {
       const bytes = Buffer.byteLength(r.text, 'utf8');
       if (bytes > o.maxIndexBytes) issues.push({ file: rel, code: 'index-too-large', detail: `${bytes} bytes` });
+    }
+    if (patterns !== null) {
+      for (const hit of scanForSecrets(r.text, patterns)) {
+        issues.push({ file: rel, line: hit.line, code: 'secret', detail: hit.patternId });
+      }
     }
     const doc = parseAmrDocument(r.text);
     if (!doc.parseable) {

@@ -114,11 +114,26 @@ The write guards come before the first write, so the scanner runs on every write
 - Write an injected `GitRunner`:
   - It uses an allow-listed argv and refuses `add -A`, `-f`, `--force`, `reset`, `clean` and `push`.
   - It drops every `GIT_*` variable from the child environment and adds `--literal-pathspecs` to every call.
-  - It requires a timeout and a cwd. The binary, the timeouts and the commit prefix come from config.
+  - The runner requires a timeout and a cwd. The binary, the timeouts, the kill grace and the commit prefix come from config. A timer value above 2^31-1 gives the default.
+  - A timeout kills the whole process tree (`taskkill /T /F` on Windows, the process group on POSIX), then waits for the exit. A git launcher starts the real git as a child. A kill of the launcher alone is not sufficient.
+  - A commit that times out is judged after the tree is dead. When HEAD moved and the index is empty, the commit landed. Otherwise the write fails and the restore runs.
 - Clean check: read the exit code of `status --porcelain` and compare the realpath of `rev-parse --show-toplevel` with the root (case-insensitive on Windows).
 - After `add`, the staged set must equal the intended set. "Nothing to commit" is a no-op.
-- Secret scanner: block and report. It ships a default pattern file that an environment variable can override. Tests build their secret fixtures at runtime, so no key-shaped literal is committed.
-- Confined writer: `.md` files only. Temp files go in the directory that `git rev-parse --absolute-git-dir` names, because `.git` is a file in a linked worktree or a submodule. Every write passes the secret scanner. `checkAmr` also reports secret-pattern hits from this phase on.
+- Secret scanner: block and report. It scans the file text, the commit message and the path. A hit on the message or the path uses line 0. The scanner ships a default pattern file that an environment variable can override. Tests build their secret fixtures at runtime, so no key-shaped literal is committed.
+- Confined writer: `.md` files only. Temp files go in the directory that `git rev-parse --absolute-git-dir` names, because `.git` is a file in a linked worktree or a submodule. Every write passes the secret scanner. The writer refuses what the reader refuses. These are the reader path rules, hidden segments, the ignore names, and text above `maxFileBytes` (`maxIndexBytes` for the root `MEMORY.md`).
+- Root and spelling: the root realpath must equal the runner root realpath. Each existing segment must have exactly its on-disk spelling, so a case variant or an 8.3 short name is refused. On Windows a segment that matches `~<digit>` is refused.
+- Serialization: calls for one root run one at a time in the process. A second process that holds the git index lock gives `git-failed` and runs the restore.
+- Swap check: after `mkdir`, each new folder must be a real folder. Right before the rename, the parent realpath must be unchanged. After the rename, the target realpath must be inside the root; else the writer removes the file it wrote.
+- Temp files have a random unique name. A cleanup removes only the temp file of the call, never a name pattern. `checkAmr` also reports secret-pattern hits from this phase on.
+- Git allow-list (exact; any other argument list is refused and spawns nothing):
+  - `status` with `--porcelain` or `-z` only.
+  - `rev-parse` with `--show-toplevel`, `--absolute-git-dir`, `--verify`, `--quiet` or `HEAD` only.
+  - `diff` with `--cached`, `--name-only` or `-z` only.
+  - `commit -m <message>` with exactly three arguments.
+  - `add -- <path>...`, `restore --staged -- <path>...` and `rm --cached --quiet -- <path>...`, with at least one path.
+- Subset rule: after `add`, every staged path must be one of the intended paths. An unchanged intended path is allowed. A staged path outside the set refuses the commit.
+- Restore rule: a failure after the rename restores the previous bytes, or removes a new file and the folders that the call created. Then the writer unstages the path: `restore --staged`, or `rm --cached --quiet` when HEAD names no commit. The tree is then as before the call.
+- Secret patterns: the built-in patterns can be replaced by a JSON file that the environment variable `MEMORY_AMR_SECRET_PATTERNS_FILE` names. An unreadable, invalid or empty file fails loudly. The built-in patterns are not used then. The writer returns `bad-patterns` for such a file.
 - Tests:
   - Set `GIT_DIR` to a decoy repo and assert that the decoy is unchanged.
   - Isolate the git config with `GIT_CONFIG_GLOBAL` and `GIT_CONFIG_NOSYSTEM`, and assert that a missing identity fails.

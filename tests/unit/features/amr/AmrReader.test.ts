@@ -84,7 +84,9 @@
  * that the walk skips), 'dangling-link' (every candidate is missing), 'bad-date' (`added` not a real
  * `YYYY-MM-DD` date), 'malformed-metadata' (an entry warning of the codec), 'case-duplicate' (two paths
  * equal after NFC + lower case), 'unparseable' (doc.parseable false), 'index-too-large' (MEMORY.md above
- * `maxIndexBytes`), 'unreadable' (detail: a reason such as 'too-large' or 'not-regular', or an error code).
+ * `maxIndexBytes`), 'unreadable' (detail: a reason such as 'too-large' or 'not-regular', or an error code),
+ * 'secret' (detail = the secret pattern id only, at the line of the hit), 'bad-patterns' (the secret
+ * pattern list cannot be loaded; one issue, file '' and line 0).
  * For a link, an unsafe candidate wins over an unreadable one, and an unreadable one wins over missing.
  * It walks `.md` files only, skips `ignore` names in any case, and never follows a symlink or junction.
  */

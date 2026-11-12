@@ -1,8 +1,8 @@
 metadata:
   name: "@danielsimonjr/memoryjs"
-  totalFiles: 420
+  totalFiles: 423
   totalModules: 12
-  totalExports: 2977
+  totalExports: 3023
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -14319,6 +14319,12 @@ modules:
         - file: ./AmrCodec.js
           imports:
             - parseAmrDocument
+        - file: ./SecretScanner.js
+          imports:
+            - loadSecretPatterns
+            - scanForSecrets
+            - validateSecretPatterns
+            - SecretPattern
       exports:
         - AMR_READER_DEFAULTS
         - checkAmrLink
@@ -14330,6 +14336,7 @@ modules:
         - AmrReaderOptions
         - AmrContext
         - AmrIssue
+        - AmrCheckOptions
         - AmrCheckReport
       functions:
         - checkAmrLink
@@ -14339,6 +14346,106 @@ modules:
         - checkAmr
       constants:
         - AMR_READER_DEFAULTS
+    src/features/amr/AmrWriter.ts:
+      description: Confined writer for the Agent Memory Repo (AMR). It writes one `.md` file, checks it for secrets,
+      externalDependencies: []
+      nodeDependencies:
+        - module: fs
+          imports:
+            - promises
+        - module: path
+          imports:
+            - basename
+            - dirname
+            - join
+            - relative
+            - resolve
+            - sep
+        - module: crypto
+          imports:
+            - randomUUID
+      internalDependencies:
+        - file: ../../utils/confinedPath.js
+          imports:
+            - strictlyInside
+        - file: ../../utils/durableWriteFile.js
+          imports:
+            - renameOver
+        - file: ./AmrReader.js
+          imports:
+            - AMR_READER_DEFAULTS
+            - checkAmrLink
+        - file: ./GitRunner.js
+          imports:
+            - AmrGitError
+            - GitRunner
+        - file: ./SecretScanner.js
+          imports:
+            - loadSecretPatterns
+            - scanForSecrets
+            - SecretHit
+            - SecretPattern
+      exports:
+        - writeAmrFile
+      interfaces:
+        - AmrWriteOptions
+      functions:
+        - writeAmrFile
+    src/features/amr/GitRunner.ts:
+      description: Git runner for the Agent Memory Repo (AMR) writer. It runs only an exact allow-list of git
+      externalDependencies: []
+      nodeDependencies:
+        - module: child_process
+          imports:
+            - spawn
+            - ChildProcess
+        - module: fs
+          imports:
+            - promises
+        - module: path
+          imports:
+            - isAbsolute
+      internalDependencies:
+        - file: ../../utils/errors.js
+          imports:
+            - ValidationError
+      exports:
+        - AMR_GIT_DEFAULTS
+        - AmrGitError
+        - GitRunner
+      classes:
+        - AmrGitError
+        - GitRunner
+      interfaces:
+        - GitRunnerConfig
+        - GitRunResult
+      constants:
+        - AMR_GIT_DEFAULTS
+    src/features/amr/SecretScanner.ts:
+      description: Secret scanner for the Agent Memory Repo (AMR). It finds secret-shaped text by line and pattern
+      externalDependencies: []
+      nodeDependencies:
+        - module: fs
+          imports:
+            - readFileSync
+      internalDependencies:
+        - file: ../../utils/errors.js
+          imports:
+            - ValidationError
+      exports:
+        - DEFAULT_SECRET_PATTERNS
+        - validateSecretPatterns
+        - loadSecretPatterns
+        - scanForSecrets
+      interfaces:
+        - SecretPattern
+        - SecretHit
+      functions:
+        - validateSecretPatterns
+        - loadSecretPatterns
+        - scanForSecrets
+      constants:
+        - DEFAULT_SECRET_PATTERNS
     src/features/amr/index.ts:
       description: Barrel for the Agent Memory Repo codec.
       externalDependencies: []
@@ -14356,6 +14463,7 @@ modules:
             - loadAmrContext
             - findCaseDuplicates
             - checkAmr
+            - AmrCheckOptions
             - AmrReaderOptions
             - AmrLinkCheck
             - AmrLinkReason
@@ -14365,6 +14473,33 @@ modules:
             - AmrIssueCode
             - AmrCheckReport
           reExport: true
+        - file: ./GitRunner.js
+          imports:
+            - AMR_GIT_DEFAULTS
+            - AmrGitError
+            - GitRunner
+            - GitRunnerConfig
+            - GitRunResult
+            - GitCleanCheck
+            - GitCommitResult
+            - AmrGitErrorCode
+          reExport: true
+        - file: ./SecretScanner.js
+          imports:
+            - DEFAULT_SECRET_PATTERNS
+            - loadSecretPatterns
+            - scanForSecrets
+            - validateSecretPatterns
+            - SecretPattern
+            - SecretHit
+          reExport: true
+        - file: ./AmrWriter.js
+          imports:
+            - writeAmrFile
+            - AmrWriteOptions
+            - AmrWriteResult
+            - AmrWriteReason
+          reExport: true
       exports:
         - AMR_READER_DEFAULTS
         - checkAmrLink
@@ -14372,6 +14507,7 @@ modules:
         - loadAmrContext
         - findCaseDuplicates
         - checkAmr
+        - AmrCheckOptions
         - AmrReaderOptions
         - AmrLinkCheck
         - AmrLinkReason
@@ -14380,6 +14516,24 @@ modules:
         - AmrIssue
         - AmrIssueCode
         - AmrCheckReport
+        - AMR_GIT_DEFAULTS
+        - AmrGitError
+        - GitRunner
+        - GitRunnerConfig
+        - GitRunResult
+        - GitCleanCheck
+        - GitCommitResult
+        - AmrGitErrorCode
+        - DEFAULT_SECRET_PATTERNS
+        - loadSecretPatterns
+        - scanForSecrets
+        - validateSecretPatterns
+        - SecretPattern
+        - SecretHit
+        - writeAmrFile
+        - AmrWriteOptions
+        - AmrWriteResult
+        - AmrWriteReason
       reExported:
         - "* from ./AmrCodec.js"
         - AMR_READER_DEFAULTS
@@ -14388,6 +14542,7 @@ modules:
         - loadAmrContext
         - findCaseDuplicates
         - checkAmr
+        - AmrCheckOptions
         - AmrReaderOptions
         - AmrLinkCheck
         - AmrLinkReason
@@ -14396,6 +14551,24 @@ modules:
         - AmrIssue
         - AmrIssueCode
         - AmrCheckReport
+        - AMR_GIT_DEFAULTS
+        - AmrGitError
+        - GitRunner
+        - GitRunnerConfig
+        - GitRunResult
+        - GitCleanCheck
+        - GitCommitResult
+        - AmrGitErrorCode
+        - DEFAULT_SECRET_PATTERNS
+        - loadSecretPatterns
+        - scanForSecrets
+        - validateSecretPatterns
+        - SecretPattern
+        - SecretHit
+        - writeAmrFile
+        - AmrWriteOptions
+        - AmrWriteResult
+        - AmrWriteReason
     src/features/index.ts:
       description: Features Module Barrel Export
       externalDependencies: []
@@ -14527,6 +14700,7 @@ modules:
             - loadAmrContext
             - findCaseDuplicates
             - checkAmr
+            - AmrCheckOptions
             - AmrReaderOptions
             - AmrLinkCheck
             - AmrLinkReason
@@ -14535,6 +14709,24 @@ modules:
             - AmrIssue
             - AmrIssueCode
             - AmrCheckReport
+            - AMR_GIT_DEFAULTS
+            - AmrGitError
+            - GitRunner
+            - GitRunnerConfig
+            - GitRunResult
+            - GitCleanCheck
+            - GitCommitResult
+            - AmrGitErrorCode
+            - DEFAULT_SECRET_PATTERNS
+            - loadSecretPatterns
+            - scanForSecrets
+            - validateSecretPatterns
+            - SecretPattern
+            - SecretHit
+            - writeAmrFile
+            - AmrWriteOptions
+            - AmrWriteResult
+            - AmrWriteReason
           reExport: true
         - file: ./ContradictionDetector.js
           imports:
@@ -14624,6 +14816,7 @@ modules:
         - loadAmrContext
         - findCaseDuplicates
         - checkAmr
+        - AmrCheckOptions
         - AmrReaderOptions
         - AmrLinkCheck
         - AmrLinkReason
@@ -14632,6 +14825,24 @@ modules:
         - AmrIssue
         - AmrIssueCode
         - AmrCheckReport
+        - AMR_GIT_DEFAULTS
+        - AmrGitError
+        - GitRunner
+        - GitRunnerConfig
+        - GitRunResult
+        - GitCleanCheck
+        - GitCommitResult
+        - AmrGitErrorCode
+        - DEFAULT_SECRET_PATTERNS
+        - loadSecretPatterns
+        - scanForSecrets
+        - validateSecretPatterns
+        - SecretPattern
+        - SecretHit
+        - writeAmrFile
+        - AmrWriteOptions
+        - AmrWriteResult
+        - AmrWriteReason
         - Contradiction
         - SemanticForgetResult
         - SemanticForgetOptions
@@ -14712,6 +14923,7 @@ modules:
         - loadAmrContext
         - findCaseDuplicates
         - checkAmr
+        - AmrCheckOptions
         - AmrReaderOptions
         - AmrLinkCheck
         - AmrLinkReason
@@ -14720,6 +14932,24 @@ modules:
         - AmrIssue
         - AmrIssueCode
         - AmrCheckReport
+        - AMR_GIT_DEFAULTS
+        - AmrGitError
+        - GitRunner
+        - GitRunnerConfig
+        - GitRunResult
+        - GitCleanCheck
+        - GitCommitResult
+        - AmrGitErrorCode
+        - DEFAULT_SECRET_PATTERNS
+        - loadSecretPatterns
+        - scanForSecrets
+        - validateSecretPatterns
+        - SecretPattern
+        - SecretHit
+        - writeAmrFile
+        - AmrWriteOptions
+        - AmrWriteResult
+        - AmrWriteReason
         - Contradiction
         - SemanticForgetResult
         - SemanticForgetOptions
@@ -21649,6 +21879,9 @@ dependencyGraph:
         - src/features/TagManager.ts
         - src/features/amr/AmrCodec.ts
         - src/features/amr/AmrReader.ts
+        - src/features/amr/AmrWriter.ts
+        - src/features/amr/GitRunner.ts
+        - src/features/amr/SecretScanner.ts
         - src/features/amr/index.ts
         - src/features/index.ts
     - name: Entry
@@ -21811,27 +22044,27 @@ reachability:
     - src/index.ts
     - src/sqlite.ts
     - src/workers/levenshteinWorker.ts
-  reachableCount: 420
+  reachableCount: 423
   dormantCount: 0
   orphaned: []
   testOnly: []
 statistics:
-  totalTypeScriptFiles: 420
+  totalTypeScriptFiles: 423
   totalModules: 12
-  totalLinesOfCode: 136642
-  totalExports: 2977
-  totalClasses: 308
-  totalInterfaces: 860
-  totalFunctions: 709
+  totalLinesOfCode: 137542
+  totalExports: 3023
+  totalClasses: 310
+  totalInterfaces: 866
+  totalFunctions: 713
   totalTypeGuards: 50
   totalEnums: 4
-  totalConstants: 198
-  totalReExports: 1759
+  totalConstants: 200
+  totalReExports: 1797
   totalTypeOnlyImports: 882
   runtimeCircularDeps: 0
   typeOnlyCircularDeps: 16
   entryRoots: 4
-  reachableFiles: 420
+  reachableFiles: 423
   dormantFiles: 0
   orphanedFiles: 0
   testOnlyFiles: 0

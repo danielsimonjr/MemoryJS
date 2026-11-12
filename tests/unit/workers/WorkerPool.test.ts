@@ -107,8 +107,13 @@ describe('workerpool inventory', () => {
     // `threadPool.ts` is the only module that may touch `node:worker_threads`
     // directly; everything else goes through it, so `workerType: 'process'`
     // and the worker message protocol stay in one place.
+    // Named exemptions, each with its reason.
+    const EXEMPT: Record<string, string> = {
+      'src/features/amr/GitRunner.ts':'runs a git subprocess, not a worker of the pool',
+    };
     const offenders = srcFiles
       .filter((file) => !file.endsWith(join('utils', 'threadPool.ts')))
+      .filter((file) => !(relativePath(file) in EXEMPT))
       .filter((file) => /from\s+['"]node:(?:worker_threads|child_process)['"]/.test(readFileSync(file, 'utf8')))
       .map(relativePath);
     expect(offenders).toEqual([]);

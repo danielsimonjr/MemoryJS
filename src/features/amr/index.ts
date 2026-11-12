@@ -11,6 +11,7 @@ export {
   loadAmrContext,
   findCaseDuplicates,
   checkAmr,
+  type AmrCheckOptions,
   type AmrReaderOptions,
   type AmrLinkCheck,
   type AmrLinkReason,
@@ -20,3 +21,13 @@ export {
   type AmrIssueCode,
   type AmrCheckReport,
 } from './AmrReader.js';
+export { AMR_GIT_DEFAULTS, AmrGitError, GitRunner, type GitRunnerConfig, type GitRunResult, type GitCleanCheck, type GitCommitResult, type AmrGitErrorCode } from './GitRunner.js';
+export {
+  DEFAULT_SECRET_PATTERNS,
+  loadSecretPatterns,
+  scanForSecrets,
+  validateSecretPatterns,
+  type SecretPattern,
+  type SecretHit,
+} from './SecretScanner.js';
+export { writeAmrFile, type AmrWriteOptions, type AmrWriteResult, type AmrWriteReason } from './AmrWriter.js';
