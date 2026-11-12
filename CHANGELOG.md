@@ -46,6 +46,7 @@ Major release: zero runtime `dependencies`, Node `>=22.16.0`, and SQLite on `nod
 
 ### Fixed
 
+- The AMR path rule (`checkAmrLink`, used by the reader, the writer and `commitAmrEdits`) refuses `"`, `<`, `>`, `|`, `?` and `*` with the new reason `windows-char`. Windows cannot create such a file, so a note named `q"uote.md` committed on Linux broke a checkout on Windows. `:` and `\` were already refused.
 - `boundResult` (Recursa tools) kept results within `maxBytes` only in its estimate: array commas, object keys and JSON escapes were not counted, and the preview fallback was escaped twice. A result could reach 79,754 bytes against a 65,536 budget. It now counts every byte and checks the final size.
 - `checkAmr` now reads `.MD` and `.Md` files. It used a case-sensitive `.md` test, so a secret or a dangling link in `NOTES.MD` went unreported, while the sync read and wrote that file.
 - `exportAmr`, `importAmr` and `amrPathForEntity` convert the namespace to NFC. An NFD namespace (as `importAmr` produced it) made a re-export add the namespace twice and write a second file.
