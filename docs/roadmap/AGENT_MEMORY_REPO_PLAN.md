@@ -113,7 +113,7 @@ The write guards come before the first write, so the scanner runs on every write
 
 - Write an injected `GitRunner`:
   - It uses an allow-listed argv and refuses `add -A`, `-f`, `--force`, `reset`, `clean` and `push`.
-  - It drops every `GIT_*` variable from the child environment and adds `--literal-pathspecs` to every call.
+  - It drops every `GIT_*` variable from the child environment and adds `--no-replace-objects` and `--literal-pathspecs` to every call.
   - The runner requires a timeout and a cwd. The binary, the timeouts, the kill grace and the commit prefix come from config. A timer value above 2^31-1 gives the default.
   - A timeout kills the whole process tree (`taskkill /T /F` on Windows, the process group on POSIX), then waits for the exit. A git launcher starts the real git as a child. A kill of the launcher alone is not sufficient.
   - A commit that times out is judged after the tree is dead. When HEAD moved and the index is empty, the commit landed. Otherwise the write fails and the restore runs.

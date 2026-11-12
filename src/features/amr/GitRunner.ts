@@ -1,7 +1,8 @@
 /**
  * Git runner for the Agent Memory Repo (AMR) writer. It runs only an exact allow-list of git
  * commands, with `shell: false`, a timeout, and no `GIT_*` variable from the host environment.
- * Every call adds `--literal-pathspecs`. A refused command spawns nothing. The `status` call lists
+ * Every call adds `--no-replace-objects` (a replace ref cannot change what `cat-file` reads) and
+ * `--literal-pathspecs`. A refused command spawns nothing. The `status` call lists
  * every untracked file (`--untracked-files=all`), so a new file in a new folder is seen as a file.
  * The `ls-files -s` and `cat-file` calls read the staged entries that {@link GitRunner.commitFiles}
  * checks before it commits.
@@ -125,13 +126,13 @@ const ALLOWED_OPTIONS: Readonly<Record<string, readonly string[]>> = {
 
 /**
  * Tell whether a git argument list is on the allow-list.
- * @param args - Arguments after `--literal-pathspecs`.
+ * @param args - Arguments after the fixed global options.
  * @returns True when the list is allowed.
  */
 function isAllowed(args: readonly string[]): boolean {
   const [sub, ...rest] = args;
   if (typeof sub !== 'string') return false;
-  const options = ALLOWED_OPTIONS[sub];
+  const options = Object.hasOwn(ALLOWED_OPTIONS, sub) ? ALLOWED_OPTIONS[sub] : undefined;
   if (options) return rest.every((a) => options.includes(a));
   if (sub === 'commit') return rest.length === 2 && rest[0] === '-m' && typeof rest[1] === 'string';
   if (sub === 'add') return rest.length >= 2 && rest[0] === '--';
@@ -235,7 +236,7 @@ export class GitRunner {
    */
   run(args: readonly string[]): Promise<GitRunResult> {
     if (!isAllowed(args)) return Promise.reject(new AmrGitError('refused', 'git command is not allowed'));
-    const argv = [...this.config.binaryArgs, '--literal-pathspecs', ...args];
+    const argv = [...this.config.binaryArgs, '--no-replace-objects', '--literal-pathspecs', ...args];
     return new Promise<GitRunResult>((resolve, reject) => {
       let settled = false;
       const child = spawn(this.config.gitBinary, argv, {
@@ -392,8 +393,8 @@ export class GitRunner {
   /**
    * Stage the paths, check the staged set, and commit it.
    * An empty staged set is a no-op. Every staged path must be in `paths`. A staged path outside
-   * `paths` refuses the commit. Every staged entry must be a regular file (mode `100644` or `100755`,
-   * stage 0), else the commit is refused with `stage-mismatch` (a symlink, a gitlink or an unmerged path).
+   * `paths` refuses the commit. Every staged entry must be stage 0, mode `100644` or `100755`, else
+   * the commit is refused with `stage-mismatch` (a symlink or a gitlink).
    * Then `verify`, when given, gets the staged entries; a throw stops the commit. A failed commit or a
    * refusal leaves the paths staged: the caller unstages them.
    * A commit that times out is checked after its process tree is dead. When HEAD moved and the
@@ -416,6 +417,7 @@ export class GitRunner {
     const staged = await this.stagedFiles(names);
     const regular = new Set<string>();
     for (const s of staged) {
+      // The stage check is a guard: callers refuse unmerged (U) paths before this call.
       if (s.stage !== 0 || (s.mode !== '100644' && s.mode !== '100755') || regular.has(s.path)) {
         throw new AmrGitError('stage-mismatch', 'staged entry is not a regular file');
       }

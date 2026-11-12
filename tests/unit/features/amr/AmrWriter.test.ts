@@ -11,7 +11,7 @@
  *   `new GitRunner(root, config?)` merges a partial config over it. A `timeoutMs` or `killGraceMs` that is
  *   undefined, NaN, not finite, not above 0 or above 2^31-1 gives the default (`runner.config` shows the
  *   values in use). `root` must be a non-empty absolute path, else `ValidationError`. `runner.root` is it.
- * - `run(args)` spawns `gitBinary` with `[...binaryArgs, '--literal-pathspecs', ...args]`, `cwd: root`,
+ * - `run(args)` spawns `gitBinary` with `[...binaryArgs, '--no-replace-objects', '--literal-pathspecs', ...args]`, `cwd: root`,
  *   `shell: false`, and resolves `{ code, stdout, stderr }`. It never rejects for a non-zero exit.
  *   The child environment is `process.env` with every key that matches `/^GIT_/i` removed, then
  *   `config.env` applied on top (the only way a `GIT_*` variable reaches the child).
@@ -105,6 +105,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, readFileSync, rmSync, mkdirSync, existsSync, readdirSync, realpathSync, appendFileSync, symlinkSync, lstatSync, unlinkSync, promises as fsPromises } from 'node:fs';
+import nodeFs from 'node:fs';
+import { syncBuiltinESMExports } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { GitRunner, AmrGitError, AMR_GIT_DEFAULTS, type GitRunResult, type StagedFile } from '../../../../src/features/amr/GitRunner.js';
@@ -136,7 +138,7 @@ function rawGit(cwd: string, env: Record<string, string>, ...args: string[]): st
 }
 
 /** A repo with an isolated git config: no system file, a global file the test controls. */
-function makeRepo(withIdentity = true): { root: string; env: Record<string, string> } {
+function makeRepo(withIdentity = true, initArgs: string[] = []): { root: string; env: Record<string, string> } {
   const root = tmp('amr-w-');
   const cfg = join(tmp('amr-cfg-'), 'gitconfig');
   writeFileSync(
@@ -146,7 +148,7 @@ function makeRepo(withIdentity = true): { root: string; env: Record<string, stri
       : '[user]\n\tuseConfigOnly = true\n', // no guessed identity from the host name or EMAIL
   );
   const env = { GIT_CONFIG_GLOBAL: cfg, GIT_CONFIG_NOSYSTEM: '1' };
-  rawGit(root, env, 'init', '-q');
+  rawGit(root, env, 'init', '-q', ...initArgs);
   writeFileSync(join(root, 'MEMORY.md'), '# Memory\n\n- fact\n');
   if (withIdentity) {
     rawGit(root, env, 'add', 'MEMORY.md');
@@ -154,6 +156,27 @@ function makeRepo(withIdentity = true): { root: string; env: Record<string, stri
   }
   return { root, env };
 }
+
+/**
+ * Run a probe in a fresh temp folder at collection time and remove the folder.
+ * @returns What the probe returns, or false when it throws.
+ */
+function probeFs(probe: (dir: string) => boolean): boolean {
+  const d = mkdtempSync(join(tmpdir(), 'amr-probe-'));
+  try {
+    return probe(d);
+  } catch {
+    return false;
+  } finally {
+    rmSync(d, { recursive: true, force: true });
+  }
+}
+
+/** True when this git can make a repository with sha256 object ids. */
+const sha256Supported = probeFs((d) => {
+  execFileSync('git', ['init', '-q', '--object-format=sha256', d], { env: cleanHostEnv(), stdio: 'ignore' });
+  return true;
+});
 
 function makeJunction(link: string, target: string): void {
   if (process.platform === 'win32') execFileSync('cmd', ['/c', 'mklink', '/J', link, target]);
@@ -220,6 +243,10 @@ describe('GitRunner', () => {
     [['status', '--porcelain', '--untracked-files=normal']],
     [['status', '--porcelain', '-z', '--untracked-files=all', '--ignored']],
     [['status', '--porcelain', '--', 'x.md']],
+    [['constructor']],
+    [['__proto__']],
+    [['toString']],
+    [['hasOwnProperty', 'x']],
   ])('refuses %j and spawns nothing', async (args) => {
     const { root, env } = makeRepo();
     const r = new GitRunner(root, { env, gitBinary: join(root, 'no-such-binary') });
@@ -545,22 +572,40 @@ describe('writeAmrFile', () => {
     expect(rawGit(root, env, 'status', '--porcelain')).toBe('');
   });
 
-  it('refuses a case variant of an existing segment as invalid-path', async () => {
-    const { root, env } = makeRepo();
-    mkdirSync(join(root, 'Notes'));
-    writeFileSync(join(root, 'Notes', 'A.md'), '- a\n');
-    rawGit(root, env, 'add', '--', 'Notes/A.md');
-    rawGit(root, env, 'commit', '-q', '-m', 'a');
-    const runner = new GitRunner(root, { env });
-    const insensitive = existsSync(join(root, 'notes'));
-    for (const rel of ['Notes/a.md', 'notes/A.md', 'notes/b.md']) {
-      const res = await writeAmrFile(root, rel, '- new\n', { runner, message: 'x' });
-      if (insensitive) expect(res, rel).toMatchObject({ ok: false, reason: 'invalid-path' });
+  describe('a case variant of an existing segment', () => {
+    // `runIf` reads its flag when the tests are collected, before any `beforeAll`, so the probe runs here.
+    const caseInsensitive = probeFs((d) => {
+      writeFileSync(join(d, 'Probe'), '');
+      return existsSync(join(d, 'probe'));
+    });
+
+    function notesRepo(): { root: string; env: Record<string, string>; runner: GitRunner } {
+      const { root, env } = makeRepo();
+      mkdirSync(join(root, 'Notes'));
+      writeFileSync(join(root, 'Notes', 'A.md'), '- a\n');
+      rawGit(root, env, 'add', '--', 'Notes/A.md');
+      rawGit(root, env, 'commit', '-q', '-m', 'a');
+      return { root, env, runner: new GitRunner(root, { env }) };
     }
-    if (insensitive) {
+
+    it.runIf(caseInsensitive)('is refused as invalid-path on a case-insensitive file system', async () => {
+      const { root, env, runner } = notesRepo();
+      for (const rel of ['Notes/a.md', 'notes/A.md', 'notes/b.md']) {
+        const res = await writeAmrFile(root, rel, '- new\n', { runner, message: 'x' });
+        expect(res, rel).toMatchObject({ ok: false, reason: 'invalid-path' });
+      }
       expect(rawGit(root, env, 'status', '--porcelain')).toBe('');
       expect(readdirSync(join(root, 'Notes'))).toEqual(['A.md']);
-    }
+    });
+
+    it.runIf(!caseInsensitive)('is a new folder on a case-sensitive file system', async () => {
+      const { root, env, runner } = notesRepo();
+      const res = await writeAmrFile(root, 'notes/b.md', '- new\n', { runner, message: 'x' });
+      expect(res).toMatchObject({ ok: true, committed: true });
+      expect(readdirSync(root)).toEqual(expect.arrayContaining(['Notes', 'notes']));
+      expect(rawGit(root, env, 'show', '--name-only', '--format=', 'HEAD').trim()).toBe('notes/b.md');
+      expect(rawGit(root, env, 'status', '--porcelain')).toBe('');
+    });
   });
 
   it.skipIf(process.platform !== 'win32')('refuses an 8.3-shaped segment on win32', async () => {
@@ -990,8 +1035,129 @@ describe('staged-content check: the gap between the scan and git add', () => {
     );
     const res = await writeAmrFile(root, 'notes/a.md', '- a\n', { runner, message: 'add a' });
     expect(res).toEqual({ ok: false, reason: 'too-large' });
+    expect(runner.calls).toContain('cat-file -s');
+    expect(runner.calls).not.toContain('cat-file blob');
     expect(rawGit(root, env, 'diff', '--cached', '--name-only')).toBe('');
     expect(rawGit(root, env, 'rev-parse', 'HEAD')).toBe(head);
+  });
+
+  it('writeAmrFile reads the real blob, not a replace ref that points at clean bytes', async () => {
+    const { root, env } = makeRepo();
+    const clean = join(tmp('amr-clean-'), 'clean.md');
+    writeFileSync(clean, '- a\n');
+    const runner = new RacingRunner(root, env, () => {
+      const file = join(root, 'notes', 'a.md');
+      appendFileSync(file, `- key ${fakeAws()}\n`);
+      const secretOid = rawGit(root, env, 'hash-object', '-w', '--', file).trim();
+      const cleanOid = rawGit(root, env, 'hash-object', '-w', '--', clean).trim();
+      rawGit(root, env, 'replace', secretOid, cleanOid);
+    });
+    const res = await writeAmrFile(root, 'notes/a.md', '- a\n', { runner, message: 'add a' });
+    expect(res).toMatchObject({ ok: false, reason: 'secret' });
+    expect(rawGit(root, env, 'diff', '--cached', '--name-only')).toBe('');
+    expect(rawGit(root, env, 'log', '--format=%s', '-1').trim()).toBe('init');
+  });
+
+  it.skipIf(!sha256Supported)('a sha256 repository: a match makes no cat-file call', async () => {
+    const { root, env } = makeRepo(true, ['--object-format=sha256']);
+    const runner = new RacingRunner(root, env, () => undefined);
+    const res = await writeAmrFile(root, 'a.md', '- a\n', { runner, message: 'a' });
+    expect(res).toMatchObject({ ok: true, committed: true });
+    expect(rawGit(root, env, 'rev-parse', 'HEAD').trim()).toMatch(/^[0-9a-f]{64}$/);
+    expect(runner.calls.some((c) => c.startsWith('cat-file'))).toBe(false);
+  });
+
+  it.skipIf(!sha256Supported)('a sha256 repository: a change after the scan takes the rescan path', async () => {
+    const { root, env } = makeRepo(true, ['--object-format=sha256']);
+    const runner = new RacingRunner(root, env, () => appendFileSync(join(root, 'a.md'), `- key ${fakeAws()}\n`));
+    const res = await writeAmrFile(root, 'a.md', '- a\n', { runner, message: 'a' });
+    expect(res).toMatchObject({ ok: false, reason: 'secret' });
+    expect(runner.calls).toEqual(expect.arrayContaining(['cat-file -s', 'cat-file blob']));
+    expect(rawGit(root, env, 'log', '--format=%s', '-1').trim()).toBe('init');
+  });
+
+  it('writeAmrFile with core.symlinks=false refuses a new file swapped for a symlink as stage-mismatch', async (t) => {
+    if (!canSymlink()) return t.skip();
+    const { root, env } = makeRepo();
+    rawGit(root, env, 'config', 'core.symlinks', 'false');
+    const outside = join(tmp('amr-out-'), 'outside.md');
+    writeFileSync(outside, '- outside\n');
+    const runner = new RacingRunner(root, env, () => {
+      unlinkSync(join(root, 'notes', 'a.md'));
+      symlinkSync(outside, join(root, 'notes', 'a.md'), 'file');
+    });
+    const res = await writeAmrFile(root, 'notes/a.md', '- a\n', { runner, message: 'add a' });
+    expect(res).toMatchObject({ ok: false, reason: 'stage-mismatch' });
+    expect(readFileSync(outside, 'utf8')).toBe('- outside\n');
+    expect(rawGit(root, env, 'diff', '--cached', '--name-only')).toBe('');
+    expect(rawGit(root, env, 'log', '--format=%s', '-1').trim()).toBe('init');
+  });
+
+  it('commitAmrEdits with core.symlinks=false refuses a file swapped for a symlink as stage-mismatch', async (t) => {
+    if (!canSymlink()) return t.skip();
+    const { root, env } = makeRepo();
+    rawGit(root, env, 'config', 'core.symlinks', 'false');
+    const outside = join(tmp('amr-out-'), 'outside.md');
+    writeFileSync(outside, '- outside\n');
+    writeFileSync(join(root, 'c.md'), '- c\n');
+    const runner = new RacingRunner(root, env, () => {
+      unlinkSync(join(root, 'c.md'));
+      symlinkSync(outside, join(root, 'c.md'), 'file');
+    });
+    const res = await commitAmrEdits(root, { runner, message: 'x' });
+    expect(res).toMatchObject({ ok: false, reason: 'stage-mismatch' });
+    expect(readFileSync(outside, 'utf8')).toBe('- outside\n');
+    expect(rawGit(root, env, 'diff', '--cached', '--name-only')).toBe('');
+    expect(rawGit(root, env, 'log', '--format=%s', '-1').trim()).toBe('init');
+  });
+
+  it('commitAmrEdits refuses a CRLF file with a secret that core.autocrlf stores as LF', async () => {
+    const { root, env } = makeRepo();
+    rawGit(root, env, 'config', 'core.autocrlf', 'true');
+    const runner = new RacingRunner(root, env, () => appendFileSync(join(root, 'crlf.md'), `- key ${fakeAws()}\r\n`));
+    writeFileSync(join(root, 'crlf.md'), '- a\r\n- b\r\n');
+    const res = await commitAmrEdits(root, { runner, message: 'crlf' });
+    expect(res).toMatchObject({ ok: false, reason: 'secret', path: 'crlf.md' });
+    expect(runner.calls).toEqual(expect.arrayContaining(['cat-file -s', 'cat-file blob']));
+    expect(rawGit(root, env, 'diff', '--cached', '--name-only')).toBe('');
+    expect(rawGit(root, env, 'log', '--format=%s', '-1').trim()).toBe('init');
+  });
+
+  it('commitAmrEdits loads the secret patterns once per call', async () => {
+    const { root, env } = makeRepo();
+    const file = join(tmp('amr-pat-'), 'patterns.json');
+    writeFileSync(file, JSON.stringify([{ id: 'p', source: 'NEVERMATCH[0-9]{9}' }]));
+    vi.stubEnv('MEMORY_AMR_SECRET_PATTERNS_FILE', file);
+    writeFileSync(join(root, 'a.md'), '- a\n');
+    writeFileSync(join(root, 'b.md'), '- b\n');
+    const spy = vi.spyOn(nodeFs, 'readFileSync');
+    syncBuiltinESMExports();
+    try {
+      const res = await commitAmrEdits(root, { runner: new GitRunner(root, { env }), message: 'x' });
+      expect(res).toMatchObject({ ok: true, committed: true });
+      expect(spy.mock.calls.filter((c) => c[0] === file)).toHaveLength(1);
+    } finally {
+      spy.mockRestore();
+      syncBuiltinESMExports();
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it('commitAmrEdits gives bad-patterns with no path for a bad patterns file, and stages nothing', async () => {
+    const { root, env } = makeRepo();
+    vi.stubEnv('MEMORY_AMR_SECRET_PATTERNS_FILE', join(root, 'none.json'));
+    try {
+      writeFileSync(join(root, 'a.md'), '- a\n');
+      writeFileSync(join(root, 'b.md'), '- b\n');
+      const res = await commitAmrEdits(root, { runner: new GitRunner(root, { env }), message: 'x' });
+      expect(res).toEqual({ ok: false, reason: 'bad-patterns' });
+      expect(rawGit(root, env, 'diff', '--cached', '--name-only')).toBe('');
+      rmSync(join(root, 'a.md'));
+      rmSync(join(root, 'b.md'));
+      expect(await commitAmrEdits(root, { runner: new GitRunner(root, { env }), message: 'x' })).toEqual({ ok: true, committed: false });
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it('writeAmrFile refuses a new file swapped for a symlink before git add and removes the link', async (t) => {

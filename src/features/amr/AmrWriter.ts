@@ -114,7 +114,8 @@ async function hasEntry(dir: string, name: string, cache: DirNames | undefined):
  * Confine the target before any folder is made. Each existing segment must have exactly the
  * on-disk spelling (no case variant, no 8.3 short name). The deepest existing ancestor must be
  * inside the real root, and no segment may be an ignored name. The folder listings come from `dirs`.
- * All planning of a batch runs before its first rename, so no listing in `dirs` goes stale.
+ * All planning of a batch runs before its first rename, so no rename of this call makes a listing stale.
+ * Another process can still change a folder after its listing.
  * @param root - Memory root.
  * @param relPath - Checked path with `/`.
  * @param dirs - Folder listings of the pass, or undefined for one call.
@@ -230,6 +231,7 @@ interface Touched {
 /**
  * Apply one plan: make the missing folders, confine the target folder, keep the previous bytes and
  * rename the new bytes over the target. On a failure the folders of this file are removed again.
+ * A folder that another process makes after planning is accepted here; the staged-name check refuses a case variant.
  * @param plan - Plan of the file.
  * @param relPath - Repo-relative path.
  * @param text - New file text.
@@ -641,6 +643,9 @@ function parsePorcelain(out: string): Array<{ path: string; x: string; y: string
  * @param root - Memory root.
  * @param rel - Repo-relative path with `/`.
  * @param message - Commit message.
+ * @param dirs - Folder listings of the pass.
+ * @param scanned - Receives the scanned hash of the file.
+ * @param patterns - Secret patterns of the call.
  * @returns The refusal, or null when the file may be committed.
  */
 async function checkEditedFile(
@@ -649,6 +654,7 @@ async function checkEditedFile(
   message: string,
   dirs: DirNames,
   scanned: Map<string, ScannedHash>,
+  patterns: readonly SecretPattern[],
 ): Promise<AmrFileRefusal | null> {
   if (!checkAmrLink(rel).ok) return { ok: false, reason: 'invalid-path' };
   if (!MARKDOWN_SUFFIX.test(rel)) return { ok: false, reason: 'not-markdown' };
@@ -664,7 +670,7 @@ async function checkEditedFile(
     return { ok: false, reason: 'io-error' };
   }
   scanned.set(rel, scannedHash(bytes));
-  return checkFileText(rel, bytes.toString('utf8'), message, undefined);
+  return checkFileText(rel, bytes.toString('utf8'), message, patterns);
 }
 
 /**
@@ -689,6 +695,12 @@ async function commitEditsLocked(root: string, realRoot: string, opts: AmrEditOp
     return { ok: false, reason: 'git-failed' };
   }
   if (entries.length === 0) return { ok: true, committed: false };
+  let patterns: readonly SecretPattern[];
+  try {
+    patterns = loadSecretPatterns();
+  } catch {
+    return { ok: false, reason: 'bad-patterns' };
+  }
 
   for (const e of entries) {
     if (UNSAFE_STATUS.has(e.x) || UNSAFE_STATUS.has(e.y)) return { ok: false, reason: 'invalid-path', path: e.path };
@@ -700,13 +712,13 @@ async function commitEditsLocked(root: string, realRoot: string, opts: AmrEditOp
   const dirs: DirNames = new Map();
   const scanned = new Map<string, ScannedHash>();
   for (const rel of paths) {
-    const refused = await checkEditedFile(root, rel, opts.message, dirs, scanned);
+    const refused = await checkEditedFile(root, rel, opts.message, dirs, scanned, patterns);
     if (refused !== null) return { ...refused, path: rel };
   }
 
   try {
     const res = await opts.runner.commitFiles(paths, opts.message, (staged) =>
-      verifyStaged(opts.runner, scanned, opts.message, undefined, staged),
+      verifyStaged(opts.runner, scanned, opts.message, patterns, staged),
     );
     return res.committed ? { ok: true, committed: true, sha: res.sha } : { ok: true, committed: false };
   } catch (e) {
