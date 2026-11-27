@@ -300,7 +300,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/core/EntityManager.ts` | src | reachable | 1629 |
 | `src/core/EntityStateMachine.ts` | src | reachable | 104 |
 | `src/core/GraphEventEmitter.ts` | src | reachable | 471 |
-| `src/core/GraphStorage.ts` | src | reachable | 1872 |
+| `src/core/GraphStorage.ts` | src | reachable | 1875 |
 | `src/core/GraphTraversal.ts` | src | reachable | 1463 |
 | `src/core/HierarchyManager.ts` | src | reachable | 314 |
 | `src/core/index.ts` | src | reachable | 60 |
@@ -831,7 +831,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/ManagerContext.recursa-wiring.test.ts` | tests | test | 199 |
 | `tests/unit/core/ManagerContext.test.ts` | tests | test | 1359 |
 | `tests/unit/core/mmap/FsReadMmapBackend.test.ts` | tests | test | 275 |
-| `tests/unit/core/mmap/GraphStorage-mmap-wiring.test.ts` | tests | test | 723 |
+| `tests/unit/core/mmap/GraphStorage-mmap-wiring.test.ts` | tests | test | 721 |
 | `tests/unit/core/mmap/IMmapBackend.test.ts` | tests | test | 198 |
 | `tests/unit/core/mmap/mmap-review-fixes.test.ts` | tests | test | 272 |
 | `tests/unit/core/mutation-isolation.test.ts` | tests | test | 108 |
@@ -847,7 +847,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/PostgreSQLStorage.test.ts` | tests | test | 623 |
 | `tests/unit/core/rebuild-native.test.ts` | tests | test | 53 |
 | `tests/unit/core/recursa-record-persistence.test.ts` | tests | test | 98 |
-| `tests/unit/core/RefIndex.test.ts` | tests | test | 620 |
+| `tests/unit/core/RefIndex.test.ts` | tests | test | 634 |
 | `tests/unit/core/relation-manager-temporal.test.ts` | tests | test | 157 |
 | `tests/unit/core/RelationManager-metadata.test.ts` | tests | test | 115 |
 | `tests/unit/core/RelationManager.test.ts` | tests | test | 357 |
@@ -890,7 +890,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/features/ArchiveManager.test.ts` | tests | test | 774 |
 | `tests/unit/features/AuditLog.test.ts` | tests | test | 477 |
 | `tests/unit/features/AutoLinker.test.ts` | tests | test | 383 |
-| `tests/unit/features/BackupManager.test.ts` | tests | test | 201 |
+| `tests/unit/features/BackupManager.test.ts` | tests | test | 219 |
 | `tests/unit/features/compression-manager-priority-dedup.test.ts` | tests | test | 47 |
 | `tests/unit/features/compression-manager-versioning-guard.test.ts` | tests | test | 48 |
 | `tests/unit/features/CompressionManager.test.ts` | tests | test | 574 |

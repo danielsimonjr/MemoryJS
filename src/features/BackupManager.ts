@@ -358,7 +358,7 @@ export class BackupManager {
     for (const line of content.split('\n')) {
       if (!line.trim()) continue;
       try {
-        const raw = sanitizeObject(JSON.parse(line) as Record<string, unknown>);
+        const raw = sanitizeObject(JSON.parse(line.trim()) as Record<string, unknown>);
         if (raw['type'] === 'entity') {
           const candidate = { ...raw };
           delete candidate['type'];

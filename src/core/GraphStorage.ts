@@ -736,10 +736,13 @@ export class GraphStorage implements IGraphStorage {
    * Returns `'malformed'` when the line is not valid JSON or cannot be
    * sanitized. Returns `null` for a JSON value that is not an object.
    * Otherwise returns the sanitized record.
+   *
+   * The method trims the line before the parse, so every load path
+   * accepts a leading BOM (U+FEFF) or no-break space (U+00A0).
    */
   private parseJsonlLine(line: string): Record<string, unknown> | 'malformed' | null {
     try {
-      const parsed: unknown = JSON.parse(line);
+      const parsed: unknown = JSON.parse(line.trim());
       if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
         return null;
       }

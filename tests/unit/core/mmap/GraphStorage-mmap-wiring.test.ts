@@ -645,9 +645,8 @@ describe('GraphStorage mmap wiring (task 84)', () => {
       }
     });
 
-    it('reads a line with a leading no-break space or BOM on the mmap path only (the paths trim differently)', async () => {
-      // This documents the behaviour before the D1 fix: the readFile path hands JSON.parse the
-      // untrimmed line, so the line is skipped; the mmap path trims first, so the line loads.
+    it('reads a line with a leading no-break space or BOM on both paths (one trim rule)', async () => {
+      // The line parser trims each line, so the readFile path and the mmap path load the same lines.
       const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});
       const entity = (name: string) =>
         JSON.stringify({ type: 'entity', name, entityType: 'person', observations: [], createdAt: '2026-05-11T00:00:00Z', lastModified: '2026-05-11T00:00:00Z' });
@@ -655,7 +654,7 @@ describe('GraphStorage mmap wiring (task 84)', () => {
       try {
         const readFile = await loadWith(false, content);
         const mmap = await loadWith(true, content);
-        expect(readFile.graph.entities.map((e) => e.name)).toEqual(['alice', 'bob']);
+        expect(readFile.graph.entities.map((e) => e.name)).toEqual(['alice', 'nbsp', 'bom', 'bob']);
         expect(mmap.graph.entities.map((e) => e.name)).toEqual(['alice', 'nbsp', 'bom', 'bob']);
       } finally {
         warnSpy.mockRestore();
@@ -705,13 +704,12 @@ describe('GraphStorage mmap wiring (task 84)', () => {
       }
     });
 
-    it('counts a line with a leading no-break space or BOM as malformed on the readFile path only', async () => {
+    it('does not count a line with a leading no-break space or BOM as malformed on either path', async () => {
       const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});
       const content = [ALICE_LINE, '\u00a0' + BOB_LINE, '\ufeff' + BOB_LINE].join('\n') + '\n';
       try {
         await loadWith(false, content);
-        expect(warnSpy.mock.calls).toEqual([[`[GraphStorage] ${filePath}: skipped 2 malformed line(s)`]]);
-        warnSpy.mockClear();
+        expect(warnSpy).not.toHaveBeenCalled();
         await loadWith(true, content);
         expect(warnSpy).not.toHaveBeenCalled();
       } finally {

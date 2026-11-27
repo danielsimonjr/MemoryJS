@@ -126,6 +126,24 @@ describe('BackupManager', () => {
       expect(restored.wasCompressed).toBe(true);
     });
 
+    it('restores entity lines that start with a BOM or a no-break space', async () => {
+      const result = await backups.create({ compress: false });
+      const carol = { type: 'entity', name: 'carol', entityType: 'person', observations: ['likes jam'] };
+      const dave = { type: 'entity', name: 'dave', entityType: 'person', observations: ['likes figs'] };
+      await fs.writeFile(
+        result.path,
+        `﻿${JSON.stringify(carol)}\n ${JSON.stringify(dave)}\n`,
+        'utf-8',
+      );
+      await storage.saveGraph({ entities: [], relations: [] });
+      storage.clearCache();
+
+      const restored = await backups.restore(result.path);
+      expect(restored.entityCount).toBe(2);
+      const names = (await storage.loadGraph()).entities.map((e) => e.name).sort();
+      expect(names).toEqual(['carol', 'dave']);
+    });
+
     it('rejects paths outside the backup dir', async () => {
       const outside = join(testDir, 'evil.jsonl');
       await fs.writeFile(outside, '');
