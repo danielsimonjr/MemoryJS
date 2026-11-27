@@ -207,6 +207,15 @@ interface AppendDescriptor<T> {
   emit(owner: GraphStorage, item: T): void;
 }
 
+/** A JSONL line that failed to parse or to sanitize. `cause` is the error message. */
+class MalformedJsonlLine {
+  readonly cause: string;
+
+  constructor(cause: string) {
+    this.cause = cause;
+  }
+}
+
 /**
  * GraphStorage manages persistence of the knowledge graph to disk.
  *
@@ -562,7 +571,7 @@ export class GraphStorage implements IGraphStorage {
     }
     try {
       const data = await fs.readFile(this.memoryFilePath, 'utf-8');
-      const lines = data.split('\n').filter((line: string) => line.trim() !== '');
+      const lines = data.split('\n');
 
       // Use Maps to deduplicate - later entries override earlier ones
       // This supports append-only updates where new versions are appended
@@ -570,10 +579,14 @@ export class GraphStorage implements IGraphStorage {
       const relationMap = new Map<string, Relation>();
 
       let malformedCount = 0;
-      for (const line of lines) {
+      let firstMalformed: { lineNumber: number; cause: string } | null = null;
+      for (let index = 0; index < lines.length; index++) {
+        const line = lines[index];
+        if (line.trim() === '') continue;
         const rec = this.parseJsonlLine(line);
-        if (rec === 'malformed') {
+        if (rec instanceof MalformedJsonlLine) {
           malformedCount++;
+          if (firstMalformed === null) firstMalformed = { lineNumber: index + 1, cause: rec.cause };
           continue;
         }
         if (rec === null) continue;
@@ -581,6 +594,7 @@ export class GraphStorage implements IGraphStorage {
       }
 
       this.commitLoadedGraph(entityMap, relationMap, malformedCount);
+      this.logFirstMalformed(firstMalformed);
     } catch (error) {
       // File doesn't exist - create empty graph
       if (error instanceof Error && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
@@ -711,13 +725,17 @@ export class GraphStorage implements IGraphStorage {
       const entityMap = new Map<string, Entity>();
       const relationMap = new Map<string, Relation>();
       let malformedCount = 0;
+      let lineNumber = 0;
+      let firstMalformed: { lineNumber: number; cause: string } | null = null;
 
       for await (const lineBuf of streamLines(backend, handle)) {
+        lineNumber++;
         const line = lineBuf.toString('utf-8').trim();
         if (line === '') continue;
         const rec = this.parseJsonlLine(line);
-        if (rec === 'malformed') {
+        if (rec instanceof MalformedJsonlLine) {
           malformedCount++;
+          if (firstMalformed === null) firstMalformed = { lineNumber, cause: rec.cause };
           continue;
         }
         if (rec === null) continue;
@@ -725,30 +743,42 @@ export class GraphStorage implements IGraphStorage {
       }
 
       this.commitLoadedGraph(entityMap, relationMap, malformedCount);
+      this.logFirstMalformed(firstMalformed);
     } finally {
       await backend.close(handle);
     }
   }
 
   /**
+   * Log the physical line number and cause of the first malformed line of a load.
+   * Nothing is logged when the load had no malformed line.
+   */
+  private logFirstMalformed(first: { lineNumber: number; cause: string } | null): void {
+    if (first === null) return;
+    logger.debug(
+      `[GraphStorage] ${this.memoryFilePath}: first malformed line ${first.lineNumber}: ${first.cause}`,
+    );
+  }
+
+  /**
    * Parse one line of the JSONL graph file.
    *
-   * Returns `'malformed'` when the line is not valid JSON or cannot be
+   * Returns a `MalformedJsonlLine` when the line is not valid JSON or cannot be
    * sanitized. Returns `null` for a JSON value that is not an object.
    * Otherwise returns the sanitized record.
    *
    * The method trims the line before the parse, so every load path
    * accepts a leading BOM (U+FEFF) or no-break space (U+00A0).
    */
-  private parseJsonlLine(line: string): Record<string, unknown> | 'malformed' | null {
+  private parseJsonlLine(line: string): Record<string, unknown> | MalformedJsonlLine | null {
     try {
       const parsed: unknown = JSON.parse(line.trim());
       if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
         return null;
       }
       return sanitizeObject(parsed as Record<string, unknown>) as Record<string, unknown>;
-    } catch {
-      return 'malformed';
+    } catch (error) {
+      return new MalformedJsonlLine(error instanceof Error ? error.message : String(error));
     }
   }
 

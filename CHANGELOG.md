@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `GraphStorage`: the readFile load path dropped a JSONL line that starts with a BOM (U+FEFF) or a no-break space (U+00A0), and the mmap load path loaded it. The line parser now trims each line, so both paths load the same lines. `BackupManager` restore and `RefIndex` load follow the same rule.
 
+### Changed
+
+- `GraphStorage`: a load that finds a malformed JSONL line logs one debug line with the physical line number and the cause of the first such line. Both load paths log it. The debug line appears only with `LOG_LEVEL=debug`; the warning text is unchanged.
+
 ## [5.1.0] - 2026-11-12
 
 ### Fixed

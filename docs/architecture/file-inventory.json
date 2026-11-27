@@ -1838,7 +1838,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1875
+      "loc": 1905
     },
     {
       "file": "src/core/GraphTraversal.ts",
@@ -5555,7 +5555,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 721
+      "loc": 749
     },
     {
       "file": "tests/unit/core/mmap/IMmapBackend.test.ts",
