@@ -250,13 +250,19 @@ describe('GraphStorage mmap wiring (task 84)', () => {
       expect(back.entities).toHaveLength(1);
     });
 
-    it("threshold of '0' falls back to default (regex requires [1-9] first)", async () => {
+    it("threshold of '0' forces the mmap path for a non-empty file", async () => {
       process.env.MEMORY_MMAP_THRESHOLD_BYTES = '0';
       const storage = new GraphStorage(filePath);
       await storage.saveGraph({ entities: [ent('a')], relations: [] });
       storage.clearCache();
-      const back = await storage.loadGraph();
-      expect(back.entities).toHaveLength(1);
+      const openSpy = vi.spyOn(FsReadMmapBackend.prototype, 'open');
+      try {
+        const back = await storage.loadGraph();
+        expect(back.entities).toHaveLength(1);
+        expect(openSpy).toHaveBeenCalledTimes(1);
+      } finally {
+        openSpy.mockRestore();
+      }
     });
   });
 
@@ -673,6 +679,28 @@ describe('GraphStorage mmap wiring (task 84)', () => {
         }
       } finally {
         warnSpy.mockRestore();
+      }
+    });
+
+    it('logs the physical line number and cause of the first malformed line on both paths', async () => {
+      const debugSpy = vi.spyOn(logger, 'debug').mockImplementation(() => {});
+      // Line 1 and line 3 are blank. Line 4 is the first malformed line, so blank lines must count.
+      const content = ['', ALICE_LINE, '', '{"type":"entity","name":"torn', BOB_LINE, '}'].join('\n') + '\n';
+      const prefix = `[GraphStorage] ${filePath}: first malformed line 4: `;
+      try {
+        for (const useMmap of [false, true]) {
+          debugSpy.mockClear();
+          const result = await loadWith(useMmap, content);
+          expect(result.graph.entities.map((e) => e.name)).toEqual(['alice', 'bob']);
+          const malformedLogs = debugSpy.mock.calls
+            .map((call) => String(call[0]))
+            .filter((msg) => msg.includes('malformed'));
+          expect(malformedLogs).toHaveLength(1);
+          expect(malformedLogs[0].startsWith(prefix)).toBe(true);
+          expect(malformedLogs[0].slice(prefix.length).length).toBeGreaterThan(0);
+        }
+      } finally {
+        debugSpy.mockRestore();
       }
     });
 

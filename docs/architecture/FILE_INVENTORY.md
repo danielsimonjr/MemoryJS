@@ -300,7 +300,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/core/EntityManager.ts` | src | reachable | 1629 |
 | `src/core/EntityStateMachine.ts` | src | reachable | 104 |
 | `src/core/GraphEventEmitter.ts` | src | reachable | 471 |
-| `src/core/GraphStorage.ts` | src | reachable | 1875 |
+| `src/core/GraphStorage.ts` | src | reachable | 1905 |
 | `src/core/GraphTraversal.ts` | src | reachable | 1463 |
 | `src/core/HierarchyManager.ts` | src | reachable | 314 |
 | `src/core/index.ts` | src | reachable | 60 |
@@ -831,7 +831,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/ManagerContext.recursa-wiring.test.ts` | tests | test | 199 |
 | `tests/unit/core/ManagerContext.test.ts` | tests | test | 1359 |
 | `tests/unit/core/mmap/FsReadMmapBackend.test.ts` | tests | test | 275 |
-| `tests/unit/core/mmap/GraphStorage-mmap-wiring.test.ts` | tests | test | 721 |
+| `tests/unit/core/mmap/GraphStorage-mmap-wiring.test.ts` | tests | test | 749 |
 | `tests/unit/core/mmap/IMmapBackend.test.ts` | tests | test | 198 |
 | `tests/unit/core/mmap/mmap-review-fixes.test.ts` | tests | test | 272 |
 | `tests/unit/core/mutation-isolation.test.ts` | tests | test | 108 |
