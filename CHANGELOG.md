@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- `GraphStorage`: the readFile load path dropped a JSONL line that starts with a BOM (U+FEFF) or a no-break space (U+00A0), and the mmap load path loaded it. The line parser now trims each line, so both paths load the same lines.
+- `GraphStorage`: the readFile load path dropped a JSONL line that starts with a BOM (U+FEFF) or a no-break space (U+00A0), and the mmap load path loaded it. The line parser now trims each line, so both paths load the same lines. `BackupManager` restore and `RefIndex` load follow the same rule.
 
 ## [5.1.0] - 2026-11-12
 

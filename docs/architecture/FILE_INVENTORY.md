@@ -847,7 +847,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/PostgreSQLStorage.test.ts` | tests | test | 623 |
 | `tests/unit/core/rebuild-native.test.ts` | tests | test | 53 |
 | `tests/unit/core/recursa-record-persistence.test.ts` | tests | test | 98 |
-| `tests/unit/core/RefIndex.test.ts` | tests | test | 620 |
+| `tests/unit/core/RefIndex.test.ts` | tests | test | 634 |
 | `tests/unit/core/relation-manager-temporal.test.ts` | tests | test | 157 |
 | `tests/unit/core/RelationManager-metadata.test.ts` | tests | test | 115 |
 | `tests/unit/core/RelationManager.test.ts` | tests | test | 357 |
@@ -890,7 +890,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/features/ArchiveManager.test.ts` | tests | test | 774 |
 | `tests/unit/features/AuditLog.test.ts` | tests | test | 477 |
 | `tests/unit/features/AutoLinker.test.ts` | tests | test | 383 |
-| `tests/unit/features/BackupManager.test.ts` | tests | test | 201 |
+| `tests/unit/features/BackupManager.test.ts` | tests | test | 219 |
 | `tests/unit/features/compression-manager-priority-dedup.test.ts` | tests | test | 47 |
 | `tests/unit/features/compression-manager-versioning-guard.test.ts` | tests | test | 48 |
 | `tests/unit/features/CompressionManager.test.ts` | tests | test | 574 |

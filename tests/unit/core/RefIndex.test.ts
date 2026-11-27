@@ -397,6 +397,20 @@ describe('RefIndex', () => {
       expect(all).toEqual([]);
     });
 
+    it('loads lines that start with a BOM or a no-break space', async () => {
+      const bomEntry = { ref: 'bom-ref', entityName: 'Alice', createdAt: new Date().toISOString() };
+      const nbspEntry = { ref: 'nbsp-ref', entityName: 'Bob', createdAt: new Date().toISOString() };
+      await fs.writeFile(
+        indexPath,
+        `﻿${JSON.stringify(bomEntry)}\n ${JSON.stringify(nbspEntry)}\n`,
+        'utf-8',
+      );
+
+      const freshIndex = new RefIndex(indexPath);
+      expect(await freshIndex.resolve('bom-ref')).toBe('Alice');
+      expect(await freshIndex.resolve('nbsp-ref')).toBe('Bob');
+    });
+
     it('JSONL file contains one JSON object per line', async () => {
       await index.register('r1', 'E1');
       await index.register('r2', 'E2');

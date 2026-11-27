@@ -308,7 +308,7 @@ export class RefIndex {
 
       for (const line of lines) {
         try {
-          const entry = JSON.parse(line) as RefEntry;
+          const entry = JSON.parse(line.trim()) as RefEntry;
           if (entry.ref && entry.entityName && entry.createdAt) {
             this.entries.set(entry.ref, entry);
             this.addToReverseIndex(entry.entityName, entry.ref);

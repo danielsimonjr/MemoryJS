@@ -5667,7 +5667,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 620
+      "loc": 634
     },
     {
       "file": "tests/unit/core/relation-manager-temporal.test.ts",
@@ -5968,7 +5968,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 201
+      "loc": 219
     },
     {
       "file": "tests/unit/features/compression-manager-priority-dedup.test.ts",
